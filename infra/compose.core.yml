@@ -1,0 +1,214 @@
+name: csight-core
+
+x-app-image: &app-image
+  image: csight-core:${CSIGHT_IMAGE_TAG:-dev}
+  build:
+    context: ..
+    dockerfile: infra/docker/Dockerfile
+
+x-app-environment: &app-environment
+  APP_NAME: ${APP_NAME:-csight-core-api}
+  APP_VERSION: ${APP_VERSION:-0.1.0}
+  ENVIRONMENT: ${ENVIRONMENT:-local}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  API_SCHEMA_VERSION: ${API_SCHEMA_VERSION:-1.0}
+  READINESS_TIMEOUT_SECONDS: ${READINESS_TIMEOUT_SECONDS:-2}
+  DATABASE_ECHO: ${DATABASE_ECHO:-false}
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-csight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-csight}
+  RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-csight}:${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}@rabbitmq:5672//
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+  MINIO_BUCKET: ${MINIO_BUCKET:-csight-evidence}
+  MINIO_SECURE: "false"
+  LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+  VISION_PROVIDER: ${VISION_PROVIDER:-mock}
+  LLM_BASE_URL: ${LLM_BASE_URL:-http://llm.invalid}
+  VISION_BASE_URL: ${VISION_BASE_URL:-http://vision.invalid}
+  CELERY_TASK_MAX_RETRIES: ${CELERY_TASK_MAX_RETRIES:-3}
+  CELERY_RETRY_BACKOFF_MAX_SECONDS: ${CELERY_RETRY_BACKOFF_MAX_SECONDS:-60}
+
+x-app-depends-on: &app-depends-on
+  postgres:
+    condition: service_healthy
+  rabbitmq:
+    condition: service_healthy
+  minio:
+    condition: service_healthy
+  minio-init:
+    condition: service_completed_successfully
+
+services:
+  api:
+    <<: *app-image
+    init: true
+    command:
+      - uv
+      - run
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    environment: *app-environment
+    depends_on: *app-depends-on
+    ports:
+      - 127.0.0.1:${API_PORT:-8000}:8000
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    stop_grace_period: 20s
+    networks:
+      - core
+
+  worker:
+    <<: *app-image
+    init: true
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - app.interface.workers.celery_app:celery_app
+      - worker
+      - --loglevel=${LOG_LEVEL:-INFO}
+      - --hostname=worker@%h
+      - --queues=default,analysis
+      - --concurrency=${CELERY_WORKER_CONCURRENCY:-2}
+    environment: *app-environment
+    depends_on: *app-depends-on
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          celery -A app.interface.workers.celery_app:celery_app inspect ping
+          --destination "worker@$$HOSTNAME" --timeout 5 | grep -q pong
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    networks:
+      - core
+
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-csight}
+      POSTGRES_USER: ${POSTGRES_USER:-csight}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    networks:
+      - core
+
+  rabbitmq:
+    image: rabbitmq:4.1.8-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-csight}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - 127.0.0.1:${RABBITMQ_PORT:-5672}:5672
+      - 127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmq-diagnostics
+        - -q
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    networks:
+      - core
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command:
+      - server
+      - /data
+      - --console-address
+      - :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+    ports:
+      - 127.0.0.1:${MINIO_PORT:-9000}:9000
+      - 127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://127.0.0.1:9000/minio/health/live
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 20s
+    networks:
+      - core
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    entrypoint:
+      - /bin/sh
+      - -ec
+    command:
+      - >-
+        mc alias set csight http://minio:9000 "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY";
+        mc mb --ignore-existing "csight/$$MINIO_BUCKET";
+        mc anonymous set none "csight/$$MINIO_BUCKET"
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+      MINIO_BUCKET: ${MINIO_BUCKET:-csight-evidence}
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - core
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  minio-data:
+
+networks:
+  core:
+    driver: bridge

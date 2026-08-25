@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1600" height="900" viewBox="0 0 1600 900"
+     role="img" aria-labelledby="title desc">
+  <title id="title">CSight Modular Platform Architecture</title>
+  <desc id="desc">
+    FastAPI Interface, Application Use Cases, reusable Platform Core,
+    replaceable Domain Modules and Provider Adapters로 구성된
+    CSight의 모듈형 Evidence-to-Decision 플랫폼 아키텍처.
+  </desc>
+
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#EEF2FF"/>
+    </linearGradient>
+
+    <linearGradient id="coreBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#E0E7FF"/>
+    </linearGradient>
+
+    <linearGradient id="domainBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FAF5FF"/>
+      <stop offset="100%" stop-color="#F3E8FF"/>
+    </linearGradient>
+
+    <linearGradient id="adapterBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ECFDF5"/>
+      <stop offset="100%" stop-color="#D1FAE5"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="11"
+                    flood-color="#0F172A" flood-opacity="0.10"/>
+    </filter>
+
+    <filter id="smallShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5"
+                    flood-color="#0F172A" flood-opacity="0.07"/>
+    </filter>
+
+    <marker id="arrowSlate" viewBox="0 0 10 10" refX="8.5" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#64748B"/>
+    </marker>
+
+    <marker id="arrowIndigo" viewBox="0 0 10 10" refX="8.5" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#4F46E5"/>
+    </marker>
+
+    <style>
+      .font {
+        font-family: 'NanumGothic','NanumSquare','UnDotum',sans-serif;
+      }
+      .title { font-size: 31px; font-weight: 800; fill: #0F172A; letter-spacing: -0.6px; }
+      .subtitle { font-size: 15px; font-weight: 650; fill: #64748B; }
+      .layer-title { font-size: 21px; font-weight: 800; fill: #172033; }
+      .layer-sub { font-size: 13px; font-weight: 650; fill: #64748B; }
+      .card-title { font-size: 15px; font-weight: 800; fill: #1E293B; }
+      .body { font-size: 13px; font-weight: 560; fill: #334155; }
+      .small { font-size: 12px; font-weight: 650; fill: #64748B; }
+      .pill { font-size: 12px; font-weight: 800; }
+      .module { font-size: 12.5px; font-weight: 760; fill: #334155; }
+      .footer { font-size: 12.5px; font-weight: 740; fill: #475569; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="url(#background)"/>
+
+  <!-- Heading -->
+  <text x="800" y="42" text-anchor="middle" class="font title">
+    Modular Evidence-to-Decision Platform Architecture
+  </text>
+  <text x="800" y="68" text-anchor="middle" class="font subtitle">
+    Core는 유지하고 Domain Module과 Provider Adapter를 교체
+  </text>
+
+  <!-- Interface layer -->
+  <g id="interface" filter="url(#shadow)">
+    <rect x="170" y="94" width="1260" height="88" rx="22"
+          fill="#FFFFFF" stroke="#93C5FD" stroke-width="1.6"/>
+    <circle cx="217" cy="138" r="21" fill="#DBEAFE" stroke="#93C5FD"/>
+    <path d="M208 130h18v14h-18zM212 126h10v4h-10z"
+          fill="none" stroke="#2563EB" stroke-width="2.1"
+          stroke-linejoin="round"/>
+    <text x="255" y="134" class="font layer-title">Interface Layer</text>
+    <text x="255" y="157" class="font layer-sub">
+      외부 요청과 내부 Use Case를 연결하는 얇은 진입 계층
+    </text>
+
+    <rect x="745" y="116" width="142" height="42" rx="14"
+          fill="#EFF6FF" stroke="#BFDBFE"/>
+    <text x="816" y="141" text-anchor="middle" class="font card-title">REST API</text>
+
+    <rect x="900" y="116" width="108" height="42" rx="14"
+          fill="#EFF6FF" stroke="#BFDBFE"/>
+    <text x="954" y="141" text-anchor="middle" class="font card-title">SSE</text>
+
+    <rect x="1021" y="116" width="135" height="42" rx="14"
+          fill="#EFF6FF" stroke="#BFDBFE"/>
+    <text x="1088.5" y="141" text-anchor="middle" class="font card-title">Worker</text>
+
+    <rect x="1169" y="116" width="194" height="42" rx="14"
+          fill="#EFF6FF" stroke="#BFDBFE"/>
+    <text x="1266" y="141" text-anchor="middle" class="font card-title">Webhook / Admin</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="800" y1="183" x2="800" y2="211"
+        stroke="#64748B" stroke-width="2.4"
+        marker-end="url(#arrowSlate)"/>
+
+  <!-- Application layer -->
+  <g id="application" filter="url(#shadow)">
+    <rect x="170" y="218" width="1260" height="120" rx="22"
+          fill="#FFFFFF" stroke="#67E8F9" stroke-width="1.6"/>
+    <text x="215" y="254" class="font layer-title">Application Use Cases</text>
+    <text x="215" y="278" class="font layer-sub">
+      업무 흐름을 조정하지만 FastAPI·DB·모델 구현 세부사항에는 의존하지 않음
+    </text>
+
+    <g filter="url(#smallShadow)">
+      <rect x="565" y="240" width="150" height="70" rx="15"
+            fill="#ECFEFF" stroke="#A5F3FC"/>
+      <text x="640" y="269" text-anchor="middle" class="font card-title">Create Case</text>
+      <text x="640" y="292" text-anchor="middle" class="font small">접수·Evidence 등록</text>
+    </g>
+
+    <g filter="url(#smallShadow)">
+      <rect x="730" y="240" width="150" height="70" rx="15"
+            fill="#ECFEFF" stroke="#A5F3FC"/>
+      <text x="805" y="269" text-anchor="middle" class="font card-title">Analyze Case</text>
+      <text x="805" y="292" text-anchor="middle" class="font small">LLM·Vision 분석</text>
+    </g>
+
+    <g filter="url(#smallShadow)">
+      <rect x="895" y="240" width="165" height="70" rx="15"
+            fill="#ECFEFF" stroke="#A5F3FC"/>
+      <text x="977.5" y="269" text-anchor="middle" class="font card-title">Evaluate Policy</text>
+      <text x="977.5" y="292" text-anchor="middle" class="font small">정책·라우팅 평가</text>
+    </g>
+
+    <g filter="url(#smallShadow)">
+      <rect x="1075" y="240" width="150" height="70" rx="15"
+            fill="#ECFEFF" stroke="#A5F3FC"/>
+      <text x="1150" y="269" text-anchor="middle" class="font card-title">Review Case</text>
+      <text x="1150" y="292" text-anchor="middle" class="font small">승인·수정·이관</text>
+    </g>
+
+    <g filter="url(#smallShadow)">
+      <rect x="1240" y="240" width="150" height="70" rx="15"
+            fill="#ECFEFF" stroke="#A5F3FC"/>
+      <text x="1315" y="269" text-anchor="middle" class="font card-title">Generate Report</text>
+      <text x="1315" y="292" text-anchor="middle" class="font small">검토 문서 생성</text>
+    </g>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="800" y1="339" x2="800" y2="367"
+        stroke="#4F46E5" stroke-width="2.6"
+        marker-end="url(#arrowIndigo)"/>
+
+  <!-- Platform core -->
+  <g id="core" filter="url(#shadow)">
+    <rect x="170" y="374" width="1260" height="230" rx="26"
+          fill="url(#coreBg)" stroke="#818CF8" stroke-width="1.8"/>
+
+    <circle cx="217" cy="418" r="21" fill="#E0E7FF" stroke="#A5B4FC"/>
+    <path d="M207 409h20v18h-20zM211 405h12v4h-12z"
+          fill="none" stroke="#4F46E5" stroke-width="2.1"
+          stroke-linejoin="round"/>
+    <text x="255" y="414" class="font layer-title">Reusable Platform Core</text>
+    <text x="255" y="438" class="font layer-sub">
+      Evidence-to-Decision 업무에 공통으로 필요한 상태·규칙·이력 관리
+    </text>
+
+    <rect x="1193" y="396" width="180" height="34" rx="17"
+          fill="#FFFFFF" stroke="#C7D2FE"/>
+    <text x="1283" y="418" text-anchor="middle" class="font pill" fill="#4338CA">
+      Stable Core Boundary
+    </text>
+
+    <!-- Core modules row 1 -->
+    <g filter="url(#smallShadow)">
+      <rect x="215" y="470" width="135" height="48" rx="14"
+            fill="#FFFFFF" stroke="#C7D2FE"/>
+      <text x="282.5" y="499" text-anchor="middle" class="font module">Case</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="365" y="470" width="135" height="48" rx="14"
+            fill="#FFFFFF" stroke="#C7D2FE"/>
+      <text x="432.5" y="499" text-anchor="middle" class="font module">Evidence</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="515" y="470" width="145" height="48" rx="14"
+            fill="#FFFFFF" stroke="#C7D2FE"/>
+      <text x="587.5" y="499" text-anchor="middle" class="font module">Analysis Run</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="675" y="470" width="135" height="48" rx="14"
+            fill="#FFFFFF" stroke="#C7D2FE"/>
+      <text x="742.5" y="499" text-anchor="middle" class="font module">Workflow</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="825" y="470" width="135" height="48" rx="14"
+            fill="#FFFFFF" stroke="#C7D2FE"/>
+      <text x="892.5" y="499" text-anchor="middle" class="font module">Policy</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="975" y="470" width="135" height="48" rx="14"
+            fill="#FFFFFF" stroke="#C7D2FE"/>
+      <text x="1042.5" y="499" text-anchor="middle" class="font module">Decision</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="1125" y="470" width="140" height="48" rx="14"
+            fill="#FFFFFF" stroke="#C7D2FE"/>
+      <text x="1195" y="499" text-anchor="middle" class="font module">Human Review</text>
+    </g>
+
+    <!-- Core modules row 2 -->
+    <g filter="url(#smallShadow)">
+      <rect x="440" y="535" width="160" height="44" rx="14"
+            fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="520" y="562" text-anchor="middle" class="font module">Report</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="620" y="535" width="160" height="44" rx="14"
+            fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="700" y="562" text-anchor="middle" class="font module">Audit</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="800" y="535" width="160" height="44" rx="14"
+            fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="880" y="562" text-anchor="middle" class="font module">Tenant</text>
+    </g>
+    <g filter="url(#smallShadow)">
+      <rect x="980" y="535" width="180" height="44" rx="14"
+            fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="1070" y="562" text-anchor="middle" class="font module">Version History</text>
+    </g>
+  </g>
+
+  <!-- Split arrows -->
+  <path d="M800 604 V632 H460 V657"
+        fill="none" stroke="#7C3AED" stroke-width="2.6"
+        marker-end="url(#arrowSlate)"/>
+  <path d="M800 604 V632 H1140 V657"
+        fill="none" stroke="#059669" stroke-width="2.6"
+        marker-end="url(#arrowSlate)"/>
+
+  <!-- Domain module -->
+  <g id="domain" filter="url(#shadow)">
+    <rect x="170" y="664" width="590" height="170" rx="24"
+          fill="url(#domainBg)" stroke="#C084FC" stroke-width="1.8"/>
+    <circle cx="215" cy="704" r="20" fill="#F3E8FF" stroke="#D8B4FE"/>
+    <path d="M205 704h20M215 694v20"
+          stroke="#9333EA" stroke-width="2.2" stroke-linecap="round"/>
+    <text x="250" y="700" class="font layer-title">Domain Module</text>
+    <text x="250" y="724" class="font layer-sub">
+      산업·업무별로 교체되는 규칙과 표현
+    </text>
+    <rect x="611" y="685" width="112" height="30" rx="15"
+          fill="#FFFFFF" stroke="#E9D5FF"/>
+    <text x="667" y="705" text-anchor="middle" class="font pill" fill="#7E22CE">
+      Replaceable
+    </text>
+
+    <rect x="205" y="750" width="220" height="48" rx="14"
+          fill="#FFFFFF" stroke="#E9D5FF"/>
+    <text x="315" y="770" text-anchor="middle" class="font card-title">
+      product_defect_cs
+    </text>
+    <text x="315" y="789" text-anchor="middle" class="font small">
+      현재 서비스 도메인
+    </text>
+
+    <text x="462" y="761" class="font body">• Defect Taxonomy</text>
+    <text x="462" y="786" class="font body">• Workflow · Policy · Routing</text>
+    <text x="462" y="811" class="font body">• Prompt · Report Template · UI Schema</text>
+  </g>
+
+  <!-- Provider adapters -->
+  <g id="adapters" filter="url(#shadow)">
+    <rect x="840" y="664" width="590" height="170" rx="24"
+          fill="url(#adapterBg)" stroke="#34D399" stroke-width="1.8"/>
+    <circle cx="885" cy="704" r="20" fill="#D1FAE5" stroke="#6EE7B7"/>
+    <path d="M876 696l18 16M894 696l-18 16"
+          stroke="#059669" stroke-width="2.1" stroke-linecap="round"/>
+    <text x="920" y="700" class="font layer-title">Provider Adapters</text>
+    <text x="920" y="724" class="font layer-sub">
+      모델·저장소·메시징 구현을 공통 Port에 연결
+    </text>
+    <rect x="1281" y="685" width="112" height="30" rx="15"
+          fill="#FFFFFF" stroke="#A7F3D0"/>
+    <text x="1337" y="705" text-anchor="middle" class="font pill" fill="#047857">
+      Replaceable
+    </text>
+
+    <!-- Adapter chips -->
+    <rect x="875" y="750" width="130" height="36" rx="12"
+          fill="#FFFFFF" stroke="#A7F3D0"/>
+    <text x="940" y="773" text-anchor="middle" class="font module">LLM</text>
+
+    <rect x="1018" y="750" width="130" height="36" rx="12"
+          fill="#FFFFFF" stroke="#A7F3D0"/>
+    <text x="1083" y="773" text-anchor="middle" class="font module">Vision</text>
+
+    <rect x="1161" y="750" width="130" height="36" rx="12"
+          fill="#FFFFFF" stroke="#A7F3D0"/>
+    <text x="1226" y="773" text-anchor="middle" class="font module">Storage</text>
+
+    <rect x="1304" y="750" width="92" height="36" rx="12"
+          fill="#FFFFFF" stroke="#A7F3D0"/>
+    <text x="1350" y="773" text-anchor="middle" class="font module">DB</text>
+
+    <rect x="910" y="797" width="155" height="30" rx="11"
+          fill="#F8FFFC" stroke="#A7F3D0"/>
+    <text x="987.5" y="817" text-anchor="middle" class="font small">Vector Store</text>
+
+    <rect x="1080" y="797" width="155" height="30" rx="11"
+          fill="#F8FFFC" stroke="#A7F3D0"/>
+    <text x="1157.5" y="817" text-anchor="middle" class="font small">Message Queue</text>
+
+    <rect x="1250" y="797" width="125" height="30" rx="11"
+          fill="#F8FFFC" stroke="#A7F3D0"/>
+    <text x="1312.5" y="817" text-anchor="middle" class="font small">Notification</text>
+  </g>
+
+  <!-- Bottom principle strip -->
+  <rect x="190" y="852" width="1220" height="34" rx="17"
+        fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="800" y="874" text-anchor="middle" class="font footer">
+    비즈니스 규칙과 기술 의존성 분리 · 모델 고유 출력은 공통 Schema로 변환 · 분석·정책·프롬프트 버전 보존
+  </text>
+</svg>

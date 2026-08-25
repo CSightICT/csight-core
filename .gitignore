@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments and local configuration
+.venv/
+.env
+.env.*
+!.env.example
+*.env
+.secrets/
+credentials*.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.kdbx
+
+# IDE and operating system
+.DS_Store
+.idea/
+.vscode/
+
+# Build and runtime artifacts
+build/
+dist/
+*.log
+backups/
+local-data/
+*.sqlite*
+*.db
+*.dump

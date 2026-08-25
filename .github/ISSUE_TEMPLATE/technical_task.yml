@@ -1,0 +1,46 @@
+name: Technical task
+description: 리팩터링, 인프라, CI, 문서 또는 설계 작업을 등록합니다.
+title: "chore: "
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: 목표
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: 주요 영향 영역
+      options:
+        - Interface/API
+        - Application
+        - Platform/Domain
+        - Ports/Adapters
+        - Database/Migration
+        - Worker/Messaging
+        - Infrastructure/CI
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약과 비범위
+    validations:
+      required: true
+  - type: textarea
+    id: definition_of_done
+    attributes:
+      label: 완료조건
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 검증 방법
+    validations:
+      required: true

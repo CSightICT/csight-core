@@ -1,0 +1,13 @@
+# Default owner until organization teams are created.
+* @it0615
+
+/.github/ @it0615
+/CSight_project_docs/ @it0615
+/app/platform/ @it0615
+/app/domains/ @it0615
+/app/ports/ @it0615
+/alembic/ @it0615
+/infra/ @it0615
+/Makefile @it0615
+/pyproject.toml @it0615
+/uv.lock @it0615

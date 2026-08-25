@@ -1,0 +1,49 @@
+name: Bug report
+description: 재현 가능한 결함을 보고합니다.
+title: "fix: "
+body:
+  - type: markdown
+    attributes:
+      value: 고객 원문, 이미지 URL, Secret을 포함하지 마세요.
+  - type: textarea
+    id: summary
+    attributes:
+      label: 문제 요약
+      description: 기대 결과와 실제 결과를 간결하게 설명해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 환경
+      description: OS, Python, 서비스 버전과 관련 설정을 적되 민감정보는 제거해 주세요.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 심각도
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 개인정보 확인
+      options:
+        - label: 고객 데이터, Secret, 내부 접속 정보를 제거했습니다.
+          required: true

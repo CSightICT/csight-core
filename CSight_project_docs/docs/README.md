@@ -14,3 +14,11 @@
 | 10 | [Roadmap and Backlog](10_ROADMAP_AND_BACKLOG.md) | Sprint 실행 계획 |
 | 11 | [Mentoring Decision Log](11_MENTORING_DECISION_LOG.md) | 멘토링 결과 관리 |
 | ADR | [Architecture Decisions](adr/) | 확정된 설계 결정 |
+
+## Sprint 1 Accepted ADR
+
+- [ADR-0006](adr/0006-principal-derived-tenant-and-local-jwt.md): 인증 Principal 기반
+  Tenant 경계와 로컬 JWT
+- [ADR-0007](adr/0007-private-evidence-storage-and-compensation.md): Private Evidence 저장,
+  내부/Presign Endpoint와 최선 노력 보상
+- [ADR-0008](adr/0008-case-create-idempotency.md): Tenant 단위 Case 생성 Idempotency

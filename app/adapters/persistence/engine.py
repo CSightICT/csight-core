@@ -17,7 +17,15 @@ _created_engines: WeakSet[Engine] = WeakSet()
 
 @lru_cache(maxsize=8)
 def _cached_engine(database_url: str, echo: bool) -> Engine:
-    engine = create_engine(database_url, echo=echo, pool_pre_ping=True)
+    # SQL echo is useful for local diagnostics, but customer messages and other
+    # sensitive values can be SQL bind parameters. Keep parameter values hidden
+    # even when statement logging is explicitly enabled.
+    engine = create_engine(
+        database_url,
+        echo=echo,
+        hide_parameters=True,
+        pool_pre_ping=True,
+    )
     _created_engines.add(engine)
     return engine
 

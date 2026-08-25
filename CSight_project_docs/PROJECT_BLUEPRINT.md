@@ -2,6 +2,10 @@
 
 > 프로젝트 기획, 제품 요구사항, 아키텍처, 데이터·모델, 운영, 로드맵을 하나로 합친 통합 문서입니다.
 
+> 이 문서는 초기 통합 Blueprint다. 구현 중 갱신되는 세부 계약은 `docs/`의 분할 문서와
+> Accepted ADR이 우선한다. Sprint 1의 실제 HTTP 계약은
+> `docs/05_API_AND_EVENT_CONTRACTS.md`, 보안 결정은 ADR-0006~0008을 참조한다.
+
 
 
 ---
@@ -403,6 +407,9 @@ flowchart TB
 
 ## 5. 표준 처리 흐름
 
+아래는 Sprint 2 이후의 비동기 분석 목표다. Sprint 1의 Case 생성과 Evidence 업로드는
+동기 `201`이며 분석 작업이나 `analysis.requested.v1`을 자동 등록하지 않는다.
+
 ```mermaid
 sequenceDiagram
     participant U as 상담원 Web
@@ -413,8 +420,8 @@ sequenceDiagram
     participant L as LLM Node
     participant V as Vision Node
 
-    U->>A: Case 생성 + Evidence 업로드
-    A->>D: Case/Evidence 저장
+    U->>A: 저장된 Case 분석 등록
+    A->>D: Analysis Run 저장
     A->>Q: analysis.requested.v1
     A-->>U: 202 Accepted + IDs
     Q->>W: 분석 작업 전달
@@ -631,11 +638,15 @@ Threshold는 코드 상수가 아니라 버전 관리되는 설정으로 저장�
 ## 1. 계약 원칙
 
 - 외부 API는 `/api/v1`으로 버전 관리한다.
-- 장시간 분석 요청은 `202 Accepted`를 반환한다.
-- 생성·분석 요청은 `Idempotency-Key`를 지원한다.
+- Sprint 1 Case 생성은 새 요청 `201`, 같은 Idempotency 요청 재생 `200`을 반환한다.
+- 장시간 분석 요청은 Sprint 2부터 `202 Accepted`를 반환한다.
+- Sprint 1은 Case 생성에만 `Idempotency-Key`를 지원한다.
 - Event와 모델 출력에는 `schema_version`을 포함한다.
 - 모델 고유 출력은 외부에 직접 노출하지 않고 공통 Schema로 변환한다.
 - 원본 AI 결과와 정규화 결과를 구분해 저장할 수 있다.
+- 공개 Case/Evidence 입력에서 `tenant_id`를 받지 않고 인증 Principal에서 결정한다.
+- Sprint 1의 전체 Endpoint와 오류 계약은 분할 문서
+  `docs/05_API_AND_EVENT_CONTRACTS.md`를 기준으로 한다.
 
 ## 2. HTTP API 초안
 
@@ -683,7 +694,6 @@ Threshold는 코드 상수가 아니라 버전 관리되는 설정으로 저장�
 
 ```json
 {
-  "tenant_id": "tenant-a",
   "order_ref": "ORD-2026-0001",
   "product_ref": "SKU-001",
   "customer_message": "용기 하단이 찌그러졌고 내용물이 샜습니다. 교환을 요청합니다.",
@@ -1326,9 +1336,11 @@ PoC에서는 테스트 데이터와 제한된 접근권한을 기본으로 한�
 
 ### MVP
 
-- JWT 기반 인증
-- 역할: Admin, Reviewer, QualityViewer
-- Tenant Scope
+- 로컬·PoC HS256 JWT와 Argon2id Password
+- Token 검증 후 현재 활성 사용자와 역할을 DB에서 다시 조회
+- 역할: `ADMIN`, `REVIEWER`, `QUALITY_VIEWER`
+- Tenant Scope는 요청 Body가 아닌 Principal에서 결정
+- 다른 Tenant 리소스는 존재 여부를 숨기기 위해 `404`
 
 ### 기업 PoC 이후
 
@@ -1639,17 +1651,18 @@ Pull Request 완료 전:
 
 ### Sprint 1 — Case and Evidence
 
-- Case CRUD
-- Evidence 업로드
-- MinIO 저장
-- 상태 이력
-- 기본 인증과 Tenant Scope
-- 상담원 Case 목록·상세 API
+- 명시적 개발 Identity Seed와 로컬·PoC JWT
+- Principal 기반 Tenant Scope와 역할 권한
+- Case 생성·목록·상세·상태 이력
+- Tenant 단위 Case 생성 Idempotency
+- JPEG/PNG/WebP 검증과 Private MinIO Evidence 저장
+- 짧게 만료되는 Signed URL과 업로드 실패 보상
 
 완료 기준:
 
-- 텍스트와 이미지가 포함된 Case 접수 가능
-- 원본 파일이 DB가 아닌 Object Storage에 저장
+- Tenant를 Body에 지정하지 않고 `RECEIVED` Case와 최초 이력 생성
+- 원본은 Private Object Storage, 메타데이터는 PostgreSQL에 저장
+- Case/Evidence 접수만으로 AI 분석을 자동 시작하지 않음
 
 ### Sprint 2 — Async Analysis and LLM
 
@@ -1722,11 +1735,13 @@ Pull Request 완료 전:
 
 ## 3. P0 Backlog
 
-- [ ] 프로젝트 Skeleton과 CI
-- [ ] Case / Evidence Domain
-- [ ] PostgreSQL / Alembic
-- [ ] MinIO Upload
-- [ ] Celery / RabbitMQ
+- [x] 프로젝트 Skeleton과 CI
+- [x] Case / Evidence Domain
+- [x] JWT Identity / Tenant Scope
+- [x] PostgreSQL / Alembic
+- [x] MinIO Upload
+- [x] Case Create Idempotency
+- [x] Celery / RabbitMQ Foundation
 - [ ] LLM Structured Output
 - [ ] Vision Contract와 Adapter
 - [ ] Analysis Run / Versioning
@@ -1735,7 +1750,7 @@ Pull Request 완료 전:
 - [ ] Routing Decision
 - [ ] Human Review
 - [ ] Audit Log
-- [ ] E2E Test
+- [x] Case / Evidence E2E Test
 
 ## 4. P1 Backlog
 

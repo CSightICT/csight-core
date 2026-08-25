@@ -30,17 +30,27 @@
 
 ### Sprint 1 — Case and Evidence
 
-- Case CRUD
-- Evidence 업로드
-- MinIO 저장
-- 상태 이력
-- 기본 인증과 Tenant Scope
-- 상담원 Case 목록·상세 API
+- 로컬·PoC JWT 로그인과 명시적 개발 Identity Seed
+- Principal 기반 Tenant Scope와 역할 권한
+- Case 생성·목록·상세·상태 이력 조회
+- Tenant 단위 Case 생성 Idempotency
+- JPEG/PNG/WebP 검증과 Evidence 업로드
+- Private MinIO 원본 저장과 Signed URL
+- PostgreSQL·MinIO 부분 실패의 `PENDING`/`AVAILABLE`/`FAILED` 보상 전략
 
 완료 기준:
 
-- 텍스트와 이미지가 포함된 Case 접수 가능
-- 원본 파일이 DB가 아닌 Object Storage에 저장
+- 인증한 사용자가 Tenant를 Body에 지정하지 않고 `RECEIVED` Case와 최초 이력을 생성
+- 목록·상세·Evidence 메타데이터가 자신의 Tenant에서만 조회됨
+- 동일 Idempotency Key 재시도로 Case가 중복 생성되지 않음
+- 검증된 원본은 DB가 아닌 Private Object Storage에 저장되고 짧은 Signed URL로 접근
+- Case/Evidence 접수만으로 Analysis Run이나 LLM·Vision 작업을 시작하지 않음
+
+명시적 후속 범위:
+
+- Evidence 업로드 Idempotency와 Reconciliation/Orphan Cleanup
+- EXIF 제거, 재인코딩, 개인정보 마스킹과 보관·삭제 정책
+- Refresh Token, OIDC/SSO, PostgreSQL RLS
 
 ### Sprint 2 — Async Analysis and LLM
 
@@ -49,6 +59,7 @@
 - vLLM Adapter
 - 문의 구조화 Schema
 - Retry, Timeout, Idempotency
+- 위 Idempotency는 Analysis Run과 Message 재전달 범위이며 Case 생성은 Sprint 1에서 처리
 - Prompt Version
 
 완료 기준:
@@ -113,11 +124,13 @@
 
 ## 3. P0 Backlog
 
-- [ ] 프로젝트 Skeleton과 CI
-- [ ] Case / Evidence Domain
-- [ ] PostgreSQL / Alembic
-- [ ] MinIO Upload
-- [ ] Celery / RabbitMQ
+- [x] 프로젝트 Skeleton과 CI
+- [x] Case / Evidence Domain
+- [x] JWT Identity / Tenant Scope
+- [x] PostgreSQL / Alembic
+- [x] MinIO Upload
+- [x] Case Create Idempotency
+- [x] Celery / RabbitMQ Foundation
 - [ ] LLM Structured Output
 - [ ] Vision Contract와 Adapter
 - [ ] Analysis Run / Versioning
@@ -126,7 +139,7 @@
 - [ ] Routing Decision
 - [ ] Human Review
 - [ ] Audit Log
-- [ ] E2E Test
+- [x] Case / Evidence E2E Test
 
 ## 4. P1 Backlog
 

@@ -26,7 +26,11 @@ user_roles
 cases
 case_evidence
 case_status_history
+idempotency_records
 ```
+
+위 8개 조직·사용자·Case·Evidence 테이블은 Migration `20260826_0002`에서 생성한다.
+아래 분석 이후 테이블은 설계 목표이며 Sprint 1 Schema에는 아직 없다.
 
 ### 분석
 
@@ -81,8 +85,58 @@ retrieval_index_versions
 | order_ref | 주문 참조 |
 | product_ref | 상품 참조 |
 | customer_message | 고객 문의 원문 |
+| requested_action | 정의된 고객 요청 Enum |
 | attributes | Domain별 부가정보 JSONB |
+| created_by | 같은 Tenant의 생성 사용자 |
 | created_at / updated_at | 시각 |
+
+`id`, `tenant_id`, `created_by`는 UUID다. Case는 `product_defect_cs`, `RECEIVED`로
+시작하며 고객 원문과 주문·상품 참조는 빈 문자열일 수 없다.
+
+### `case_evidence`
+
+| 컬럼 | 설명 |
+|---|---|
+| id / tenant_id / case_id | Evidence, Tenant, Case UUID |
+| evidence_type | 공개 업로드는 `IMAGE` |
+| upload_status | `PENDING`, `AVAILABLE`, `FAILED` |
+| storage_bucket / object_key | Private Object 위치 |
+| original_filename | 경로를 제거하고 정규화한 표시용 파일명 |
+| content_type / size_bytes / sha256 | 실제 Decode 기반 MIME, 크기, SHA-256 |
+| width / height | 이미지 폭·높이 |
+| created_by | 같은 Tenant의 업로드 사용자 |
+| created_at / updated_at | UTC 시각 |
+
+이미지 Binary와 Signed URL은 이 테이블에 저장하지 않는다. `(storage_bucket,
+object_key)`는 고유하며 이미지 Evidence의 크기·해시·폭·높이는 DB Check Constraint로도
+검증한다.
+
+### `case_status_history`
+
+| 컬럼 | 설명 |
+|---|---|
+| id / tenant_id / case_id | 이력, Tenant, Case UUID |
+| from_status / to_status | 이전·다음 Case 상태; 최초 `from_status`는 `NULL` |
+| actor_id / reason | 같은 Tenant의 Actor와 전환 사유 |
+| occurred_at | UTC 전환 시각 |
+
+최초 이력은 Case와 같은 Transaction에 저장하고 `reason = case_created`를 사용한다.
+
+### `idempotency_records`
+
+| 컬럼 | 설명 |
+|---|---|
+| id / tenant_id | 레코드와 Tenant UUID |
+| operation | Sprint 1은 `case.create.v1` |
+| idempotency_key | Client Header 값, 최대 255자 |
+| request_hash | 정규화한 요청의 SHA-256 |
+| resource_type / resource_id | `case`와 같은 Tenant의 Case UUID |
+| response_status | 최초 성공 HTTP Status (`201`) |
+| created_at / expires_at | 생성 시각과 24시간 Retention 메타데이터 |
+
+`(tenant_id, operation, idempotency_key)` Unique Constraint와 PostgreSQL Conflict 처리가
+동시 요청의 중복 생성을 방지한다. Sprint 1에는 만료 Row Cleanup과 만료 후 Key 재사용이
+없다.
 
 ### `analysis_runs`
 
@@ -134,8 +188,14 @@ JSONB가 적합한 경우:
 
 초기 권장:
 
-- `cases(tenant_id, status, created_at)`
+- `cases(tenant_id, created_at, id)`
+- `cases(tenant_id, status, created_at, id)`
 - `cases(tenant_id, product_ref)`
+- `cases(tenant_id, order_ref)`
+- `case_evidence(tenant_id, case_id, created_at, id)`
+- `case_evidence(case_id, sha256)`
+- `case_status_history(tenant_id, case_id, occurred_at, id)`
+- `idempotency_records(expires_at)`
 - `analysis_runs(case_id, created_at desc)`
 - `human_reviews(case_id, reviewed_at desc)`
 - `policy_versions(tenant_id, effective_from, effective_to)`
@@ -154,7 +214,10 @@ JSONB가 적합한 경우:
 MVP는 Shared Database + `tenant_id` 방식으로 시작한다.
 
 - 모든 조회에 Tenant Scope 적용
-- Repository 수준에서 누락 방지
+- 모든 업무 Repository 메서드가 `tenant_id`를 명시적으로 요구
+- Case, Evidence, 상태 이력, 사용자 관계에 복합 Tenant Foreign Key 적용
+- 다른 Tenant ID 조회는 존재 여부를 감추는 Not Found로 변환
+- Repository와 API Test에서 필터 누락 방지
 - PoC 이후 PostgreSQL RLS 검토
 - Tenant별 정책·Prompt·Threshold 분리
 
@@ -165,6 +228,10 @@ MVP는 Shared Database + `tenant_id` 방식으로 시작한다.
 - Migration에는 데이터 Backfill과 Downgrade 영향을 기록한다.
 - 모델 Contract 변경과 DB Migration을 동시에 배포할 경우 호환 기간을 둔다.
 
+Sprint 1의 `20260826_0002`는 Baseline `20260825_0001`을 수정하지 않고 그 위에 Tenant,
+Identity, Case, Evidence, 상태 이력, Idempotency Schema를 추가한다. Downgrade는 FK 의존성의
+역순으로 이 8개 테이블과 인덱스를 제거하므로 해당 Sprint 1 데이터가 모두 삭제된다.
+
 ## 9. 보관과 삭제
 
 별도로 확정할 항목:
@@ -174,5 +241,10 @@ MVP는 Shared Database + `tenant_id` 방식으로 시작한다.
 - 파생 이미지 및 Bounding Box 보관기간
 - Audit 보관기간
 - 삭제 요청 시 원본·파생·검색 Index 삭제 범위
+- 실패·중단된 Evidence Row와 고아 Object의 Reconciliation 주기
+- Idempotency Row의 Cleanup과 Key 재사용 정책
 
 PoC에서는 테스트 데이터와 제한된 접근권한을 기본으로 한다.
+
+Case와 Evidence의 Hard Delete API는 Sprint 1에 없다. 보관·삭제 요구가 확정되기 전까지
+Migration이나 운영 명령으로 임의 삭제하지 않는다.

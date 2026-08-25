@@ -20,7 +20,12 @@ x-app-environment: &app-environment
   MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
   MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
   MINIO_BUCKET: ${MINIO_BUCKET:-csight-evidence}
+  MINIO_REGION: ${MINIO_REGION:-us-east-1}
   MINIO_SECURE: "false"
+  MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+  ALLOWED_IMAGE_MIME_TYPES: ${ALLOWED_IMAGE_MIME_TYPES:-image/jpeg,image/png,image/webp}
+  ALLOWED_IMAGE_EXTENSIONS: ${ALLOWED_IMAGE_EXTENSIONS:-jpg,jpeg,png,webp}
+  MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-40000000}
   LLM_PROVIDER: ${LLM_PROVIDER:-mock}
   VISION_PROVIDER: ${VISION_PROVIDER:-mock}
   LLM_BASE_URL: ${LLM_BASE_URL:-http://llm.invalid}
@@ -51,7 +56,16 @@ services:
       - 0.0.0.0
       - --port
       - "8000"
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ISSUER: ${JWT_ISSUER:-csight-core}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-csight-api}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      MINIO_PRESIGNED_ENDPOINT: ${MINIO_PRESIGNED_ENDPOINT:-127.0.0.1:9000}
+      MINIO_PRESIGNED_SECURE: "${MINIO_PRESIGNED_SECURE:-false}"
+      SIGNED_URL_TTL_SECONDS: ${SIGNED_URL_TTL_SECONDS:-900}
     depends_on: *app-depends-on
     ports:
       - 127.0.0.1:${API_PORT:-8000}:8000
@@ -162,6 +176,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+      MINIO_SITE_REGION: ${MINIO_REGION:-us-east-1}
     ports:
       - 127.0.0.1:${MINIO_PORT:-9000}:9000
       - 127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001

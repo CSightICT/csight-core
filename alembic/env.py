@@ -7,6 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from app.adapters.persistence.base import Base
+from app.adapters.persistence.models import PERSISTENCE_MODELS
 
 config = context.config
 
@@ -14,6 +15,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+_loaded_models = PERSISTENCE_MODELS
 
 
 def _database_url() -> str:

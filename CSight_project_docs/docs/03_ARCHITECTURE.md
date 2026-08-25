@@ -20,6 +20,7 @@ flowchart TB
     subgraph CORE[Core Application & Data Plane]
         API[FastAPI API]
         WORKER[Celery Worker]
+        AUTH[Identity / Tenant Boundary]
         DB[(PostgreSQL + pgvector)]
         MQ[(RabbitMQ)]
         OBJ[(MinIO)]
@@ -35,6 +36,8 @@ flowchart TB
     end
 
     WEB -->|REST API / SSE| API
+    API --> AUTH
+    AUTH --> DB
     API --> DB
     API --> OBJ
     API --> MQ
@@ -55,6 +58,7 @@ flowchart TB
 - RabbitMQ
 - MinIO
 - Case, Policy, Workflow, Review, Report, Audit
+- JWT 기반 로컬 Identity와 Tenant Scope
 
 ### LLM Inference Node
 
@@ -83,12 +87,14 @@ flowchart TB
     A[Application Use Cases\nCreate / Analyze / Evaluate / Review / Report]
     C[Reusable Platform Core\nCase / Evidence / Analysis / Workflow\nPolicy / Decision / Review / Report / Audit]
     D[Domain Module\nTaxonomy / Workflow / Policy / Prompt / Template]
-    P[Provider Adapters\nLLM / Vision / DB / Storage / MQ / Vector Store]
+    P[Ports\nRepository / Identity / Storage / Security\nFile Inspection / Hashing / LLM / Vision / MQ / Vector Store]
+    X[Provider Adapters\nSQLAlchemy / MinIO / JWT / Pillow / SHA-256\nLLM / Vision / MQ]
 
     I --> A
     A --> C
+    A --> P
     C --> D
-    C --> P
+    X --> P
 ```
 
 ## 4. 계층별 책임
@@ -108,6 +114,7 @@ flowchart TB
 - Port 호출
 - Domain 객체와 DTO 변환
 - 업무 이벤트 발행
+- 인증 Principal에서 Tenant Scope 전달
 
 ### Platform Core
 
@@ -136,11 +143,43 @@ flowchart TB
 - vLLM 또는 외부 LLM API
 - Vision FastAPI 또는 Triton
 - PostgreSQL Repository
-- MinIO 또는 S3
+- Private MinIO 또는 S3와 제한된 Signed URL
+- JWT Codec와 Password Hasher
+- Pillow 기반 File Inspector와 별도 Bounded SHA-256 Hasher
 - RabbitMQ
 - pgvector 또는 별도 Vector DB
 
 ## 5. 표준 처리 흐름
+
+### Sprint 1 — 동기 Case/Evidence 접수
+
+Sprint 1은 Case나 Evidence를 저장해도 AI 분석을 자동 시작하지 않는다.
+
+```mermaid
+sequenceDiagram
+    participant U as 상담원 Web
+    participant A as FastAPI API
+    participant P as PostgreSQL
+    participant O as Private MinIO
+
+    U->>A: Tenant Slug + Email + Password
+    A->>P: 현재 사용자·역할 확인
+    A-->>U: JWT Access Token
+    U->>A: Bearer Token + Case 생성
+    A->>P: Case + RECEIVED 최초 이력
+    A-->>U: 201 Created (재생은 200)
+    U->>A: 이미지 Evidence 업로드
+    A->>P: PENDING Evidence Commit
+    A->>O: 원본 Object 저장
+    A->>P: AVAILABLE 전환
+    A-->>U: 201 Evidence Metadata
+    U->>A: Evidence Access URL 요청
+    A-->>U: 짧게 만료되는 Presigned GET URL
+```
+
+### Sprint 2 이후 — 비동기 분석 목표
+
+다음 흐름은 Sprint 1 API가 제공하지 않는 후속 목표다.
 
 ```mermaid
 sequenceDiagram
@@ -152,8 +191,8 @@ sequenceDiagram
     participant L as LLM Node
     participant V as Vision Node
 
-    U->>A: Case 생성 + Evidence 업로드
-    A->>D: Case/Evidence 저장
+    U->>A: 저장된 Case 분석 등록
+    A->>D: Analysis Run 저장
     A->>Q: analysis.requested.v1
     A-->>U: 202 Accepted + IDs
     Q->>W: 분석 작업 전달
@@ -172,6 +211,11 @@ sequenceDiagram
     A->>D: Human Review + Audit 저장
 ```
 
+MinIO의 일반 업로드·삭제는 내부 Endpoint를 사용한다. Presigned URL에는 클라이언트가
+도달할 별도 Hostname을 사용할 수 있으며, Production에서는 신뢰할 수 있는 Gateway가
+서명된 Object GET에 필요한 제한된 경로만 노출한다. Bucket, Console, Admin API는
+Private 상태를 유지한다.
+
 ## 6. 장애 처리
 
 | 상황 | 처리 |
@@ -183,6 +227,8 @@ sequenceDiagram
 | RabbitMQ 장애 | Outbox 또는 재발행 가능한 작업 상태 유지 |
 | 모델 버전 변경 | 기존 결과 유지, 새 Analysis Run 생성 |
 | Core 재시작 | DB에 저장된 상태로 작업 복구 가능 |
+| Evidence Object 저장 실패 | Object 삭제와 `FAILED` 전환을 최선 노력으로 수행, 성공 응답 금지 |
+| Evidence 최종 DB 갱신 실패 | Object 삭제 후 `FAILED` 전환 시도, 후속 Reconciliation 필요 |
 
 ## 7. 확장 원칙
 

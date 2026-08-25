@@ -1,23 +1,45 @@
-"""Minimal object-storage port for future evidence use cases."""
+"""Technology-neutral private object-storage boundary."""
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from datetime import timedelta
+from typing import BinaryIO, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True, slots=True)
 class StoredObject:
+    bucket: str
     key: str
     content_type: str
     size_bytes: int
-    checksum: str
+    sha256: str
+
+    @property
+    def checksum(self) -> str:
+        """Backward-compatible name for the canonical SHA-256 digest."""
+
+        return self.sha256
 
 
 @runtime_checkable
 class ObjectStorage(Protocol):
-    def put(self, *, key: str, content: bytes, content_type: str) -> StoredObject:
+    def put(
+        self,
+        *,
+        key: str,
+        content: BinaryIO,
+        length: int,
+        content_type: str,
+        sha256: str,
+    ) -> StoredObject:
         """Store an object and return non-secret metadata."""
         ...
 
+    def delete(self, key: str) -> None: ...
+
     def exists(self, key: str) -> bool: ...
+
+    def presign_get(self, key: str, *, expires_in: timedelta) -> str:
+        """Return a temporary private-object download URL."""
+        ...
 
     def is_ready(self) -> bool: ...

@@ -20,7 +20,7 @@ def test_baseline_upgrade_enables_only_vector_extension() -> None:
         "postgresql+psycopg://placeholder:placeholder@localhost:5432/placeholder",
     )
 
-    command.upgrade(config, "head", sql=True)
+    command.upgrade(config, "20260825_0001", sql=True)
 
     migration_sql = output.getvalue()
     assert "CREATE EXTENSION IF NOT EXISTS vector" in migration_sql

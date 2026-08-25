@@ -8,7 +8,7 @@ COMPOSE_CMD := $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate lint format-check typecheck test test-integration test-all
+.PHONY: help up down logs migrate seed lint format-check typecheck test test-integration test-all
 
 help:
 	@echo "CSight Sprint 0 commands"
@@ -16,6 +16,7 @@ help:
 	@echo "  make down          Stop the core environment (preserves volumes)"
 	@echo "  make logs          Follow core service logs"
 	@echo "  make migrate       Apply Alembic migrations in the app image"
+	@echo "  make seed          Explicitly seed local/test identities after migration"
 	@echo "  make lint          Run Ruff lint checks"
 	@echo "  make format-check  Check Ruff formatting"
 	@echo "  make typecheck     Run Pyright"
@@ -34,6 +35,9 @@ logs:
 
 migrate:
 	$(COMPOSE_CMD) run --rm api uv run alembic upgrade head
+
+seed:
+	$(UV) run python -m app.bootstrap.seed --env-file $(ENV_FILE)
 
 lint:
 	$(UV) run ruff check .

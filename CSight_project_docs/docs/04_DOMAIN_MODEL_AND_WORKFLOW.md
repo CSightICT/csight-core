@@ -14,6 +14,8 @@
 | Review | 담당자의 승인, 수정, 거절, 이관 행위 |
 | Report | 문의, 근거, 정책, 권고, 확정 이력을 포함한 문서 |
 | Audit | 조회·변경·결정의 추적 이력 |
+| Principal | 현재 활성 사용자, Tenant와 DB에서 다시 확인한 역할의 인증 Snapshot |
+| Evidence Upload Status | PostgreSQL과 Object Storage 사이 업로드 진행 상태 |
 
 ## 2. 주요 Aggregate
 
@@ -21,13 +23,43 @@
 
 - Case ID
 - Tenant ID
+- Domain Type (`product_defect_cs`)
 - 현재 상태
 - 고객 문의
 - 주문·상품 참조
+- 고객 요청 (`EXCHANGE`, `REFUND`, `RETURN`, `REPAIR`, `INFORMATION`, `OTHER`,
+  `UNSPECIFIED`)
+- JSON 호환 부가 속성
+- 생성자와 UTC 생성·갱신 시각
 - Evidence 목록
 - 최신 Analysis Run 참조
 - 최신 Decision 참조
 - 최종 Review 참조
+
+Sprint 1에서 Case는 `RECEIVED`로만 생성한다. 생성과 같은 Transaction에서
+`from_status = null`, `to_status = RECEIVED`, 생성 사용자를 Actor로 하고
+`reason = case_created`인 최초 상태 이력을 저장한다. Case 생성 Body에는 Tenant를 받지
+않고 인증 Principal의 Tenant를 사용한다.
+
+### Evidence Aggregate
+
+- Evidence ID, Tenant ID, Case ID
+- 유형 (`IMAGE`; Enum은 후속 확장을 위한 다른 값을 보유할 수 있음)
+- 업로드 상태 (`PENDING`, `AVAILABLE`, `FAILED`)
+- Storage Bucket과 서버 생성 Object Key
+- 정규화한 원본 파일명, 실제 MIME, 크기, SHA-256
+- 이미지 폭·높이
+- 생성자와 UTC 생성·갱신 시각
+
+Sprint 1의 공개 업로드는 `IMAGE`만 지원한다. Object Key는 다음 불변 형식이며 원본
+파일명을 포함하지 않는다.
+
+```text
+tenants/{tenant_id}/cases/{case_id}/evidence/{evidence_id}/original
+```
+
+`AVAILABLE`은 Private Object 저장과 메타데이터 확인이 끝난 상태다. `FAILED`는 저장 또는
+보상 과정이 실패한 업무 상태이며 성공한 Evidence로 취급하지 않는다.
 
 ### Analysis Aggregate
 
@@ -64,6 +96,9 @@
 
 ## 3. Case 상태 머신
 
+아래는 전체 목표 상태 머신이다. Sprint 1은 `RECEIVED` 생성과 최초 이력까지만 구현하며
+Case/Evidence 접수만으로 분석 관련 상태로 전환하지 않는다.
+
 ```mermaid
 stateDiagram-v2
     [*] --> RECEIVED
@@ -90,6 +125,10 @@ stateDiagram-v2
 
 ## 4. 상태 전환 불변조건
 
+- 새 Case는 반드시 `RECEIVED`에서 시작하며 최초 상태 이력을 함께 저장한다.
+- 외부 요청의 `tenant_id`는 Domain 식별 근거로 사용하지 않는다.
+- 다른 Tenant의 Case·Evidence 존재 여부를 공개하지 않는다.
+- Evidence 업로드는 Case 상태를 분석 관련 상태로 전환하지 않는다.
 - `APPROVAL_CANDIDATE`는 최종 승인 상태가 아니다.
 - Vision 분석이 필수인 Domain에서 Vision 실패 시 `APPROVAL_CANDIDATE`가 될 수 없다.
 - 고위험 정책 조건이 참이면 모델 신뢰도와 무관하게 담당자 또는 상급자 검토로 이동한다.

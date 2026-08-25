@@ -10,15 +10,20 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PURE_ROOTS = (PROJECT_ROOT / "app" / "platform", PROJECT_ROOT / "app" / "domains")
 FORBIDDEN_TECHNOLOGIES = {
+    "PIL",
     "celery",
     "fastapi",
     "httpx",
     "httpx2",
+    "jwt",
     "minio",
+    "multipart",
     "openai",
+    "pwdlib",
     "sqlalchemy",
     "vllm",
 }
+APPLICATION_FORBIDDEN_TECHNOLOGIES = FORBIDDEN_TECHNOLOGIES
 
 
 def imported_roots(path: Path) -> set[str]:
@@ -64,3 +69,38 @@ def test_application_does_not_import_concrete_adapters() -> None:
                 violations.append(str(path.relative_to(PROJECT_ROOT)))
 
     assert not violations, "Application imports concrete adapters: " + ", ".join(violations)
+
+
+@pytest.mark.unit
+def test_application_does_not_import_infrastructure_frameworks() -> None:
+    application_root = PROJECT_ROOT / "app" / "application"
+    violations: list[str] = []
+    for path in sorted(application_root.rglob("*.py")):
+        forbidden = imported_roots(path) & APPLICATION_FORBIDDEN_TECHNOLOGIES
+        if forbidden:
+            relative_path = path.relative_to(PROJECT_ROOT)
+            violations.append(f"{relative_path}: {', '.join(sorted(forbidden))}")
+
+    assert not violations, "Infrastructure imports found:\n" + "\n".join(violations)
+
+
+@pytest.mark.unit
+def test_http_interface_does_not_import_persistence_entities() -> None:
+    interface_root = PROJECT_ROOT / "app" / "interface" / "http"
+    forbidden_prefixes = (
+        "app.adapters.persistence",
+        "sqlalchemy",
+    )
+    violations: list[str] = []
+    for path in sorted(interface_root.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            names: list[str] = []
+            if isinstance(node, ast.Import):
+                names.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names.append(node.module)
+            if any(name.startswith(forbidden_prefixes) for name in names):
+                violations.append(str(path.relative_to(PROJECT_ROOT)))
+
+    assert not violations, "HTTP interface imports persistence types: " + ", ".join(violations)

@@ -10,12 +10,14 @@
 
 ### 상담원
 
-1. 상품 불량 문의를 열어 고객 원문, 주문정보, 이미지를 확인한다.
-2. 시스템이 추출한 결함 주장과 고객 요청을 확인한다.
-3. 이미지 위 결함 후보와 신뢰도를 확인한다.
-4. 적용 정책과 처리 권고를 확인한다.
-5. 승인, 수정, 추가 자료 요청, 이관 중 하나를 선택한다.
-6. 수정 이유를 기록하고 검토 문서를 저장한다.
+1. 자신의 Tenant로 로그인한다.
+2. 상품 불량 문의 Case를 만들고 고객 원문, 주문정보, 이미지를 등록한다.
+3. Case 목록·상세에서 원문, Evidence 메타데이터와 상태 이력을 확인한다.
+4. 시스템이 추출한 결함 주장과 고객 요청을 확인한다.
+5. 이미지 위 결함 후보와 신뢰도를 확인한다.
+6. 적용 정책과 처리 권고를 확인한다.
+7. 승인, 수정, 추가 자료 요청, 이관 중 하나를 선택한다.
+8. 수정 이유를 기록하고 검토 문서를 저장한다.
 
 ### 관리자
 
@@ -36,11 +38,22 @@
 | ID | 우선순위 | 요구사항 | 인수조건 |
 |---|---:|---|---|
 | CASE-001 | P0 | Case 생성 | 텍스트, 주문 식별자, 고객 요청을 저장하고 Case ID 반환 |
-| CASE-002 | P0 | 상태 조회 | Case와 최신 Analysis Run 상태를 조회 가능 |
+| CASE-002 | P0 | 목록·상세 조회 | 필터·페이지 기반 목록과 Evidence·상태 이력이 포함된 상세 조회 가능 |
 | CASE-003 | P0 | 상태 이력 | 모든 상태 전환의 시각, 주체, 사유 보존 |
+| CASE-004 | P0 | 생성 Idempotency | Tenant별 동일 Key·동일 Body는 기존 Case를 재생하고 다른 Body는 충돌 처리 |
 | EVID-001 | P0 | 이미지 업로드 | 원본은 Object Storage, 메타데이터는 DB에 저장 |
-| EVID-002 | P0 | 파일 검증 | MIME, 크기, 해시, 허용 확장자 검증 |
-| EVID-003 | P1 | 개인정보 마스킹 | 테스트·PoC 정책에 따라 원문 또는 파생본 관리 |
+| EVID-002 | P0 | 파일 검증 | 실제 Decode, MIME, 확장자, 크기, Pixel 수, 해시를 검증 |
+| EVID-003 | P0 | 제한된 이미지 접근 | Private Object를 짧은 만료시간의 Signed URL로만 조회 |
+| EVID-004 | P1 | 개인정보 마스킹 | 테스트·PoC 정책에 따라 원문 또는 파생본 관리 |
+
+### 인증과 Tenant
+
+| ID | 우선순위 | 요구사항 | 인수조건 |
+|---|---:|---|---|
+| AUTH-001 | P0 | 로컬·PoC 로그인 | Tenant Slug, 이메일, 비밀번호로 만료되는 JWT Access Token 발급 |
+| AUTH-002 | P0 | 역할 권한 | Admin·Reviewer는 생성/조회/업로드, QualityViewer는 조회만 가능 |
+| AUTH-003 | P0 | Tenant 격리 | 요청 Body의 Tenant를 신뢰하지 않고 다른 Tenant 리소스는 404 처리 |
+| AUTH-004 | P0 | 개발 Identity Seed | local/test에서만 명시적으로 Tenant 1개와 역할별 사용자 3명 생성 |
 
 ### AI 분석
 
@@ -104,6 +117,8 @@
 | NFR-006 | 확장성 | Domain Module과 Provider Adapter 교체 가능 |
 | NFR-007 | 관측성 | Case 단위 Trace 및 시스템·모델·업무 지표 제공 |
 | NFR-008 | 유지보수 | Migration, Type Check, Test, ADR 기반 변경 관리 |
+| NFR-009 | Tenant 격리 | 인증 Principal과 Repository 필터로 모든 업무 조회·쓰기 Scope 제한 |
+| NFR-010 | 파일 일관성 | DB와 Object Storage 부분 실패를 상태와 최선 노력 보상으로 추적 |
 
 ## 5. MVP 인수 시나리오
 
@@ -134,3 +149,28 @@
 - Case 데이터는 유실되지 않는다.
 - `PARTIAL_SUCCESS` 또는 `HUMAN_REVIEW_REQUIRED`로 처리된다.
 - 재시도 이력과 실패 원인이 기록된다.
+
+## 6. Sprint 1 인수 시나리오
+
+Sprint 1은 AI 분석을 시작하지 않는 Case/Evidence Vertical Slice다.
+
+### 시나리오 E: 인증된 Case와 Evidence 접수
+
+- Reviewer가 개발용 Tenant로 로그인한다.
+- `tenant_id`가 없는 요청으로 Case를 생성한다.
+- Case는 `RECEIVED`로 저장되고 `from_status = null`, `to_status = RECEIVED`,
+  `reason = case_created`인 최초 이력이 함께 저장된다.
+- JPEG, PNG 또는 WebP 원본을 업로드하면 Private MinIO Object와 PostgreSQL 메타데이터가
+  생성되고 Evidence는 `AVAILABLE`이 된다.
+- 목록에는 고객 문의 원문이나 Signed URL이 포함되지 않는다.
+- 상세에서 Evidence 메타데이터와 상태 이력을 확인하고, 별도 API로 짧게 만료되는 접근
+  URL을 발급한다.
+- 이 흐름은 Analysis Run을 만들거나 LLM·Vision 작업을 Queue에 등록하지 않는다.
+
+### 시나리오 F: Tenant와 역할 격리
+
+- QualityViewer는 목록·상세 조회는 가능하지만 Case 생성과 Evidence 업로드는 `403`이다.
+- Tenant A의 Token으로 Tenant B의 Case/Evidence를 조회하면 존재 여부를 노출하지 않고
+  `404`를 반환한다.
+- 동일 Tenant·Operation·Idempotency Key로 같은 Case 요청을 반복하면 기존 결과를
+  `200`으로 재생하고, 다른 Body로 재사용하면 `409`를 반환한다.

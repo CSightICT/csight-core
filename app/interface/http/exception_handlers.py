@@ -1,15 +1,44 @@
 """Translate framework and application errors into the versioned error envelope."""
 
+import re
+from collections.abc import Awaitable, Callable, Mapping
+from tempfile import SpooledTemporaryFile
+from uuid import uuid4
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.bootstrap.logging import get_logger
+from app.bootstrap.logging import bind_log_context, get_logger
 from app.interface.http.schemas import ErrorDetail, ErrorResponse
 from app.platform.analysis import AnalysisProviderError, ProviderTimeoutError
+from app.platform.errors import CSightError, FileTooLargeError
 
 logger = get_logger(__name__)
+
+_CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_:-]{0,127}$")
+_EVIDENCE_UPLOAD_PATH = re.compile(r"^/api/v1/cases/[^/]+/evidence/?$")
+_MULTIPART_OVERHEAD_ALLOWANCE_BYTES = 1024 * 1024
+_CSIGHT_STATUS_CODES = {
+    "AUTHENTICATION_REQUIRED": 401,
+    "INVALID_CREDENTIALS": 401,
+    "FORBIDDEN": 403,
+    "CASE_NOT_FOUND": 404,
+    "EVIDENCE_NOT_FOUND": 404,
+    "INVALID_FILE_TYPE": 422,
+    "FILE_TOO_LARGE": 413,
+    "EMPTY_FILE": 422,
+    "INVALID_IMAGE_CONTENT": 422,
+    "IMAGE_DIMENSION_LIMIT_EXCEEDED": 422,
+    "EVIDENCE_UPLOAD_FAILED": 500,
+    "IDEMPOTENCY_KEY_REUSED": 409,
+    "VALIDATION_ERROR": 422,
+    "STORAGE_UNAVAILABLE": 503,
+    "INCONSISTENT_PERSISTENCE_STATE": 500,
+}
 
 
 def _safe_http_message(detail: object) -> str:
@@ -18,12 +47,109 @@ def _safe_http_message(detail: object) -> str:
     return "The request could not be completed."
 
 
-def _correlation_id(request: Request) -> str | None:
-    value = request.headers.get("X-Correlation-ID")
-    if value is None:
-        return None
-    normalized = value.strip()
-    return normalized[:128] or None
+def _new_correlation_id() -> str:
+    return str(uuid4())
+
+
+def _normalize_correlation_id(value: str | None) -> str:
+    if value is not None:
+        normalized = value.strip()[:128]
+        if _CORRELATION_ID_PATTERN.fullmatch(normalized):
+            return normalized
+    return _new_correlation_id()
+
+
+def _correlation_id(request: Request) -> str:
+    configured = getattr(request.state, "correlation_id", None)
+    if isinstance(configured, str) and configured:
+        return configured
+    correlation_id = _normalize_correlation_id(request.headers.get("X-Correlation-ID"))
+    request.state.correlation_id = correlation_id
+    return correlation_id
+
+
+class EvidenceUploadBodyLimitMiddleware:
+    """Bound multipart request bytes before Starlette can spool an oversized upload.
+
+    ``MAX_UPLOAD_BYTES`` remains the exact decoded file limit enforced by the file
+    inspector.  The ASGI boundary allows a small, fixed amount of multipart framing
+    overhead and caps the entire evidence-upload request before dependency parsing.
+    """
+
+    def __init__(self, app: ASGIApp, *, max_upload_bytes: int) -> None:
+        self.app = app
+        self.max_body_bytes = max_upload_bytes + _MULTIPART_OVERHEAD_ALLOWANCE_BYTES
+
+    async def __call__(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
+        if not self._applies(scope):
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive=receive)
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                declared_bytes = int(content_length)
+            except ValueError:
+                declared_bytes = -1
+            if declared_bytes > self.max_body_bytes:
+                response = _error_response(
+                    request,
+                    status_code=413,
+                    code=FileTooLargeError.code,
+                    message=FileTooLargeError.default_message,
+                )
+                await response(scope, receive, send)
+                return
+
+        received_bytes = 0
+        with SpooledTemporaryFile(max_size=_MULTIPART_OVERHEAD_ALLOWANCE_BYTES) as buffered:
+            while True:
+                message = await receive()
+                if message.get("type") == "http.disconnect":
+                    return
+                body = message.get("body", b"")
+                if isinstance(body, bytes):
+                    received_bytes += len(body)
+                    if received_bytes > self.max_body_bytes:
+                        response = _error_response(
+                            request,
+                            status_code=413,
+                            code=FileTooLargeError.code,
+                            message=FileTooLargeError.default_message,
+                        )
+                        await response(scope, receive, send)
+                        return
+                    buffered.write(body)
+                if not message.get("more_body", False):
+                    break
+
+            buffered.seek(0)
+
+            async def receive_bounded() -> Message:
+                body = buffered.read(64 * 1024)
+                return {
+                    "type": "http.request",
+                    "body": body,
+                    "more_body": buffered.tell() < received_bytes,
+                }
+
+            await self.app(scope, receive_bounded, send)
+
+    @staticmethod
+    def _applies(scope: Mapping[str, object]) -> bool:
+        path = scope.get("path")
+        return (
+            scope.get("type") == "http"
+            and scope.get("method") == "POST"
+            and isinstance(path, str)
+            and _EVIDENCE_UPLOAD_PATH.fullmatch(path) is not None
+        )
 
 
 def _error_response(
@@ -33,16 +159,36 @@ def _error_response(
     code: str,
     message: str,
     details: dict[str, object] | None = None,
+    headers: Mapping[str, str] | None = None,
 ) -> JSONResponse:
+    correlation_id = _correlation_id(request)
     body = ErrorResponse(
         error=ErrorDetail(
             code=code,
             message=message,
             details=details or {},
-            correlation_id=_correlation_id(request),
+            correlation_id=correlation_id,
         )
     )
-    return JSONResponse(status_code=status_code, content=body.model_dump(mode="json"))
+    response_headers = dict(headers or {})
+    response_headers["X-Correlation-ID"] = correlation_id
+    return JSONResponse(
+        status_code=status_code,
+        content=body.model_dump(mode="json"),
+        headers=response_headers,
+    )
+
+
+async def _correlation_id_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    correlation_id = _normalize_correlation_id(request.headers.get("X-Correlation-ID"))
+    request.state.correlation_id = correlation_id
+    with bind_log_context(correlation_id=correlation_id):
+        response = await call_next(request)
+    response.headers["X-Correlation-ID"] = correlation_id
+    return response
 
 
 async def _handle_http_exception(request: Request, exception: Exception) -> JSONResponse:
@@ -55,6 +201,7 @@ async def _handle_http_exception(request: Request, exception: Exception) -> JSON
         status_code=exception.status_code,
         code=code,
         message=_safe_http_message(exception.detail),
+        headers=headers,
     )
 
 
@@ -73,9 +220,26 @@ async def _handle_validation_exception(request: Request, exception: Exception) -
     return _error_response(
         request,
         status_code=422,
-        code="REQUEST_VALIDATION_ERROR",
+        code="VALIDATION_ERROR",
         message="The request is invalid.",
         details={"errors": sanitized_errors},
+    )
+
+
+async def _handle_csight_exception(request: Request, exception: Exception) -> JSONResponse:
+    if not isinstance(exception, CSightError):
+        raise TypeError("CSight error handler received an incompatible exception")
+    status_code = _CSIGHT_STATUS_CODES.get(exception.code, 500)
+    headers = None
+    if exception.code in {"AUTHENTICATION_REQUIRED", "INVALID_CREDENTIALS"}:
+        headers = {"WWW-Authenticate": "Bearer"}
+    return _error_response(
+        request,
+        status_code=status_code,
+        code=exception.code,
+        message=exception.message,
+        details=exception.details,
+        headers=headers,
     )
 
 
@@ -96,6 +260,7 @@ async def _handle_unexpected_exception(request: Request, exception: Exception) -
         "unhandled_http_exception",
         error_type=type(exception).__name__,
         path=request.url.path,
+        correlation_id=_correlation_id(request),
     )
     return _error_response(
         request,
@@ -110,5 +275,25 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     app.add_exception_handler(StarletteHTTPException, _handle_http_exception)
     app.add_exception_handler(RequestValidationError, _handle_validation_exception)
+    app.add_exception_handler(CSightError, _handle_csight_exception)
     app.add_exception_handler(AnalysisProviderError, _handle_provider_exception)
     app.add_exception_handler(Exception, _handle_unexpected_exception)
+
+
+def register_correlation_id_middleware(app: FastAPI) -> None:
+    """Assign one safe correlation ID to every request and response."""
+
+    app.middleware("http")(_correlation_id_middleware)
+
+
+def register_evidence_upload_body_limit_middleware(
+    app: FastAPI,
+    *,
+    max_upload_bytes: int,
+) -> None:
+    """Install the evidence multipart request cap at the ASGI boundary."""
+
+    app.add_middleware(
+        EvidenceUploadBodyLimitMiddleware,
+        max_upload_bytes=max_upload_bytes,
+    )

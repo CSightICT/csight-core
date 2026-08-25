@@ -8,11 +8,11 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | Sprint 0 — Foundation |
-| 진행 중 작업 | GitHub 조직·저장소·협업 정책 구축 |
+| 진행 중 작업 | GitHub 원격 Push·Branch protection 구축 |
 | 마지막 갱신일 | 2026-08-26, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | 아직 생성되지 않음 |
-| 로컬 Git | `main`·`develop`, Foundation 초기 커밋 `6fc20d3` |
+| 원격 저장소 | `CSightICT/csight-core` — Private, 아직 빈 저장소 |
+| 로컬 Git | `main`·`develop`, 작업 브랜치 `chore/github-governance` |
 | 마지막 런타임 관측 | 2026-08-26, Core 장기 서비스 5개 Healthy — 다음 세션에서 재확인 필요 |
 
 ## 1. 다음 세션 시작 체크리스트
@@ -34,8 +34,8 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
-| GitHub 조직·저장소 | BLOCKED | 조직 handle 확정 및 GitHub 브라우저 로그인 필요 |
-| 원격 브랜치·보호 규칙 | BLOCKED | 원격 저장소와 첫 CI 성공 실행 필요 |
+| GitHub 조직·저장소 | PASS | `CSightICT`와 Private `CSightICT/csight-core` 생성 확인 |
+| 원격 브랜치·보호 규칙 | BLOCKED | CLI `workflow` scope 승인, Push, 첫 CI 필요 |
 
 ## 3. Sprint 0 완료 체크리스트
 
@@ -62,10 +62,10 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - [x] 로컬 Git을 `main`으로 초기화
 - [x] 로컬 Foundation 초기 커밋 `6fc20d3` 생성
 - [x] 로컬 `develop` 장기 브랜치 생성
-- [ ] 조직 handle과 저장소 이름·공개 범위 확정
-- [ ] GitHub 브라우저 로그인
-- [ ] 조직 생성 및 소유자 확인
-- [ ] Private 저장소 생성
+- [x] 조직 handle `CSightICT`와 저장소 `csight-core` 확정
+- [x] GitHub 브라우저에서 `it0615` 로그인 확인
+- [x] `CSightICT` 조직 생성 및 설정 권한 확인
+- [x] Private `CSightICT/csight-core` 저장소 생성
 - [ ] 원격 `main` Push
 - [ ] `develop` 장기 브랜치 생성
 - [ ] `main`과 `develop` Branch protection 적용
@@ -87,23 +87,27 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 2026-08-26 | Git 초기 커밋 안전성 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, Ignore 적용 확인 |
 | 2026-08-26 | 협업 문서 YAML | PASS | Issue Form 4개와 CI Workflow 파싱 |
 | 2026-08-26 | Foundation 초기 커밋 | PASS | `main` commit `6fc20d3` |
-| 2026-08-26 | GitHub 원격 CI | NOT_RUN | 원격 저장소 미생성 |
+| 2026-08-26 | GitHub 조직·Private 저장소 | PASS | `CSightICT/csight-core`, People 2명 확인 |
+| 2026-08-26 | 원격 `main` Push | BLOCKED | OAuth App에 `workflow` scope가 없어 서버가 거부 |
+| 2026-08-26 | GitHub CLI scope 갱신 1차 | FAIL | 장치 인증 Polling 중 HTTP 502, 재시도 필요 |
+| 2026-08-26 | GitHub 원격 CI | NOT_RUN | 원격 브랜치가 아직 Push되지 않음 |
 
 ## 6. 미해결 사항과 사용자 결정
 
-- GitHub 조직 handle이 필요하다. 기본 제안은 `csight-ai-platform`이다.
-- 저장소 기본 제안은 `csight-core`, 공개 범위는 Private이다.
-- GitHub 조직 생성 화면에 로그인해야 한다.
+- GitHub CLI OAuth에 `workflow` scope를 추가 승인해야 `.github/workflows/ci.yml`를 포함한
+  Push가 가능하다. 1차 장치 인증은 HTTP 502로 끝나 재시도가 필요하다.
 - 초기에는 `@it0615`가 유일한 CODEOWNER다. 구성원이 정해지면 조직 팀으로 교체한다.
 - 실제 제품 측 결정인 결함 Taxonomy, 정책 표현, 개인정보 보존 기간, 인증·Tenant 범위는
   다음 Sprint의 ADR 대상으로 남아 있다.
 
 ## 7. 다음 실행 항목
 
-1. 조직 handle과 저장소 이름·공개 범위를 사용자에게 확정받는다.
-2. GitHub 조직과 Private 저장소를 생성하고 `main`, `develop`을 Push한다.
-3. 첫 CI 성공 후 두 장기 브랜치에 보호 규칙을 적용한다.
-4. Sprint 1에서 Case/Evidence CRUD와 append-only 분석 영속화를 시작한다.
+1. `gh auth refresh -h github.com -s workflow` 장치 인증을 재시도하고 사용자가 GitHub
+   승인 화면에서 `workflow` 권한을 확인한다.
+2. `main`, `develop`, `chore/github-governance`를 원격에 Push한다.
+3. 이 브랜치에서 `develop` 대상 PR을 열어 체크리스트 변경을 병합한다.
+4. 첫 CI 성공 후 `main`과 `develop`에 보호 규칙을 적용한다.
+5. Sprint 1에서 Case/Evidence CRUD와 append-only 분석 영속화를 시작한다.
 
 ## 8. 세션 종료 체크리스트
 
@@ -130,9 +134,10 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 
 - 목표: 조직 저장소, 장기 브랜치, PR 중심 협업, 세션 간 인계 체계 구축
 - 완료: GitHub 계정 확인, 브랜치 정책, 기여 규칙, PR·Issue 템플릿, 체크리스트,
-  초기 커밋 안전성 감사, 로컬 `main`·`develop`과 Foundation 초기 커밋
+  초기 커밋 안전성 감사, 로컬 `main`·`develop`, `CSightICT` 조직과 Private
+  `CSightICT/csight-core` 저장소
 - 검증: GitHub 플러그인에서 연결 계정 `it0615` 확인, 새 조직 미존재 확인. 고신뢰
   Secret과 5 MiB 초과 커밋 후보가 없고 Issue Form YAML이 파싱됨을 확인. Ruff, Format,
   Pyright, 기본 37건과 Core Integration 4건 재통과
-- Blocker: 조직 handle 미확정, 브라우저 GitHub 로그인 필요
-- 다음 작업: Git 안전성 감사 후 로컬 초기화, 조직·저장소 생성, Push, 보호 규칙 적용
+- Blocker: GitHub CLI OAuth App의 `workflow` scope 부족. 장치 인증 1차 시도는 HTTP 502
+- 다음 작업: OAuth scope 갱신 재시도, 원격 Push, 첫 CI, Branch protection 적용

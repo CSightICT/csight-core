@@ -37,7 +37,7 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | GitHub 조직·저장소 | PASS | `CSightICT`와 Private `CSightICT/csight-core` 생성 확인 |
 | GitHub 플러그인 조직 접근 | PASS | ChatGPT Codex Connector를 `CSightICT/csight-core`에만 설치하고 조회 확인 |
 | 원격 브랜치·초기 CI | PASS | `main`·`develop`·작업 브랜치 Push, 세 초기 Actions Run 성공 |
-| GitHub 거버넌스 PR | OPEN | `chore/github-governance` → `develop` PR #2 |
+| GitHub 거버넌스 PR | PASS | `chore/github-governance` → `develop` PR #2 Open, 최신 CI 성공 |
 | `main`·`develop` 보호 규칙 | BLOCKED | Private 저장소의 현재 플랜에서 API HTTP 403; Issue #1로 추적 |
 
 ## 3. Sprint 0 완료 체크리스트
@@ -107,14 +107,16 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 2026-08-26 | 저장소 병합 설정 | PASS | Squash·Merge 허용, Rebase 비활성화, 병합 후 브랜치 삭제 |
 | 2026-08-26 | `main`·`develop` 보호 규칙 API | BLOCKED | Private 저장소의 현재 플랜에서 HTTP 403 |
 | 2026-08-26 | 보호 규칙 추적 Issue | PASS | Issue #1 생성 |
-| 2026-08-26 | 거버넌스 PR | OPEN | PR #2, `chore/github-governance` → `develop` |
+| 2026-08-26 | 거버넌스 PR 생성 | PASS | PR #2 Open, `chore/github-governance` → `develop` |
+| 2026-08-26 | 거버넌스 PR 최신 CI | PASS | Head `7298cda`, Run `32867908663`, `Quality and fast tests` 성공 |
 
 ## 6. 미해결 사항과 사용자 결정
 
 - 저장소를 Private로 유지하는 현재 플랜에서는 `main`·`develop` Branch protection API가
   HTTP 403을 반환한다. 저장소 공개 전환 없이 지원 플랜을 적용할지 Issue #1에서 결정한다.
-- `kimhrin`은 현재 저장소 `read` 권한이라 승인 리뷰어가 될 수 없다. 명시적인 사용자
-  결정 전에는 권한을 올리지 않으며, 필요하면 `write` 이상과 팀 구성을 별도로 승인한다.
+- `kimhrin`은 현재 저장소 `read` 권한이라 보호 규칙의 필수 승인으로 인정되는
+  write-access reviewer가 아니다. 명시적인 사용자 결정 전에는 권한을 올리지 않으며,
+  필요하면 `write` 이상과 팀 구성을 별도로 승인한다.
 - 초기에는 `@it0615`가 유일한 CODEOWNER다. 리뷰 가능한 구성원이 정해지면 조직 팀으로
   교체한다.
 - 실제 제품 측 결정인 결함 Taxonomy, 정책 표현, 개인정보 보존 기간, 인증·Tenant 범위는
@@ -122,23 +124,24 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 
 ## 7. 다음 실행 항목
 
-1. PR #2의 최신 GitHub Actions 결과와 변경 내용을 확인하고 리뷰한다.
-2. GitHub Private 저장소 Branch protection을 지원하는 플랜 적용 여부를 결정한다.
-3. `kimhrin`에게 승인 리뷰가 가능한 권한을 부여할지, 조직 팀을 만들지 결정한다.
-4. 플랜·리뷰어 결정 후 Issue #1의 목표 규칙을 `main`과 `develop`에 적용한다.
-5. PR #2를 `develop`에 병합한다.
-6. Sprint 1에서 Case/Evidence CRUD와 append-only 분석 영속화를 시작한다.
+- [ ] PR #2에 유효한 사람 리뷰와 승인을 확보한다.
+- [ ] GitHub Private 저장소 Branch protection을 지원하는 플랜 적용 여부를 결정한다.
+- [ ] `kimhrin`에게 승인 리뷰가 가능한 권한을 부여할지, 조직 팀을 만들지 결정한다.
+- [ ] 플랜·리뷰어 결정 후 Issue #1의 목표 규칙을 `main`과 `develop`에 적용한다.
+- [ ] 정책에 맞는 유효 승인 또는 명시적인 Bootstrap 예외 결정 후 PR #2를 `develop`에
+  병합한다.
+- [ ] Sprint 1에서 Case/Evidence CRUD와 append-only 분석 영속화를 시작한다.
 
 ## 8. 세션 종료 체크리스트
 
-- [ ] 변경한 파일과 목적을 기록했다.
-- [ ] 실제 실행한 검증 명령과 결과만 기록했다.
-- [ ] 실패·미실행·Skip을 `PASS`로 표현하지 않았다.
-- [ ] 외부 서비스 상태에 관측 날짜를 붙였다.
-- [ ] 남은 Blocker와 필요한 사용자 결정을 적었다.
-- [ ] 다음 작업을 한 개 이상의 실행 가능한 체크박스로 남겼다.
-- [ ] Secret, 고객 원문, 전체 URL을 기록하지 않았다.
-- [ ] 아래 세션 로그를 추가했다.
+- [x] 변경한 파일과 목적을 기록했다.
+- [x] 실제 실행한 검증 명령과 결과만 기록했다.
+- [x] 실패·미실행·Skip을 `PASS`로 표현하지 않았다.
+- [x] 외부 서비스 상태에 관측 날짜를 붙였다.
+- [x] 남은 Blocker와 필요한 사용자 결정을 적었다.
+- [x] 다음 작업을 한 개 이상의 실행 가능한 체크박스로 남겼다.
+- [x] Secret, 고객 원문, 전체 URL을 기록하지 않았다.
+- [x] 아래 세션 로그를 추가했다.
 
 ## 9. 세션 로그
 
@@ -168,7 +171,8 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - 완료: CLI `workflow` scope, 저장소 단위 Connector 설치, 세 원격 브랜치, 초기 CI,
   병합 방식 설정, 보호 규칙 추적 Issue #1, 거버넌스 PR #2
 - 검증: GitHub 플러그인에서 Private 저장소 조회 성공. `main`, `develop`, 작업 브랜치의
-  초기 Actions가 모두 성공하고 Check Context가 `Quality and fast tests`임을 확인
+  초기 Actions와 PR #2 Head `7298cda` Run `32867908663`이 성공하고 Check Context가
+  `Quality and fast tests`임을 확인
 - Blocker: Private 저장소의 현재 플랜은 Branch protection API를 HTTP 403으로 거부.
   `kimhrin`은 현재 `read` 권한이며 승인 없이 권한을 변경하지 않음
-- 다음 작업: PR #2 최신 CI·리뷰, 지원 플랜과 리뷰어 권한 결정, Issue #1 이행
+- 다음 작업: PR #2 사람 리뷰, 지원 플랜과 리뷰어 권한 결정, Issue #1 이행

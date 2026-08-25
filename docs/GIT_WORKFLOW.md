@@ -62,7 +62,7 @@ docs(workflow): record sprint handoff
 - 승인 1명 이상 및 Code Owner review 필수
 - 새 커밋 Push 시 기존 승인 무효화
 - 모든 리뷰 대화 해결 필수
-- `CI / Quality and fast tests` 성공 필수
+- `Quality and fast tests` 성공 필수
 - 병합 전 최신 기준 브랜치 반영 필수
 - Force push와 브랜치 삭제 금지
 - 일반 구성원의 우회 금지
@@ -71,13 +71,14 @@ docs(workflow): record sprint handoff
 
 - Pull Request와 승인 1명 이상 필수
 - Code Owner review와 리뷰 대화 해결 필수
-- `CI / Quality and fast tests` 성공 필수
+- `Quality and fast tests` 성공 필수
 - Force push와 브랜치 삭제 금지
 - 작은 팀의 불필요한 재실행을 줄이기 위해 최신 `develop` 반영 강제는 초기에는 사용하지
   않는다.
 
-Required check 이름은 첫 GitHub Actions 성공 실행 후 GitHub가 표시한 실제 Context와
-대조한다. Job 이름이 바뀌면 보호 규칙도 함께 수정한다.
+Required check Context는 2026-08-26 첫 GitHub Actions 성공 실행에서
+`Quality and fast tests`로 확인했다. Workflow 이름 `CI`는 Context에 포함되지 않는다.
+Job 이름이 바뀌면 보호 규칙도 함께 수정한다.
 
 ## 6. 코드 소유권
 

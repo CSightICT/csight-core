@@ -12,7 +12,7 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 마지막 갱신일 | 2026-08-26, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | 아직 생성되지 않음 |
-| 로컬 Git | `main`으로 초기화, 초기 커밋 후보 Staged |
+| 로컬 Git | `main`·`develop`, Foundation 초기 커밋 `6fc20d3` |
 | 마지막 런타임 관측 | 2026-08-26, Core 장기 서비스 5개 Healthy — 다음 세션에서 재확인 필요 |
 
 ## 1. 다음 세션 시작 체크리스트
@@ -33,7 +33,7 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | Sprint 0 Foundation 구현 | PASS | 상세 기록과 2026-08-26 검증 결과 존재 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
-| 로컬 Git 초기화 | PASS | 빈 저장소를 `main`으로 초기화하고 커밋 후보 Staged |
+| 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
 | GitHub 조직·저장소 | BLOCKED | 조직 handle 확정 및 GitHub 브라우저 로그인 필요 |
 | 원격 브랜치·보호 규칙 | BLOCKED | 원격 저장소와 첫 CI 성공 실행 필요 |
 
@@ -60,11 +60,12 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - [x] 모든 세션 종료 시 상태 문서를 갱신하도록 `AGENTS.md`에 규칙 추가
 - [x] 초기 커밋 대상의 Secret·대용량·Binary 안전성 감사
 - [x] 로컬 Git을 `main`으로 초기화
+- [x] 로컬 Foundation 초기 커밋 `6fc20d3` 생성
+- [x] 로컬 `develop` 장기 브랜치 생성
 - [ ] 조직 handle과 저장소 이름·공개 범위 확정
 - [ ] GitHub 브라우저 로그인
 - [ ] 조직 생성 및 소유자 확인
 - [ ] Private 저장소 생성
-- [ ] 로컬 `main` 초기 커밋
 - [ ] 원격 `main` Push
 - [ ] `develop` 장기 브랜치 생성
 - [ ] `main`과 `develop` Branch protection 적용
@@ -83,6 +84,9 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 2026-08-26 | Architecture / Contract / E2E | PASS | 2 / 14 / 3 passed |
 | 2026-08-26 | `make test-all` | PASS | 기본 37 + Integration 4 |
 | 2026-08-26 | Compose와 Health 장애·복구 | PASS | 정상 200, RabbitMQ 장애 503, 복구 200 |
+| 2026-08-26 | Git 초기 커밋 안전성 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, Ignore 적용 확인 |
+| 2026-08-26 | 협업 문서 YAML | PASS | Issue Form 4개와 CI Workflow 파싱 |
+| 2026-08-26 | Foundation 초기 커밋 | PASS | `main` commit `6fc20d3` |
 | 2026-08-26 | GitHub 원격 CI | NOT_RUN | 원격 저장소 미생성 |
 
 ## 6. 미해결 사항과 사용자 결정
@@ -97,10 +101,9 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 ## 7. 다음 실행 항목
 
 1. 조직 handle과 저장소 이름·공개 범위를 사용자에게 확정받는다.
-2. 품질 검증 후 Foundation 초기 커밋을 만든다.
-3. GitHub 조직과 Private 저장소를 생성하고 `main`, `develop`을 Push한다.
-4. 첫 CI 성공 후 두 장기 브랜치에 보호 규칙을 적용한다.
-5. Sprint 1에서 Case/Evidence CRUD와 append-only 분석 영속화를 시작한다.
+2. GitHub 조직과 Private 저장소를 생성하고 `main`, `develop`을 Push한다.
+3. 첫 CI 성공 후 두 장기 브랜치에 보호 규칙을 적용한다.
+4. Sprint 1에서 Case/Evidence CRUD와 append-only 분석 영속화를 시작한다.
 
 ## 8. 세션 종료 체크리스트
 
@@ -127,8 +130,9 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 
 - 목표: 조직 저장소, 장기 브랜치, PR 중심 협업, 세션 간 인계 체계 구축
 - 완료: GitHub 계정 확인, 브랜치 정책, 기여 규칙, PR·Issue 템플릿, 체크리스트,
-  초기 커밋 안전성 감사, 로컬 `main` 초기화
+  초기 커밋 안전성 감사, 로컬 `main`·`develop`과 Foundation 초기 커밋
 - 검증: GitHub 플러그인에서 연결 계정 `it0615` 확인, 새 조직 미존재 확인. 고신뢰
-  Secret과 5 MiB 초과 커밋 후보가 없고 Issue Form YAML이 파싱됨을 확인
+  Secret과 5 MiB 초과 커밋 후보가 없고 Issue Form YAML이 파싱됨을 확인. Ruff, Format,
+  Pyright, 기본 37건과 Core Integration 4건 재통과
 - Blocker: 조직 handle 미확정, 브라우저 GitHub 로그인 필요
 - 다음 작업: Git 안전성 감사 후 로컬 초기화, 조직·저장소 생성, Push, 보호 규칙 적용

@@ -1,0 +1,16 @@
+{
+  "content_hash": "ff488f5a2cfbbe6dbeeac7aefc206f6b98e10d2052bbeb09bab063bd87a459c6",
+  "coverage_summary": {
+    "vision_pending": 10
+  },
+  "dataset_name": "reference_demo_v1",
+  "dataset_version": "1.0.0",
+  "generator_version": "1.0.0",
+  "record_count": 10,
+  "schema_version": "1.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "split": {
+    "all": 10
+  },
+  "taxonomy_version": "csight-reference-demo-v1"
+}

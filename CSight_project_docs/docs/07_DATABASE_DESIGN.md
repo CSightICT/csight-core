@@ -356,3 +356,10 @@ Snapshot evidence/position은 unique다. Confidence와 coordinate 범위/순서�
 Run pipeline constraint에 multimodal `1.0.0`을, status에 `PARTIAL_SUCCESS`를 추가한다.
 Downgrade는 Detection→Result→Snapshot 역순으로 새 테이블만 제거한 뒤 Sprint 2 constraint를
 복원한다.
+
+## 11. Sprint 4A LLM v2 Persistence
+
+`20260826_0005`는 기존 `llm_extraction_results`를 변경하지 않고
+`llm_extraction_results_v2`를 추가한다. v2 row는 복수 requested actions, text ambiguities,
+system missing, action consistency와 completeness rule version을 보존하며 Run/Stage당 하나다.
+Repository는 add/get만 제공한다. Policy Corpus는 아직 DB table로 적재하지 않는다.

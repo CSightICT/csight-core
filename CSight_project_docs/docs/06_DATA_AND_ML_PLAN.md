@@ -306,3 +306,9 @@ dataset/taxonomy/threshold/preprocess/postprocess version 변경은 재평가 �
 Sprint 3의 Qwen 평가 감사 결과 taxonomy/PRF 공식 오류는 없었다. 다만 100개 입력 action이 모두
 UNSPECIFIED인데 Gold는 message action 추출을 요구해 prompt 의미가 모호하다. Missing metric에는
 micro PRF 외 exact set, macro-case F1, label support와 empty-set diagnostics를 함께 사용한다.
+
+## 12. Sprint 4A Reference-first Evaluation
+
+Extraction v2 160, Retrieval 120, Grounding 50, Injection 30, Demo 10 합성 record를 fixed split과
+hash로 관리한다. Policy Corpus는 2 tenant/24 document/168 clause이며 Clause parent/version을
+보존한다. Test split은 Prompt tuning에 사용하지 않고 실제 Qwen이 없으면 external 평가는 Skip이다.

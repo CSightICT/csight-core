@@ -64,7 +64,7 @@ ANALYSIS_PIPELINES = (
     "product_defect_text_extraction",
     "product_defect_multimodal_analysis",
 )
-ANALYSIS_PIPELINE_VERSIONS = ("1.0.0",)
+ANALYSIS_PIPELINE_VERSIONS = ("1.0.0", "2.0.0")
 ANALYSIS_TRIGGERS = ("USER_REQUEST",)
 ANALYSIS_RUN_STATUSES = (
     "QUEUED",
@@ -938,6 +938,64 @@ class LLMExtractionResultModel(CreatedAtMixin, Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class LLMExtractionResultV2Model(CreatedAtMixin, Base):
+    __tablename__ = "llm_extraction_results_v2"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id"),
+            ("analysis_runs.tenant_id", "analysis_runs.id"),
+            name="fk_llm_results_v2_tenant_run_analysis_runs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id", "stage_run_id", "stage_type"),
+            (
+                "analysis_stage_runs.tenant_id",
+                "analysis_stage_runs.analysis_run_id",
+                "analysis_stage_runs.id",
+                "analysis_stage_runs.stage_type",
+            ),
+            name="fk_llm_results_v2_tenant_run_stage_type_stage_runs",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("stage_type = 'TEXT_EXTRACTION'", name="stage_type_text_extraction"),
+        CheckConstraint("schema_version = '2.0'", name="schema_version_v2"),
+        CheckConstraint("jsonb_typeof(issue_types) = 'array'", name="issue_types_array"),
+        CheckConstraint("jsonb_typeof(claims) = 'array'", name="claims_array"),
+        CheckConstraint("jsonb_typeof(requested_actions) = 'array'", name="actions_array"),
+        CheckConstraint("jsonb_typeof(text_ambiguities) = 'array'", name="ambiguities_array"),
+        CheckConstraint("jsonb_typeof(system_missing_information) = 'array'", name="missing_array"),
+        CheckConstraint("completeness_rule_version = '1.0.0'", name="rule_version_v1"),
+        CheckConstraint(
+            "action_consistency IN ('MATCH','MISMATCH','ONLY_DECLARED','ONLY_EXTRACTED',"
+            "'BOTH_UNSPECIFIED','MULTIPLE_EXTRACTED','NOT_COMPARABLE')",
+            name="action_consistency_allowed",
+        ),
+        CheckConstraint("length(btrim(summary)) > 0", name="summary_nonempty"),
+        UniqueConstraint("tenant_id", "analysis_run_id", name="uq_llm_results_v2_tenant_run"),
+        UniqueConstraint("tenant_id", "stage_run_id", name="uq_llm_results_v2_tenant_stage"),
+        Index("ix_llm_results_v2_tenant_run", "tenant_id", "analysis_run_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    stage_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    stage_type: Mapped[str] = mapped_column(
+        String(64), nullable=False, server_default=text("'TEXT_EXTRACTION'")
+    )
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    language: Mapped[str] = mapped_column(String(35), nullable=False)
+    issue_types: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    claims: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    requested_actions: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    text_ambiguities: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    system_missing_information: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    action_consistency: Mapped[str] = mapped_column(String(64), nullable=False)
+    completeness_rule_version: Mapped[str] = mapped_column(String(32), nullable=False)
+
+
 class AnalysisRunEvidenceModel(CreatedAtMixin, Base):
     __tablename__ = "analysis_run_evidence"
     __table_args__ = (
@@ -1258,6 +1316,7 @@ PERSISTENCE_MODELS = (
     AnalysisStageRunModel,
     AnalysisStageAttemptModel,
     LLMExtractionResultModel,
+    LLMExtractionResultV2Model,
     AnalysisRunEvidenceModel,
     VisionAnalysisResultModel,
     VisionDetectionModel,

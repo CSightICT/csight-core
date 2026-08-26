@@ -1,0 +1,18 @@
+{
+  "content_hash": "40d6072594328ed4b8d11d359a897e8141365665e6d99ec38b3b169c0ded1e68",
+  "coverage_summary": {
+    "parent_exception": 20,
+    "tenant_version_filter": 100
+  },
+  "dataset_name": "policy_retrieval_v1",
+  "dataset_version": "1.0.0",
+  "generator_version": "1.0.0",
+  "record_count": 120,
+  "schema_version": "1.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "split": {
+    "dev": 80,
+    "test": 40
+  },
+  "taxonomy_version": "policy-corpus-v1"
+}

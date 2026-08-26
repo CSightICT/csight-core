@@ -419,3 +419,25 @@ docker compose --env-file .env -f infra/compose.core.yml run --rm api uv run ale
   [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md)에 정리되어 있습니다.
 - 모든 작업 세션은 종료 전에 현재 상태 문서의 체크리스트와 append-only 세션 로그를
   갱신합니다.
+
+## Sprint 4A LLM Contract v2와 Reference Data
+
+Text Extraction v1 `1.0.0`은 그대로 유지하며 요청 body의 `pipeline_version`에 `2.0.0`을
+지정하면 Schema/Prompt v2가 실행된다. v2는 자유 텍스트의 복수 요청과 exact quote,
+`text_ambiguities`만 LLM이 생성하고, 주문·상품·이미지·요청 누락과 declared/extracted 관계는
+Backend rule `1.0.0`이 계산한다. 상세 응답은 v1 `extraction_result`와 v2
+`extraction_result_v2`를 분리한다.
+
+```bash
+make build-policy-corpus
+make validate-policy-corpus
+make build-evaluation-data
+make validate-evaluation-data
+make evaluate-extraction-v2
+make report-reference-data
+```
+
+`data/policy_corpus`와 `evaluation`의 모든 정책·사례는 PoC 검색·평가용 합성 Reference다.
+실제 기업 정책이나 법률 자문이 아니며 Embedding, BM25, pgvector, Retrieval/RAG API와 최종
+정책 결정은 Sprint 4A에 포함되지 않는다. 상세 계약은 `docs/data/`와
+`docs/progress/SPRINT_4A_LLM_REFERENCE_DATA.md`를 참조한다.

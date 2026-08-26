@@ -8,7 +8,7 @@ COMPOSE_CMD := $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision smoke-analysis
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 report-reference-data
 
 help:
 	@echo "CSight Core commands"
@@ -29,6 +29,12 @@ help:
 	@echo "  make test-external-llm  Opt in to the configured external vLLM test"
 	@echo "  make test-external-vision  Opt in to the configured external Vision test"
 	@echo "  make smoke-analysis  Run the authenticated Mock analysis smoke flow"
+	@echo "  make build-policy-corpus  Build clause-based synthetic policy reference outputs"
+	@echo "  make validate-policy-corpus  Validate corpus metadata, versions, parents, and coverage"
+	@echo "  make build-evaluation-data  Build all synthetic gold datasets and manifests"
+	@echo "  make validate-evaluation-data  Validate counts, references, splits, and tenant isolation"
+	@echo "  make evaluate-extraction-v2  Run the reference gold self-check (not an external model eval)"
+	@echo "  make report-reference-data  Generate aggregate JSON and Markdown quality reports"
 
 up:
 	$(COMPOSE_CMD) up --build --detach --wait
@@ -79,3 +85,21 @@ test-external-vision:
 
 smoke-analysis:
 	$(UV) run python scripts/smoke_analysis.py --env-file $(ENV_FILE)
+
+build-policy-corpus:
+	$(UV) run python scripts/build_policy_corpus.py
+
+validate-policy-corpus:
+	$(UV) run python scripts/validate_policy_corpus.py
+
+build-evaluation-data:
+	$(UV) run python scripts/build_evaluation_data.py
+
+validate-evaluation-data:
+	$(UV) run python scripts/validate_evaluation_data.py
+
+evaluate-extraction-v2:
+	$(UV) run python scripts/evaluate_llm_extraction_v2.py
+
+report-reference-data:
+	$(UV) run python scripts/generate_reference_reports.py

@@ -487,3 +487,11 @@ transport timeout은 retryable, 400/401/403/schema/geometry 오류는 permanent�
 
 Queue payload는 Sprint 2와 같은 event/tenant/case/run/stage/correlation ID 6개뿐이다. Evidence
 ID 목록, object key, Binary, Base64, Signed URL과 credential은 포함하지 않는다.
+
+## 15. Text Extraction v2 API
+
+기존 endpoint에 `{"pipeline":"product_defect_text_extraction","pipeline_version":"2.0.0"}`을
+추가 지원한다. v1 상세은 기존 `extraction_result` 형태를 유지한다. v2 상세은
+`extraction_result_v2`에 schema version, requested action list, text ambiguity, deterministic
+system missing/action consistency와 completeness rule version을 명시한다. Queue event는 기존
+6-ID 계약을 변경하지 않는다.

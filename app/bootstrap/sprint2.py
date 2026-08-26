@@ -18,7 +18,10 @@ from app.application.analysis import (
 from app.application.outbox import DispatchOutbox
 from app.bootstrap.dependencies import build_llm_provider, build_vision_provider
 from app.bootstrap.settings import Settings
-from app.domains.product_defect_cs import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT
+from app.domains.product_defect_cs import (
+    PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+    PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
+)
 from app.interface.http.services import Sprint2ServiceContainer
 from app.ports.analysis_repository import AnalysisUnitOfWorkFactory
 from app.ports.message_queue import MessageQueue
@@ -47,6 +50,7 @@ def build_sprint2_services(settings: Settings) -> Sprint2ServiceContainer:
             provider=provider,
             vision_provider=build_vision_provider(settings),
             prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+            prompt_v2=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
             clock=clock,
             id_generator=id_generator,
         ),
@@ -63,6 +67,7 @@ def build_execute_text_extraction(settings: Settings) -> ExecuteTextExtraction:
         uow_factory=_uow_factory(settings),
         provider=build_llm_provider(settings),
         prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        prompt_v2=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
         clock=UtcClock(),
         id_generator=Uuid4Generator(),
         claim_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),

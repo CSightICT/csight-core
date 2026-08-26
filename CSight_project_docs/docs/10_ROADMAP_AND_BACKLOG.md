@@ -281,3 +281,16 @@ Sprint 3 시작 시점에 Vision 실행, LLM·Vision 병렬화, Alignment는 아
 Alignment는 Sprint 3 결과 계약을 입력으로 하는 다음 단계이며 이번 Sprint에서 점수나 match를
 계산하지 않는다. Policy/Approval은 LLM·Vision 모델이 아니라 versioned rule과 Human Review가
 소유한다.
+
+## 11. Sprint 4A 완료와 Sprint 4B 경계
+
+- [x] LLM Contract/Prompt v2와 v1 호환
+- [x] deterministic completeness/action consistency
+- [x] 합성 clause-based Policy Corpus와 version/tenant metadata
+- [x] Extraction/Retrieval/Grounding/Injection/Demo Gold와 report
+- [ ] Policy Document/Clause DB ingestion
+- [ ] BM25/dense/pgvector/hybrid retrieval와 evaluation
+- [ ] Grounded RAG 실행과 Policy Engine/Human Review
+
+Sprint 4A는 검색·결정 runtime을 미리 구현하지 않고 Sprint 4B가 측정할 Reference와 Gold를 먼저
+고정한다.

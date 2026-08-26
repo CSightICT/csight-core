@@ -13,6 +13,7 @@ from app.adapters.persistence.analysis_repositories import (
     SQLAlchemyAnalysisStageAttemptRepository,
     SQLAlchemyAnalysisStageRunRepository,
     SQLAlchemyLLMExtractionResultRepository,
+    SQLAlchemyLLMExtractionResultV2Repository,
     SQLAlchemyOutboxEventRepository,
     SQLAlchemyVisionAnalysisResultRepository,
 )
@@ -31,6 +32,7 @@ from app.ports.analysis_repository import (
     AnalysisStageRunRepository,
     AnalysisUnitOfWork,
     LLMExtractionResultRepository,
+    LLMExtractionResultV2Repository,
     OutboxEventRepository,
     VisionAnalysisResultRepository,
 )
@@ -104,6 +106,9 @@ class SQLAlchemyAnalysisUnitOfWork(AnalysisUnitOfWork):
         )
         self.extraction_results: LLMExtractionResultRepository = (
             SQLAlchemyLLMExtractionResultRepository(session)
+        )
+        self.extraction_results_v2: LLMExtractionResultV2Repository = (
+            SQLAlchemyLLMExtractionResultV2Repository(session)
         )
         self.evidence_snapshots: AnalysisEvidenceSnapshotRepository = (
             SQLAlchemyAnalysisEvidenceSnapshotRepository(session)

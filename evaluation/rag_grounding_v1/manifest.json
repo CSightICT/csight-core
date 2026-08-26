@@ -1,0 +1,17 @@
+{
+  "content_hash": "901d3ae05aba26c21b451ad6acc6e6e2be41fff228cb282bbb21d4115ab4cbf3",
+  "coverage_summary": {
+    "citation_required": 50
+  },
+  "dataset_name": "rag_grounding_v1",
+  "dataset_version": "1.0.0",
+  "generator_version": "1.0.0",
+  "record_count": 50,
+  "schema_version": "1.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "split": {
+    "dev": 40,
+    "test": 10
+  },
+  "taxonomy_version": "policy-corpus-v1"
+}

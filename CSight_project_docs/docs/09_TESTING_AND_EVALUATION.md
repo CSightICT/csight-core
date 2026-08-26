@@ -240,3 +240,10 @@ Pull Request 완료 전:
 실제 Vision qualification은 health, immutable metadata, real image detection/geometry/latency,
 timeout/invalid image를 별도로 기록한다. 현재 endpoint가 없으면 Mock 결과를 실제 모델 통과로
 표현하지 않는다.
+
+## 10. Sprint 4A Data Gate
+
+v2 strict schema/source quote/completeness/prompt hash, corpus stable build/version/parent/duplicate,
+Gold count/split/clause existence/tenant isolation을 기본 Suite에서 검증한다. Reference Gold
+self-check는 evaluator contract 검증이며 외부 모델 평가가 아니다. Qwen test split은 Prompt hash
+freeze 뒤 한 번만 실행한다.

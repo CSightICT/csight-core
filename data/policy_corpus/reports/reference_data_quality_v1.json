@@ -1,0 +1,39 @@
+{
+  "broken_reference_count": 0,
+  "clause_count": 168,
+  "clause_type_coverage": {
+    "ESCALATION": 24,
+    "EVIDENCE_REQUIREMENT": 48,
+    "EXCEPTION": 48,
+    "RULE": 48
+  },
+  "cross_tenant_gold_violation_count": 0,
+  "demo_count": 10,
+  "document_count": 24,
+  "duplicate_count": 0,
+  "empty_clause_count": 0,
+  "exception_coverage": 48,
+  "extraction_count": 160,
+  "gold_clause_missing_count": 0,
+  "grounding_count": 50,
+  "injection_count": 30,
+  "policy_type_coverage": {
+    "EVIDENCE_REQUIREMENT": 2,
+    "FUNCTIONAL_FAILURE": 2,
+    "HIGH_RISK_EXCEPTION": 2,
+    "LEAKAGE_CONTAMINATION": 4,
+    "MISSING_COMPONENT": 2,
+    "PACKAGING_DAMAGE": 2,
+    "RETURN_EXCHANGE": 4,
+    "SHIPPING_DAMAGE": 4,
+    "WRONG_ITEM": 2
+  },
+  "prompt_injection_coverage": 8,
+  "retrieval_count": 120,
+  "source_type": "SYNTHETIC_REFERENCE",
+  "tenant_distribution": 2,
+  "version_coverage": {
+    "active": 18,
+    "retired": 6
+  }
+}

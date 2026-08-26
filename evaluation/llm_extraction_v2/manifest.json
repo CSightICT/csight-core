@@ -1,0 +1,22 @@
+{
+  "content_hash": "c3e32c74572ed6c9f4a886779b049a061dd82b8ff74dcd6e5915f844a5c6ba62",
+  "coverage_summary": {
+    "explicit_request": 96,
+    "multiple_defects": 48,
+    "no_request": 64,
+    "prompt_injection": 16,
+    "single_or_unclear": 112,
+    "standard": 144
+  },
+  "dataset_name": "llm_extraction_v2",
+  "dataset_version": "2.0.0",
+  "generator_version": "1.0.0",
+  "record_count": 160,
+  "schema_version": "1.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "split": {
+    "dev": 120,
+    "test": 40
+  },
+  "taxonomy_version": "csight-extraction-v2"
+}

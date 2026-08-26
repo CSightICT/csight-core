@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.platform.analysis import (
     MULTIMODAL_ANALYSIS_PIPELINE_VERSION,
     TEXT_EXTRACTION_PIPELINE_VERSION,
+    TEXT_EXTRACTION_V2_PIPELINE_VERSION,
     VISION_INPUT_SCHEMA_VERSION,
     VISION_OUTPUT_SCHEMA_VERSION,
     AnalysisAttemptStatus,
@@ -30,11 +31,14 @@ from app.platform.analysis import (
     AnalysisStageStatus,
     AnalysisStageType,
     AnalysisTrigger,
+    CompletenessInput,
     CustomerRequest,
     ImageEvidenceRequiredError,
     LLMExtractionResultRecord,
+    LLMExtractionResultV2Record,
     LLMProviderRequestRejectedError,
     LLMTextExtractionRequest,
+    LLMTextExtractionRequestV2,
     OutboxEvent,
     OutboxStatus,
     PromptManifest,
@@ -44,6 +48,7 @@ from app.platform.analysis import (
     VisionAnalysisResultRecord,
     VisionProviderRequestRejectedError,
     VisionProviderUnavailableError,
+    evaluate_completeness,
 )
 from app.platform.errors import (
     CaseNotFoundError,
@@ -110,6 +115,7 @@ class AnalysisRunDetail(_ApplicationDTO):
     run: AnalysisRun
     stages: tuple[AnalysisStageRun, ...]
     extraction_result: LLMExtractionResultRecord | None
+    extraction_result_v2: LLMExtractionResultV2Record | None = None
     vision_results: tuple[VisionAnalysisResultRecord, ...] = ()
     failed_stages: tuple[AnalysisStageType, ...] = ()
 
@@ -211,6 +217,7 @@ class StartTextAnalysis:
         provider: LLMProvider,
         vision_provider: VisionProvider | None = None,
         prompt: PromptManifest,
+        prompt_v2: PromptManifest | None = None,
         clock: Clock,
         id_generator: IdGenerator,
     ) -> None:
@@ -218,6 +225,7 @@ class StartTextAnalysis:
         self._provider = provider
         self._vision_provider = vision_provider
         self._prompt = prompt
+        self._prompt_v2 = prompt_v2
         self._clock = clock
         self._id_generator = id_generator
 
@@ -228,16 +236,24 @@ class StartTextAnalysis:
         case_id: str,
         command: StartTextAnalysisCommand,
     ) -> StartTextAnalysisResult:
-        is_text = (
+        is_text_v1 = (
             command.pipeline is AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION
             and command.pipeline_version == TEXT_EXTRACTION_PIPELINE_VERSION
+        )
+        is_text_v2 = (
+            command.pipeline is AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION
+            and command.pipeline_version == TEXT_EXTRACTION_V2_PIPELINE_VERSION
+            and self._prompt_v2 is not None
         )
         is_multimodal = (
             command.pipeline is AnalysisPipeline.PRODUCT_DEFECT_MULTIMODAL_ANALYSIS
             and command.pipeline_version == MULTIMODAL_ANALYSIS_PIPELINE_VERSION
             and self._vision_provider is not None
         )
-        if not is_text and not is_multimodal:
+        if not is_text_v1 and not is_text_v2 and not is_multimodal:
+            raise AnalysisPipelineNotSupportedError()
+        selected_prompt = self._prompt_v2 if is_text_v2 else self._prompt
+        if selected_prompt is None:
             raise AnalysisPipelineNotSupportedError()
         now = self._clock.now().astimezone(UTC)
         request_hash = canonical_analysis_request_hash(case_id=case_id, command=command)
@@ -273,11 +289,11 @@ class StartTextAnalysis:
             model_name=provider.name,
             model_version=provider.version,
             model_revision=provider.revision,
-            prompt_name=self._prompt.name,
-            prompt_version=self._prompt.version,
-            prompt_content_hash=self._prompt.content_hash,
-            input_schema_version=self._prompt.input_schema_version,
-            output_schema_version=self._prompt.output_schema_version,
+            prompt_name=selected_prompt.name,
+            prompt_version=selected_prompt.version,
+            prompt_content_hash=selected_prompt.content_hash,
+            input_schema_version=selected_prompt.input_schema_version,
+            output_schema_version=selected_prompt.output_schema_version,
             created_at=now,
             updated_at=now,
         )
@@ -491,6 +507,7 @@ class ExecuteTextExtraction:
         uow_factory: AnalysisUnitOfWorkFactory,
         provider: LLMProvider,
         prompt: PromptManifest,
+        prompt_v2: PromptManifest | None = None,
         clock: Clock,
         id_generator: IdGenerator,
         claim_ttl: timedelta = DEFAULT_CLAIM_TTL,
@@ -513,6 +530,7 @@ class ExecuteTextExtraction:
         self._uow_factory = uow_factory
         self._provider = provider
         self._prompt = prompt
+        self._prompt_v2 = prompt_v2
         self._clock = clock
         self._id_generator = id_generator
         self._claim_ttl = claim_ttl
@@ -547,9 +565,17 @@ class ExecuteTextExtraction:
             if stage.stage_type is not AnalysisStageType.TEXT_EXTRACTION:
                 return _execution_result(command=command, status=stage.status)
 
-            existing_result = uow.extraction_results.get_by_run(
-                tenant_id=command.tenant_id,
-                analysis_run_id=command.analysis_run_id,
+            is_v2 = stage.output_schema_version == "2.0"
+            existing_result = (
+                uow.extraction_results_v2.get_by_run(
+                    tenant_id=command.tenant_id,
+                    analysis_run_id=command.analysis_run_id,
+                )
+                if is_v2
+                else uow.extraction_results.get_by_run(
+                    tenant_id=command.tenant_id,
+                    analysis_run_id=command.analysis_run_id,
+                )
             )
             if existing_result is not None:
                 return _execution_result(command=command, status=stage.status)
@@ -572,6 +598,14 @@ class ExecuteTextExtraction:
             case = uow.cases.get(tenant_id=command.tenant_id, case_id=command.case_id)
             if case is None:
                 raise InconsistentPersistenceStateError()
+            available_image_count = sum(
+                evidence.evidence_type is EvidenceType.IMAGE
+                and evidence.upload_status is EvidenceUploadStatus.AVAILABLE
+                for evidence in uow.evidence.list(
+                    tenant_id=command.tenant_id,
+                    case_id=command.case_id,
+                )
+            )
             claimed_stage = uow.stage_runs.claim_for_execution(
                 tenant_id=command.tenant_id,
                 analysis_run_id=command.analysis_run_id,
@@ -666,14 +700,40 @@ class ExecuteTextExtraction:
             product_ref=case.product_ref,
             requested_action=CustomerRequest(case.requested_action.value),
         )
+        response = None
+        response_v2 = None
         try:
             self._require_execution_snapshot(stage=claimed_stage)
-            response = self._provider.extract_text(request, self._prompt)
-            self._require_response_snapshot(stage=claimed_stage, response=response.metadata)
-            response.result.require_exact_source_quotes(
-                customer_message=request.customer_message,
-                provider=claimed_stage.provider_name,
-            )
+            if is_v2:
+                if self._prompt_v2 is None:
+                    raise LLMProviderRequestRejectedError(
+                        provider=claimed_stage.provider_name,
+                        message="the v2 prompt is not configured",
+                    )
+                request_v2 = LLMTextExtractionRequestV2(
+                    customer_message=case.customer_message,
+                    order_ref=case.order_ref,
+                    product_ref=case.product_ref,
+                    declared_requested_action=CustomerRequest(case.requested_action.value),
+                )
+                response_v2 = self._provider.extract_text_v2(request_v2, self._prompt_v2)
+                self._require_response_snapshot(
+                    stage=claimed_stage,
+                    response=response_v2.metadata,
+                )
+                response_v2.result.require_exact_source_quotes(
+                    customer_message=request_v2.customer_message,
+                    provider=claimed_stage.provider_name,
+                )
+                provider_metadata = response_v2.metadata
+            else:
+                response = self._provider.extract_text(request, self._prompt)
+                self._require_response_snapshot(stage=claimed_stage, response=response.metadata)
+                response.result.require_exact_source_quotes(
+                    customer_message=request.customer_message,
+                    provider=claimed_stage.provider_name,
+                )
+                provider_metadata = response.metadata
         except AnalysisProviderError as error:
             return self._persist_provider_failure(
                 command=command,
@@ -683,18 +743,53 @@ class ExecuteTextExtraction:
             )
 
         completed_at = self._clock.now().astimezone(UTC)
-        result_record = LLMExtractionResultRecord(
-            id=self._id_generator.new_id(),
-            tenant_id=command.tenant_id,
-            analysis_run_id=command.analysis_run_id,
-            stage_run_id=command.stage_run_id,
-            result=response.result,
-            created_at=completed_at,
-        )
-        with self._uow_factory() as uow:
-            existing_result = uow.extraction_results.get_by_run(
+        result_record = None
+        result_record_v2 = None
+        if is_v2:
+            if response_v2 is None:
+                raise InconsistentPersistenceStateError()
+            completeness = evaluate_completeness(
+                CompletenessInput(
+                    order_ref=case.order_ref,
+                    product_ref=case.product_ref,
+                    declared_requested_action=CustomerRequest(case.requested_action.value),
+                    available_image_count=available_image_count,
+                    extracted_actions=tuple(
+                        item.action for item in response_v2.result.requested_actions
+                    ),
+                )
+            )
+            result_record_v2 = LLMExtractionResultV2Record(
+                id=self._id_generator.new_id(),
                 tenant_id=command.tenant_id,
                 analysis_run_id=command.analysis_run_id,
+                stage_run_id=command.stage_run_id,
+                result=response_v2.result,
+                completeness=completeness,
+                created_at=completed_at,
+            )
+        else:
+            if response is None:
+                raise InconsistentPersistenceStateError()
+            result_record = LLMExtractionResultRecord(
+                id=self._id_generator.new_id(),
+                tenant_id=command.tenant_id,
+                analysis_run_id=command.analysis_run_id,
+                stage_run_id=command.stage_run_id,
+                result=response.result,
+                created_at=completed_at,
+            )
+        with self._uow_factory() as uow:
+            existing_result = (
+                uow.extraction_results_v2.get_by_run(
+                    tenant_id=command.tenant_id,
+                    analysis_run_id=command.analysis_run_id,
+                )
+                if is_v2
+                else uow.extraction_results.get_by_run(
+                    tenant_id=command.tenant_id,
+                    analysis_run_id=command.analysis_run_id,
+                )
             )
             if existing_result is not None:
                 return _execution_result(command=command, status=AnalysisStageStatus.SUCCEEDED)
@@ -717,7 +812,7 @@ class ExecuteTextExtraction:
                 claim_token=claim_token,
                 target_status=AnalysisStageStatus.SUCCEEDED,
                 now=completed_at,
-                provider_execution=response.metadata,
+                provider_execution=provider_metadata,
             )
             if transitioned_stage is None:
                 uow.rollback()
@@ -729,12 +824,21 @@ class ExecuteTextExtraction:
                 claim_token=claim_token,
                 target_status=AnalysisAttemptStatus.SUCCEEDED,
                 completed_at=completed_at,
-                provider_execution=response.metadata,
+                provider_execution=provider_metadata,
             )
             if finalized_attempt is None:
                 uow.rollback()
                 return _execution_result(command=command, status=current_stage.status)
-            uow.extraction_results.add(tenant_id=command.tenant_id, result=result_record)
+            if result_record_v2 is not None:
+                uow.extraction_results_v2.add(
+                    tenant_id=command.tenant_id,
+                    result=result_record_v2,
+                )
+            elif result_record is not None:
+                uow.extraction_results.add(
+                    tenant_id=command.tenant_id,
+                    result=result_record,
+                )
             stages = uow.stage_runs.list(
                 tenant_id=command.tenant_id,
                 analysis_run_id=command.analysis_run_id,
@@ -841,12 +945,20 @@ class ExecuteTextExtraction:
             stage.model_version,
             stage.model_revision,
         )
+        configured_prompt = (
+            self._prompt_v2 if stage.output_schema_version == "2.0" else self._prompt
+        )
+        if configured_prompt is None:
+            raise LLMProviderRequestRejectedError(
+                provider=provider.provider,
+                message="the registered prompt version is not configured",
+            )
         prompt_snapshot = (
-            self._prompt.name,
-            self._prompt.version,
-            self._prompt.content_hash,
-            self._prompt.input_schema_version,
-            self._prompt.output_schema_version,
+            configured_prompt.name,
+            configured_prompt.version,
+            configured_prompt.content_hash,
+            configured_prompt.input_schema_version,
+            configured_prompt.output_schema_version,
         )
         stage_prompt_snapshot = (
             stage.prompt_name,
@@ -1623,6 +1735,10 @@ def _detail(
         run=run,
         stages=stages,
         extraction_result=uow.extraction_results.get_by_run(
+            tenant_id=tenant_id,
+            analysis_run_id=run.id,
+        ),
+        extraction_result_v2=uow.extraction_results_v2.get_by_run(
             tenant_id=tenant_id,
             analysis_run_id=run.id,
         ),

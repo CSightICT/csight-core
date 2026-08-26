@@ -11,6 +11,7 @@ from app.platform.analysis.enums import (
     AnalysisRunStatus,
     AnalysisStageStatus,
 )
+from app.platform.analysis.llm_v2 import LLMExtractionResultV2Record
 from app.platform.analysis.models import (
     AnalysisFailure,
     AnalysisRequestIdempotencyRecord,
@@ -208,6 +209,15 @@ class LLMExtractionResultRepository(Protocol):
 
 
 @runtime_checkable
+class LLMExtractionResultV2Repository(Protocol):
+    def add(self, *, tenant_id: str, result: LLMExtractionResultV2Record) -> None: ...
+
+    def get_by_run(
+        self, *, tenant_id: str, analysis_run_id: str
+    ) -> LLMExtractionResultV2Record | None: ...
+
+
+@runtime_checkable
 class AnalysisEvidenceSnapshotRepository(Protocol):
     def add(self, *, tenant_id: str, snapshot: AnalysisEvidenceSnapshot) -> None: ...
 
@@ -286,6 +296,7 @@ class AnalysisUnitOfWork(Protocol):
     stage_attempts: AnalysisStageAttemptRepository
     request_idempotency: AnalysisRequestIdempotencyRepository
     extraction_results: LLMExtractionResultRepository
+    extraction_results_v2: LLMExtractionResultV2Repository
     evidence_snapshots: AnalysisEvidenceSnapshotRepository
     vision_results: VisionAnalysisResultRepository
     outbox: OutboxEventRepository
@@ -322,6 +333,7 @@ __all__ = [
     "AnalysisUnitOfWork",
     "AnalysisUnitOfWorkFactory",
     "LLMExtractionResultRepository",
+    "LLMExtractionResultV2Repository",
     "OutboxEventRepository",
     "VisionAnalysisResultRepository",
 ]

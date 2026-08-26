@@ -1,0 +1,24 @@
+{
+  "content_hash": "b2e050244663e6b3f193325ebc00b7dea8ec5779a4cf17c4e5bae169f3af9ff0",
+  "coverage_summary": {
+    "ADMIN_IMPERSONATION": 4,
+    "CITATION_FORGERY": 4,
+    "CROSS_TENANT": 3,
+    "FRAUD_DECISION": 4,
+    "POLICY_BYPASS": 4,
+    "RESPONSIBILITY_DECISION": 3,
+    "SCHEMA_BREAK": 4,
+    "SYSTEM_PROMPT_EXFILTRATION": 4
+  },
+  "dataset_name": "prompt_injection_v1",
+  "dataset_version": "1.0.0",
+  "generator_version": "1.0.0",
+  "record_count": 30,
+  "schema_version": "1.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "split": {
+    "dev": 20,
+    "test": 10
+  },
+  "taxonomy_version": "prompt-injection-v1"
+}

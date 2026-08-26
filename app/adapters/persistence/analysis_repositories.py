@@ -15,6 +15,7 @@ from app.adapters.persistence.models import (
     AnalysisStageAttemptModel,
     AnalysisStageRunModel,
     LLMExtractionResultModel,
+    LLMExtractionResultV2Model,
     OutboxEventModel,
     VisionAnalysisResultModel,
     VisionDetectionModel,
@@ -28,6 +29,11 @@ from app.platform.analysis.enums import (
     OutboxStatus,
     require_run_transition,
     require_stage_transition,
+)
+from app.platform.analysis.llm_v2 import (
+    CompletenessResult,
+    LLMExtractionResultV2Record,
+    LLMTextExtractionResultV2,
 )
 from app.platform.analysis.models import (
     AnalysisFailure,
@@ -1165,6 +1171,82 @@ class SQLAlchemyLLMExtractionResultRepository:
             )
         ).one_or_none()
         return result_entity_from_model(model) if model is not None else None
+
+
+class SQLAlchemyLLMExtractionResultV2Repository:
+    """Append-only v2 result repository; intentionally exposes no update or delete."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, *, tenant_id: str, result: LLMExtractionResultV2Record) -> None:
+        _require_tenant_scope(tenant_id=tenant_id, entity_tenant_id=result.tenant_id)
+        self._session.add(
+            LLMExtractionResultV2Model(
+                id=_required_uuid(result.id),
+                tenant_id=_required_uuid(result.tenant_id),
+                analysis_run_id=_required_uuid(result.analysis_run_id),
+                stage_run_id=_required_uuid(result.stage_run_id),
+                schema_version=result.result.schema_version,
+                language=result.result.language,
+                issue_types=[item.value for item in result.result.issue_types],
+                claims=[item.model_dump(mode="json") for item in result.result.claims],
+                requested_actions=[
+                    item.model_dump(mode="json") for item in result.result.requested_actions
+                ],
+                text_ambiguities=[item.value for item in result.result.text_ambiguities],
+                summary=result.result.summary,
+                system_missing_information=[
+                    item.value for item in result.completeness.system_missing_information
+                ],
+                action_consistency=result.completeness.action_consistency.value,
+                completeness_rule_version=result.completeness.rule_version,
+                created_at=result.created_at,
+            )
+        )
+
+    def get_by_run(
+        self, *, tenant_id: str, analysis_run_id: str
+    ) -> LLMExtractionResultV2Record | None:
+        tenant_uuid = _optional_uuid(tenant_id)
+        run_uuid = _optional_uuid(analysis_run_id)
+        if tenant_uuid is None or run_uuid is None:
+            return None
+        model = self._session.scalars(
+            select(LLMExtractionResultV2Model).where(
+                LLMExtractionResultV2Model.tenant_id == tenant_uuid,
+                LLMExtractionResultV2Model.analysis_run_id == run_uuid,
+            )
+        ).one_or_none()
+        if model is None:
+            return None
+        extraction = LLMTextExtractionResultV2.model_validate(
+            {
+                "schema_version": model.schema_version,
+                "language": model.language,
+                "issue_types": model.issue_types,
+                "claims": model.claims,
+                "requested_actions": model.requested_actions,
+                "text_ambiguities": model.text_ambiguities,
+                "summary": model.summary,
+            }
+        )
+        completeness = CompletenessResult.model_validate(
+            {
+                "rule_version": model.completeness_rule_version,
+                "system_missing_information": model.system_missing_information,
+                "action_consistency": model.action_consistency,
+            }
+        )
+        return LLMExtractionResultV2Record(
+            id=str(model.id),
+            tenant_id=str(model.tenant_id),
+            analysis_run_id=str(model.analysis_run_id),
+            stage_run_id=str(model.stage_run_id),
+            result=extraction,
+            completeness=completeness,
+            created_at=model.created_at,
+        )
 
 
 class SQLAlchemyAnalysisEvidenceSnapshotRepository:

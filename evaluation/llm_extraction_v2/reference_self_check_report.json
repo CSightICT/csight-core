@@ -1,0 +1,60 @@
+{
+  "action_consistency_accuracy": 1.0,
+  "confusion_matrix": {
+    "reference_self_check": 160
+  },
+  "empty_set_case_count": 64,
+  "exact_set_accuracy": 1.0,
+  "external_model_used": false,
+  "forbidden_field_rate": 0.0,
+  "issue_type_macro_f1": 1.0,
+  "issue_type_micro_f1": 1.0,
+  "json_schema_valid_rate": 1.0,
+  "label_support": {
+    "EXCHANGE": 48,
+    "INFORMATION": 16,
+    "REFUND": 16,
+    "REPAIR": 16,
+    "RESHIPMENT": 16
+  },
+  "mode": "REFERENCE_GOLD_SELF_CHECK",
+  "per_label": {
+    "EXCHANGE": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "INFORMATION": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "REFUND": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "REPAIR": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "RESHIPMENT": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    }
+  },
+  "prompt_injection_violation_rate": 0.0,
+  "pydantic_validation_rate": 1.0,
+  "reasoning_leakage_rate": 0.0,
+  "record_count": 160,
+  "requested_action_set_f1": 1.0,
+  "requested_action_set_precision": 1.0,
+  "requested_action_set_recall": 1.0,
+  "source_quote_exact_match_rate": 1.0,
+  "system_missing_exact_accuracy": 1.0,
+  "text_ambiguity_set_f1": 1.0,
+  "text_ambiguity_set_precision": 1.0,
+  "text_ambiguity_set_recall": 1.0
+}

@@ -16,8 +16,13 @@ from app.platform.analysis import (
     AnalysisStageType,
     AnalysisTrigger,
     LLMExtractionResultRecord,
+    LLMExtractionResultV2Record,
     LLMTextExtractionResult,
+    LLMTextExtractionResultV2,
     ProviderExecutionMetadata,
+    RequestedActionItemV2,
+    SystemMissingInformation,
+    TextAmbiguity,
     VisionAnalysisResultRecord,
 )
 
@@ -213,6 +218,44 @@ class LLMExtractionResultResponse(BaseModel):
         )
 
 
+class LLMExtractionResultV2Response(BaseModel):
+    """Explicit v2 projection with deterministic backend completeness fields."""
+
+    model_config = ANALYSIS_MODEL_CONFIG
+
+    extraction_result_id: str
+    tenant_id: str
+    analysis_run_id: str
+    stage_run_id: str
+    schema_version: str
+    requested_actions: tuple[RequestedActionItemV2, ...]
+    text_ambiguities: tuple[TextAmbiguity, ...]
+    system_missing_information: tuple[SystemMissingInformation, ...]
+    action_consistency: str
+    completeness_rule_version: str
+    result: LLMTextExtractionResultV2
+    created_at: datetime
+
+    @classmethod
+    def from_record(cls, record: LLMExtractionResultV2Record | None) -> Self | None:
+        if record is None:
+            return None
+        return cls(
+            extraction_result_id=record.id,
+            tenant_id=record.tenant_id,
+            analysis_run_id=record.analysis_run_id,
+            stage_run_id=record.stage_run_id,
+            schema_version=record.result.schema_version,
+            requested_actions=record.result.requested_actions,
+            text_ambiguities=record.result.text_ambiguities,
+            system_missing_information=record.completeness.system_missing_information,
+            action_consistency=record.completeness.action_consistency.value,
+            completeness_rule_version=record.completeness.rule_version,
+            result=record.result,
+            created_at=record.created_at,
+        )
+
+
 class AnalysisRunListResponse(BaseModel):
     model_config = ANALYSIS_MODEL_CONFIG
 
@@ -237,6 +280,7 @@ class AnalysisRunDetailResponse(BaseModel):
     run: AnalysisRunResponse
     stages: tuple[AnalysisStageRunResponse, ...]
     extraction_result: LLMExtractionResultResponse | None
+    extraction_result_v2: LLMExtractionResultV2Response | None = None
     vision_results: tuple[VisionAnalysisResultRecord, ...] = ()
     failed_stages: tuple[AnalysisStageType, ...] = ()
 
@@ -246,6 +290,9 @@ class AnalysisRunDetailResponse(BaseModel):
             run=AnalysisRunResponse.from_run(detail.run),
             stages=tuple(AnalysisStageRunResponse.from_stage(stage) for stage in detail.stages),
             extraction_result=LLMExtractionResultResponse.from_record(detail.extraction_result),
+            extraction_result_v2=LLMExtractionResultV2Response.from_record(
+                detail.extraction_result_v2
+            ),
             vision_results=detail.vision_results,
             failed_stages=detail.failed_stages,
         )

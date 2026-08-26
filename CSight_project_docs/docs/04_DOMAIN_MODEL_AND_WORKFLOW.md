@@ -268,3 +268,10 @@ Multimodal Run은 `TEXT_EXTRACTION`과 `VISION_ANALYSIS` 두 Stage를 가진다.
 `SUCCEEDED`, 하나만 성공하면 `PARTIAL_SUCCESS`, 둘 다 실패하면 `FAILED`다. Pending/Running이
 있으면 `RUNNING`, retry Stage가 있으면 `RETRY_WAITING`이며 성공한 Stage Result는 보존한다.
 Alignment/Policy/Review는 아직 실행하지 않는다.
+
+## 10. Sprint 4A Extraction v2와 Policy Reference
+
+Case의 declared requested action과 LLM의 extracted action list는 별도 값이다. Application
+completeness rule `1.0.0`이 `system_missing_information`과 `action_consistency`를 계산한다.
+Policy Reference는 tenant/document/version/effective date와 clause/parent relation을 가지지만
+Policy Aggregate나 Decision workflow에는 아직 적재·연결하지 않는다.

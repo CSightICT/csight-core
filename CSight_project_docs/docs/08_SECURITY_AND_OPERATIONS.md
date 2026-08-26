@@ -234,3 +234,9 @@ Network ACL과 제한된 Presign Gateway를 별도로 구성한다.
 
 기본 Provider는 deterministic Mock이며 외부 Vision은 `external_vision` opt-in marker로만
 실행한다. 실제 Service가 없을 때 상태는 `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE`이다.
+
+## 12. Sprint 4A Reference Data Security
+
+Corpus와 Gold는 합성 데이터만 포함한다. Prompt v2는 고객 문장을 untrusted JSON data로 다루고
+secret/prompt/reasoning/decision field를 금지한다. Query Builder tenant filter는 Application이
+주입하며 Grounded Explanation citation은 제공된 Clause ID allowlist로 검증한다.

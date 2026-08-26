@@ -29,6 +29,15 @@ from app.platform.analysis import (
     ProviderSchemaError,
     ProviderTimeoutError,
 )
+from app.platform.analysis.llm_v2 import (
+    ExtractedActionV2,
+    LLMTextClaimV2,
+    LLMTextExtractionRequestV2,
+    LLMTextExtractionResponseV2,
+    LLMTextExtractionResultV2,
+    RequestedActionItemV2,
+    TextAmbiguity,
+)
 from app.platform.analysis.prompts import PromptManifest
 
 
@@ -129,6 +138,96 @@ class MockLLMProvider:
                 provider_request_id=f"mock-{request_fingerprint[:16]}",
                 input_token_count=max(1, len(request.customer_message.split())),
                 output_token_count=max(1, len(serialized_result) // 4),
+                latency_ms=0,
+            ),
+        )
+
+    def extract_text_v2(
+        self,
+        request: LLMTextExtractionRequestV2,
+        prompt: PromptManifest,
+    ) -> LLMTextExtractionResponseV2:
+        """Produce deterministic v2 output with message-only requested actions."""
+
+        self._raise_configured_text_failure()
+        if self._mode in {MockProviderMode.SCHEMA_ERROR, MockProviderMode.INVALID_SCHEMA}:
+            raise LLMInvalidStructuredOutputError(
+                provider=self._metadata.provider,
+                message="mock LLM response violated extraction schema v2",
+            )
+        if prompt.input_schema_version != "2.0" or prompt.output_schema_version != "2.0":
+            raise LLMProviderRequestRejectedError(
+                provider=self._metadata.provider,
+                message="prompt does not match extraction schema v2",
+            )
+        prompt.render_user(request.model_dump(mode="json"))
+        findings = self._text_findings(request.customer_message)
+        claims = tuple(
+            LLMTextClaimV2(
+                type=issue_type,
+                location=self._detect_location(request.customer_message.casefold()),
+                description=self._claim_description(issue_type),
+                source_quote=quote,
+            )
+            for issue_type, quote in findings
+        )
+        actions: list[RequestedActionItemV2] = []
+        for tokens, action in (
+            (("교환", "exchange"), ExtractedActionV2.EXCHANGE),
+            (("환불", "refund"), ExtractedActionV2.REFUND),
+            (("재배송", "다시 보내", "reship"), ExtractedActionV2.RESHIPMENT),
+            (("수리", "repair"), ExtractedActionV2.REPAIR),
+            (("문의", "알려", "information"), ExtractedActionV2.INFORMATION),
+        ):
+            quote = self._first_exact_token(request.customer_message, tokens)
+            if quote is not None:
+                actions.append(RequestedActionItemV2(action=action, source_quote=quote))
+        ambiguities: tuple[TextAmbiguity, ...] = ()
+        if not findings:
+            ambiguities = (TextAmbiguity.DEFECT_TYPE_UNCLEAR,)
+        if self._looks_like_prompt_injection(request.customer_message):
+            findings = ()
+            claims = ()
+            actions = []
+            ambiguities = (TextAmbiguity.DESCRIPTION_TOO_VAGUE,)
+        result = LLMTextExtractionResultV2(
+            issue_types=tuple(issue_type for issue_type, _quote in findings),
+            claims=claims,
+            requested_actions=tuple(actions),
+            text_ambiguities=ambiguities,
+            summary=(
+                "고객 메시지에서 명시된 상품 결함과 요청을 구조화했습니다."
+                if findings or actions
+                else "고객 메시지에서 명확한 상품 결함 또는 요청을 확인하지 못했습니다."
+            ),
+        )
+        if self._mode is MockProviderMode.INVALID_SOURCE_QUOTE:
+            result = result.model_copy(
+                update={
+                    "requested_actions": (
+                        RequestedActionItemV2(
+                            action=ExtractedActionV2.EXCHANGE,
+                            source_quote="원문에 없는 요청",
+                        ),
+                    )
+                }
+            )
+        result.require_exact_source_quotes(
+            customer_message=request.customer_message,
+            provider=self._metadata.provider,
+        )
+        serialized = result.model_dump_json()
+        fingerprint = hashlib.sha256(request.customer_message.encode()).hexdigest()
+        return LLMTextExtractionResponseV2(
+            result=result,
+            metadata=ProviderExecutionMetadata(
+                provider_name=self._metadata.provider,
+                model_name=self._metadata.name,
+                model_version=self._metadata.version,
+                model_revision=self._metadata.revision,
+                provider_request_id=f"mock-v2-{fingerprint[:16]}",
+                input_token_count=max(1, len(request.customer_message.split())),
+                output_token_count=max(1, len(serialized) // 4),
                 latency_ms=0,
             ),
         )

@@ -1,0 +1,40 @@
+{
+  "active_version_count": 18,
+  "broken_reference_count": 0,
+  "builder_version": "1.0.0",
+  "clause_count": 168,
+  "clause_type_distribution": {
+    "ESCALATION": 24,
+    "EVIDENCE_REQUIREMENT": 48,
+    "EXCEPTION": 48,
+    "RULE": 48
+  },
+  "corpus_name": "csight_synthetic_policy_reference",
+  "corpus_version": "1.0.0",
+  "created_at": "2026-08-26T00:00:00Z",
+  "disclaimer": "이 Corpus는 CSight PoC의 검색·평가를 위해 제작한 합성 정책 Reference이며, 실제 기업 정책이나 법률 자문을 의미하지 않는다.",
+  "document_count": 24,
+  "duplicate_clause_ids": [],
+  "empty_clause_count": 0,
+  "evidence_requirement_count": 48,
+  "exact_duplicate_count": 0,
+  "exception_count": 48,
+  "near_duplicate_candidate_count": 0,
+  "near_duplicate_candidates": [],
+  "policy_type_distribution": {
+    "EVIDENCE_REQUIREMENT": 2,
+    "FUNCTIONAL_FAILURE": 2,
+    "HIGH_RISK_EXCEPTION": 2,
+    "LEAKAGE_CONTAMINATION": 4,
+    "MISSING_COMPONENT": 2,
+    "PACKAGING_DAMAGE": 2,
+    "RETURN_EXCHANGE": 4,
+    "SHIPPING_DAMAGE": 4,
+    "WRONG_ITEM": 2
+  },
+  "retired_version_count": 6,
+  "schema_version": "1.0",
+  "source_hash": "8e60f4ce869ba83288ac094ba09465481a9d2e431cfe45a7ac4de4114092c237",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "tenant_count": 2
+}

@@ -10,13 +10,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 3 — Vision Analysis `MOCK_QUALIFIED`, 외부 Vision `NOT_AVAILABLE` |
-| 진행 중 작업 | Sprint 3 Closeout Gate 재통과; 승인된 로컬 Commit 직전, Push·PR 금지 |
+| 현재 완료 단계 | Sprint 4A Closeout — `PASS`, 미해결 P0/P1 0 |
+| 진행 중 작업 | 승인된 Sprint 4A 범위만 로컬 Commit 후 Sprint 4B 전용 Branch 생성 |
 | 마지막 갱신일 | 2026-08-26, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 2·2.5 변경 Push 금지 |
-| 로컬 Git | `feature/sprint-3-vision-analysis`, Base `7d63cbb`, Closeout Commit 후보 |
-| 마지막 런타임 관측 | 2026-08-26, Core 6개 Network-free Mock 기본값 Healthy, Queue 0 |
+| 로컬 Git | `feature/sprint-4a-llm-reference-data`, Base `330cbdb`, Closeout Commit 직전 |
+| 마지막 런타임 관측 | 2026-08-26, Core 6개 Network-free Mock, Migration `0005`, Queue 0 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -45,6 +45,11 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 2.5 Qwen3.8 실제 서빙 | QUALIFIED_WITH_LIMITATIONS | 4090 Cold Start 2회, 26분 안정성, 안전 Gate와 실제 Backend E2E 통과; Action/Missing 품질 제한 |
 | Sprint 3 Vision·Multimodal | MOCK_QUALIFIED | Canonical Vision, Snapshot, Text/Vision fan-out/join, Partial Success와 live Mock E2E 통과 |
 | Sprint 3 실제 Vision | NOT_AVAILABLE | Endpoint/model/sample 미제공; `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE` 1건 |
+| Sprint 4A LLM Contract v2 | PASS | v1 보존, v2 Prompt/Schema/Persistence/API와 live Mock 통과 |
+| Sprint 4A Policy Reference | PASS | 합성 2 Tenant, 24 Document, 168 Clause, retired 6 |
+| Sprint 4A Evaluation Data | PASS | 160/120/50/30/10, Gold missing·cross-tenant 0 |
+| Sprint 4A 실제 Qwen 평가 | SKIPPED | Endpoint 미사용; `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE` |
+| Sprint 4A 독립 Closeout | PASS | P0/P1 0, 정적·전체 회귀·데이터·Migration·Docker 재검증 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -145,6 +150,23 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 외부 Vision은 실제 endpoint 미제공을 숨기지 않고 1건 Skip
 - [x] 독립 Closeout에서 P0/P1 미해결 0과 전체 Gate 재통과
 - [x] Push·PR 없음, Kaputt 사용자 파일 미수정·미Stage
+
+## 5.3. Sprint 4A 완료 체크리스트
+
+- [x] Sprint 3 Closeout Commit `330cbdb`, Push·PR 없음, Kaputt 파일 제외
+- [x] `feature/sprint-4a-llm-reference-data` Branch 생성
+- [x] Text Extraction v1 호환과 v2 Pipeline/Prompt/Schema `2.0.0/2.0.0/2.0`
+- [x] Declared/Extracted action과 Text/System missing 책임 분리
+- [x] Completeness/action consistency rule `1.0.0`과 exact requested-action quote
+- [x] 기존 v1 table 불변의 append-only v2 child Migration `20260826_0005`
+- [x] Policy Query Builder/Grounded Explanation design-only Prompt/Schema
+- [x] 합성 Policy Corpus 2 Tenant, 24 Document, 168 Clause, retired 6
+- [x] Extraction 160, Retrieval 120, Grounding 50, Injection 30, Demo 10
+- [x] Stable build/hash, manifest, quality/coverage report와 Make commands
+- [x] ADR-0018~0025, data guide 4개, 설계 03~10과 README 갱신
+- [x] 실제 Docker v2 Mock `SUCCEEDED`와 합성 row/queue 정리
+- [x] Sprint 4A 최종 전체 Gate 실측값 확정
+- [x] Sprint 4A Commit·Push·PR 없음, Kaputt 파일 미수정·미Stage
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -288,6 +310,24 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-26 | Sprint 3 Closeout 재감사 | PASS | P0/P1 0, Ruff, Format 165, Pyright 0, Fast 328, Integration 36 |
 | 2026-08-26 | Sprint 3 Closeout Migration | PASS | empty→0004, 0004→0003→0004, 0003→0004, 두 DB drift 0 |
 | 2026-08-26 | Sprint 3 Closeout Runtime | PASS | Core 6개 Healthy, HTTP ready, analysis queue ready/unacked 0 |
+| 2026-08-26 | Sprint 3 Closeout Commit | PASS | `330cbdb feat: complete multimodal vision analysis pipeline`, Push·PR 없음 |
+| 2026-08-26 | Sprint 4A LLM v2 Focus | PASS | v2/Corpus Unit 21, Prompt hash와 completeness/action/source quote |
+| 2026-08-26 | Sprint 4A Policy Corpus | PASS | Build/validate 24 Document, 168 Clause, Tenant 2, duplicate 0 |
+| 2026-08-26 | Sprint 4A Evaluation Data | PASS | 160/120/50/30/10, Gold missing 0, cross-tenant 0 |
+| 2026-08-26 | Sprint 4A Migration 첫 시도 | FAIL | 오래된 Docker image가 `0005` 미포함; DB not up to date 감지 |
+| 2026-08-26 | Sprint 4A Migration 재실행 | PASS | image rebuild 후 `0004→0005`, Alembic drift 0 |
+| 2026-08-26 | Sprint 4A Live v2 Mock | PASS | Run SUCCEEDED, action 2, MULTIPLE_EXTRACTED, rule 1.0.0 |
+| 2026-08-26 | Sprint 4A Live 정리 | PASS | 합성 Case/Run 관련 row 제거, RabbitMQ analysis 0/0 |
+| 2026-08-26 | Sprint 4A 실제 Qwen | SKIPPED | Endpoint 미사용; `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE` |
+| 2026-08-26 | Sprint 4A Stable Build | PASS | Policy·Evaluation aggregate hash가 반복 Build 전후 동일 |
+| 2026-08-26 | Sprint 4A Static | PASS | Ruff, Format 179, Pyright 0 errors·warnings |
+| 2026-08-26 | Sprint 4A Fast Regression | PASS | 354 passed, 42 deselected, 외부 호출 없음 |
+| 2026-08-26 | Sprint 4A 대상별 Test | PASS | Unit 294, Architecture 4, Contract 50, E2E 6; 중복 포함 |
+| 2026-08-26 | Sprint 4A Core Integration | PASS | 36 passed, external GPU 5 skipped, 355 deselected |
+| 2026-08-26 | Sprint 4A External 기본 Gate | SKIPPED | GPU 5 skipped·391 deselected; Vision 1 skipped·395 deselected |
+| 2026-08-26 | Sprint 4A Migration 3경로 | PASS | empty→0005, 0005→0004→0005, 0004→0005, drift 0; 임시 DB 0 |
+| 2026-08-26 | Sprint 4A Final Runtime | PASS | 최신 image, Core 6개 Healthy, live/ready 200, analysis 0/0 |
+| 2026-08-26 | Sprint 4A Git 인계 | PASS | `git diff --check`, Stage 0, Sprint 4A Commit·Push·PR 0, Kaputt 미추적 보존 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -330,6 +370,10 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   PR은 금지한다.
 - 루트의 미추적 `kaputt_best_vision_architecture.md`는 Sprint 2와 무관한 사용자 작업물이다.
   이번 작업에서도 수정·삭제·Stage하지 않았으며 후속 소유 작업에서 별도로 다룬다.
+- Sprint 4A Policy Corpus/Gold는 전부 합성 Reference이며 실제 기업 정책 정확성·법률 효력은
+  검증하지 않았다. Retrieval, Embedding, BM25, pgvector, Reranker, RAG와 Policy Engine은 없다.
+- v2 실제 Qwen dev/test는 endpoint를 사용하지 않아 Skip이다. Reference self-check는 모델
+  평가가 아니며 향후 Prompt hash freeze 뒤 test 40건을 한 번만 실행해야 한다.
 
 ## 9. 다음 실행 항목
 
@@ -357,8 +401,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   confidence calibration을 설계하고 Policy/Approval을 계속 분리한다.
 - [ ] Evidence Reconciliation·Orphan Cleanup·업로드 Idempotency와 Retention 정책을
   우선순위에 따라 별도 작업으로 계획한다.
-- [ ] Sprint 3 Closeout Commit을 확인하고 `feature/sprint-4a-llm-reference-data`에서 LLM
+- [x] Sprint 3 Closeout Commit을 확인하고 `feature/sprint-4a-llm-reference-data`에서 LLM
   Contract v2와 합성 Reference Data를 구현한다.
+- [x] Sprint 3 Closeout Commit `330cbdb`와 Sprint 4A 전용 Branch를 확인한다.
+- [x] LLM Contract v2, 합성 Policy Corpus와 고정 Evaluation Dataset을 구현한다.
+- [x] Sprint 4A 최종 Gate를 확정하고 미커밋 상태로 인계한다.
+- [ ] Sprint 4B에서는 Policy Document/Clause DB schema와 ingestion을 먼저 만들고 BM25
+  baseline→dense embedding→pgvector→metadata filter→hybrid retrieval 평가 순서로 진행한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -530,3 +579,63 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Skip: 실제 Vision 자산 미제공으로 외부 Vision 1건 `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE`
 - 판정: P0 0, P1 0, `SPRINT_3_CLOSEOUT=PASS`; Push·PR 금지, Kaputt 사용자 파일 제외
 - 다음 작업: 승인된 Sprint 3 범위만 로컬 Commit한 뒤 Sprint 4A 전용 브랜치를 생성
+
+### 2026-08-26 — Sprint 4A LLM Contract v2와 Reference Data
+
+- 목표: LLM 출력 의미를 v2로 분리하고 Policy Retrieval/RAG 구현 전에 합성 Reference Corpus와
+  고정 Gold/평가 기준을 구축
+- Git: Sprint 3 Closeout `330cbdb`에서 `feature/sprint-4a-llm-reference-data` 생성;
+  Sprint 4A Commit·Push·PR 없음, Kaputt 사용자 파일 제외
+- LLM: v1 보존, Pipeline/Prompt/Schema v2, 복수 action exact quote, text ambiguity,
+  deterministic completeness/action consistency와 append-only v2 child/API
+- Reference: 합성 Tenant 2, Document 24, Clause 168, Policy Type 9, retired 6,
+  Exception/Evidence Requirement 각 48, duplicate 0
+- Evaluation: Extraction 160, Retrieval 120, Grounding 50, Injection 30, Demo 10;
+  manifest/hash/report와 Gold missing/cross-tenant 0
+- Live: Docker image rebuild 후 Migration `0005`/drift 0, v2 Mock SUCCEEDED/action 2/
+  MULTIPLE_EXTRACTED/rule 1.0.0; 합성 row와 queue 정리
+- Skip: 실제 Qwen endpoint를 사용하지 않아 `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`; Gold
+  self-check를 모델 평가로 표현하지 않음
+- 범위 밖: Embedding, BM25, pgvector, hybrid/reranker, RAG API, Policy Engine, Alignment,
+  Routing, Review, Report, Vision 변경
+- 다음 작업: 최종 전체 Gate 수치를 확정하고 Sprint 4B의 DB ingestion/검색 baseline에 인계
+
+### 2026-08-26 — Sprint 4A 최종 Gate와 세션 인계
+
+- 목표: Sprint 4A 미커밋 Diff를 정적 검사, 전체 회귀, 데이터 결정성, Migration 3경로와
+  최신 Docker Runtime으로 최종 검증하고 다음 에이전트가 바로 이어갈 수 있게 확정
+- 보강: Corpus validator가 순환 Parent, 문서–Clause 메타데이터 불일치, 만료 ACTIVE,
+  비대칭·Cross-Tenant Supersession을 fail-closed하도록 강화하고 Contract 5건 추가
+- 검증: Ruff, Format 179, Pyright 0, Fast 354/42 deselected, Unit 294, Architecture 4,
+  Contract 50, E2E 6, Core Integration 36/외부 GPU 5 skipped
+- 데이터: Policy 24/168과 Evaluation 160/120/50/30/10 재생성·검증, 반복 Build aggregate
+  hash 동일, broken/duplicate/cross-tenant 0
+- Migration/Runtime: empty→0005, 0005→0004→0005, 0004→0005, drift 0, 임시 DB 0;
+  최신 image Core 6개 Healthy, live/ready 200, analysis queue 0/0
+- Skip: Sprint 4A 실제 Qwen은 `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`; Vision도 기존 실제 자산
+  미제공으로 1건 Skip. Gold self-check는 실제 모델 평가가 아님
+- Git: Branch `feature/sprint-4a-llm-reference-data`, Base `330cbdb`; Sprint 4A Commit·Push·PR
+  없음. `kaputt_best_vision_architecture.md`는 사용자 파일로 미수정·미Stage
+- 판정: `REFERENCE_DATA_QUALIFIED_WITH_LIMITATIONS`
+- 다음 작업: 별도 Sprint 4B 지시에서 Policy Document/Clause DB schema와 ingestion부터 시작하고
+  BM25 baseline→dense embedding→pgvector→metadata filter→hybrid retrieval 평가 순서 유지
+
+### 2026-08-26 — Sprint 4A 독립 Closeout 감사
+
+- 목표: Sprint 4A 전체 Diff를 코드·데이터·Migration·Runtime 기준으로 독립 재감사하고 승인된
+  로컬 기준점 Commit 조건을 확정
+- 감사: v1 호환, v2 append-only child/API, 합성 Corpus tenant/version/parent 무결성과 고정
+  Gold 참조를 확인; P0 0, P1 0
+- 검증: Ruff, Format 179, Pyright 0, Fast 354/42 deselected, Unit 294, Architecture 4,
+  Contract 50, E2E 6
+- Integration: 장기 실행 실제 Dispatcher가 테스트 Outbox를 선점해 최초 1건 실패; 실행
+  서비스를 격리한 재실행은 36 passed, 외부 GPU 5 skipped
+- 데이터: Policy 24/168/2와 Evaluation 160/120/50/30/10 재생성, stable aggregate hash,
+  broken/duplicate/cross-tenant 0
+- Migration/Runtime: 세 경로·drift 0, 임시 DB cleanup, 최신 Core 6개 Healthy,
+  live/ready 200, queue 0/0
+- 판정: `SPRINT_4A_CLOSEOUT=PASS`; 정확한 Commit message는
+  `feat: add LLM contract v2 and policy reference corpus`, Push·PR 금지
+- 안전: `kaputt_best_vision_architecture.md`는 사용자 파일로 계속 미수정·미Stage
+- 다음 작업: 승인 범위만 Stage/Commit하고 해당 SHA에서
+  `feature/sprint-4b-policy-retrieval`을 생성

@@ -19,6 +19,7 @@ from app.platform.policy_retrieval import (
     PolicyRetrievalProfile,
     PolicyRetrievalResult,
     PolicySearchHit,
+    RetrievalMode,
 )
 from app.platform.tenant import Principal, Role
 
@@ -88,7 +89,21 @@ class Search:
             mode=typed_query.mode,
             as_of_date=typed_query.as_of_date,
             retrieval_profile=profile,
-            hits=(PolicySearchHit(clause=clause, lexical_rank=1, lexical_score=1.0),),
+            hits=(
+                PolicySearchHit(
+                    clause=clause,
+                    lexical_rank=1,
+                    lexical_score=1.0,
+                    candidate_rank=1 if typed_query.mode is RetrievalMode.HYBRID_RERANKED else None,
+                    rerank_rank=1 if typed_query.mode is RetrievalMode.HYBRID_RERANKED else None,
+                    rerank_score=0.9 if typed_query.mode is RetrievalMode.HYBRID_RERANKED else None,
+                    reranker_profile=(
+                        "qwen3_policy_reranker:1.0.0"
+                        if typed_query.mode is RetrievalMode.HYBRID_RERANKED
+                        else None
+                    ),
+                ),
+            ),
             latency_ms=1.0,
         )
 
@@ -169,3 +184,16 @@ def test_embedding_provider_down_is_safe_503() -> None:
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "EMBEDDING_PROVIDER_UNAVAILABLE"
     assert "traceback" not in response.text.lower()
+
+
+def test_hybrid_reranked_response_adds_ranking_metadata_without_decisions() -> None:
+    response = client(Search()).post(
+        "/api/v1/policy-retrieval/search",
+        headers={"Authorization": "Bearer valid"},
+        json=request_body("HYBRID_RERANKED"),
+    )
+    assert response.status_code == 200
+    hit = response.json()["hits"][0]
+    assert (hit["candidate_rank"], hit["rerank_rank"], hit["rerank_score"]) == (1, 1, 0.9)
+    assert hit["reranker_profile"] == "qwen3_policy_reranker:1.0.0"
+    assert "decision" not in response.text.lower()

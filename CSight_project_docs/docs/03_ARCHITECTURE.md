@@ -300,3 +300,9 @@ append-only child result로 v1을 보존한다. LLM text ambiguity와 Applicatio
 Retrieval application은 repository/retriever/embedding port만 사용한다. Bootstrap이 exact BM25,
 SQLAlchemy/pgvector와 private HTTP embedding adapter를 조립한다. Router에는 scoring이 없고 host
 embedding service는 Core DB를 알지 못한다. Provider 장애는 dense/hybrid에만 503으로 격리된다.
+
+## 12. Sprint 4C-1 Reranker Boundary
+
+Application은 `PolicyReranker`와 ACTIVE execution-profile port만 사용한다. Bootstrap이 private
+HTTP Qwen adapter를 조립하며 platform/router에는 Transformers·HTTP·scoring logic이 없다.
+Reranker는 필터 후 candidate ID/text만 받고 complete allowlist validation 뒤 final K를 반환한다.

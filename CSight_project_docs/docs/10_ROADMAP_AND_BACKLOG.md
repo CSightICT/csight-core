@@ -301,8 +301,11 @@ Sprint 4A는 검색·결정 runtime을 미리 구현하지 않고 Sprint 4B가 �
 - [x] Exact BM25, pinned Qwen embedding, exact pgvector cosine
 - [x] Versioned RRF와 principal-scoped read-only API
 - [x] Locked Dev 80/Test 40 retrieval baseline
-- [ ] Qwen3-Reranker-0.6B와 candidate reranking
+- [x] Qwen3-Reranker-0.6B와 candidate reranking — qualified, no measurable gain
 - [ ] Policy Query Builder 실행과 citation pack
 - [ ] Grounded explanation/citation validation/unsupported claim evaluation
 
 Policy Engine, 승인·거절, routing, human review와 report는 별도 후속 단계다.
+
+Sprint 4C-2는 raw/deterministic/LLM query를 동일 frozen retrieval/reranker 경계에서 비교한다.
+Sprint 4C-3는 그 뒤 citation pack과 grounded generation을 독립 평가한다.

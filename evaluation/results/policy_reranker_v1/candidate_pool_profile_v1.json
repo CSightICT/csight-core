@@ -1,0 +1,15 @@
+{
+  "base_index_version": "1.0.0",
+  "candidate_k": 20,
+  "candidate_mode": "HYBRID_RRF",
+  "candidate_retrieval_profile": "policy_retrieval_v1:1.0.0",
+  "corpus_hash": "8e60f4ce869ba83288ac094ba09465481a9d2e431cfe45a7ac4de4114092c237",
+  "final_k": 10,
+  "hybrid_profile_hash": "7908ef5edaf2ca6197e4efe72d73e6601ef3bb71684711480d09074d182ead19",
+  "profile_hash": "4db0db1d4bac8ea04cc72dc793447ea319dbe830aa08e54aef0dd3d8011098b4",
+  "profile_name": "policy_candidate_pool",
+  "profile_version": "1.0.0",
+  "retrieval_dataset_hash": "40d6072594328ed4b8d11d359a897e8141365665e6d99ec38b3b169c0ded1e68",
+  "selection_rule": "smallest K at maximum Dev candidate recall then exact coverage",
+  "test_used_for_selection": false
+}

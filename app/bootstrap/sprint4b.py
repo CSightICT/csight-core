@@ -6,7 +6,9 @@ from app.adapters.persistence.policy_repositories import (
     SQLAlchemyPolicyClauseRepository,
     SQLAlchemyPolicyProfileRepository,
 )
+from app.adapters.persistence.reranker_profiles import SQLAlchemyPolicyExecutionProfileRepository
 from app.adapters.persistence.session import create_session_factory
+from app.adapters.reranking import RemoteQwenRerankerAdapter
 from app.adapters.retrieval import (
     ExactBM25Retriever,
     HTTPEmbeddingProvider,
@@ -25,6 +27,14 @@ def build_sprint4b_services(settings: Settings) -> Sprint4BServiceContainer:
     if settings.embedding_base_url is None:
         raise ValueError("EMBEDDING_BASE_URL is required for Sprint 4B composition")
     factory = create_session_factory(get_engine(settings))
+    reranker = (
+        RemoteQwenRerankerAdapter(
+            base_url=str(settings.reranker_base_url).rstrip("/"),
+            timeout_seconds=settings.reranker_timeout_seconds,
+        )
+        if settings.reranker_base_url is not None
+        else None
+    )
     return Sprint4BServiceContainer(
         search_policy_clauses=SearchPolicyClauses(
             clauses=SQLAlchemyPolicyClauseRepository(factory),
@@ -36,6 +46,8 @@ def build_sprint4b_services(settings: Settings) -> Sprint4BServiceContainer:
             ),
             dense=SQLAlchemyDenseRetriever(factory),
             hybrid=ReciprocalRankFusionRetriever(),
+            execution_profiles=SQLAlchemyPolicyExecutionProfileRepository(factory),
+            reranker=reranker,
         )
     )
 

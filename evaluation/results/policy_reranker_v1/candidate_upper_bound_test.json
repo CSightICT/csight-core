@@ -1,0 +1,3141 @@
+{
+  "artifact_version": "1.0.0",
+  "base_profile_hash": "fd41ea825fedcc5f16fcb1003954180339185d9ffabd7982712ff0ef3b00437f",
+  "candidate_k_values": [
+    10,
+    20,
+    30,
+    50
+  ],
+  "candidate_mode": "HYBRID_RRF",
+  "corpus_hash": "8e60f4ce869ba83288ac094ba09465481a9d2e431cfe45a7ac4de4114092c237",
+  "diagnostic_only": true,
+  "final_k": 10,
+  "metrics_by_candidate_k": {
+    "10": {
+      "average_candidate_count": 7.075,
+      "candidate_exact_coverage": 0.85,
+      "candidate_recall": 0.925,
+      "hard_negative_inclusion_rate": 0.0,
+      "oracle_exact_coverage_at_10": 0.85,
+      "oracle_mrr_at_10": 1.0,
+      "oracle_ndcg_at_10": 0.9419720789148187,
+      "oracle_recall_at_10": 0.925,
+      "query_count": 40,
+      "zero_candidate_rate": 0.0
+    },
+    "20": {
+      "average_candidate_count": 7.175,
+      "candidate_exact_coverage": 0.875,
+      "candidate_recall": 0.9375,
+      "hard_negative_inclusion_rate": 0.0,
+      "oracle_exact_coverage_at_10": 0.875,
+      "oracle_mrr_at_10": 1.0,
+      "oracle_ndcg_at_10": 0.9516433990956823,
+      "oracle_recall_at_10": 0.9375,
+      "query_count": 40,
+      "zero_candidate_rate": 0.0
+    },
+    "30": {
+      "average_candidate_count": 7.175,
+      "candidate_exact_coverage": 0.875,
+      "candidate_recall": 0.9375,
+      "hard_negative_inclusion_rate": 0.0,
+      "oracle_exact_coverage_at_10": 0.875,
+      "oracle_mrr_at_10": 1.0,
+      "oracle_ndcg_at_10": 0.9516433990956823,
+      "oracle_recall_at_10": 0.9375,
+      "query_count": 40,
+      "zero_candidate_rate": 0.0
+    },
+    "50": {
+      "average_candidate_count": 7.175,
+      "candidate_exact_coverage": 0.875,
+      "candidate_recall": 0.9375,
+      "hard_negative_inclusion_rate": 0.0,
+      "oracle_exact_coverage_at_10": 0.875,
+      "oracle_mrr_at_10": 1.0,
+      "oracle_ndcg_at_10": 0.9516433990956823,
+      "oracle_recall_at_10": 0.9375,
+      "query_count": 40,
+      "zero_candidate_rate": 0.0
+    }
+  },
+  "oracle_is_not_a_retrieval_method": true,
+  "per_query_by_candidate_k": {
+    "10": [
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0081",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0082",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0083",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0084",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0085",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C1",
+          "POLICY-RTL-005:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0086",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0087",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0088",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0089",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0090",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C3"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0091",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0092",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C1",
+          "POLICY-BRD-006:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0093",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0094",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0095",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0096",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0097",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0098",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0099",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C1",
+          "POLICY-RTL-007:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0100",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0101",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0102",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0103",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0104",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0105",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0106",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C1",
+          "POLICY-BRD-008:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0107",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0108",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0109",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0110",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0111",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0112",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0113",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C1",
+          "POLICY-RTL-001:2.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0114",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0115",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0116",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0117",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0118",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-003:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0119",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-002:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-002:2.0.0:C7",
+          "POLICY-BRD-002:2.0.0:C2",
+          "POLICY-BRD-002:2.0.0:C5",
+          "POLICY-BRD-002:2.0.0:C3",
+          "POLICY-BRD-002:2.0.0:C4",
+          "POLICY-BRD-002:2.0.0:C6",
+          "POLICY-BRD-002:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0120",
+        "relevant_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C1",
+          "POLICY-BRD-002:2.0.0:C2"
+        ]
+      }
+    ],
+    "20": [
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0081",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0082",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0083",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0084",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0085",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C1",
+          "POLICY-RTL-005:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0086",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0087",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0088",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0089",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0090",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0091",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0092",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C1",
+          "POLICY-BRD-006:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0093",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0094",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0095",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0096",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0097",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0098",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0099",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C1",
+          "POLICY-RTL-007:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0100",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0101",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0102",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0103",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0104",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0105",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0106",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C1",
+          "POLICY-BRD-008:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0107",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0108",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0109",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0110",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0111",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0112",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0113",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C1",
+          "POLICY-RTL-001:2.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0114",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0115",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0116",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0117",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0118",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-003:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0119",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-002:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-002:2.0.0:C7",
+          "POLICY-BRD-002:2.0.0:C2",
+          "POLICY-BRD-002:2.0.0:C5",
+          "POLICY-BRD-002:2.0.0:C3",
+          "POLICY-BRD-002:2.0.0:C4",
+          "POLICY-BRD-002:2.0.0:C6",
+          "POLICY-BRD-002:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0120",
+        "relevant_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C1",
+          "POLICY-BRD-002:2.0.0:C2"
+        ]
+      }
+    ],
+    "30": [
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0081",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0082",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0083",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0084",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0085",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C1",
+          "POLICY-RTL-005:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0086",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0087",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0088",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0089",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0090",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0091",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0092",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C1",
+          "POLICY-BRD-006:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0093",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0094",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0095",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0096",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0097",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0098",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0099",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C1",
+          "POLICY-RTL-007:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0100",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0101",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0102",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0103",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0104",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0105",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0106",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C1",
+          "POLICY-BRD-008:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0107",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0108",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0109",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0110",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0111",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0112",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0113",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C1",
+          "POLICY-RTL-001:2.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0114",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0115",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0116",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0117",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0118",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-003:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0119",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-002:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-002:2.0.0:C7",
+          "POLICY-BRD-002:2.0.0:C2",
+          "POLICY-BRD-002:2.0.0:C5",
+          "POLICY-BRD-002:2.0.0:C3",
+          "POLICY-BRD-002:2.0.0:C4",
+          "POLICY-BRD-002:2.0.0:C6",
+          "POLICY-BRD-002:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0120",
+        "relevant_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C1",
+          "POLICY-BRD-002:2.0.0:C2"
+        ]
+      }
+    ],
+    "50": [
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0081",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0082",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-004:1.0.0:C2",
+          "POLICY-RTL-004:1.0.0:C7",
+          "POLICY-RTL-004:1.0.0:C5",
+          "POLICY-RTL-004:1.0.0:C3",
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C4",
+          "POLICY-RTL-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0083",
+        "relevant_clause_ids": [
+          "POLICY-RTL-004:1.0.0:C6",
+          "POLICY-RTL-004:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-004:1.0.0:C2",
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-004:1.0.0:C5",
+          "POLICY-BRD-004:1.0.0:C3",
+          "POLICY-BRD-004:1.0.0:C4",
+          "POLICY-BRD-004:1.0.0:C6",
+          "POLICY-BRD-004:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0084",
+        "relevant_clause_ids": [
+          "POLICY-BRD-004:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0085",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C1",
+          "POLICY-RTL-005:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0086",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0087",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0088",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0089",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-005:1.0.0:C2",
+          "POLICY-BRD-005:1.0.0:C7",
+          "POLICY-BRD-005:1.0.0:C3",
+          "POLICY-BRD-005:1.0.0:C4",
+          "POLICY-BRD-005:1.0.0:C5",
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0090",
+        "relevant_clause_ids": [
+          "POLICY-BRD-005:1.0.0:C6",
+          "POLICY-BRD-005:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-005:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-005:1.0.0:C3",
+          "POLICY-RTL-005:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-005:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-005:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-005:1.0.0:C1",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0091",
+        "relevant_clause_ids": [
+          "POLICY-RTL-005:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0092",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C1",
+          "POLICY-BRD-006:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0093",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0094",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0095",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0096",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-006:1.0.0:C7",
+          "POLICY-RTL-006:1.0.0:C2",
+          "POLICY-RTL-006:1.0.0:C5",
+          "POLICY-RTL-006:1.0.0:C3",
+          "POLICY-RTL-006:1.0.0:C4",
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0097",
+        "relevant_clause_ids": [
+          "POLICY-RTL-006:1.0.0:C6",
+          "POLICY-RTL-006:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-006:1.0.0:C2",
+          "POLICY-BRD-006:1.0.0:C5",
+          "POLICY-BRD-006:1.0.0:C3",
+          "POLICY-BRD-006:1.0.0:C4",
+          "POLICY-BRD-006:1.0.0:C6",
+          "POLICY-BRD-006:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0098",
+        "relevant_clause_ids": [
+          "POLICY-BRD-006:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0099",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C1",
+          "POLICY-RTL-007:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0100",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0101",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0102",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0103",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-007:1.0.0:C2",
+          "POLICY-BRD-007:1.0.0:C7",
+          "POLICY-BRD-007:1.0.0:C3",
+          "POLICY-BRD-007:1.0.0:C5",
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C4",
+          "POLICY-BRD-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0104",
+        "relevant_clause_ids": [
+          "POLICY-BRD-007:1.0.0:C6",
+          "POLICY-BRD-007:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-007:1.0.0:C2",
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-007:1.0.0:C3",
+          "POLICY-RTL-007:1.0.0:C5",
+          "POLICY-RTL-007:1.0.0:C6",
+          "POLICY-RTL-007:1.0.0:C4",
+          "POLICY-RTL-007:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0105",
+        "relevant_clause_ids": [
+          "POLICY-RTL-007:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0106",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C1",
+          "POLICY-BRD-008:1.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0107",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0108",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0109",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0110",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-008:1.0.0:C2",
+          "POLICY-RTL-008:1.0.0:C7",
+          "POLICY-RTL-008:1.0.0:C5",
+          "POLICY-RTL-008:1.0.0:C3",
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C4",
+          "POLICY-RTL-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0111",
+        "relevant_clause_ids": [
+          "POLICY-RTL-008:1.0.0:C6",
+          "POLICY-RTL-008:1.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-008:1.0.0:C2",
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-008:1.0.0:C5",
+          "POLICY-BRD-008:1.0.0:C3",
+          "POLICY-BRD-008:1.0.0:C4",
+          "POLICY-BRD-008:1.0.0:C6",
+          "POLICY-BRD-008:1.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0112",
+        "relevant_clause_ids": [
+          "POLICY-BRD-008:1.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0113",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C1",
+          "POLICY-RTL-001:2.0.0:C2"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C4"
+        ],
+        "query_id": "RAG-Q-0114",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C3"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C5"
+        ],
+        "query_id": "RAG-Q-0115",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C6"
+        ],
+        "query_id": "RAG-Q-0116",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C5"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-002:2.0.0:C7"
+        ],
+        "query_id": "RAG-Q-0117",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C6"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-001:2.0.0:C7",
+          "POLICY-BRD-001:2.0.0:C2",
+          "POLICY-BRD-001:2.0.0:C5",
+          "POLICY-BRD-001:2.0.0:C3",
+          "POLICY-BRD-001:2.0.0:C4",
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C1"
+        ],
+        "query_id": "RAG-Q-0118",
+        "relevant_clause_ids": [
+          "POLICY-BRD-001:2.0.0:C6",
+          "POLICY-BRD-001:2.0.0:C7"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-001:2.0.0:C2",
+          "POLICY-RTL-001:2.0.0:C5",
+          "POLICY-RTL-001:2.0.0:C3",
+          "POLICY-RTL-001:2.0.0:C4",
+          "POLICY-RTL-001:2.0.0:C6",
+          "POLICY-RTL-001:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-RTL-003:2.0.0:C2"
+        ],
+        "query_id": "RAG-Q-0119",
+        "relevant_clause_ids": [
+          "POLICY-RTL-001:2.0.0:C7",
+          "POLICY-RTL-002:2.0.0:C1"
+        ]
+      },
+      {
+        "candidate_ids": [
+          "POLICY-BRD-002:2.0.0:C7",
+          "POLICY-BRD-002:2.0.0:C2",
+          "POLICY-BRD-002:2.0.0:C5",
+          "POLICY-BRD-002:2.0.0:C3",
+          "POLICY-BRD-002:2.0.0:C4",
+          "POLICY-BRD-002:2.0.0:C6",
+          "POLICY-BRD-002:2.0.0:C1"
+        ],
+        "hard_negative_clause_ids": [
+          "POLICY-BRD-003:2.0.0:C3"
+        ],
+        "query_id": "RAG-Q-0120",
+        "relevant_clause_ids": [
+          "POLICY-BRD-002:2.0.0:C1",
+          "POLICY-BRD-002:2.0.0:C2"
+        ]
+      }
+    ]
+  },
+  "retrieval_dataset_hash": "40d6072594328ed4b8d11d359a897e8141365665e6d99ec38b3b169c0ded1e68",
+  "split": "test"
+}

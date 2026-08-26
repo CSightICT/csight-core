@@ -13,8 +13,11 @@ htmlcov/
 # Virtual environments and local configuration
 .venv/
 .venv-embedding/
+.venv-reranker/
 .embedding-service.pid
 .embedding-service.log
+.reranker-service.pid
+.reranker-service.log
 .env
 .env.*
 !.env.example

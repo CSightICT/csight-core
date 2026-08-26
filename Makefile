@@ -8,12 +8,17 @@ COMPOSE_CMD := $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
 EMBEDDING_PORT ?= 8091
 EMBEDDING_BASE_URL ?= http://127.0.0.1:$(EMBEDDING_PORT)
 EMBEDDING_PID_FILE ?= .embedding-service.pid
+RERANKER_PORT ?= 8092
+RERANKER_BASE_URL ?= http://127.0.0.1:$(RERANKER_PORT)
+RERANKER_PID_FILE ?= .reranker-service.pid
+RERANKER_DOWNLOAD_SECONDS ?= 0
+RERANKER_COLD_LOAD_SECONDS ?= 0
 POLICY_TENANT ?= csight-demo-brand
 POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search
 
 help:
 	@echo "CSight Core commands"
@@ -50,6 +55,12 @@ help:
 	@echo "  make list-policy-indexes  List versioned policy indexes"
 	@echo "  make evaluate-policy-{lexical,dense,hybrid,retrieval}  Verify locked results"
 	@echo "  make smoke-policy-search  Run two-tenant authenticated retrieval smoke"
+	@echo "  make analyze-policy-candidates  Measure/freeze Dev candidate K then diagnose Test once"
+	@echo "  make start-reranker / stop-reranker / health-reranker"
+	@echo "  make qualify-policy-reranker  Measure the running pinned reranker"
+	@echo "  make activate-policy-reranker-profile  Persist the locked ACTIVE execution profile"
+	@echo "  make evaluate-policy-reranker-{dev,test}  Run the locked reranker evaluation"
+	@echo "  make smoke-policy-reranked-search  Run two-tenant HYBRID_RERANKED smoke"
 
 up:
 	$(COMPOSE_CMD) up --build --detach --wait
@@ -73,13 +84,13 @@ lint:
 	$(UV) run ruff check .
 
 format-check:
-	$(UV) run ruff format --check app tests alembic scripts infra/embedding
+	$(UV) run ruff format --check app tests alembic scripts infra
 
 typecheck:
 	$(UV) run pyright
 
 test:
-	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision and not external_embedding"
+	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision and not external_embedding and not external_reranker"
 
 test-integration:
 	RUN_CORE_INTEGRATION=1 $(UV) run pytest -q -m integration
@@ -100,6 +111,9 @@ test-external-vision:
 
 test-external-embedding:
 	RUN_EXTERNAL_EMBEDDING_TESTS=1 EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run pytest -q -m external_embedding
+
+test-external-reranker:
+	RUN_EXTERNAL_RERANKER_TESTS=1 RERANKER_BASE_URL=$(RERANKER_BASE_URL) $(UV) run pytest -q -m external_reranker
 
 smoke-analysis:
 	$(UV) run python scripts/smoke_analysis.py --env-file $(ENV_FILE)
@@ -165,3 +179,35 @@ evaluate-policy-retrieval:
 
 smoke-policy-search:
 	$(UV) run python scripts/smoke_policy_search.py
+
+analyze-policy-candidates:
+	$(UV) run python scripts/analyze_policy_candidates.py --split dev --embedding-base-url $(EMBEDDING_BASE_URL)
+	$(UV) run python scripts/analyze_policy_candidates.py --split test --embedding-base-url $(EMBEDDING_BASE_URL)
+
+evaluate-policy-candidate-upper-bound: analyze-policy-candidates
+
+start-reranker:
+	@test ! -f $(RERANKER_PID_FILE) || ! kill -0 $$(cat $(RERANKER_PID_FILE)) 2>/dev/null || { echo "Reranker service already running"; exit 1; }
+	@nohup env RERANKER_PORT=$(RERANKER_PORT) .venv-reranker/bin/uvicorn infra.reranker.server:app --host 127.0.0.1 --port $(RERANKER_PORT) --no-access-log > .reranker-service.log 2>&1 & echo $$! > $(RERANKER_PID_FILE)
+
+stop-reranker:
+	@if ! test -f $(RERANKER_PID_FILE); then echo "No Make-managed reranker service"; else pid=$$(cat $(RERANKER_PID_FILE)); case "$$pid" in ''|*[!0-9]*) echo "Invalid reranker PID file"; exit 1;; esac; if kill -0 $$pid 2>/dev/null; then kill $$pid; fi; rm -f $(RERANKER_PID_FILE); fi
+
+health-reranker:
+	@curl --fail --silent $(RERANKER_BASE_URL)/health
+	@curl --fail --silent $(RERANKER_BASE_URL)/v1/models
+
+qualify-policy-reranker:
+	.venv-reranker/bin/python -m infra.reranker.qualify_reranker --base-url $(RERANKER_BASE_URL) --model-download-seconds $(RERANKER_DOWNLOAD_SECONDS) --cached-cold-load-seconds $(RERANKER_COLD_LOAD_SECONDS)
+
+activate-policy-reranker-profile:
+	$(UV) run python scripts/activate_policy_reranker_profile.py --env-file $(ENV_FILE)
+
+evaluate-policy-reranker-dev:
+	$(UV) run python scripts/evaluate_policy_reranker.py --split dev --reranker-base-url $(RERANKER_BASE_URL)
+
+evaluate-policy-reranker-test:
+	$(UV) run python scripts/evaluate_policy_reranker.py --split test --reranker-base-url $(RERANKER_BASE_URL)
+
+smoke-policy-reranked-search:
+	$(UV) run python scripts/smoke_policy_reranked_search.py

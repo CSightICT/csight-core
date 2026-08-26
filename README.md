@@ -471,3 +471,22 @@ make report-reference-data
 실제 기업 정책이나 법률 자문이 아니며 Embedding, BM25, pgvector, Retrieval/RAG API와 최종
 정책 결정은 Sprint 4A에 포함되지 않는다. 상세 계약은 `docs/data/`와
 `docs/progress/SPRINT_4A_LLM_REFERENCE_DATA.md`를 참조한다.
+
+## Sprint 4C-1 policy reranker
+
+`HYBRID_RERANKED`는 기존 필터와 frozen HYBRID_RRF로 K=20 후보를 만든 뒤 pinned
+Qwen3-Reranker-0.6B로 순서만 바꾸고 최대 10개 조항을 반환한다. 모델은 별도
+`.venv-reranker`/loopback service에서 실행하며 Core DB를 알지 못한다. Provider 장애는 reranked
+mode만 503이고 기존 세 mode와 Core readiness는 유지된다.
+
+```text
+make start-reranker
+make health-reranker
+make test-external-reranker
+make smoke-policy-reranked-search
+make stop-reranker
+```
+
+Locked Test에서 MRR/nDCG/Recall 개선이 없어 판정은 `RERANKER_NO_MEASURABLE_GAIN`이다.
+이는 안전한 negative result이며 정책 결정이나 승인 확률을 뜻하지 않는다. 상세 내용은
+`docs/progress/SPRINT_4C1_POLICY_RERANKER.md`와 `docs/rag/`를 참조한다.

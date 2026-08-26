@@ -3,6 +3,7 @@
 - 감사 일자: 2026-08-26 (Asia/Seoul)
 - 감사 브랜치: `feature/sprint-4b-policy-retrieval`
 - 기준 Commit: `6f3a6671be66351aef431b12fe3d04c4a65ce277`
+- 결과 Commit: `4216028 feat: add hybrid policy retrieval baseline`
 - 승인된 Commit message: `feat: add hybrid policy retrieval baseline`
 - Push / PR: 수행하지 않음
 - 판정: `SPRINT_4B_CLOSEOUT=PASS`
@@ -108,10 +109,9 @@ Accepted ADR-0026~0038을 감사했다. 이 경로 차이는 현재 동작을 �
 - [x] Migration 세 경로와 drift 재검증
 - [x] Core 6개 서비스 healthy 복구
 - [x] `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage 확인
-- [ ] 승인된 Sprint 4B 파일만 로컬 Commit
-- [ ] Commit SHA를 다음 Sprint 상태 문서에 기록
-- [ ] Sprint 4C-1 전용 브랜치 생성
+- [x] 승인된 Sprint 4B 파일만 로컬 Commit
+- [x] Commit SHA `4216028`을 다음 Sprint 상태 문서에 기록
+- [x] `feature/sprint-4c1-policy-reranker` 전용 브랜치 생성
 
-다음 작업은 Sprint 4B Commit에서 `feature/sprint-4c1-policy-reranker`를 생성하고,
-reranker 구현 전에 frozen HYBRID_RRF 후보 K 10/20/30/50의 recall과 oracle upper bound를
-Dev에서 측정하는 것이다.
+다음 작업은 Sprint 4C-1의 negative result를 보존한 채 Sprint 4C-2에서 raw/deterministic/LLM
+query builder를 분리 평가하는 것이다. Sprint 4C-1 변경분은 별도 승인 전까지 미커밋 상태다.

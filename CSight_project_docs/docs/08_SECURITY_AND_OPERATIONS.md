@@ -246,3 +246,9 @@ secret/prompt/reasoning/decision field를 금지한다. Query Builder tenant fil
 Tenant/status/effective filter를 두 retriever의 candidate 계산 전에 적용한다. Raw query/clause/vector,
 JWT, DB URL은 로그하지 않는다. Embedding service는 loopback/private network, access log off, DB 접근
 없음으로 운영하고 tenant/internal ID를 model input에 보내지 않는다. 장애 시 mock fallback하지 않는다.
+
+## 14. Sprint 4C-1 Reranker Security
+
+Core filter 후 candidate만 private loopback service에 전달한다. Tenant/JWT/DB/case ID는 전달하지
+않고 raw query/passage/pair/score list를 로그하거나 영구 저장하지 않는다. Unknown/duplicate/missing
+candidate와 invalid score는 fail-closed이며 provider down은 reranked mode에만 503이다.

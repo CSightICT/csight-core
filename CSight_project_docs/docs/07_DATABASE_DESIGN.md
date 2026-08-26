@@ -370,3 +370,9 @@ Repository는 add/get만 제공한다. Policy Corpus는 아직 DB table로 적�
 index version 6개 table을 추가한다. Vector dimension은 migration type에 추측해 하드코딩하지 않고
 profile/row의 실제 dimension 1024로 검증한다. Tenant/effective/status index와 array GIN index,
 성공 ingestion identity 및 tenant/index당 one-active partial unique index를 둔다.
+
+## 13. Sprint 4C-1 Reranker Profiles
+
+`20260826_0007`은 immutable `policy_reranker_profiles`와 base index별
+`policy_retrieval_execution_profiles`를 추가한다. Model/instruction/template/token/K/batch/device/
+score semantics와 contract hash를 저장하고 partial unique index로 base index당 ACTIVE 하나를 둔다.

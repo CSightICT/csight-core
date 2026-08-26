@@ -22,6 +22,7 @@ FORBIDDEN_TECHNOLOGIES = {
     "pwdlib",
     "sentence_transformers",
     "sqlalchemy",
+    "transformers",
     "vllm",
 }
 APPLICATION_FORBIDDEN_TECHNOLOGIES = FORBIDDEN_TECHNOLOGIES
@@ -122,3 +123,21 @@ def test_private_embedding_service_has_no_core_database_dependency() -> None:
     assert not roots & {"sqlalchemy", "psycopg", "pgvector"}
     source = path.read_text(encoding="utf-8").lower()
     assert "database_url" not in source
+
+
+@pytest.mark.unit
+def test_private_reranker_service_has_no_core_database_dependency() -> None:
+    path = PROJECT_ROOT / "infra" / "reranker" / "server.py"
+    roots = imported_roots(path)
+    assert not roots & {"sqlalchemy", "psycopg", "pgvector"}
+    source = path.read_text(encoding="utf-8").lower()
+    assert "database_url" not in source
+    assert "tenant_id" not in source
+
+
+@pytest.mark.unit
+def test_application_does_not_construct_qwen_reranker_adapter() -> None:
+    path = PROJECT_ROOT / "app" / "application" / "policy_retrieval.py"
+    source = path.read_text(encoding="utf-8")
+    assert "RemoteQwenRerankerAdapter" not in source
+    assert "Qwen/Qwen3-Reranker" not in source

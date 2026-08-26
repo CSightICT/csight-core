@@ -80,6 +80,10 @@ class PolicySearchHitResponse(BaseModel):
     dense_rank: int | None
     dense_score: float | None
     fusion_score: float | None
+    candidate_rank: int | None
+    rerank_rank: int | None
+    rerank_score: float | None
+    reranker_profile: str | None
     effective_from: date
     effective_to: date | None
     document_status: str
@@ -123,6 +127,10 @@ class PolicySearchResponse(BaseModel):
                     dense_rank=hit.dense_rank,
                     dense_score=hit.dense_score,
                     fusion_score=hit.fusion_score,
+                    candidate_rank=hit.candidate_rank,
+                    rerank_rank=hit.rerank_rank,
+                    rerank_score=hit.rerank_score,
+                    reranker_profile=hit.reranker_profile,
                     effective_from=hit.clause.effective_from,
                     effective_to=hit.clause.effective_to,
                     document_status=hit.clause.document_status.value,

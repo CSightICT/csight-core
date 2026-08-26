@@ -1,0 +1,19 @@
+{
+  "base_hybrid_profile_hash": "7908ef5edaf2ca6197e4efe72d73e6601ef3bb71684711480d09074d182ead19",
+  "base_index_version": "1.0.0",
+  "base_retrieval_profile": "policy_retrieval_v1:1.0.0",
+  "candidate_k": 20,
+  "candidate_mode": "HYBRID_RRF",
+  "code_commit": "4216028e787d0cc8c163cdef4f72e8f3379d96bf",
+  "corpus_hash": "8e60f4ce869ba83288ac094ba09465481a9d2e431cfe45a7ac4de4114092c237",
+  "fallback": "NONE",
+  "final_k": 10,
+  "profile_hash": "56c5f968f3619caf780608e67c13a97d24378d4de45e0589c013281bb7938e53",
+  "profile_name": "policy_retrieval_execution",
+  "profile_version": "2.0.0",
+  "reranker_profile": "qwen3_policy_reranker:1.0.0",
+  "reranker_profile_hash": "dc7ee72a0d005109ea0074810e62ec68a65140a419d9e04bf2728d0e692464c8",
+  "retrieval_dataset_hash": "40d6072594328ed4b8d11d359a897e8141365665e6d99ec38b3b169c0ded1e68",
+  "status": "ACTIVE",
+  "test_used_for_selection": false
+}

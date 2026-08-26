@@ -502,3 +502,7 @@ system missing/action consistency와 completeness rule version을 명시한다. 
 Query 2–2000자, top_k 1–20, mode/filter allowlist를 검증한다. Tenant는 JWT principal에서만 오며
 response는 clause, version/effective metadata와 rank/score만 포함한다. Provider/index 장애는 각각
 `503 EMBEDDING_PROVIDER_UNAVAILABLE`/`POLICY_INDEX_UNAVAILABLE`이다.
+
+`HYBRID_RERANKED`는 같은 endpoint에 명시적으로 추가된다. Hit은 `candidate_rank`, `rerank_rank`,
+`rerank_score`, `reranker_profile`을 포함한다. Client는 candidate K/model/profile을 선택하지 못한다.
+Reranker 장애는 `503 RERANKER_PROVIDER_UNAVAILABLE`이며 silent fallback과 decision field는 없다.

@@ -51,6 +51,7 @@ markers = [
     "external_gpu: tests requiring an explicitly configured GPU provider",
     "external_vision: tests requiring an explicitly configured external Vision service",
     "external_embedding: tests requiring an explicitly configured embedding service",
+    "external_reranker: tests requiring an explicitly configured reranker service",
 ]
 
 [tool.ruff]

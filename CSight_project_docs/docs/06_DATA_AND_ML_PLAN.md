@@ -318,3 +318,9 @@ hash로 관리한다. Policy Corpus는 2 tenant/24 document/168 clause이며 Cla
 Exact BM25는 dev에서 k1 1.2/b 0.75, weighted RRF는 k 20/lexical 1.5/dense 0.5로 freeze했다.
 Qwen3-Embedding-0.6B pinned revision의 1024-d normalized last-token vector를 사용하고 pgvector exact
 cosine부터 측정한다. Retrieval Test 40은 freeze 후 한 번만 실행했다.
+
+## 14. Sprint 4C-1 Reranker Baseline
+
+Candidate upper bound는 K 10/20/30/50을 먼저 측정하고 Dev로 K20/final10을 freeze했다. Pinned
+Qwen reranker의 official yes/no normalized pair score를 사용한다. Dev 80 뒤 Test 40은 한 번만
+평가했고 no measurable gain 결과를 보존한다. Query Builder/Generation 효과는 후속 Sprint다.

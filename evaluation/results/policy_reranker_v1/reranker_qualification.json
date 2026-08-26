@@ -1,0 +1,94 @@
+{
+  "cached_cold_load_seconds": 3.5984034158755094,
+  "environment": {
+    "device": "mps",
+    "mac_model": "Mac16,10",
+    "macos": "26.5.2",
+    "python": "3.12.13",
+    "pytorch": "2.13.0",
+    "transformers": "5.15.1",
+    "unified_memory_bytes": 34359738368
+  },
+  "limitations": [
+    "Synthetic policy corpus and queries only",
+    "Concurrency 2 is serialized by the model lock",
+    "Dev/Test ranking quality shows no measurable gain over HYBRID_RRF"
+  ],
+  "memory": {
+    "device": "mps",
+    "device_allocated_bytes": 1191553536,
+    "device_driver_allocated_bytes": 5623398400,
+    "model_loaded": true,
+    "process_rss_bytes": 646791168,
+    "status": "ok"
+  },
+  "model": {
+    "architecture": "Qwen3ForCausalLM",
+    "artifact": "Qwen/Qwen3-Reranker-0.6B",
+    "device": "mps",
+    "id": "csight-qwen3-reranker-0.6b",
+    "max_batch_size": 8,
+    "max_pair_tokens": 2048,
+    "padding_side": "left",
+    "profile_version": "1.0.0",
+    "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+    "score_range": [
+      0.0,
+      1.0
+    ],
+    "score_semantics": "normalized yes-vs-no pairwise relevance score"
+  },
+  "model_download_seconds": 27.69,
+  "performance": {
+    "candidate_latency": {
+      "10": {
+        "p50_ms": 1181.4612499438226,
+        "p95_ms": 1239.3217501230538
+      },
+      "20": {
+        "p50_ms": 2361.926333978772,
+        "p95_ms": 2375.398959033191
+      },
+      "30": {
+        "p50_ms": 3552.9026249423623,
+        "p95_ms": 3559.477499919012
+      },
+      "50": {
+        "p50_ms": 5998.9551671314985,
+        "p95_ms": 6031.806583050638
+      }
+    },
+    "concurrency_1_candidate_10_wall_ms": 1185.9098330605775,
+    "concurrency_2_provider_latency_ms": [
+      2358.379832934588,
+      1179.9790421500802
+    ],
+    "concurrency_2_two_candidate_10_wall_ms": 2364.2321669030935,
+    "concurrency_limit": 1,
+    "configured_batch_size": 8,
+    "pair_score_p50_ms": 150.58224997483194,
+    "pair_score_p95_ms": 155.42162512429059
+  },
+  "qualification": "QWEN3_RERANKER_QUALIFIED_WITH_LIMITATIONS",
+  "sample_scores": [
+    {
+      "candidate_id": "POLICY-BRD-001:1.0.0:C2",
+      "rerank_score": 0.8933094143867493
+    },
+    {
+      "candidate_id": "POLICY-BRD-001:1.0.0:C1",
+      "rerank_score": 0.014063626527786255
+    }
+  ],
+  "token_report": {
+    "maximum": 189,
+    "minimum": 172,
+    "p50": 178.0,
+    "p95": 187,
+    "policy": "reject pair above versioned max_pair_tokens; no silent truncation",
+    "truncated_clause_ids": [],
+    "truncated_query_ids": [],
+    "truncation_count": 0
+  },
+  "warmup_ms": 350.37891613319516
+}

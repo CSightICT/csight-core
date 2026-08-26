@@ -239,6 +239,13 @@ class Settings(BaseSettings):
         le=300.0,
         validation_alias="EMBEDDING_TIMEOUT_SECONDS",
     )
+    reranker_base_url: AnyHttpUrl | None = Field(default=None, validation_alias="RERANKER_BASE_URL")
+    reranker_timeout_seconds: float = Field(
+        default=120.0,
+        gt=0.0,
+        le=900.0,
+        validation_alias="RERANKER_TIMEOUT_SECONDS",
+    )
 
     readiness_timeout_seconds: float = Field(
         default=2.0,

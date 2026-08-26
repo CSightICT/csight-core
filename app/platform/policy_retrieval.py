@@ -50,6 +50,7 @@ class RetrievalMode(StrEnum):
     LEXICAL = "LEXICAL"
     DENSE = "DENSE"
     HYBRID = "HYBRID"
+    HYBRID_RERANKED = "HYBRID_RERANKED"
 
 
 class PolicyIngestionStatus(StrEnum):
@@ -108,7 +109,9 @@ class PolicySearchQuery(_StrictModel):
     query: str = Field(min_length=2, max_length=2000)
     as_of_date: date
     mode: RetrievalMode = RetrievalMode.HYBRID
-    top_k: int = Field(default=10, ge=1, le=20)
+    # Internal evaluation may inspect a larger candidate pool. The public HTTP
+    # contract keeps its independent top_k <= 20 boundary.
+    top_k: int = Field(default=10, ge=1, le=50)
     filters: PolicySearchFilters = Field(default_factory=PolicySearchFilters)
 
     @property
@@ -151,10 +154,14 @@ class PolicySearchHit(_StrictModel):
     dense_score: float | None = None
     fusion_rank: int | None = None
     fusion_score: float | None = None
+    candidate_rank: int | None = None
+    rerank_rank: int | None = None
+    rerank_score: float | None = None
+    reranker_profile: str | None = None
 
     @property
     def rank(self) -> int:
-        return self.fusion_rank or self.lexical_rank or self.dense_rank or 0
+        return self.rerank_rank or self.fusion_rank or self.lexical_rank or self.dense_rank or 0
 
 
 class LexicalProfile(_StrictModel):

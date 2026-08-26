@@ -132,6 +132,7 @@ POLICY_CLAUSE_TYPES = (
 )
 POLICY_INGESTION_STATUSES = ("PENDING", "RUNNING", "SUCCEEDED", "FAILED")
 POLICY_INDEX_STATUSES = ("BUILDING", "ACTIVE", "FAILED", "RETIRED")
+POLICY_EXECUTION_PROFILE_STATUSES = ("ACTIVE", "RETIRED")
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -1596,6 +1597,103 @@ class PolicyIndexVersionModel(CreatedAtMixin, Base):
     retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PolicyRerankerProfileModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_reranker_profiles"
+    __table_args__ = (
+        UniqueConstraint(
+            "profile_name", "profile_version", name="uq_policy_reranker_profiles_version"
+        ),
+        CheckConstraint(
+            "max_query_tokens > 0 AND max_document_tokens > 0 AND max_pair_tokens > 0",
+            name="token_limits_positive",
+        ),
+        CheckConstraint(
+            "max_query_tokens + max_document_tokens <= max_pair_tokens",
+            name="token_budgets_fit",
+        ),
+        CheckConstraint(
+            "candidate_k > 0 AND candidate_k <= 50 AND final_k > 0 AND final_k <= candidate_k",
+            name="ranking_limits_valid",
+        ),
+        CheckConstraint("batch_size > 0 AND batch_size <= 50", name="batch_size_valid"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_artifact: Mapped[str] = mapped_column(String(255), nullable=False)
+    model_revision: Mapped[str] = mapped_column(String(255), nullable=False)
+    instruction: Mapped[str] = mapped_column(Text, nullable=False)
+    instruction_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    query_template_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    query_template_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    query_template_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_template_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    document_template_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_template_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    max_query_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_document_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_pair_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    candidate_k: Mapped[int] = mapped_column(Integer, nullable=False)
+    final_k: Mapped[int] = mapped_column(Integer, nullable=False)
+    batch_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    device: Mapped[str] = mapped_column(String(32), nullable=False)
+    score_semantics: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class PolicyRetrievalExecutionProfileModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_retrieval_execution_profiles"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("base_index_version_id",),
+            ("policy_index_versions.id",),
+            name="fk_policy_retrieval_execution_profiles_base_index",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("reranker_profile_id",),
+            ("policy_reranker_profiles.id",),
+            name="fk_policy_retrieval_execution_profiles_reranker",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("candidate_mode = 'HYBRID_RRF'", name="candidate_mode_allowed"),
+        CheckConstraint(
+            "candidate_k > 0 AND candidate_k <= 50 AND final_k > 0 AND final_k <= candidate_k",
+            name="ranking_limits_valid",
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(POLICY_EXECUTION_PROFILE_STATUSES)})",
+            name="status_allowed",
+        ),
+        UniqueConstraint(
+            "base_index_version_id",
+            "profile_name",
+            "profile_version",
+            name="uq_policy_retrieval_execution_profiles_version",
+        ),
+        Index(
+            "uq_policy_retrieval_execution_profiles_one_active",
+            "base_index_version_id",
+            unique=True,
+            postgresql_where=text("status = 'ACTIVE'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    base_index_version_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    reranker_profile_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    candidate_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    candidate_k: Mapped[int] = mapped_column(Integer, nullable=False)
+    final_k: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
@@ -1621,4 +1719,6 @@ PERSISTENCE_MODELS = (
     PolicyEmbeddingProfileModel,
     PolicyClauseEmbeddingModel,
     PolicyIndexVersionModel,
+    PolicyRerankerProfileModel,
+    PolicyRetrievalExecutionProfileModel,
 )

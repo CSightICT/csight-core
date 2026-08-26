@@ -10,13 +10,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 4B Closeout — `SPRINT_4B_CLOSEOUT=PASS` |
-| 진행 중 작업 | 검증된 Sprint 4B 범위의 로컬 Commit 생성; Push·PR 금지 |
-| 마지막 갱신일 | 2026-08-26, Asia/Seoul |
+| 현재 완료 단계 | Sprint 4C-1 Closeout — `SPRINT_4C1_CLOSEOUT=PASS` |
+| 진행 중 작업 | 검증된 Sprint 4C-1 범위의 로컬 Commit 생성; Push·PR 금지 |
+| 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B Push·PR 없음 |
-| 로컬 Git | `feature/sprint-4b-policy-retrieval`, Base `6f3a667`, Closeout PASS·Commit 대기 |
-| 마지막 런타임 관측 | 2026-08-26, Core 6개 Healthy, Migration `0006`, Qwen MPS 재검증 |
+| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B/4C Push·PR 없음 |
+| 로컬 Git | `feature/sprint-4c1-policy-reranker`, Base `4216028`, Closeout PASS·Commit 대기 |
+| 마지막 런타임 관측 | 2026-08-27, Core 6개 Healthy, Migration `0007`, 외부 embedding/reranker MPS PASS |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -56,6 +56,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 4B Retrieval API | PASS | Principal tenant, 세 mode, metadata 선필터, provider-down 격리 |
 | Sprint 4B Locked Evaluation | PASS | Dev 80 freeze, Test 40 한 번, correctness 위반 0 |
 | Sprint 4B 독립 Closeout | PASS | P0/P1 0, 전체 회귀·실제 MPS·Migration·Docker 재통과 |
+| Sprint 4B 로컬 Commit | PASS | `4216028 feat: add hybrid policy retrieval baseline`, Push·PR 없음 |
+| Sprint 4C-1 Candidate Upper Bound | PASS | Dev로 K20/final10 선택, Test 진단 한 번, candidate recall 상한 0.9375 |
+| Sprint 4C-1 Qwen Reranker | QUALIFIED_WITH_LIMITATIONS | 고정 revision, MPS 실서빙, concurrency 1; CPU·실사용 분포 미검증 |
+| Sprint 4C-1 Reranked API | PASS | `HYBRID_RERANKED`, 두 tenant smoke, no fallback, provider-down 503 |
+| Sprint 4C-1 Locked Evaluation | NO_MEASURABLE_GAIN | Test Recall 동일, MRR 0.53833→0.51250, nDCG 0.59841→0.59802 |
+| Sprint 4C-1 Profile Persistence | PASS | Migration `0007`, reranker profile 1, ACTIVE execution profile 2 |
+| Sprint 4C-1 독립 Closeout | PASS | P0/P1 0, 전체 회귀·외부 모델·Migration·Docker 재통과 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -193,6 +200,25 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Qwen host-native qualification, external embedding Skip 0
 - [x] ADR-0026~0038, RAG guide 4개, model manifest, 설계 03~10, README 갱신
 - [x] 사용자 `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage
+
+## 5.5. Sprint 4C-1 완료 체크리스트
+
+- [x] Sprint 4B를 `4216028`로 로컬 Commit하고 전용 Branch 생성; Push·PR 없음
+- [x] Frozen HYBRID_RRF 후보 K 10/20/30/50와 oracle 상한을 Dev에서 측정
+- [x] Dev만으로 candidate K 20, final K 10 선택; Test 후보 진단은 한 번만 실행
+- [x] Qwen3-Reranker-0.6B artifact revision, serialization, score 의미와 runtime 고정
+- [x] Host-native MPS private service와 health/models/rerank endpoint 실제 검증
+- [x] Pair token 길이·truncation, cold/warm latency, K별 latency와 concurrency 측정
+- [x] Technology-neutral Port/Profile과 Remote·Mock Adapter, complete-set 검증
+- [x] 기존 세 mode 불변의 `HYBRID_RERANKED`, no fallback, provider-down 503
+- [x] Migration `20260826_0007`, immutable reranker/execution profile과 tenant resolution
+- [x] Dev 80 freeze 후 locked Test 40 한 번; Test 결과로 profile 재조정하지 않음
+- [x] Correctness 위반과 candidate mutation 0, Dev deterministic rerun 100%
+- [x] 실제 두 tenant reranked smoke와 기존 mode/provider-down 회귀
+- [x] ADR-0039~0048, architecture/evaluation guide, manifest, progress, README 동기화
+- [x] Ruff·Format·Pyright·Fast·대상별·Integration·External·Migration·Runtime Gate 통과
+- [x] `RERANKER_NO_MEASURABLE_GAIN`을 숨기지 않고 Sprint 4C-2 입력으로 보존
+- [x] Sprint 4C-1 Commit·Stage·Push·PR 없음, Kaputt 파일 미수정·미삭제·미Stage
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -367,6 +393,27 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-26 | Sprint 4B Runtime | PASS | 최신 image Core 6/6 Healthy, live/ready 200 |
 | 2026-08-26 | Embedding Make lifecycle 첫 점검 | FAIL | 도구 셸 종료가 background descendant를 정리해 다음 호출 health 연결 거부 |
 | 2026-08-26 | Embedding 전용 세션 재검증 | PASS | foreground 장기 세션에서 health/model/external embedding 1건 통과 |
+| 2026-08-26 | Sprint 4B Closeout Commit | PASS | `4216028 feat: add hybrid policy retrieval baseline`; Push·PR 없음 |
+| 2026-08-26 | Sprint 4C-1 Candidate Upper Bound | PASS | Dev K20 recall 0.9375, oracle MRR 1.0/nDCG 0.95164; Test 진단 1회 |
+| 2026-08-26 | Qwen3 Reranker Artifact | PASS | `Qwen/Qwen3-Reranker-0.6B` revision `e61197e…5473`, Transformers 5.15.1 |
+| 2026-08-26 | Qwen3 Reranker MPS Qualification | PASS_WITH_LIMITS | cold load 3.60s, K20 p50/p95 2.362/2.375s, concurrency limit 1 |
+| 2026-08-26 | Sprint 4C-1 Locked Evaluation | NO_MEASURABLE_GAIN | Test Recall@10 0.925→0.925, MRR 0.53833→0.51250, nDCG 0.59841→0.59802 |
+| 2026-08-26 | Sprint 4C-1 Correctness | PASS | tenant/version/effective/retired/duplicate/hard-negative/mutation 위반 0, Dev determinism 100% |
+| 2026-08-26 | Sprint 4C-1 Static | PASS | Ruff 0, Format 232 files, Pyright 0 errors/warnings |
+| 2026-08-26 | Sprint 4C-1 Fast Regression | PASS | 402 passed, 50 deselected, 31 warnings |
+| 2026-08-26 | Sprint 4C-1 대상별 Test | PASS | Unit 319, Architecture 8, Contract 69/2 deselected, E2E 6 |
+| 2026-08-26 | Sprint 4C-1 Integration | PASS | 42 passed, 5 external skipped, 405 deselected |
+| 2026-08-26 | Sprint 4C-1 External Models | PASS | Embedding 1/451 deselected, Reranker 1/451 deselected, 모두 MPS |
+| 2026-08-26 | Sprint 4C-1 Migration | PASS | empty/previous/round-trip to `0007`, 모든 경로 drift 0, 임시 DB 정리 |
+| 2026-08-26 | Sprint 4C-1 API/Runtime | PASS | 두 tenant reranked, 기존 6 mode, down 503/no fallback, Core ready 200·6 healthy |
+| 2026-08-27 | Sprint 4C-1 Closeout P1 | PASS | Format target의 reranker 누락 1건 수정, 전체 infra 234 files 확인 |
+| 2026-08-27 | Sprint 4C-1 Closeout Static | PASS | Ruff, Format 234, Pyright 0 |
+| 2026-08-27 | Sprint 4C-1 Closeout Regression | PASS | Fast 402/50 deselected, Unit 319, Architecture 8, Contract 69/2, E2E 6 |
+| 2026-08-27 | Sprint 4C-1 Closeout Integration | PASS | 42 passed, external GPU 5 skipped, 405 deselected |
+| 2026-08-27 | Sprint 4C-1 Closeout External | PASS | Embedding/Reranker 각 1 passed, 451 deselected, MPS |
+| 2026-08-27 | Sprint 4C-1 Closeout Evaluation | PASS | Dev 80 재계산 mismatch 0, Test 미호출, candidate mutation 0 |
+| 2026-08-27 | Sprint 4C-1 Closeout Migration | PASS | empty/previous/round-trip `0007`, drift 0, 임시 DB 3개 정리 |
+| 2026-08-27 | Sprint 4C-1 Closeout API | PASS | base mode 200, reranked down 503, ready 200, Core 6 healthy |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -415,6 +462,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   Grounded Explanation/Citation answer, Policy Engine과 승인·routing은 구현하지 않았다.
 - Mac MPS embedding은 qualified지만 서비스 요청은 lock으로 직렬화되며 concurrency 2와 장시간
   swap/thrashing은 측정하지 않았다. Production network/process supervisor는 후속 운영 범위다.
+- Qwen reranker는 Mac MPS에서 실제 qualification했지만 단일 process lock과 concurrency 1로
+  제한한다. CPU fallback, 장시간 안정성, 실제 사용자 query 분포, production supervisor는 미검증이다.
+- Locked Test에서 reranker는 Recall@10을 높이지 못했고 MRR/nDCG도 개선하지 못했다. 따라서
+  자동 활성화 확대나 파라미터 재튜닝을 하지 않고 `RERANKER_NO_MEASURABLE_GAIN`으로 보존한다.
+- 후보 K20 이후 recall 이득이 없고 candidate recall 0.9375가 현 corpus/query의 절대 상한이다.
+  Query Builder 평가와 corpus recall 개선을 reranker 재튜닝보다 먼저 수행해야 한다.
 
 ## 9. 다음 실행 항목
 
@@ -449,10 +502,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Sprint 4A 최종 Gate를 확정하고 미커밋 상태로 인계한다.
 - [x] Sprint 4B Policy ingestion→BM25→Qwen embedding→exact pgvector→RRF→locked evaluation을
   완료한다.
-- [ ] Sprint 4C는 frozen candidate baseline을 변경하지 않고 Qwen3-Reranker-0.6B profile,
-  candidate reranking과 locked evaluation부터 진행한다.
-- [ ] Reranker qualification 뒤에만 Policy Query Builder, citation pack, grounded explanation,
-  citation validation과 unsupported claim detection을 별도 계약으로 연결한다.
+- [x] Sprint 4C-1은 frozen candidate baseline을 변경하지 않고 Qwen3-Reranker-0.6B profile,
+  candidate reranking과 locked evaluation을 완료한다.
+- [ ] Sprint 4C-2에서 negative reranker 결과를 고정하고 raw/deterministic/LLM query builder를
+  동일 candidate/evaluation 계약으로 분리 비교한다.
+- [ ] Query Builder qualification 뒤에만 citation pack, grounded explanation, citation validation과
+  unsupported claim detection을 Sprint 4C-3 별도 계약으로 연결한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -726,3 +781,48 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 안전: 사용자 `kaputt_best_vision_architecture.md`는 미수정·미삭제·미Stage
 - 다음 작업: 승인된 Sprint 4B 범위만 `feat: add hybrid policy retrieval baseline`으로 로컬
   Commit하고 Push/PR 없이 Sprint 4C-1 브랜치를 생성
+
+### 2026-08-26 — Sprint 4C-1 Qwen Policy Reranker Qualification
+
+- Git: Sprint 4B를 `4216028 feat: add hybrid policy retrieval baseline`으로 로컬 Commit하고
+  `feature/sprint-4c1-policy-reranker` 생성; Sprint 4C-1 Commit·Stage·Push·PR 없음
+- Candidate: frozen HYBRID_RRF를 K10/20/30/50으로 분석해 Dev max recall의 최소 K20과 final10을
+  선택. Test 후보 진단은 한 번만 실행했고 K20 recall 0.9375, oracle nDCG 0.95164
+- Model: `Qwen/Qwen3-Reranker-0.6B` revision `e61197ed45024b0ed8a2d74b80b4d909f1255473`,
+  MPS private service, pair serialization 1.0.0, normalized yes/no score를 실제 검증
+- Qualification: token min/p50/p95/max 172/178/187/189, truncation 0, cold load 3.60초,
+  K20 p50/p95 2.362/2.375초. concurrency 2에서 tokenizer race를 수정했지만 처리 이득이 없어
+  운영 동시성은 1로 제한; `QWEN3_RERANKER_QUALIFIED_WITH_LIMITATIONS`
+- Architecture: 기술 독립 Port/Profile, Remote/Mock Adapter, full candidate allowlist와 응답 검증,
+  `HYBRID_RERANKED`, no fallback, provider-down 503, 기존 세 mode와 Core readiness 보존
+- Persistence: `20260826_0007`, immutable reranker profile과 tenant별 ACTIVE execution profile;
+  activation 2회가 profile 1/execution 2를 유지
+- Evaluation: Dev 80 freeze 뒤 locked Test 40 한 번. Test Hybrid→Reranked Recall@10
+  0.925→0.925, MRR 0.53833→0.51250, nDCG 0.59841→0.59802; 개선 17/악화 23
+- Correctness: cross-tenant/wrong-version/future/retired/duplicate/hard-negative/candidate mutation 0,
+  Dev deterministic rerun 100%; Test 재호출·재튜닝 없음
+- 검증: Ruff, Format 232, Pyright 0, Fast 402, Unit 319, Architecture 8, Contract 69,
+  E2E 6, Integration 42, External embedding/reranker 각 1, Migration 세 경로 drift 0,
+  두 tenant API와 Core 6개 Healthy
+- 판정: `RERANKER_NO_MEASURABLE_GAIN`. 다음 작업은 Sprint 4C-2에서 negative result를 보존하고
+  raw/deterministic/LLM query builder를 분리 평가하는 것
+- 안전: `kaputt_best_vision_architecture.md`는 미수정·미삭제·미Stage
+
+### 2026-08-27 — Sprint 4C-1 독립 Closeout 감사
+
+- 목표: Sprint 4C-1 전체 Diff를 candidate/oracle, model contract, API, DB, 외부 MPS와
+  locked evaluation 기준으로 독립 재감사하고 로컬 기준점 조건 확정
+- 발견·수정: `make format-check`가 `infra/reranker`를 검사하지 않던 P1 1건을 전체 `infra`로
+  확장; P0 0, 수정 후 P1 0
+- 검증: Ruff, Format 234, Pyright 0, Fast 402, Unit 319, Architecture 8, Contract 69,
+  E2E 6, Integration 42, External embedding/reranker 각 1
+- Evaluation: K20/final10, candidate recall 0.9375, mutation 0, Dev 80 재계산 mismatch 0,
+  Test 재호출 없음; `RERANKER_NO_MEASURABLE_GAIN` 유지
+- Failure record: 봉인된 Dev artifact를 생성 명령으로 덮어쓰려는 시도는 guard가 거부했고,
+  전용 verifier로 재현성을 확인. Make background model은 도구 셸 수명 때문에 종료돼 foreground
+  세션으로 재실행
+- Migration/Runtime: empty/previous/round-trip `0007`, drift 0, 임시 DB 정리, Core 6개 Healthy,
+  base mode 200/reranked provider-down 503/readiness 200
+- 안전: Push·PR 없음, `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage
+- 다음 작업: 승인된 Sprint 4C-1 범위만 `chore: qualify qwen3 policy reranker`로 로컬 Commit하고
+  `feature/sprint-4c2-policy-query-builder` Branch 생성

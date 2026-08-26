@@ -254,3 +254,10 @@ Unit은 tokenizer/BM25/vector/RRF/metric을, contract는 인증 API/provider 장
 integration은 ingestion idempotency/version conflict/filter/vector/index activation을 검증한다.
 실제 embedding은 `external_embedding` opt-in이다. Dev 80 tune 뒤 profile을 freeze했고 Test 40을 한
 번 실행했다. correctness rate 0/100% gate와 slice/latency를 함께 보존한다.
+
+## 12. Sprint 4C-1 Reranker Gate
+
+Unit은 candidate/oracle/profile/serialization/token/allowlist/metric을, contract는 provider status와
+malformed response를, API는 새 mode와 기존 mode 회귀를 검증한다. 실제 MPS는 opt-in
+`external_reranker`다. Dev를 freeze하고 Test는 한 번만 호출하며 candidate-set mutation과 모든
+scope/version/status 위반 0, Dev deterministic rerun 100%를 요구한다.

@@ -1,0 +1,39 @@
+project_name: csight-kaputt-dinov2
+run_name: dinov2-vits14-kaputt-fullframe-v2-1024
+dataset_root: /home/data/datasets/kaputt/extracted
+output_root: /home/data/csight-cv-runs
+model_name: facebook/dinov2-small
+
+seed: 42
+image_size: 1024
+batch_size: 8
+gradient_accumulation_steps: 1
+num_workers: 8
+epochs: 8
+learning_rate: 5.0e-6
+classifier_learning_rate: 1.0e-4
+linear_probe_learning_rate: 1.0e-3
+weight_decay: 0.05
+warmup_ratio: 0.05
+early_stopping_patience: 3
+gradient_checkpointing: false
+mixed_precision: bf16
+log_every_steps: 20
+
+train_augmentation:
+  resize_mode: full_frame
+  horizontal_flip: 0.5
+  vertical_flip: 0.5
+  auto_augment: rand-m9-mstd0.5-inc1
+
+wandb:
+  entity: null
+  tags:
+    - csight
+    - kaputt
+    - dinov2
+    - binary-defect-classification
+    - full-frame-resize
+    - optimizer-v2
+  log_model_artifact: false
+

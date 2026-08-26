@@ -135,7 +135,7 @@ evaluation_report.md
 
 - Pipeline: `product_defect_text_extraction` `1.0.0`
 - 실행 Stage: `TEXT_EXTRACTION`
-- Prompt Manifest: `product_defect_text_extraction` `1.0.0`
+- Prompt Manifest: `product_defect_text_extraction` `1.0.1` (Sprint 2.5 taxonomy·set guardrail)
 - Input/Output Schema Version: `1.0`
 - Provider: 결정적·Network-free Mock 또는 OpenAI-compatible vLLM Adapter
 - 재시도·복구 상태: Celery Retry가 아니라 PostgreSQL Run/Stage/Attempt와 미래 Outbox Event
@@ -148,6 +148,11 @@ Mock은 성공, Timeout, Transient/Permanent 실패, 잘못된 Schema, 잘못된
 Injection 입력을 결정적으로 재현한다. vLLM Adapter는 연결·읽기 Timeout, 입력·출력 상한,
 TLS 검증, 낮은 Temperature와 `response_format=json_schema`를 적용한다. 기본 검증은 외부 GPU를
 호출하지 않으며 실제 vLLM Smoke Test는 명시적인 `external_gpu` 실행으로 분리한다.
+
+Sprint 2.5 qualification은 `cyankiwi/Qwen3.8-27B-AWQ-INT4`의 고정 revision을 단일 RTX
+4090에서 text-only로 검증한다. 서버·요청 양쪽에서 Thinking을 끄고 100건 합성 Dataset으로
+Schema, Pydantic, 정확한 Source Quote, 분류, 누락 정보와 Injection 안전성을 측정한다.
+Community 양자화와 합성 평가 결과는 실제 고객 분포 성능으로 간주하지 않는다.
 
 ### 수행
 

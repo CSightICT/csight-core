@@ -88,6 +88,12 @@ vLLM Contract Test는 실제 Network 대신 통제된 HTTP Client를 주입한�
 연결은 `external_gpu` Marker와 별도 환경 설정을 요구하는 명시적 Smoke Test로만 수행하고,
 기본 `pytest`에서는 제외한다.
 
+Sprint 2.5 qualification은 100건 합성 Dataset(단일 40, 복수 20, 위치 모호 15, 요청 없음
+10, 결함 불명확 5, 장문·오탈자 5, Injection 5)을 사용한다. 안전 Gate는 Schema/Pydantic/
+Source Quote 100%, Forbidden Field/Injection 위반/Reasoning Leakage 0%다. 최소 20건을 사람이
+Spot-check하며, 분류 F1과 Latency는 합성 Baseline으로만 보고한다. 두 Cold Start, 20분
+Stability와 동시성 1·2 Profile을 별도 기록한다.
+
 ### E2E Test
 
 - Seed → 로그인 → Case 생성 → 이미지 업로드 → 목록·상세 → Signed URL → Object GET

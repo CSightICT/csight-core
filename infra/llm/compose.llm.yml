@@ -1,0 +1,61 @@
+name: csight-llm
+
+services:
+  qwen38:
+    image: vllm/vllm-openai:v0.26.0@sha256:ffb2d59b1c059a5bd8d781320c9f5189de8293693b7d95da54befddaa54abf52
+    init: true
+    runtime: nvidia
+    ipc: host
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      HF_HOME: /model-cache
+      # vLLM reads this directly; keeping it out of CLI args prevents ps/log exposure.
+      VLLM_API_KEY: ${LLM_API_KEY:?Set LLM_API_KEY in the private runtime env file}
+    entrypoint:
+      - vllm
+      - serve
+    command:
+      - cyankiwi/Qwen3.8-27B-AWQ-INT4
+      - --revision
+      - 63768c10df38c0395e12ef49edac1bd539eaeeea
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --served-model-name
+      - csight-qwen3.8-27b
+      - --language-model-only
+      - --max-model-len
+      - ${LLM_MAX_MODEL_LEN:-8192}
+      - --max-num-seqs
+      - ${LLM_MAX_NUM_SEQS:-1}
+      - --gpu-memory-utilization
+      - ${LLM_GPU_MEMORY_UTILIZATION:-0.95}
+      - --kv-cache-dtype
+      - ${LLM_KV_CACHE_DTYPE:-fp8}
+      - --enforce-eager
+      - --reasoning-parser
+      - qwen3
+      - --default-chat-template-kwargs
+      - '{"enable_thinking":false,"preserve_thinking":false}'
+    ports:
+      - ${LLM_BIND_ADDRESS:?Set a private Tailscale address}:${LLM_PORT:-18000}:8000
+    volumes:
+      - qwen38-model-cache:/model-cache
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - --show-error
+        - http://127.0.0.1:8000/health
+      interval: 15s
+      timeout: 5s
+      retries: 120
+      start_period: 20m
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+volumes:
+  qwen38-model-cache:

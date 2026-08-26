@@ -9,13 +9,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 2 — 독립 Closeout Gate 통과 |
-| 진행 중 작업 | 승인된 Sprint 2 로컬 Commit 후 별도 Sprint 2.5 Qwen3.8 실제 서빙 검증; Push·PR 금지 |
+| 현재 완료 단계 | Sprint 2.5 — Qwen3.8 실제 서빙 `QUALIFIED_WITH_LIMITATIONS` |
+| 진행 중 작업 | Sprint 2.5 로컬 Commit Gate와 인계 확정; Push·PR 금지 |
 | 마지막 갱신일 | 2026-08-26, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 2·2.5 변경 Push 금지 |
-| 로컬 Git | `feature/sprint-2-analysis-llm`, 독립 Closeout Gate 통과, 승인된 로컬 Commit 생성 단계 |
-| 마지막 런타임 관측 | 2026-08-26, Closeout 재빌드 후 Core 장기 서비스 6개 Healthy |
+| 로컬 Git | `feature/sprint-2-5-qwen38-serving`, Base `294cb5b`, 로컬 Commit Gate 단계 |
+| 마지막 런타임 관측 | 2026-08-26, Core 6개 Mock 기본값 Healthy; private Qwen Node Healthy |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -41,7 +41,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 2 Migration·Live | PASS | Head `20260826_0003`, 격리 왕복·Drift, 실제 RabbitMQ Mock Vertical Slice |
 | Sprint 2 복구·멱등성 | PASS | Replay/Conflict, Duplicate 1 Result, Lease Recovery·Fencing·Max Attempt 종결 |
 | Sprint 2 독립 Closeout | PASS | P0/P1 미해결 0, 정적·회귀·Migration·Docker·Live Gate 재통과 |
-| Sprint 2.5 Qwen3.8 실제 서빙 | PENDING | Sprint 2 로컬 Commit과 새 브랜치 후 GPU 환경·Artifact부터 검증 |
+| Sprint 2.5 Qwen3.8 실제 서빙 | QUALIFIED_WITH_LIMITATIONS | 4090 Cold Start 2회, 26분 안정성, 안전 Gate와 실제 Backend E2E 통과; Action/Missing 품질 제한 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -103,6 +103,24 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 독립 Closeout에서 P0/P1 미해결 0과 전체 Gate 재통과 확인
 - [x] 승인된 Sprint 2 로컬 Commit만 생성하고 Push·PR은 만들지 않음
 - [x] 미추적 Kaputt 문서를 수정·삭제·Stage하지 않고 보존
+
+## 5.1. Sprint 2.5 완료 체크리스트
+
+- [x] Sprint 2 Commit `294cb5b`에서 전용 Branch 생성, Push·PR 없음
+- [x] Qwen3.8 Artifact revision과 vLLM image digest 고정
+- [x] RTX 4090 환경·기존 Process·Disk·RAM·Private Network 감사
+- [x] Tailscale private bind와 `VLLM_API_KEY` 환경변수 인증; 노출 일회용 Key 즉시 회전
+- [x] Text-only, Vision modality 0, 서버·요청 non-thinking 이중 설정
+- [x] Cold Start 2회, `/v1/models`, 26분 Stability, OOM/Error/Restart 0
+- [x] 100건 합성 평가와 Prompt 1.0.1 개선 후 안전 Gate 전부 통과
+- [x] Human Spot-check 20건과 성능 Profile A–D, Peak VRAM 측정
+- [x] 실제 외부 GPU 5건 Skip 0, Backend E2E 성공 Run 10
+- [x] Model/Revision/Prompt DB Snapshot, Duplicate No-op, Timeout Retry·Max 확인
+- [x] Raw Prompt/Response/Reasoning Column 0, unsafe Outbox Payload 0
+- [x] 합성 Data·Queue·Orphan 0, Core Worker 기본 Mock과 6개 Health 복구
+- [x] README, 설계 03·05·06·08·09·10, ADR-0012, Manifest와 Progress 동기화
+- [x] 이 문서를 포함한 로컬 Commit `chore: qualify qwen3.8 27b serving on single 4090` 생성;
+  정확한 SHA는 `git log -1`과 최종 인계에서 확인
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -213,6 +231,20 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-26 | Sprint 2 `git diff --check` | PASS | Whitespace 오류 없음 |
 | 2026-08-26 | Sprint 2 Git 안전성 | PASS | Closeout 전 Commit·Push 0, 사용자 Kaputt 문서 수정·Stage·삭제 0 |
 | 2026-08-26 | Sprint 2 독립 Closeout | PASS | P0 0, P1 0; 정적·291 Fast·31 Integration·세 Migration·Docker·Live 재통과 |
+| 2026-08-26 | Sprint 2 Closeout Commit | PASS | `294cb5b`, 승인 범위 로컬 Commit; Push·PR 없음 |
+| 2026-08-26 | Qwen Artifact·Runtime | PASS | revision 고정, vLLM 0.26.0 digest, Transformers 5.14.1, CUDA 13.0 |
+| 2026-08-26 | Qwen Cold Start | PASS | 첫 Ready 8m06s, cache-hit Ready 97s, 동일 Profile 재현 |
+| 2026-08-26 | Qwen Stability | PASS | 26m19s, Restart·OOM·Error 0, Healthy |
+| 2026-08-26 | Qwen Quality Prompt 1.0.0 | FAIL | Pydantic 98%; multi-defect 중복 Enum 2건 재현 |
+| 2026-08-26 | Qwen Quality Prompt 1.0.1 | PASS | 100건 Schema/Pydantic/Quote 100%, forbidden/injection/reasoning 0 |
+| 2026-08-26 | Qwen Classification Baseline | LIMITATION | Issue F1 0.95, Action Accuracy 0.23, Missing F1 0.00 |
+| 2026-08-26 | Qwen Spot-check | PASS_WITH_LIMITS | 안전 20/20, Issue 19/20, Action 10/20, Missing 8/20 |
+| 2026-08-26 | Qwen Performance A–D | PASS | 30요청 성공, Timeout/OOM/Schema 실패 0; Peak 23,825 MiB |
+| 2026-08-26 | 실제 External vLLM | PASS | 5 passed, 322 deselected, Skip 0 |
+| 2026-08-26 | 실제 Qwen Backend E2E | PASS | 성공 Run/Result/Attempt 10/10/10, 고정 Metadata Snapshot |
+| 2026-08-26 | Qwen Duplicate·Timeout | PASS | 재전달 Result/Attempt 1/1; Timeout Retry 후 Attempt 2 Max 종결 |
+| 2026-08-26 | Sprint 2.5 정리·복구 | PASS | 합성 Case/Run 22 삭제, Queue/Orphan 0, Core 6개 Mock Healthy |
+| 2026-08-26 | Sprint 2.5 최종 회귀 | PASS | Ruff, Format 162, Pyright 0, Fast 291, Integration 31 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -229,8 +261,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   Retention·삭제 정책은 실제 데이터 반입 전에 결정해야 한다.
 - Refresh Token·Revocation·OIDC/SSO·PostgreSQL RLS와 Production MinIO Gateway,
   Secret Rotation, Edge 동시 업로드 제한은 후속 운영 범위다.
-- Closeout까지 실제 외부 vLLM 호출은 실행하지 않았다. Adapter와 다섯 합성 `external_gpu`
-  계약의 Skip은 PASS가 아니며 Sprint 2.5에서 고정 Qwen3.8 Artifact로 별도 검증한다.
+- Sprint 2.5에서 실제 Qwen Endpoint와 `external_gpu` 5건, Backend E2E 10건을 검증했다.
+  다만 합성 기준 Action Accuracy 0.23과 Missing Information F1 0.00이므로 자동 Workflow
+  결정에 사용하지 않고 Policy·Human Review 경계를 유지한다.
 - Vision, Text/Vision Alignment, Policy·Routing·Review·Report·RAG는 구현하지 않았고
   Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
 - Sprint 2는 DLQ, 운영자 수동 재처리·취소 API, SSE, Provider 자동 선택·Fallback과 Prompt
@@ -238,6 +271,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   보안·재현성 경계다.
 - 실제 제품 측 결정인 결함 Taxonomy, 정책 표현, 개인정보 보존 기간, 인증·Tenant 범위는
   다음 Sprint의 ADR 대상으로 남아 있다.
+- Qwen Node는 Peak VRAM 23,825 MiB로 24GB 여유가 매우 작고 FP8 KV cache를 사용한다.
+  Context·동시성 변경과 실제 고객 분포 평가는 별도 requalification 대상이다.
+- Community quantization의 calibration dataset은 Model Card에 기록되지 않아 제한사항이다.
 - Sprint 2는 독립 Closeout Gate를 통과했으며 승인된 로컬 Commit만 생성한다. 원격 Push와
   PR은 금지한다.
 - 루트의 미추적 `kaputt_best_vision_architecture.md`는 Sprint 2와 무관한 사용자 작업물이다.
@@ -248,8 +284,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Sprint 1 Diff를 독립 Closeout 감사하고 로컬 기준점 Commit을 생성한다.
 - [x] Sprint 2 Append-only Analysis·Outbox·LLM Vertical Slice와 최종 검증을 완료한다.
 - [x] Sprint 2 Diff를 독립 감사하고 승인된 로컬 Closeout Commit만 생성한다.
-- [ ] 깨끗한 Sprint 2 Commit에서 `feature/sprint-2-5-qwen38-serving` 브랜치를 만든다.
-- [ ] 고정 Qwen3.8 Artifact Revision과 GPU/vLLM 환경을 확인하고 실제 서빙 Gate를 실행한다.
+- [x] 깨끗한 Sprint 2 Commit에서 `feature/sprint-2-5-qwen38-serving` 브랜치를 만든다.
+- [x] 고정 Qwen3.8 Artifact Revision과 GPU/vLLM 환경의 실제 서빙 Gate를 실행한다.
 - [ ] 원격 작업 전 거버넌스 PR #2 병합 또는 Sprint 1 Branch 재정렬 순서를 결정한다.
 - [ ] PR #2에 유효한 사람 리뷰와 승인을 확보한다.
 - [ ] GitHub Private 저장소 Branch protection을 지원하는 플랜 적용 여부를 결정한다.
@@ -257,8 +293,10 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [ ] 플랜·리뷰어 결정 후 Issue #1의 목표 규칙을 `main`과 `develop`에 적용한다.
 - [ ] 정책에 맞는 유효 승인 또는 명시적인 Bootstrap 예외 결정 후 PR #2를 `develop`에
   병합한다.
-- [ ] 외부 GPU Endpoint를 명시적으로 구성한 경우에만 다섯 `external_gpu` 합성 계약을
-  실행하고 실제 Model Revision을 검증 원장에 추가한다.
+- [x] 다섯 `external_gpu` 합성 계약을 Skip 0으로 실행하고 Model Revision을 원장에 추가한다.
+- [x] Sprint 2.5 로컬 Commit은 `git log -1`로 확인하고 Push·PR 없이 인계한다.
+- [ ] 실제 고객 Data 반입 전에 개인정보·Retention 승인과 Action/Missing 품질 Dataset을
+  별도 설계하고 Human Review Gate를 유지한다.
 - [ ] 별도 Sprint 3 지시 후 Vision Stage와 Text/Vision Alignment·Partial Failure 경계를
   ADR로 먼저 고정하고 기존 Append-only Run·Attempt·Outbox를 확장한다.
 - [ ] Evidence Reconciliation·Orphan Cleanup·업로드 Idempotency와 Retention 정책을
@@ -374,3 +412,26 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Git: 승인된 Sprint 2 범위만 로컬 Commit하고 Push·PR 금지; Kaputt 사용자 파일은
   수정·삭제·Stage하지 않음
 - 다음 작업: 깨끗한 Commit에서 Sprint 2.5 브랜치를 만들고 고정 Qwen3.8 실제 서빙 검증
+
+### 2026-08-26 — Sprint 2.5 Qwen3.8 실제 서빙 Qualification
+
+- 목표: 고정 `cyankiwi/Qwen3.8-27B-AWQ-INT4` revision을 단일 RTX 4090에서 private,
+  text-only, non-thinking strict extraction으로 실제 검증
+- 환경: vLLM 0.26.0 image digest, Transformers 5.14.1, CUDA 13.0, Driver 580.173.02,
+  max length 8192, sequence 1, FP8 KV, eager, CPU Offload 없음
+- 보안: private Tailscale bind와 인증. Process audit에서 초기 CLI API Key 노출을 발견해
+  일회용 Key를 즉시 회전하고 `VLLM_API_KEY` 환경변수 주입으로 수정·재검증
+- 재현성: `/v1/models` 일치, Cold Start 2회, cache-hit API Ready 97초, 26m19s 동안
+  Restart·OOM·Error 0
+- 품질: Prompt 1.0.0의 중복 Enum 2건을 숨기지 않고 재현. vLLM이 `uniqueItems`를 거부함을
+  확인한 뒤 Taxonomy·set 지시의 Prompt 1.0.1로 version bump; 100건 안전 Gate 전부 통과
+- 제한: Issue F1 0.95이나 Action Accuracy 0.23, Missing F1 0.00. Spot-check 안전 20/20,
+  Issue 19/20, Action 10/20, Missing 8/20이라 Human Review 필수
+- 성능: Profile A p50/p95 1.470/1.558초, TTFT 0.089/0.176초, 36.36 token/s;
+  Peak VRAM 23,825 MiB. 동시성 2는 안정적이지만 latency가 약 2배
+- Integration: 실제 External 5/5, Backend E2E 성공 10/10, Result·Attempt 각 10,
+  Duplicate No-op 1/1, Timeout Retry 2 Attempt, Raw Column·unsafe Outbox 0
+- 정리: 합성 Case/Run 22와 관련 Row 정리, Queue·Orphan 0, Core 6개 기본 Mock Healthy
+- 검증: Ruff, Format 162, Pyright 0, Fast 291, Core Integration 31, 실제 External 5
+- 판정: `QUALIFIED_WITH_LIMITATIONS`; Push·PR 없음. 다음 작업은 로컬 Commit SHA 기록과
+  Sprint 3 Vision 계약 준비

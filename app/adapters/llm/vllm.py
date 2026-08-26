@@ -218,6 +218,10 @@ class VLLMLLMProvider:
             "temperature": self._temperature,
             "max_tokens": self._max_output_tokens,
             "stream": False,
+            "chat_template_kwargs": {
+                "enable_thinking": False,
+                "preserve_thinking": False,
+            },
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {

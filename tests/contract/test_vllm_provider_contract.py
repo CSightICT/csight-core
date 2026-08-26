@@ -243,6 +243,10 @@ def test_vllm_posts_strict_openai_payload_with_only_allowlisted_input() -> None:
     assert payload["temperature"] == 0.1
     assert payload["max_tokens"] == 1536
     assert payload["stream"] is False
+    assert payload["chat_template_kwargs"] == {
+        "enable_thinking": False,
+        "preserve_thinking": False,
+    }
     response_format = payload["response_format"]
     assert isinstance(response_format, dict)
     assert response_format["type"] == "json_schema"

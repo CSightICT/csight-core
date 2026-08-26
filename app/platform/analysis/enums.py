@@ -7,7 +7,7 @@ from typing import Final
 from app.platform.analysis.errors import InvalidAnalysisTransitionError
 
 TEXT_EXTRACTION_PIPELINE_VERSION: Final = "1.0.0"
-TEXT_EXTRACTION_PROMPT_VERSION: Final = "1.0.0"
+TEXT_EXTRACTION_PROMPT_VERSION: Final = "1.0.1"
 TEXT_EXTRACTION_INPUT_SCHEMA_VERSION: Final = "1.0"
 TEXT_EXTRACTION_OUTPUT_SCHEMA_VERSION: Final = "1.0"
 

@@ -167,7 +167,7 @@ def run(*, base_url: str, reviewer_password: str, timeout_seconds: float) -> Non
     if not isinstance(extraction, dict) or not isinstance(extraction.get("result"), dict):
         raise SmokeFailure("the successful run omitted its structured extraction result")
 
-    print(f"Mock analysis smoke passed: case={case_id}, run={run_id}, status=SUCCEEDED")
+    print(f"Analysis smoke passed: case={case_id}, run={run_id}, status=SUCCEEDED")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -195,7 +195,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             timeout_seconds=arguments.timeout_seconds,
         )
     except (OSError, ValueError, SmokeFailure) as error:
-        print(f"Mock analysis smoke failed: {error}", file=sys.stderr)
+        print(f"Analysis smoke failed: {error}", file=sys.stderr)
         return 1
     return 0
 

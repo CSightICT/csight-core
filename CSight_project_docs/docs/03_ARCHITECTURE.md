@@ -70,8 +70,15 @@ flowchart TB
 
 - vLLM
 - Sprint 2의 Strict JSON 문의 구조화
+- Sprint 2.5 기준 `csight-qwen3.8-27b`: 고정 Artifact revision, text-only,
+  non-thinking, private Tailscale + API 인증
 - 검색된 정책 문서 설명과 상담원용 검토 보고서 생성은 후속 범위
 - DB 직접 접근 금지
+
+Inference Node 장애는 Core readiness와 분리한다. Worker만 사설 OpenAI-compatible Endpoint를
+호출하며 검증된 구조화 결과와 실행 Metadata만 Core DB에 기록한다. 실제 Qwen Artifact의
+multimodal architecture는 `--language-model-only`로 제한하고 Vision Stage 계약과 혼합하지
+않는다.
 
 ### Vision Inference Node
 

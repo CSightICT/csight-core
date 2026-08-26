@@ -333,6 +333,11 @@ Pipeline Enum은 `422 VALIDATION_ERROR`, 지원 Pipeline의 미지원 Version은
 
 ## 8. Sprint 2 LLM 구조화 결과
 
+Sprint 2.5의 실제 Qwen 배포도 이 계약을 변경하지 않는다. 요청은
+`enable_thinking=false`, `preserve_thinking=false`, Temperature 0과 strict JSON Schema를
+명시하며, Service Model Name `csight-qwen3.8-27b`와 immutable Artifact revision을 실행
+Metadata로 저장한다. Reasoning Field, Schema 밖 Field와 JSON 앞뒤 자연어는 계약 위반이다.
+
 ```json
 {
   "schema_version": "1.0",

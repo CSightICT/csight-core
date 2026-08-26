@@ -261,10 +261,20 @@ Outbox Wake-up을 남기며, Claim Token이 바뀐 늦은 Worker는 결과를 Co
 ```bash
 export RUN_EXTERNAL_GPU_TESTS=1
 export LLM_PROVIDER=vllm
-export LLM_BASE_URL='https://your-vllm-host.example'
-export LLM_MODEL_ID='your-model-id'
+export LLM_BASE_URL='http://private-tailscale-host:18000/v1'
+export LLM_MODEL_ID='csight-qwen3.8-27b'
+export LLM_MODEL_VERSION='Qwen3.8-27B'
+export LLM_MODEL_REVISION='63768c10df38c0395e12ef49edac1bd539eaeeea'
+# Set LLM_API_KEY from the private runtime secret without printing it.
 make test-external-llm
 ```
+
+Sprint 2.5의 재현 가능한 GPU Node 자산은 [`infra/llm`](infra/llm/README.md), 고정 Artifact와
+런타임 기록은
+[`qwen38-27b-awq-int4.md`](docs/model-manifests/qwen38-27b-awq-int4.md)에 있습니다. Endpoint는
+Tailscale private address에만 bind하고 인증을 필수로 하며, Core readiness에는 포함하지
+않습니다. Qwen은 text-only, non-thinking 구조화 추출에만 사용하고 Vision 결함 분석 대체재로
+사용하지 않습니다.
 
 ```bash
 unset CSIGHT_ACCESS_TOKEN CSIGHT_CASE_ID CSIGHT_ANALYSIS_KEY CSIGHT_ANALYSIS_RUN_ID

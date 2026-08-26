@@ -175,7 +175,7 @@ def test_prompt_manifest_hash_detects_changes_and_renders_untrusted_json() -> No
     )
 
     assert prompt.name == AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION.value
-    assert prompt.version == "1.0.0"
+    assert prompt.version == "1.0.1"
     assert prompt.input_schema_version == "1.0"
     assert prompt.output_schema_version == "1.0"
     assert "{input_json}" not in rendered

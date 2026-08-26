@@ -79,6 +79,8 @@
 - vLLM, Vision, MinIO, DB Credential을 분리한다.
 - 선택적 vLLM API Key는 Secret 타입 설정에서만 읽고 Header 값이나 Base URL Credential을
   로그에 남기지 않는다. TLS 검증은 기본 활성화한다.
+- Private vLLM Node에서는 API Key를 CLI 인자가 아닌 `VLLM_API_KEY` 환경변수로 주입해
+  process listing과 시작 로그에 나타나지 않게 한다. 키가 출력된 경우 즉시 폐기·회전한다.
 - PoC 이후 Secret Manager 또는 암호화된 CI Secret을 사용한다.
 
 ## 5. 파일 보안
@@ -210,6 +212,10 @@ Sprint 2 Local Runtime은 API, 별도 Outbox Dispatcher, Celery Worker, RabbitMQ
 사용한다. 기본 Provider는 Network-free Mock으로 둘 수 있고 `LLM_PROVIDER=vllm`일 때만
 설정된 사설 vLLM Endpoint를 호출한다. Vision/Alignment/Policy/Routing/Review/Report/RAG
 Runtime은 아직 배포 대상이 아니다.
+
+Sprint 2.5 Qwen Node는 host publish를 Tailscale address 하나로 제한하고 인증을 필수로 한다.
+Container 내부 `0.0.0.0` listen은 private host publish와 함께만 허용한다. 기존 listener,
+다른 Container와 GPU process를 임의로 종료하지 않는다.
 
 Local Compose의 Published Port는 모두 `127.0.0.1`에만 Bind한다. 이것은 개발 편의 설정일
 뿐 Production 접근 통제를 대신하지 않으며, Production에서는 HTTPS, Secret Store,

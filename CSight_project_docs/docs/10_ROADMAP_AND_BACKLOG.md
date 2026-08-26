@@ -62,10 +62,22 @@
 - [x] 활성 Lease 중복 Delivery의 Lease-expiry Recovery Outbox와 Stale Token Fencing
 - [x] 정확히 여섯 ID만 전달하는 Celery/RabbitMQ Task
 - [x] Strict LLM 구조화 Schema, Exact Source Quote와 입·출력 상한
-- [x] Code Prompt Manifest `1.0.0`, Canonical SHA-256 Content Hash와 Injection-safe Rendering
+- [x] Code Prompt Manifest `1.0.1`, Canonical SHA-256 Content Hash, Injection-safe Rendering과
+  Taxonomy·중복 방지 지시
 - [x] 결정적 Mock과 OpenAI-compatible vLLM Adapter
 - [x] POST/목록/상세 Analysis HTTP API와 역할·Tenant Scope
 - [x] 외부 GPU 검증을 기본 Suite에서 분리한 `external_gpu` 경계
+
+### Sprint 2.5 — Qwen3.8 Serving Qualification
+
+- [x] Qwen3.8-27B AWQ INT4 Artifact와 immutable revision 고정
+- [x] vLLM image digest, text-only/non-thinking/private authenticated 배포 자산
+- [x] 100건 합성 qualification Dataset과 평가기
+- [ ] 단일 RTX 4090 Cold Start 2회와 20분 Stability
+- [ ] 안전·품질·성능 Gate, 실제 external GPU 계약과 Backend E2E
+
+세부 실행 상태와 실제 측정값은 `docs/progress/SPRINT_2_5_QWEN38_SERVING.md`에서 관리한다.
+QUALIFIED 판정 전에는 Sprint 2 Mock/Contract 결과를 실제 모델 검증으로 해석하지 않는다.
 
 완료 기준:
 
@@ -80,6 +92,7 @@
 - [ADR-0009: Transactional Outbox와 Fenced Analysis 실행](adr/0009-transactional-outbox-and-fenced-analysis-execution.md)
 - [ADR-0010: Code Prompt Registry와 구조화 결과만 보존](adr/0010-code-prompt-registry-and-structured-output-retention.md)
 - [ADR-0011: Case와 Analysis Run 수명주기 분리](adr/0011-separate-case-and-analysis-lifecycles.md)
+- [ADR-0012: Qwen3.8 고정 Artifact의 Private Text-only 서빙](adr/0012-qwen38-private-text-serving.md)
 
 ### Sprint 3 — Vision Integration
 

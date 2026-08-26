@@ -57,6 +57,16 @@ PYTHONPATH=ml/cv/src python -m csight_cv.train \
   --wandb-mode online
 ```
 
+The full-frame v2 experiment removes the implicit random resized crop, uses
+AdamW with separate backbone/classifier learning rates, and adds warmup:
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.train \
+  --config ml/cv/configs/kaputt_dinov2_vits14_fullframe_v2.yaml \
+  --mode full_finetune \
+  --wandb-mode online
+```
+
 When Kaputt image extraction is still running, use the guarded launcher. It
 waits for the exact official split counts, runs the image and split integrity
 checks, and only then starts full fine-tuning in the background:

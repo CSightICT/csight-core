@@ -82,9 +82,13 @@ def main() -> None:
     metrics = binary_metrics(labels, major_labels, scores)
     output_directory = args.checkpoint.parent / "evaluation"
     output_directory.mkdir(parents=True, exist_ok=True)
-    with (output_directory / f"{args.split}-metrics.json").open("w", encoding="utf-8") as handle:
+    with (output_directory / f"{args.split}-metrics.json").open(
+        "w", encoding="utf-8"
+    ) as handle:
         json.dump(metrics, handle, indent=2)
-    pd.DataFrame(rows).to_parquet(output_directory / f"{args.split}-predictions.parquet")
+    pd.DataFrame(rows).to_parquet(
+        output_directory / f"{args.split}-predictions.parquet"
+    )
     print(json.dumps(metrics, indent=2))
 
 

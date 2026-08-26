@@ -81,7 +81,9 @@ class KaputtQueryDataset(Dataset[dict[str, Any]]):
             with Image.open(image_path) as image:
                 pixel_values = self.transform(image.convert("RGB"))
         except Exception as exc:
-            raise RuntimeError(f"Failed to load capture_id={row['capture_id']}") from exc
+            raise RuntimeError(
+                f"Failed to load capture_id={row['capture_id']}"
+            ) from exc
         return {
             "pixel_values": pixel_values,
             "label": torch.tensor(float(row["defect"]), dtype=torch.float32),

@@ -13,7 +13,7 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 연결 GitHub 계정 | `kimhrin` |
 | 원격 저장소 | Private `CSightICT/csight-core` |
 | 로컬 Git | `main`·`develop`, Foundation 초기 커밋 `6fc20d3` |
-| 마지막 런타임 관측 | 2026-08-27, RTX 4090 DINOv2 전체 파인튜닝 실행 중; W&B run `93fdt5a0` |
+| 마지막 런타임 관측 | 2026-08-27, RTX 4090 full-frame DINOv2 E2 실행 중; W&B run `0kitqdog` |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -96,7 +96,8 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - [x] 전체 이미지 존재 검사: train 85,326 / validation 4,874 / test 10,067, 누락 0
 - [x] RTX 4090 1024px W&B 온라인 스모크 런 `72pfb9n1`
 - [x] W&B에 loss, learning rate, AP, AUROC와 시스템 지표 동기화 확인
-- [x] 2026-08-27 전체 파인튜닝 시작: PID `1345398`, W&B run `93fdt5a0`
+- [x] E1을 epoch 4 checkpoint까지 보존 후 중단: 최고 validation AP 0.306988, W&B run `93fdt5a0`
+- [x] Full-frame resize + AdamW E2 시작: PID `1616891`, W&B run `0kitqdog`
 - [ ] validation AP 기준 best checkpoint 확정
 - [ ] 모델·임계값 고정 후 test split 1회 평가
 
@@ -157,3 +158,12 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
   RTX 4090 온라인 스모크 런 통과
 - 실행 중: 1024px, batch 8, BF16, Adam 5e-6, cosine, seed 42, 8 epochs 전체 파인튜닝
 - 다음 작업: validation AP 추적, best checkpoint 고정, test split 1회 평가 및 결과 문서화
+
+### 2026-08-27 — E1 중단 및 full-frame E2 시작
+
+- E1 완료 범위: epoch 4 validation과 checkpoint 저장 후 중단, 최고 AP(any) 0.306988
+- 원인 진단: timm 기본 RandomResizedCrop의 최소 면적 8%가 작은 결함을 제거할 가능성
+- E2 변경: 전체-frame resize, AdamW, backbone/head LR 분리, 5% warmup,
+  bias·LayerNorm weight decay 제외, gradient checkpointing 해제
+- 검증: Ruff/format, compileall, pytest 4건, 1024px batch 8 스모크와 약 8.9GiB peak 확인
+- 실행 중: W&B run `0kitqdog`; test split 미사용

@@ -45,6 +45,12 @@ from app.platform.analysis.schemas import (
     LLMTextExtractionResult,
     ProviderMetadata,
 )
+from app.platform.query_builder import (
+    PolicyQueryBuilderInput,
+    PolicyQueryBuilderInvalidOutputError,
+    PolicyQueryBuilderResponse,
+    PolicyQueryPlan,
+)
 
 _PROVIDER_NAME = "vllm"
 _RESPONSE_SCHEMA_NAME = "csight_text_extraction"
@@ -242,6 +248,58 @@ class VLLMLLMProvider:
         body_request_id = _optional_request_id(decoded.get("id"))
         return LLMTextExtractionResponseV2(
             result=result,
+            metadata=ProviderExecutionMetadata(
+                provider_name=_PROVIDER_NAME,
+                model_name=self._model_id,
+                model_version=self._model_version,
+                model_revision=self._model_revision,
+                provider_request_id=provider_request_id or body_request_id,
+                input_token_count=input_tokens,
+                output_token_count=output_tokens,
+                latency_ms=latency_ms,
+            ),
+        )
+
+    def build_policy_queries(
+        self,
+        request: PolicyQueryBuilderInput,
+        prompt: PromptManifest,
+    ) -> PolicyQueryBuilderResponse:
+        """Generate a strict query plan without sending the original customer message."""
+
+        if prompt.name != "policy_query_builder" or (
+            prompt.input_schema_version != "1.0" or prompt.output_schema_version != "1.0"
+        ):
+            raise LLMProviderRequestRejectedError(
+                provider=_PROVIDER_NAME,
+                message="the prompt does not match policy query schema v1",
+            )
+        input_data = request.model_dump(mode="json")
+        user_message = prompt.render_user(input_data)
+        if len(user_message) > self._max_input_chars:
+            raise LLMProviderRequestRejectedError(
+                provider=_PROVIDER_NAME,
+                message="the structured query input exceeds the configured character limit",
+            )
+        payload = self._request_payload(
+            system_message=prompt.system_template,
+            user_message=user_message,
+            schema=PolicyQueryPlan.model_json_schema(),
+        )
+        started_at = self._clock()
+        status, provider_request_id, raw_response = self._post(payload)
+        latency_ms = max(0, round((self._clock() - started_at) * 1000))
+        self._raise_for_status(status)
+        decoded = _decode_json_object(raw_response)
+        content = _choice_content(decoded, max_chars=self._max_output_chars)
+        try:
+            plan = PolicyQueryPlan.model_validate_json(content)
+        except (ValueError, ValidationError):
+            raise PolicyQueryBuilderInvalidOutputError() from None
+        input_tokens, output_tokens = _usage(decoded)
+        body_request_id = _optional_request_id(decoded.get("id"))
+        return PolicyQueryBuilderResponse(
+            plan=plan,
             metadata=ProviderExecutionMetadata(
                 provider_name=_PROVIDER_NAME,
                 model_name=self._model_id,

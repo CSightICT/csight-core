@@ -25,7 +25,7 @@ def _offline_config(output: StringIO) -> Config:
 def test_migration_0006_is_head_and_creates_policy_retrieval_tables() -> None:
     scripts = ScriptDirectory.from_config(_offline_config(StringIO()))
     revision = scripts.get_revision("20260826_0006")
-    assert scripts.get_heads() == ["20260826_0007"]
+    assert scripts.get_heads() == ["20260826_0008"]
     assert revision is not None and revision.down_revision == "20260826_0005"
 
     output = StringIO()

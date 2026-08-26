@@ -9,7 +9,13 @@ from threading import Event
 from types import FrameType
 from typing import Protocol
 
-from app.adapters.messaging import CeleryAnalysisMessageQueue
+from app.adapters.messaging import (
+    CeleryAnalysisMessageQueue,
+    CeleryPolicyRetrievalMessageQueue,
+)
+from app.adapters.persistence.engine import get_engine
+from app.adapters.persistence.policy_query_outbox import DispatchPolicyRetrievalOutbox
+from app.adapters.persistence.session import create_session_factory
 from app.application.outbox import DispatchOutboxResult
 from app.bootstrap.logging import configure_logging, get_logger
 from app.bootstrap.settings import get_settings
@@ -21,6 +27,20 @@ logger = get_logger(__name__)
 
 class _OutboxDispatcher(Protocol):
     def execute(self) -> DispatchOutboxResult: ...
+
+
+class CompositeOutboxDispatcher:
+    def __init__(self, dispatchers: tuple[_OutboxDispatcher, ...]) -> None:
+        self._dispatchers = dispatchers
+
+    def execute(self) -> DispatchOutboxResult:
+        results = tuple(dispatcher.execute() for dispatcher in self._dispatchers)
+        return DispatchOutboxResult(
+            claimed=sum(result.claimed for result in results),
+            published=sum(result.published for result in results),
+            retried=sum(result.retried for result in results),
+            failed=sum(result.failed for result in results),
+        )
 
 
 def run_dispatch_loop(
@@ -99,12 +119,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     install_signal_handlers(stop_event)
 
     try:
-        queue = CeleryAnalysisMessageQueue(create_celery_app(settings))
-        dispatcher = build_outbox_dispatcher(
+        celery = create_celery_app(settings)
+        analysis_dispatcher = build_outbox_dispatcher(
             settings,
-            queue=queue,
+            queue=CeleryAnalysisMessageQueue(celery),
             claimed_by=_dispatcher_identity(),
         )
+        if settings.database_url_value is None:
+            dispatcher = analysis_dispatcher
+        else:
+            policy_dispatcher = DispatchPolicyRetrievalOutbox(
+                session_factory=create_session_factory(get_engine(settings)),
+                queue=CeleryPolicyRetrievalMessageQueue(celery),
+            )
+            dispatcher = CompositeOutboxDispatcher((analysis_dispatcher, policy_dispatcher))
     except Exception as error:
         logger.error(
             "outbox_dispatcher_configuration_failed",

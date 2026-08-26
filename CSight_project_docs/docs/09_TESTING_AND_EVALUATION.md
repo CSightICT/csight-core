@@ -261,3 +261,9 @@ Unit은 candidate/oracle/profile/serialization/token/allowlist/metric을, contra
 malformed response를, API는 새 mode와 기존 mode 회귀를 검증한다. 실제 MPS는 opt-in
 `external_reranker`다. Dev를 freeze하고 Test는 한 번만 호출하며 candidate-set mutation과 모든
 scope/version/status 위반 0, Dev deterministic rerun 100%를 요구한다.
+
+## Query-builder protocol
+
+Tune only on the new Dev 80 split, freeze versioned query/retrieval profiles, then access Test 40
+once. Compare direct contract/security and downstream retrieval metrics under identical HYBRID
+conditions. The legacy retrieval Test is regression-only.

@@ -4,6 +4,7 @@ import hashlib
 
 from pydantic import ValidationError
 
+from app.domains.product_defect_cs.query_builder import build_deterministic_query_plan
 from app.platform.analysis import (
     CustomerRequest,
     DefectLocation,
@@ -39,6 +40,7 @@ from app.platform.analysis.llm_v2 import (
     TextAmbiguity,
 )
 from app.platform.analysis.prompts import PromptManifest
+from app.platform.query_builder import PolicyQueryBuilderInput, PolicyQueryBuilderResponse
 
 
 class MockLLMProvider:
@@ -228,6 +230,35 @@ class MockLLMProvider:
                 provider_request_id=f"mock-v2-{fingerprint[:16]}",
                 input_token_count=max(1, len(request.customer_message.split())),
                 output_token_count=max(1, len(serialized) // 4),
+                latency_ms=0,
+            ),
+        )
+
+    def build_policy_queries(
+        self,
+        request: PolicyQueryBuilderInput,
+        prompt: PromptManifest,
+    ) -> PolicyQueryBuilderResponse:
+        """Exercise the LLM port without network calls; this is not Qwen qualification."""
+
+        self._raise_configured_text_failure()
+        if prompt.name != "policy_query_builder":
+            raise LLMProviderRequestRejectedError(
+                provider=self._metadata.provider,
+                message="prompt does not match policy query builder",
+            )
+        prompt.render_user(request.model_dump(mode="json"))
+        plan = build_deterministic_query_plan(request)
+        return PolicyQueryBuilderResponse(
+            plan=plan,
+            metadata=ProviderExecutionMetadata(
+                provider_name=self._metadata.provider,
+                model_name=self._metadata.name,
+                model_version=self._metadata.version,
+                model_revision=self._metadata.revision,
+                provider_request_id=f"mock-query-{plan.content_hash[:16]}",
+                input_token_count=1,
+                output_token_count=max(1, len(plan.model_dump_json()) // 4),
                 latency_ms=0,
             ),
         )

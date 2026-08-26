@@ -506,3 +506,9 @@ response는 clause, version/effective metadata와 rank/score만 포함한다. Pr
 `HYBRID_RERANKED`는 같은 endpoint에 명시적으로 추가된다. Hit은 `candidate_rank`, `rerank_rank`,
 `rerank_score`, `reranker_profile`을 포함한다. Client는 candidate K/model/profile을 선택하지 못한다.
 Reranker 장애는 `503 RERANKER_PROVIDER_UNAVAILABLE`이며 silent fallback과 decision field는 없다.
+
+## Case policy retrieval runs
+
+`POST /api/v1/cases/{case_id}/policy-retrieval-runs` requires Idempotency-Key and returns 202 or replay
+200. List and detail GET endpoints are tenant scoped. The broker message is
+`policy_retrieval.requested.v1` and contains exactly event, tenant, Case, run, and correlation IDs.

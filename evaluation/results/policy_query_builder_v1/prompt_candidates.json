@@ -1,0 +1,21 @@
+{
+  "prompt_name": "policy_query_builder",
+  "candidates": [
+    {
+      "prompt_version": "1.0.0",
+      "content_hash": "af8a77d4aecad62dcea3056cb2f83bb7619f7bcfbcdd18d8dfba997939c27701",
+      "dev_metric": "NOT_RUN_EXTERNAL_LLM",
+      "change_reason": "Initial minimal design contract",
+      "selected": false
+    },
+    {
+      "prompt_version": "1.1.0",
+      "content_hash": "da8556da9c3ac9cd319162b28753e498696b7c1099f79fda8af224fa1d3916ab",
+      "dev_metric": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
+      "change_reason": "Add taxonomy, decision, hard-filter, injection, duplicate, and reasoning boundaries",
+      "selected": false
+    }
+  ],
+  "same_version_mutation": 0,
+  "real_llm_profile_frozen": false
+}

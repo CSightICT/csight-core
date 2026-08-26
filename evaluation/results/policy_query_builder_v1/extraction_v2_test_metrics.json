@@ -1,0 +1,7 @@
+{
+  "dataset": "llm_extraction_v2",
+  "split": "test",
+  "status": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
+  "test_execution_count": 0,
+  "mock_reported_as_qwen": false
+}

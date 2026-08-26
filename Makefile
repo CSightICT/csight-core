@@ -18,7 +18,7 @@ POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run
 
 help:
 	@echo "CSight Core commands"
@@ -44,6 +44,9 @@ help:
 	@echo "  make build-evaluation-data  Build all synthetic gold datasets and manifests"
 	@echo "  make validate-evaluation-data  Validate counts, references, splits, and tenant isolation"
 	@echo "  make evaluate-extraction-v2  Run the reference gold self-check (not an external model eval)"
+	@echo "  make evaluate-extraction-v2-qwen  Run or explicitly skip real Qwen v2 qualification"
+	@echo "  make build-query-builder-dataset / validate-query-builder-dataset"
+	@echo "  make evaluate-query-builder  Compare frozen-HYBRID query strategies"
 	@echo "  make report-reference-data  Generate aggregate JSON and Markdown quality reports"
 	@echo "  make ingest-policy-corpus  Explicitly ingest the validated synthetic corpus"
 	@echo "  make validate-policy-db  Verify corpus, embedding, and active-index invariants"
@@ -132,6 +135,30 @@ validate-evaluation-data:
 
 evaluate-extraction-v2:
 	$(UV) run python scripts/evaluate_llm_extraction_v2.py
+
+evaluate-extraction-v2-qwen:
+	$(UV) run python scripts/evaluate_extraction_v2_qwen.py
+
+build-query-builder-dataset:
+	$(UV) run python scripts/build_query_builder_dataset.py
+
+validate-query-builder-dataset:
+	$(UV) run python scripts/validate_query_builder_dataset.py
+
+evaluate-query-builder-raw:
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy raw
+
+evaluate-query-builder-deterministic:
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy deterministic
+
+evaluate-query-builder-llm:
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy llm
+
+evaluate-query-builder:
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy all
+
+smoke-policy-retrieval-run:
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/smoke_policy_retrieval_run.py
 
 report-reference-data:
 	$(UV) run python scripts/generate_reference_reports.py

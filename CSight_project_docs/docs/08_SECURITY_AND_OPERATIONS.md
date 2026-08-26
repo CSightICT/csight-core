@@ -252,3 +252,9 @@ JWT, DB URL은 로그하지 않는다. Embedding service는 loopback/private net
 Core filter 후 candidate만 private loopback service에 전달한다. Tenant/JWT/DB/case ID는 전달하지
 않고 raw query/passage/pair/score list를 로그하거나 영구 저장하지 않는다. Unknown/duplicate/missing
 candidate와 invalid score는 fail-closed이며 provider down은 reranked mode에만 503이다.
+
+## Query planning security
+
+Core owns tenant, ACTIVE status, and as-of hard filters. Only trusted product category may be an
+additional hard filter. Logs and messages exclude customer text, prompts, raw responses, reasoning,
+query text, clause text, JWTs, keys, and vectors. Provider failures never silently change strategy.

@@ -306,3 +306,9 @@ embedding service는 Core DB를 알지 못한다. Provider 장애는 dense/hybri
 Application은 `PolicyReranker`와 ACTIVE execution-profile port만 사용한다. Bootstrap이 private
 HTTP Qwen adapter를 조립하며 platform/router에는 Transformers·HTTP·scoring logic이 없다.
 Reranker는 필터 후 candidate ID/text만 받고 complete allowlist validation 뒤 final K를 반환한다.
+
+## Sprint 4C-2 query planning
+
+Technology-neutral Query Plan and multi-query fusion live in `app/platform`; immutable product rules
+live in the domain; application orchestrates provider/retrieval ports; adapters own HTTP, SQLAlchemy,
+Celery, and pgvector. Router and Worker contain no prompt, query-rule, or scoring logic.

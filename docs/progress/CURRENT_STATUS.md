@@ -10,13 +10,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 4C-1 Closeout — `SPRINT_4C1_CLOSEOUT=PASS` |
-| 진행 중 작업 | 검증된 Sprint 4C-1 범위의 로컬 Commit 생성; Push·PR 금지 |
+| 현재 완료 단계 | Sprint 4C-2 — `BLOCKED_EXTERNAL_LLM` 제한사항과 함께 로컬 Closeout |
+| 진행 중 작업 | Sprint 4C-3A Citation Pack·구조적 Grounding Guardrail 착수 준비 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B/4C Push·PR 없음 |
-| 로컬 Git | `feature/sprint-4c1-policy-reranker`, Base `4216028`, Closeout PASS·Commit 대기 |
-| 마지막 런타임 관측 | 2026-08-27, Core 6개 Healthy, Migration `0007`, 외부 embedding/reranker MPS PASS |
+| 로컬 Git | `feature/sprint-4c2-policy-query-builder`; 로컬 Closeout Commit, Push·PR 없음 |
+| 마지막 런타임 관측 | 2026-08-27, Migration `0008` drift 0, API/Worker live smoke, Core ready 200 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -63,6 +63,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 4C-1 Locked Evaluation | NO_MEASURABLE_GAIN | Test Recall 동일, MRR 0.53833→0.51250, nDCG 0.59841→0.59802 |
 | Sprint 4C-1 Profile Persistence | PASS | Migration `0007`, reranker profile 1, ACTIVE execution profile 2 |
 | Sprint 4C-1 독립 Closeout | PASS | P0/P1 0, 전체 회귀·외부 모델·Migration·Docker 재통과 |
+| Sprint 4C-1 로컬 Commit | PASS | `14cae29 chore: qualify qwen3 policy reranker`, Push·PR 없음 |
+| Sprint 4C-2 Holdout | PASS | 독립 Dev 80/Test 40, sealed, broken/cross-tenant 0, stable hash |
+| Sprint 4C-2 Query Plan/API | PASS | Strict 1~3 query, append-only Run/Outbox/Query/Hit, POST/List/Get |
+| Sprint 4C-2 LLM 실제 평가 | SKIPPED | `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`; Mock 성능 미보고 |
+| Sprint 4C-2 Locked Evaluation | BLOCKED_EXTERNAL_LLM | RAW가 deterministic보다 우수; 실제 LLM 미평가 |
+| Sprint 4C-2 로컬 Commit | PASS | `feat: add case-based policy retrieval query planning`; Push·PR 없음 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -504,7 +510,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   완료한다.
 - [x] Sprint 4C-1은 frozen candidate baseline을 변경하지 않고 Qwen3-Reranker-0.6B profile,
   candidate reranking과 locked evaluation을 완료한다.
-- [ ] Sprint 4C-2에서 negative reranker 결과를 고정하고 raw/deterministic/LLM query builder를
+- [x] Sprint 4C-2에서 negative reranker 결과를 고정하고 raw/deterministic/LLM query builder를
   동일 candidate/evaluation 계약으로 분리 비교한다.
 - [ ] Query Builder qualification 뒤에만 citation pack, grounded explanation, citation validation과
   unsupported claim detection을 Sprint 4C-3 별도 계약으로 연결한다.
@@ -826,3 +832,29 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 안전: Push·PR 없음, `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage
 - 다음 작업: 승인된 Sprint 4C-1 범위만 `chore: qualify qwen3 policy reranker`로 로컬 Commit하고
   `feature/sprint-4c2-policy-query-builder` Branch 생성
+
+### 2026-08-27 — Sprint 4C-2 Policy Query Builder
+
+- Git: 4C-1을 `14cae29 chore: qualify qwen3 policy reranker`로 로컬 Commit하고
+  `feature/sprint-4c2-policy-query-builder` 생성; 4C-2 Commit·Push·PR 없음
+- External: 실제 Endpoint 부재로 Extraction v2와 LLM Query Builder를
+  `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`로 기록; Mock을 Qwen 성능으로 사용하지 않음
+- Dataset: 새 `policy_query_builder_v1` Dev 80/Test 40, Test sealed, broken/cross-tenant 0,
+  hash `5040f219aff5546a88073f132889215df2574c3196bdcad9f4f9e28141fd72c4`
+- Contract/Retrieval: Strict 1~3 Query, deterministic 1.0.0, prompt 1.1.0, Core hard filters,
+  frozen HYBRID K20, reranker off, `policy_multi_query_rrf:1.0.0`, query provenance
+- Persistence/API: Migration `0008`, append-only Run/Profile/Query/Hit와 전용 Outbox, POST 202/
+  replay 200/conflict 409, List/Get, Viewer read-only, v1 result 거부
+- Live: deterministic와 Mock-LLM Run SUCCEEDED, duplicate task NOOP, provider-down은
+  `POLICY_QUERY_BUILDER_PROVIDER_UNAVAILABLE`, embedding-down은 `EMBEDDING_PROVIDER_UNAVAILABLE`,
+  Core readiness 200, cross-tenant detail 404
+- Evaluation: Dev RAW Recall/MRR/nDCG 1.0/0.709549/0.724277, deterministic
+  1.0/0.667133/0.636635. Freeze 뒤 Test 1회 RAW 0.975/0.739236/0.741392,
+  deterministic 1.0/0.724544/0.657571
+- 판정: 평가된 두 전략에서는 RAW를 선택했지만 실제 LLM 비교가 없어 최종은
+  `BLOCKED_EXTERNAL_LLM`; 기본 Retriever HYBRID 유지
+- 검증: Ruff/Format 252/Pyright 0, Fast 419, Unit 327, Architecture 8, Contract 78,
+  E2E 6, Integration 42/5 skipped, External embedding 1, Migration 3경로 drift 0,
+  Core 6 healthy, 실제 RabbitMQ Worker vertical slice PASS, `git diff --check` PASS
+- 다음 작업: 승인된 Qwen Endpoint가 생기면 Dev qualification부터 수행하고, 이후 4C-3
+  Citation Pack/Grounded Explanation gate로 진행

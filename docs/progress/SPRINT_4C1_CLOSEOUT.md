@@ -75,9 +75,9 @@ Locked Test의 no-gain 결과를 숨기거나 기본 profile로 승격하지 않
 - [x] Core 6개 Healthy와 provider-independent readiness 확인
 - [x] P1 Format target 누락 수정
 - [x] `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage 확인
-- [ ] 승인된 Sprint 4C-1 파일만 로컬 Commit
-- [ ] Commit SHA를 상태 문서에 기록
-- [ ] `feature/sprint-4c2-policy-query-builder` 전용 브랜치 생성
+- [x] 승인된 Sprint 4C-1 파일만 `14cae29`로 로컬 Commit
+- [x] Commit SHA를 상태 문서에 기록
+- [x] `feature/sprint-4c2-policy-query-builder` 전용 브랜치 생성
 
 다음 작업은 Sprint 4C-1 Commit에서 새 브랜치를 만들고, 기존 retrieval Test를 튜닝에 쓰지 않는
 새 `policy_query_builder_v1` Dev 80/Test 40 sealed dataset부터 구축하는 것이다.

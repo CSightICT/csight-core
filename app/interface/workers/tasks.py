@@ -6,10 +6,16 @@ from celery import Task
 from celery.exceptions import Reject
 
 from app.application.analysis import ExecuteTextExtractionCommand
+from app.application.policy_query_runs import ExecutePolicyRetrievalRunCommand
 from app.bootstrap.logging import bind_log_context, get_logger
 from app.bootstrap.settings import get_settings
 from app.bootstrap.sprint2 import build_execute_analysis_stage
-from app.interface.workers.celery_app import ANALYSIS_REQUESTED_TASK_NAME, celery_app
+from app.bootstrap.sprint4c2 import build_execute_policy_retrieval_run
+from app.interface.workers.celery_app import (
+    ANALYSIS_REQUESTED_TASK_NAME,
+    POLICY_RETRIEVAL_REQUESTED_TASK_NAME,
+    celery_app,
+)
 
 logger = get_logger(__name__)
 
@@ -68,5 +74,27 @@ def execute_text_extraction_task(
         )
         raise Reject(
             "analysis task did not reach a durable application outcome",
+            requeue=True,
+        ) from None
+
+
+@celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]
+    bind=True,
+    name=POLICY_RETRIEVAL_REQUESTED_TASK_NAME,
+)
+def execute_policy_retrieval_task(
+    task: Task,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    """Validate five opaque identifiers and delegate all rules to the use case."""
+
+    del task
+    command = ExecutePolicyRetrievalRunCommand.model_validate(payload)
+    try:
+        disposition = build_execute_policy_retrieval_run(get_settings()).execute(command)
+        return {**command.model_dump(), "disposition": disposition}
+    except Exception:
+        raise Reject(
+            "policy retrieval task did not reach a durable application outcome",
             requeue=True,
         ) from None

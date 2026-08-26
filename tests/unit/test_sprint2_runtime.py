@@ -69,7 +69,10 @@ def test_celery_configuration_uses_durable_db_retries_and_safe_worker_limits() -
 
     application = create_celery_app(settings)
 
-    assert application.conf.task_routes == {ANALYSIS_REQUESTED_TASK_NAME: {"queue": "analysis"}}
+    assert application.conf.task_routes[ANALYSIS_REQUESTED_TASK_NAME] == {"queue": "analysis"}
+    assert application.conf.task_routes["policy_retrieval.requested.v1"] == {
+        "queue": "policy-retrieval"
+    }
     assert application.conf.task_acks_late is True
     assert application.conf.task_acks_on_failure_or_timeout is False
     assert application.conf.task_reject_on_worker_lost is True

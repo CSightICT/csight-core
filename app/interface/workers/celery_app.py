@@ -6,6 +6,7 @@ from app.bootstrap.logging import configure_logging
 from app.bootstrap.settings import Settings, get_settings
 
 ANALYSIS_REQUESTED_TASK_NAME = "analysis.requested.v1"
+POLICY_RETRIEVAL_REQUESTED_TASK_NAME = "policy_retrieval.requested.v1"
 
 
 def create_celery_app(settings: Settings | None = None) -> Celery:
@@ -23,7 +24,10 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
         task_serializer="json",
         result_serializer="json",
         task_default_queue="default",
-        task_routes={ANALYSIS_REQUESTED_TASK_NAME: {"queue": "analysis"}},
+        task_routes={
+            ANALYSIS_REQUESTED_TASK_NAME: {"queue": "analysis"},
+            POLICY_RETRIEVAL_REQUESTED_TASK_NAME: {"queue": "policy-retrieval"},
+        },
         task_track_started=True,
         task_acks_late=True,
         task_acks_on_failure_or_timeout=False,

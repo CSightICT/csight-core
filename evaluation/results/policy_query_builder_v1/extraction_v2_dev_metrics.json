@@ -1,0 +1,6 @@
+{
+  "dataset": "llm_extraction_v2",
+  "split": "dev",
+  "status": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
+  "mock_reported_as_qwen": false
+}

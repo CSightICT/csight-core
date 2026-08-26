@@ -1,0 +1,12 @@
+{
+  "builder_version": "1.0.0",
+  "corpus_hash": "8e60f4ce869ba83288ac094ba09465481a9d2e431cfe45a7ac4de4114092c237",
+  "dataset_hash": "5040f219aff5546a88073f132889215df2574c3196bdcad9f4f9e28141fd72c4",
+  "dataset_name": "policy_query_builder_v1",
+  "dev_count": 80,
+  "legacy_retrieval_dataset_role": "REGRESSION_ONLY_NOT_TUNING",
+  "schema_version": "1.0",
+  "test_count": 40,
+  "test_sealed": true,
+  "total_count": 120
+}

@@ -376,3 +376,9 @@ profile/row의 실제 dimension 1024로 검증한다. Tenant/effective/status in
 `20260826_0007`은 immutable `policy_reranker_profiles`와 base index별
 `policy_retrieval_execution_profiles`를 추가한다. Model/instruction/template/token/K/batch/device/
 score semantics와 contract hash를 저장하고 partial unique index로 base index당 ACTIVE 하나를 둔다.
+
+## Sprint 4C-2 tables
+
+Revision `20260826_0008` adds immutable query-builder profiles, append-only retrieval runs, generated
+query provenance, clause-FK hits, and an identifier-only transactional outbox. Raw Case text is not
+copied into the query table.

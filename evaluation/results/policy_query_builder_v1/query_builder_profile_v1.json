@@ -1,0 +1,19 @@
+{
+  "dataset_hash": "5040f219aff5546a88073f132889215df2574c3196bdcad9f4f9e28141fd72c4",
+  "corpus_hash": "8e60f4ce869ba83288ac094ba09465481a9d2e431cfe45a7ac4de4114092c237",
+  "extraction_prompt_hash": "c3e32c74572ed6c9f4a886779b049a061dd82b8ff74dcd6e5915f844a5c6ba62",
+  "llm_prompt_hash": "da8556da9c3ac9cd319162b28753e498696b7c1099f79fda8af224fa1d3916ab",
+  "llm_prompt_name": "policy_query_builder",
+  "llm_prompt_version": "1.1.0",
+  "model_qualification": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
+  "profile_hash": "69becbee60b3659238debf97f1775b03d547b37f6b9141292bd80a2a664575a4",
+  "profile_name": "policy_query_builder",
+  "profile_version": "1.0.0",
+  "query_count": "1-3",
+  "rule_name": "deterministic_policy_query",
+  "rule_version": "1.0.0",
+  "selected_strategy": "RAW",
+  "selection_split": "dev",
+  "soft_hint_policy": "VALIDATED_SOFT_ONLY_NOT_APPLIED",
+  "test_reconfiguration_allowed": false
+}

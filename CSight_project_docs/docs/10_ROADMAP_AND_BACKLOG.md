@@ -309,3 +309,10 @@ Policy Engine, 승인·거절, routing, human review와 report는 별도 후속 
 
 Sprint 4C-2는 raw/deterministic/LLM query를 동일 frozen retrieval/reranker 경계에서 비교한다.
 Sprint 4C-3는 그 뒤 citation pack과 grounded generation을 독립 평가한다.
+
+## Sprint 4C-2 outcome and 4C-3 gate
+
+RAW remains selected because generated queries made no measurable Dev ranking gain; real LLM is
+unqualified without the external Qwen endpoint. Sprint 4C-3 may begin citation-pack design, but
+grounded generation requires clause allowlists, citation validation, unsupported-claim detection,
+injection evaluation, and grounded RAG evaluation.

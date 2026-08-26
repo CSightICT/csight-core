@@ -490,3 +490,24 @@ make stop-reranker
 Locked Test에서 MRR/nDCG/Recall 개선이 없어 판정은 `RERANKER_NO_MEASURABLE_GAIN`이다.
 이는 안전한 negative result이며 정책 결정이나 승인 확률을 뜻하지 않는다. 상세 내용은
 `docs/progress/SPRINT_4C1_POLICY_RERANKER.md`와 `docs/rag/`를 참조한다.
+
+## Sprint 4C-2 policy query builder
+
+성공한 Text Extraction v2 결과로 RAW/DETERMINISTIC/LLM Query Plan을 비동기 실행한다. 모든
+전략은 frozen HYBRID를 query별 top-20으로 실행하고 `policy_multi_query_rrf:1.0.0`으로 합친다.
+Reranker, 정책 설명, 승인·거절 판단은 이 경로에 포함되지 않는다.
+
+```bash
+make evaluate-extraction-v2-qwen
+make build-query-builder-dataset
+make validate-query-builder-dataset
+make start-embedding
+make evaluate-query-builder
+make smoke-policy-retrieval-run
+make stop-embedding
+```
+
+API는 Case 하위 `policy-retrieval-runs` POST/List/Get을 제공한다. tenant/ACTIVE/as-of는 Core
+hard filter이며 LLM hint는 soft metadata다. 현재 실제 Qwen endpoint가 없어 LLM 평가는 Skipped,
+RAW가 평가된 전략 중 Dev에서 선택됐다. 실제 LLM 비교가 없어 최종 판정은
+`BLOCKED_EXTERNAL_LLM`이다.

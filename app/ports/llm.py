@@ -9,6 +9,7 @@ from app.platform.analysis.schemas import (
     LLMTextExtractionRequest,
     LLMTextExtractionResponse,
 )
+from app.platform.query_builder import PolicyQueryBuilderInput, PolicyQueryBuilderResponse
 
 
 @runtime_checkable
@@ -38,4 +39,12 @@ class LLMProvider(Protocol):
         prompt: PromptManifest,
     ) -> LLMTextExtractionResponseV2:
         """Return one validated v2 extraction without deterministic backend fields."""
+        ...
+
+    def build_policy_queries(
+        self,
+        request: PolicyQueryBuilderInput,
+        prompt: PromptManifest,
+    ) -> PolicyQueryBuilderResponse:
+        """Build a strict decision-free policy search plan from allowlisted facts."""
         ...

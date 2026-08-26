@@ -288,3 +288,9 @@ as-of date로 후보를 제한하고 BM25, dense 또는 RRF hit를 반환하지�
 ACTIVE execution profile이 base index, candidate K 20, final K 10과 immutable reranker profile을
 결합한다. Reranking은 candidate set을 보존하고 순서만 변경한다. Case, analysis run, policy
 applicability와 업무 상태는 생성하거나 변경하지 않는다.
+
+## Policy Retrieval Run
+
+One successful Text Extraction v2 result may start append-only RAW, DETERMINISTIC, or LLM retrieval.
+The state machine is QUEUED → RUNNING → SUCCEEDED/FAILED. Every strategy uses Run+Outbox and records
+one Query Plan plus a clause-FK hit set; duplicate delivery is a no-op.

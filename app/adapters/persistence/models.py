@@ -133,6 +133,8 @@ POLICY_CLAUSE_TYPES = (
 POLICY_INGESTION_STATUSES = ("PENDING", "RUNNING", "SUCCEEDED", "FAILED")
 POLICY_INDEX_STATUSES = ("BUILDING", "ACTIVE", "FAILED", "RETIRED")
 POLICY_EXECUTION_PROFILE_STATUSES = ("ACTIVE", "RETIRED")
+POLICY_QUERY_STRATEGIES = ("RAW", "DETERMINISTIC", "LLM")
+POLICY_RETRIEVAL_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -989,6 +991,7 @@ class LLMExtractionResultV2Model(CreatedAtMixin, Base):
         CheckConstraint("length(btrim(summary)) > 0", name="summary_nonempty"),
         UniqueConstraint("tenant_id", "analysis_run_id", name="uq_llm_results_v2_tenant_run"),
         UniqueConstraint("tenant_id", "stage_run_id", name="uq_llm_results_v2_tenant_stage"),
+        UniqueConstraint("tenant_id", "id", name="uq_llm_results_v2_tenant_id"),
         Index("ix_llm_results_v2_tenant_run", "tenant_id", "analysis_run_id"),
     )
 
@@ -1694,6 +1697,229 @@ class PolicyRetrievalExecutionProfileModel(CreatedAtMixin, Base):
     profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class PolicyQueryBuilderProfileModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_query_builder_profiles"
+    __table_args__ = (
+        CheckConstraint(
+            f"strategy IN ({_sql_values(POLICY_QUERY_STRATEGIES)})", name="strategy_allowed"
+        ),
+        CheckConstraint(
+            "max_queries BETWEEN 1 AND 3 AND max_query_tokens > 0", name="limits_valid"
+        ),
+        UniqueConstraint(
+            "profile_name", "profile_version", name="uq_policy_query_builder_profiles_version"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    strategy: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model_artifact: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    model_revision: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    prompt_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    prompt_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rule_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    rule_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rule_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    max_queries: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_query_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    filter_hint_policy: Mapped[str] = mapped_column(String(128), nullable=False)
+    filter_hint_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyRetrievalRunModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_retrieval_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("query_builder_profile_id",),
+            ("policy_query_builder_profiles.id",),
+            name="fk_policy_retrieval_runs_query_profile",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("base_index_version_id",),
+            ("policy_index_versions.id",),
+            name="fk_policy_retrieval_runs_index",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_policy_retrieval_runs_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id"),
+            ("analysis_runs.tenant_id", "analysis_runs.id"),
+            name="fk_policy_retrieval_runs_analysis",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "text_result_id"),
+            ("llm_extraction_results_v2.tenant_id", "llm_extraction_results_v2.id"),
+            name="fk_policy_retrieval_runs_text_v2",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "requested_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_policy_retrieval_runs_user",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"strategy IN ({_sql_values(POLICY_QUERY_STRATEGIES)})", name="strategy_allowed"
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(POLICY_RETRIEVAL_RUN_STATUSES)})", name="status_allowed"
+        ),
+        CheckConstraint("top_k BETWEEN 1 AND 50", name="top_k_valid"),
+        CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="request_hash_lower_hex"),
+        CheckConstraint(
+            "(status = 'QUEUED' AND started_at IS NULL AND completed_at IS NULL) OR "
+            "(status = 'RUNNING' AND started_at IS NOT NULL AND completed_at IS NULL) OR "
+            "(status IN ('SUCCEEDED','FAILED') AND started_at IS NOT NULL "
+            "AND completed_at IS NOT NULL)",
+            name="status_timestamps_consistent",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_retrieval_runs_tenant_id"),
+        UniqueConstraint(
+            "tenant_id", "idempotency_key", name="uq_policy_retrieval_runs_tenant_key"
+        ),
+        Index(
+            "ix_policy_retrieval_runs_tenant_case_created",
+            "tenant_id",
+            "case_id",
+            "created_at",
+            "id",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    text_result_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    strategy: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
+    top_k: Mapped[int] = mapped_column(Integer, nullable=False)
+    query_builder_profile_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    base_index_version_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    base_retrieval_profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    multi_query_fusion_profile: Mapped[str] = mapped_column(String(128), nullable=False)
+    multi_query_fusion_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    requested_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class PolicyRetrievalRunQueryModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_retrieval_run_queries"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "retrieval_run_id"),
+            ("policy_retrieval_runs.tenant_id", "policy_retrieval_runs.id"),
+            name="fk_policy_retrieval_run_queries_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("query_id ~ '^Q[1-3]$'", name="query_id_valid"),
+        CheckConstraint("position BETWEEN 1 AND 3", name="position_valid"),
+        CheckConstraint("query_hash ~ '^[0-9a-f]{64}$'", name="hash_lower_hex"),
+        CheckConstraint(
+            "(query_source = 'CASE_CUSTOMER_MESSAGE' AND query_text IS NULL) OR "
+            "(query_source = 'GENERATED' AND length(btrim(query_text)) > 0)",
+            name="raw_not_duplicated",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "retrieval_run_id",
+            "query_id",
+            name="uq_policy_retrieval_run_queries_query",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    query_id: Mapped[str] = mapped_column(String(8), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(64), nullable=False)
+    query_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    query_source: Mapped[str] = mapped_column(String(64), nullable=False)
+    query_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    filter_hints: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+
+
+class PolicyRetrievalRunHitModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_retrieval_run_hits"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "retrieval_run_id"),
+            ("policy_retrieval_runs.tenant_id", "policy_retrieval_runs.id"),
+            name="fk_policy_retrieval_run_hits_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_clause_row_id"),
+            ("policy_clauses.tenant_id", "policy_clauses.id"),
+            name="fk_policy_retrieval_run_hits_clause",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "rank > 0 AND best_query_rank > 0 AND fusion_score > 0", name="ranking_valid"
+        ),
+        UniqueConstraint(
+            "tenant_id", "retrieval_run_id", "rank", name="uq_policy_retrieval_run_hits_rank"
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "retrieval_run_id",
+            "policy_clause_row_id",
+            name="uq_policy_retrieval_run_hits_clause",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_clause_row_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    fusion_score: Mapped[float] = mapped_column(Float, nullable=False)
+    best_query_rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    matched_query_ids: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    per_query_ranks: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+
+
+class PolicyRetrievalOutboxEventModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_retrieval_outbox_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "retrieval_run_id"),
+            ("policy_retrieval_runs.tenant_id", "policy_retrieval_runs.id"),
+            name="fk_policy_retrieval_outbox_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')", name="status_allowed"
+        ),
+        UniqueConstraint("tenant_id", "retrieval_run_id", name="uq_policy_retrieval_outbox_run"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
@@ -1721,4 +1947,9 @@ PERSISTENCE_MODELS = (
     PolicyIndexVersionModel,
     PolicyRerankerProfileModel,
     PolicyRetrievalExecutionProfileModel,
+    PolicyQueryBuilderProfileModel,
+    PolicyRetrievalRunModel,
+    PolicyRetrievalRunQueryModel,
+    PolicyRetrievalRunHitModel,
+    PolicyRetrievalOutboxEventModel,
 )

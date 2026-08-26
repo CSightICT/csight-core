@@ -324,3 +324,9 @@ cosine부터 측정한다. Retrieval Test 40은 freeze 후 한 번만 실행했�
 Candidate upper bound는 K 10/20/30/50을 먼저 측정하고 Dev로 K20/final10을 freeze했다. Pinned
 Qwen reranker의 official yes/no normalized pair score를 사용한다. Dev 80 뒤 Test 40은 한 번만
 평가했고 no measurable gain 결과를 보존한다. Query Builder/Generation 효과는 후속 Sprint다.
+
+## Query-builder qualification
+
+The independent `policy_query_builder_v1` holdout has Dev 80 and sealed Test 40. RAW,
+deterministic 1.0.0, and real LLM prompt 1.1.0 share frozen HYBRID. Gold and Model Extraction results
+are separate; unavailable external Qwen cells remain Skipped.

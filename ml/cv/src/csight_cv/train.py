@@ -11,13 +11,13 @@ from typing import Any
 
 import numpy as np
 import torch
-import wandb
 import yaml
 from torch import nn
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 
+import wandb
 from csight_cv.data import KaputtQueryDataset
 from csight_cv.metrics import binary_metrics
 from csight_cv.model import Dinov2BinaryClassifier
@@ -87,6 +87,52 @@ def build_loader(
     )
 
 
+def build_optimizer(
+    model: nn.Module,
+    backbone_learning_rate: float,
+    classifier_learning_rate: float,
+    weight_decay: float,
+) -> AdamW:
+    groups: dict[str, dict[str, Any]] = {}
+    for component in ("backbone", "classifier"):
+        for decay_name, decay_value in (("decay", weight_decay), ("no_decay", 0.0)):
+            group_name = f"{component}_{decay_name}"
+            groups[group_name] = {
+                "params": [],
+                "lr": (
+                    backbone_learning_rate
+                    if component == "backbone"
+                    else classifier_learning_rate
+                ),
+                "weight_decay": decay_value,
+                "group_name": group_name,
+            }
+
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad:
+            continue
+        component = "classifier" if name.startswith("classifier.") else "backbone"
+        decay_name = (
+            "decay" if parameter.ndim > 1 and not name.endswith(".bias") else "no_decay"
+        )
+        groups[f"{component}_{decay_name}"]["params"].append(parameter)
+
+    parameter_groups = [group for group in groups.values() if group["params"]]
+    return AdamW(parameter_groups, betas=(0.9, 0.999))
+
+
+def cosine_with_warmup(
+    step: int,
+    total_updates: int,
+    warmup_updates: int,
+) -> float:
+    if warmup_updates > 0 and step < warmup_updates:
+        return float(step + 1) / float(warmup_updates)
+    cosine_updates = max(1, total_updates - warmup_updates)
+    progress = min(max(step - warmup_updates, 0) / cosine_updates, 1.0)
+    return 0.5 * (1.0 + math.cos(math.pi * progress))
+
+
 @torch.inference_mode()
 def evaluate(
     model: nn.Module,
@@ -121,7 +167,7 @@ def evaluate(
 def save_checkpoint(
     path: Path,
     model: nn.Module,
-    optimizer: Adam,
+    optimizer: AdamW,
     scheduler: LambdaLR,
     epoch: int,
     global_step: int,
@@ -154,6 +200,11 @@ def main() -> None:
     use_bf16 = config["mixed_precision"] == "bf16" and torch.cuda.is_bf16_supported()
     dataset_root = Path(config["dataset_root"])
     auto_augment = str(config["train_augmentation"]["auto_augment"])
+    resize_mode = str(
+        config["train_augmentation"].get("resize_mode", "random_resized_crop")
+    )
+    horizontal_flip = float(config["train_augmentation"].get("horizontal_flip", 0.5))
+    vertical_flip = float(config["train_augmentation"].get("vertical_flip", 0.5))
 
     train_dataset = KaputtQueryDataset(
         dataset_root,
@@ -162,6 +213,9 @@ def main() -> None:
         True,
         auto_augment,
         args.max_train_samples,
+        resize_mode=resize_mode,
+        horizontal_flip=horizontal_flip,
+        vertical_flip=vertical_flip,
     )
     validation_dataset = KaputtQueryDataset(
         dataset_root,
@@ -170,6 +224,9 @@ def main() -> None:
         False,
         auto_augment,
         args.max_val_samples,
+        resize_mode="full_frame",
+        horizontal_flip=0.0,
+        vertical_flip=0.0,
     )
     train_loader = build_loader(
         train_dataset,
@@ -191,27 +248,28 @@ def main() -> None:
         args.mode,
         bool(config["gradient_checkpointing"]),
     ).to(device)
-    learning_rate = (
+    backbone_learning_rate = (
         float(config["linear_probe_learning_rate"])
         if args.mode == "linear_probe"
         else float(config["learning_rate"])
     )
-    trainable_parameters = [
-        parameter for parameter in model.parameters() if parameter.requires_grad
-    ]
-    optimizer = Adam(
-        trainable_parameters,
-        lr=learning_rate,
-        betas=(0.9, 0.999),
-        weight_decay=float(config["weight_decay"]),
+    classifier_learning_rate = (
+        float(config["linear_probe_learning_rate"])
+        if args.mode == "linear_probe"
+        else float(config.get("classifier_learning_rate", backbone_learning_rate))
+    )
+    optimizer = build_optimizer(
+        model,
+        backbone_learning_rate,
+        classifier_learning_rate,
+        float(config["weight_decay"]),
     )
     accumulation = int(config["gradient_accumulation_steps"])
     total_updates = math.ceil(len(train_loader) / accumulation) * int(config["epochs"])
+    warmup_updates = int(total_updates * float(config.get("warmup_ratio", 0.0)))
     scheduler = LambdaLR(
         optimizer,
-        lr_lambda=lambda step: (
-            0.5 * (1.0 + math.cos(math.pi * min(step, total_updates) / total_updates))
-        ),
+        lr_lambda=lambda step: cosine_with_warmup(step, total_updates, warmup_updates),
     )
     criterion = nn.BCEWithLogitsLoss()
 
@@ -290,11 +348,23 @@ def main() -> None:
                 optimizer.zero_grad(set_to_none=True)
                 global_step += 1
                 if global_step % int(config["log_every_steps"]) == 0:
+                    learning_rates = {
+                        str(group["group_name"]): float(group["lr"])
+                        for group in optimizer.param_groups
+                    }
                     run.log(
                         {
                             "train/global_step": global_step,
                             "train/loss_step": float(loss.item()) * accumulation,
-                            "train/learning_rate": optimizer.param_groups[0]["lr"],
+                            "train/learning_rate": learning_rates.get(
+                                "backbone_decay", learning_rates["classifier_decay"]
+                            ),
+                            "train/learning_rate_backbone": learning_rates.get(
+                                "backbone_decay", 0.0
+                            ),
+                            "train/learning_rate_classifier": learning_rates[
+                                "classifier_decay"
+                            ],
                             "train/epoch_fraction": epoch
                             + (batch_index + 1) / len(train_loader),
                         }
@@ -304,6 +374,7 @@ def main() -> None:
             model, validation_loader, device, criterion, use_bf16
         )
         epoch_metrics = {
+            "train/global_step": global_step,
             "validation/epoch": epoch + 1,
             "train/loss_epoch": running_loss / len(train_loader),
             "validation/loss": validation_loss,

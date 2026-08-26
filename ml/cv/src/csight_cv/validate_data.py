@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 EXPECTED_ROWS = {"train": 85_326, "validation": 4_874, "test": 10_067}
 
 
@@ -23,7 +22,8 @@ def main() -> None:
         missing_images = None
         if args.check_images:
             missing_images = sum(
-                not (args.dataset_root / path).is_file() for path in frame["query_image"]
+                not (args.dataset_root / path).is_file()
+                for path in frame["query_image"]
             )
         report["splits"][split] = {
             "rows": len(frame),
@@ -34,15 +34,23 @@ def main() -> None:
             "major_defect_rate": float(frame["major_defect"].mean()),
             "missing_images": missing_images,
         }
-    for left, right in (("train", "validation"), ("train", "test"), ("validation", "test")):
-        overlap = set(frames[left]["item_identifier"]) & set(frames[right]["item_identifier"])
+    for left, right in (
+        ("train", "validation"),
+        ("train", "test"),
+        ("validation", "test"),
+    ):
+        overlap = set(frames[left]["item_identifier"]) & set(
+            frames[right]["item_identifier"]
+        )
         report["item_overlap"][f"{left}__{right}"] = len(overlap)
     failures = [
         split
         for split, values in report["splits"].items()
         if not values["row_count_matches"] or values["missing_images"] not in {None, 0}
     ]
-    overlap_failures = [key for key, value in report["item_overlap"].items() if value != 0]
+    overlap_failures = [
+        key for key, value in report["item_overlap"].items() if value != 0
+    ]
     report["valid"] = not failures and not overlap_failures
     print(json.dumps(report, ensure_ascii=False, indent=2))
     if not report["valid"]:

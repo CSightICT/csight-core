@@ -5,7 +5,7 @@ import json
 import math
 import random
 from contextlib import nullcontext
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -26,12 +26,16 @@ from csight_cv.model import Dinov2BinaryClassifier
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--mode", choices=("linear_probe", "full_finetune"), required=True)
+    parser.add_argument(
+        "--mode", choices=("linear_probe", "full_finetune"), required=True
+    )
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--image-size", type=int)
     parser.add_argument("--max-train-samples", type=int)
     parser.add_argument("--max-val-samples", type=int)
-    parser.add_argument("--wandb-mode", choices=("online", "offline", "disabled"), default="online")
+    parser.add_argument(
+        "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
+    )
     parser.add_argument("--resume", type=Path)
     return parser.parse_args()
 
@@ -192,7 +196,9 @@ def main() -> None:
         if args.mode == "linear_probe"
         else float(config["learning_rate"])
     )
-    trainable_parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
+    trainable_parameters = [
+        parameter for parameter in model.parameters() if parameter.requires_grad
+    ]
     optimizer = Adam(
         trainable_parameters,
         lr=learning_rate,
@@ -203,11 +209,13 @@ def main() -> None:
     total_updates = math.ceil(len(train_loader) / accumulation) * int(config["epochs"])
     scheduler = LambdaLR(
         optimizer,
-        lr_lambda=lambda step: 0.5 * (1.0 + math.cos(math.pi * min(step, total_updates) / total_updates)),
+        lr_lambda=lambda step: (
+            0.5 * (1.0 + math.cos(math.pi * min(step, total_updates) / total_updates))
+        ),
     )
     criterion = nn.BCEWithLogitsLoss()
 
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     run_directory = Path(config["output_root"]) / f"{config['run_name']}-{timestamp}"
     run_directory.mkdir(parents=True, exist_ok=False)
     with (run_directory / "resolved-config.json").open("w", encoding="utf-8") as handle:
@@ -260,7 +268,9 @@ def main() -> None:
                 loss = criterion(logits, targets) / accumulation
             loss.backward()
             running_loss += float(loss.item()) * accumulation
-            should_update = (batch_index + 1) % accumulation == 0 or batch_index + 1 == len(train_loader)
+            should_update = (
+                batch_index + 1
+            ) % accumulation == 0 or batch_index + 1 == len(train_loader)
             if should_update:
                 optimizer.step()
                 scheduler.step()
@@ -272,7 +282,8 @@ def main() -> None:
                             "train/global_step": global_step,
                             "train/loss_step": float(loss.item()) * accumulation,
                             "train/learning_rate": optimizer.param_groups[0]["lr"],
-                            "train/epoch_fraction": epoch + (batch_index + 1) / len(train_loader),
+                            "train/epoch_fraction": epoch
+                            + (batch_index + 1) / len(train_loader),
                         }
                     )
 

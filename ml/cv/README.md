@@ -57,6 +57,18 @@ PYTHONPATH=ml/cv/src python -m csight_cv.train \
   --wandb-mode online
 ```
 
+When Kaputt image extraction is still running, use the guarded launcher. It
+waits for the exact official split counts, runs the image and split integrity
+checks, and only then starts full fine-tuning in the background:
+
+```bash
+bash ml/cv/scripts/wait_for_data_and_train.sh
+```
+
+Operational state is written outside Git to
+`/home/data/csight-cv-ready.log`, `/home/data/csight-cv-training.log`, and
+`/home/data/csight-cv-training.pid`.
+
 The official test split must only be evaluated after the model and threshold are
 frozen:
 

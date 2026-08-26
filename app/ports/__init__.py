@@ -1,5 +1,17 @@
 """External dependency ports used by application services."""
 
+from app.ports.analysis_repository import (
+    AnalysisRequestIdempotencyClaim,
+    AnalysisRequestIdempotencyRepository,
+    AnalysisRunListCriteria,
+    AnalysisRunRepository,
+    AnalysisStageAttemptRepository,
+    AnalysisStageRunRepository,
+    AnalysisUnitOfWork,
+    AnalysisUnitOfWorkFactory,
+    LLMExtractionResultRepository,
+    OutboxEventRepository,
+)
 from app.ports.hashing import FileDigest, HashingPort
 from app.ports.identity import IdentityRepository
 from app.ports.llm import LLMProvider
@@ -28,6 +40,14 @@ from app.ports.vision import VisionProvider
 __all__ = [
     "AccessTokenClaims",
     "AccessTokenCodec",
+    "AnalysisRequestIdempotencyClaim",
+    "AnalysisRequestIdempotencyRepository",
+    "AnalysisRunListCriteria",
+    "AnalysisRunRepository",
+    "AnalysisStageAttemptRepository",
+    "AnalysisStageRunRepository",
+    "AnalysisUnitOfWork",
+    "AnalysisUnitOfWorkFactory",
     "CompensationFailureObserver",
     "CompensationStep",
     "DependencyProbe",
@@ -36,9 +56,11 @@ __all__ = [
     "HashingPort",
     "IdentityRepository",
     "InvalidTokenError",
+    "LLMExtractionResultRepository",
     "LLMProvider",
     "MessageQueue",
     "ObjectStorage",
+    "OutboxEventRepository",
     "PasswordHasher",
     "ProbeResult",
     "ProbeStatus",

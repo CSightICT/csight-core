@@ -3,6 +3,7 @@
 from types import TracebackType
 from typing import Protocol, Self, runtime_checkable
 
+from app.ports.analysis_repository import AnalysisUnitOfWork, AnalysisUnitOfWorkFactory
 from app.ports.case_repository import (
     CaseRepository,
     CaseStatusHistoryRepository,
@@ -37,3 +38,11 @@ class CaseUnitOfWork(Protocol):
 @runtime_checkable
 class CaseUnitOfWorkFactory(Protocol):
     def __call__(self) -> CaseUnitOfWork: ...
+
+
+__all__ = [
+    "AnalysisUnitOfWork",
+    "AnalysisUnitOfWorkFactory",
+    "CaseUnitOfWork",
+    "CaseUnitOfWorkFactory",
+]

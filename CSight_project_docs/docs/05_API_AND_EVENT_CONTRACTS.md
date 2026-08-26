@@ -6,12 +6,14 @@
 - Sprint 1의 Case 생성과 Evidence 업로드는 동기 요청이다. 새 리소스는 `201 Created`,
   Case Idempotency 재생은 `200 OK`를 반환한다.
 - 장시간 분석 요청은 Sprint 2부터 `202 Accepted`를 반환한다.
-- Sprint 1은 Case 생성에만 `Idempotency-Key`를 지원한다. Evidence 업로드 Idempotency는
-  후속 범위다.
-- Event와 모델 출력에는 `schema_version`을 포함한다.
+- Case 생성은 선택적 `Idempotency-Key`, Sprint 2 Analysis 등록은 필수
+  `Idempotency-Key`를 지원한다. 두 Operation은 별도 Tenant-scoped Claim을 사용한다.
+  Evidence 업로드 Idempotency는 후속 범위다.
+- Event에는 `event_version`, 모델 출력에는 `schema_version`을 포함한다.
 - 모델 고유 출력은 외부에 직접 노출하지 않고 공통 Schema로 변환한다.
-- 원본 AI 결과와 정규화 결과를 구분해 저장할 수 있다.
-- 모든 Case·Evidence API는 Bearer 인증을 요구한다. `tenant_id`는 입력으로 받지 않고
+- Sprint 2는 검증된 정규화 결과만 저장하며 전체 Prompt와 Raw Provider Response를 저장하거나
+  API로 노출하지 않는다.
+- 모든 Case·Evidence·Analysis API는 Bearer 인증을 요구한다. `tenant_id`는 입력으로 받지 않고
   현재 Principal에서 결정한다.
 - 요청 Schema는 알 수 없는 필드를 거부한다. 따라서 Body에 `tenant_id`를 넣으면
   `422 VALIDATION_ERROR`다.
@@ -70,6 +72,14 @@ Storage Credential, Bucket/Object Key, Binary 또는 Signed URL을 노출하지 
 | `ADMIN` | 허용 | 허용 | 허용 |
 | `REVIEWER` | 허용 | 허용 | 허용 |
 | `QUALITY_VIEWER` | 금지 | 허용 | 업로드 금지, 접근 URL 허용 |
+
+Analysis 권한은 별도로 `ANALYSIS_CREATE`, `ANALYSIS_READ`로 검사한다.
+
+| 역할 | Analysis 등록 | Analysis 목록·상세 조회 |
+|---|---:|---:|
+| `ADMIN` | 허용 | 허용 |
+| `REVIEWER` | 허용 | 허용 |
+| `QUALITY_VIEWER` | 금지 | 허용 |
 
 인증되지 않은 요청은 `401`, 역할이 부족하면 `403`이다. 다른 Tenant의 ID는 역할과
 무관하게 `404`로 숨긴다.
@@ -176,7 +186,8 @@ Body에 사용하면 `409 IDEMPOTENCY_KEY_REUSED`다. Key의 Tenant 범위는 �
 ### Case 상세 응답
 
 상세는 Case 생성 입력과 생성자·시각에 더해 `evidence`, `status_history`를 포함한다.
-Sprint 1은 Analysis Run을 만들지 않으므로 `latest_analysis_run`은 `null`이다.
+Sprint 2 서비스가 구성되어 있고 Run이 존재하면 `latest_analysis_run`에 최신 안전한 Run
+Projection을 조합한다. Case Row에 분석 상태를 복제하지 않으며 Run이 없으면 `null`이다.
 
 ```json
 {
@@ -259,37 +270,36 @@ URL 발급 직전에 내부 Storage Endpoint로 Object HEAD를 확인한다. Evi
 아니거나 DB는 `AVAILABLE`이지만 Object가 없으면 `500 EVIDENCE_UPLOAD_FAILED`, HEAD 또는
 URL 생성 중 Storage 호출이 실패하면 `503 STORAGE_UNAVAILABLE`을 반환한다.
 
-## 6. Sprint 2 이후 HTTP API 목표
+## 6. Sprint 2 Analysis HTTP API
 
-아래 API는 설계 목표이며 Sprint 1 구현/OpenAPI에는 포함되지 않는다.
-
-| 영역 | Method | Path | 설명 |
+| Method | Path | 권한 | 설명 |
 |---|---|---|---|
-| Analysis | POST | `/api/v1/cases/{case_id}/analysis-runs` | 분석 작업 등록, `202` |
-| Analysis | GET | `/api/v1/analysis-runs/{run_id}` | 분석 상태·결과 조회 |
-| Analysis | POST | `/api/v1/analysis-runs/{run_id}/retry` | 실패 작업 재시도 |
-| Event | GET | `/api/v1/cases/{case_id}/events` | SSE 상태 이벤트 |
-| Policy | POST | `/api/v1/policies` | 정책 생성 |
-| Policy | POST | `/api/v1/policies/{policy_id}/versions` | 새 버전 생성 |
-| Policy | GET | `/api/v1/policies/active` | 활성 정책 조회 |
-| Review | POST | `/api/v1/cases/{case_id}/reviews` | 승인·수정·이관 저장 |
-| Review | GET | `/api/v1/cases/{case_id}/reviews` | Review 이력 조회 |
-| Report | POST | `/api/v1/cases/{case_id}/reports` | 검토 보고서 생성 요청 |
-| Report | GET | `/api/v1/reports/{report_id}` | 보고서 조회 |
+| POST | `/api/v1/cases/{case_id}/analysis-runs` | Admin, Reviewer | 새 Text Analysis Run 등록 |
+| GET | `/api/v1/cases/{case_id}/analysis-runs` | 모든 역할 | Tenant/Case 범위 목록·필터·페이지 |
+| GET | `/api/v1/cases/{case_id}/analysis-runs/{analysis_run_id}` | 모든 역할 | Run, Stage와 구조화 결과 상세 |
 
-## 7. 분석 등록 목표 예시
+모든 Endpoint는 Bearer 인증을 요구하고 Tenant는 Principal에서 정한다. 현재 Tenant에서 Case를
+먼저 찾은 뒤 권한을 검사하며, 다른 Tenant의 Case/Run은 `404`로 숨긴다. 응답에는
+`Cache-Control: no-store`, `Pragma: no-cache`와 `X-Correlation-ID`를 적용한다.
+
+목록 Query는 `status`, `pipeline`, `page`(기본 1), `page_size`(기본 20, 1~100)를 받는다.
+정렬은 최신 요청 우선이며 목록은 Run Projection만 반환한다. 상세는 Run, Stage Snapshot과
+성공한 `extraction_result`를 반환한다. 공개 Projection은 Idempotency Key, Request Hash,
+Correlation ID, Claim Token/Lease, 내부 실패 Message와 Provider Request ID를 제외한다.
+
+## 7. Analysis 등록과 Idempotency
 
 ```http
 POST /api/v1/cases/CASE-2026-0001/analysis-runs
-Idempotency-Key: 0192f-example
+Authorization: Bearer <access-token>
+Idempotency-Key: <required-tenant-scoped-key>
+Content-Type: application/json
 ```
 
 ```json
 {
-  "domain": "product_defect_cs",
-  "llm_profile": "default-extraction",
-  "vision_profile": "defect-detector-v1",
-  "policy_mode": "ACTIVE_VERSION"
+  "pipeline": "product_defect_text_extraction",
+  "pipeline_version": "1.0.0"
 }
 ```
 
@@ -298,117 +308,95 @@ Idempotency-Key: 0192f-example
 ```json
 {
   "analysis_run_id": "AR-2026-0001",
-  "status": "QUEUED"
+  "tenant_id": "tenant-a",
+  "case_id": "CASE-2026-0001",
+  "pipeline": "product_defect_text_extraction",
+  "pipeline_version": "1.0.0",
+  "trigger": "USER_REQUEST",
+  "status": "QUEUED",
+  "requested_by": "user-a",
+  "requested_at": "2026-08-26T13:00:00Z",
+  "started_at": null,
+  "completed_at": null,
+  "failure": null,
+  "created_at": "2026-08-26T13:00:00Z",
+  "updated_at": "2026-08-26T13:00:00Z"
 }
 ```
 
-## 8. LLM 공통 출력
+새 등록은 `202 Accepted`와 `Location` Header를 반환한다. 동일 Tenant에서 같은 Key와 같은
+Case/Pipeline/Version을 재요청하면 기존 Run을 `200 OK`로 재생하고 새 Stage/Outbox를 만들지
+않는다. 같은 Key를 다른 정규 요청에 사용하면 `409 IDEMPOTENCY_KEY_REUSED`다. 알 수 없는
+Pipeline Enum은 `422 VALIDATION_ERROR`, 지원 Pipeline의 미지원 Version은
+`422 ANALYSIS_PIPELINE_NOT_SUPPORTED`다. Terminal Run을 되살리는 공개 Retry API는 Sprint 2에
+없다. 재분석은 새 Key로 새 Run을 등록한다.
+
+## 8. Sprint 2 LLM 구조화 결과
 
 ```json
 {
   "schema_version": "1.0",
-  "model": {
-    "provider": "vllm",
-    "name": "configured-model",
-    "version": "deployment-version"
-  },
-  "issue_type": "LEAKAGE",
-  "claimed_location": "BOTTOM",
-  "customer_request": "EXCHANGE",
+  "language": "ko",
+  "issue_types": ["DENT", "LEAKAGE"],
   "claims": [
     {
-      "type": "CONTAINER_DAMAGE",
-      "description": "용기 하단이 찌그러졌다고 주장함"
-    },
-    {
-      "type": "LEAKAGE",
-      "description": "내용물이 외부로 누출되었다고 주장함"
+      "type": "DENT",
+      "location": "BOTTOM",
+      "description": "용기 하단 찌그러짐 주장",
+      "source_quote": "용기 하단이 찌그러졌고"
     }
   ],
+  "requested_action": "EXCHANGE",
   "missing_information": [],
   "summary": "고객은 용기 하단 파손과 누액을 이유로 교환을 요청함"
 }
 ```
 
-## 9. Vision 공통 출력
+허용 Issue Taxonomy는 정확히 `DENT`, `CRACK`, `BREAKAGE`, `LEAKAGE`,
+`MISSING_COMPONENT`, `WRONG_ITEM`, `CONTAMINATION`, `FUNCTIONAL_FAILURE`,
+`PACKAGING_DAMAGE`, `OTHER`, `UNKNOWN`이다. Claim은 `type`, `location`, `description`과
+선택적 `source_quote`를 가진다. Quote가 있으면 고객 원문의 정확한 연속 부분 문자열이어야
+한다. 추가 Field, 중복 Enum, Claim에만 존재하는 Issue Type과 Character 상한 초과는
+저장 전에 거부한다.
 
-```json
-{
-  "schema_version": "1.0",
-  "model": {
-    "provider": "remote-vision",
-    "name": "csight-defect-detector",
-    "version": "0.1.0",
-    "preprocess_version": "1.0"
-  },
-  "image_quality": {
-    "blurred": false,
-    "too_dark": false,
-    "product_visible": true,
-    "defect_area_visible": true,
-    "score": 0.94
-  },
-  "detections": [
-    {
-      "label": "LEAKAGE",
-      "confidence": 0.87,
-      "geometry": {
-        "type": "BOUNDING_BOX",
-        "coordinate_system": "NORMALIZED",
-        "x1": 0.31,
-        "y1": 0.48,
-        "x2": 0.76,
-        "y2": 0.91
-      }
-    }
-  ],
-  "latency_ms": 52
-}
-```
+Location은 `TOP`, `BOTTOM`, `SIDE`, `FRONT`, `BACK`, `INSIDE`, `OUTSIDE`, `MULTIPLE`,
+`UNKNOWN` 중 하나다. Missing Information은 `PRODUCT_REFERENCE`, `ORDER_REFERENCE`,
+`DEFECT_TYPE`, `DEFECT_LOCATION`, `CUSTOMER_REQUEST`, `IMAGE_EVIDENCE`,
+`ADDITIONAL_DESCRIPTION`만 허용한다. `language`는 2~3자 소문자 언어 코드와 선택적 대문자
+지역 코드 형식을 사용한다.
 
-## 10. Event 계약
+`requested_action`은 `REFUND`, `EXCHANGE`, `RESHIPMENT`, `REPAIR`, `INFORMATION`, `OTHER`,
+`UNKNOWN` 중 하나다. 이는 고객 문장에서 추출한 요청이지 환불·교환 승인이나 최종 Decision이
+아니다. Vision 출력은 Sprint 3 이후 계약이며 Sprint 2 상세 응답에 포함되지 않는다.
 
-### `analysis.requested.v1`
+## 9. `analysis.requested.v1` Event 계약
+
+PostgreSQL Outbox Payload는 감사와 검증을 위해 Event Type/Version/발생 시각도 보존한다.
+Dispatcher가 RabbitMQ/Celery에 전달하는 Queue Payload는 다음 여섯 식별자만 포함한다.
 
 ```json
 {
   "event_id": "EVT-001",
-  "event_type": "analysis.requested.v1",
-  "occurred_at": "2026-08-25T13:01:00Z",
   "tenant_id": "tenant-a",
   "case_id": "CASE-2026-0001",
   "analysis_run_id": "AR-2026-0001",
-  "correlation_id": "CORR-001",
-  "evidence_ids": ["EVID-001"]
+  "stage_run_id": "STAGE-001",
+  "correlation_id": "CORR-001"
 }
 ```
 
-### `analysis.completed.v1`
+고객 원문, 주문·상품 값, Evidence ID/Binary, Prompt, Raw Provider Response, JWT, Signed URL과
+Secret은 Broker Payload에 넣지 않는다. Worker가 여섯 ID로 DB에서 allowlisted Case 입력을
+다시 읽는다. 활성 Stage Lease 중 중복 Delivery가 오면 Lease 만료 시각에 사용할 동일한 여섯
+ID 형식의 Recovery Event 하나를 Outbox에 저장한다. 기존 Worker가 완료하면 후속 Delivery는
+No-op이고, 그렇지 않으면 만료 Lease 회수 후 재실행한다. Celery Retry는 업무 상태의 Source of
+Truth가 아니다. `analysis.completed.v1`, `analysis.failed.v1`, SSE Event는 Sprint 2에 구현되지
+않았다.
 
-```json
-{
-  "event_id": "EVT-002",
-  "event_type": "analysis.completed.v1",
-  "case_id": "CASE-2026-0001",
-  "analysis_run_id": "AR-2026-0001",
-  "decision": "HUMAN_REVIEW_REQUIRED",
-  "completed_at": "2026-08-25T13:01:08Z"
-}
-```
+## 10. 후속 HTTP/Event 범위
 
-### `analysis.failed.v1`
-
-```json
-{
-  "event_id": "EVT-003",
-  "event_type": "analysis.failed.v1",
-  "case_id": "CASE-2026-0001",
-  "analysis_run_id": "AR-2026-0001",
-  "failure_stage": "VISION_INFERENCE",
-  "retryable": true,
-  "error_code": "VISION_TIMEOUT"
-}
-```
+Vision, Alignment, Policy, Routing, Human Review, Report와 RAG API, Terminal Run Retry API,
+SSE 상태 Event는 Sprint 3 이후 Backlog다. 현재 OpenAPI 계약으로 간주하지 않는다.
 
 ## 11. 표준 오류 응답
 
@@ -432,6 +420,7 @@ Idempotency-Key: 0192f-example
 | 403 | `FORBIDDEN` | 현재 역할에 작업 권한 없음 |
 | 404 | `CASE_NOT_FOUND` | 현재 Tenant 범위에서 Case를 찾을 수 없음 |
 | 404 | `EVIDENCE_NOT_FOUND` | 현재 Case/Tenant 범위에서 Evidence를 찾을 수 없음 |
+| 404 | `ANALYSIS_RUN_NOT_FOUND` | 현재 Case/Tenant 범위에서 Analysis Run을 찾을 수 없음 |
 | 409 | `IDEMPOTENCY_KEY_REUSED` | 같은 범위의 Key를 다른 Body에 사용 |
 | 413 | `FILE_TOO_LARGE` | 설정된 업로드 크기 초과 |
 | 422 | `EMPTY_FILE` | 빈 업로드 |
@@ -439,6 +428,7 @@ Idempotency-Key: 0192f-example
 | 422 | `INVALID_IMAGE_CONTENT` | 실제 이미지 Decode 실패 |
 | 422 | `IMAGE_DIMENSION_LIMIT_EXCEEDED` | 설정된 Pixel 수 초과 |
 | 422 | `VALIDATION_ERROR` | Body, Query, Header 또는 Form 검증 실패 |
+| 422 | `ANALYSIS_PIPELINE_NOT_SUPPORTED` | 지원하지 않는 Pipeline 또는 Version |
 | 500 | `EVIDENCE_UPLOAD_FAILED` | Evidence 저장/상태 확정 실패 |
 | 500 | `INCONSISTENT_PERSISTENCE_STATE` | Idempotency 레코드가 없는 Case를 참조 |
 | 503 | `STORAGE_UNAVAILABLE` | MinIO 작업 실패 |
@@ -454,11 +444,21 @@ Idempotency-Key: 0192f-example
 - Schema Version 불일치
 - Timeout 및 재시도
 - 동일 Idempotency Key 재요청
+- Analysis 등록의 필수 Idempotency Key, 새 요청 `202`와 동일 요청 재생 `200`
+- Analysis 등록 권한과 Tenant/Case-scoped 목록·상세 `404`
+- Run/Stage Terminal 전이와 Fenced 중복 완료 No-op
+- Outbox DB Payload와 정확히 여섯 ID인 Queue Payload 구분
+- LLM Issue Taxonomy, 추가 Field 거부와 정확한 `source_quote` 부분 문자열
+- Prompt Injection 입력을 명령이 아닌 JSON-escaped 데이터로 취급
 - Case 생성 요청의 `tenant_id` 거부
 - 새 Case `201`과 동일 요청 재생 `200` 구분
 - 역할별 `401`/`403`과 다른 Tenant의 `404`
 - 목록에서 고객 원문과 Signed URL 제외
 - Multipart `IMAGE`와 실제 JPEG/PNG/WebP 검증
 - Signed URL 응답의 만료와 Tenant Scope
-- Vision class mapping 변경
-- LLM 비정상 JSON 및 추가 자연어 포함
+- Vision class mapping 변경은 Sprint 3 계약 범위
+- LLM 비정상 JSON, 추가 자연어, 입력·출력 상한 초과
+
+관련 결정은 [ADR-0009](adr/0009-transactional-outbox-and-fenced-analysis-execution.md),
+[ADR-0010](adr/0010-code-prompt-registry-and-structured-output-retention.md),
+[ADR-0011](adr/0011-separate-case-and-analysis-lifecycles.md)을 따른다.

@@ -2,14 +2,15 @@
 
 > 이미지·텍스트 기반 상품 불량 CS 의사결정 지원 플랫폼
 
-이 저장소는 CSight의 **Sprint 1 Case & Evidence Vertical Slice**입니다. Python 3.12,
+이 저장소는 CSight의 **Sprint 2 Append-only Analysis & LLM Text Extraction Slice**입니다. Python 3.12,
 FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며,
 API와 Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
 
-Sprint 1에는 로컬·PoC JWT 로그인, Principal 기반 Tenant 격리, Case 생성·목록·상세·상태
-이력, 이미지 Evidence 검증·Private MinIO 저장·Signed URL이 포함됩니다. 실제 정책 판정,
-RAG, Human Review와 외부 LLM·Vision 호출은 없으며 Case/Evidence 접수 후 분석을 자동
-시작하지 않습니다. Sprint 0의 AI 경계와 결정적 Mock Adapter는 그대로 유지합니다.
+Sprint 1의 JWT, Tenant 격리, Case와 Private Evidence 기능 위에 Analysis Run·Stage·Attempt,
+Transactional Outbox, 얇은 Celery Worker, 버전 고정 Prompt Registry, 결정적 Mock LLM과
+선택적 vLLM Adapter를 추가했습니다. Text Analysis는 명시적 `202 Accepted` 요청으로만
+시작하며 Case 상태를 변경하지 않습니다. LLM은 문의 구조화만 수행하고 정책 판정, 승인,
+Routing, Human Review, RAG, Report와 Vision 실행은 포함하지 않습니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -32,7 +33,7 @@ make seed
 ```
 
 `make up`은 이미지를 빌드하고 PostgreSQL, RabbitMQ, MinIO, Bucket 초기화, API,
-Worker를 시작한 뒤 Health Check를 기다립니다. 모든 외부 포트는 `127.0.0.1`에만
+Worker와 Outbox Dispatcher를 시작한 뒤 Health Check를 기다립니다. 모든 외부 포트는 `127.0.0.1`에만
 바인딩됩니다.
 
 시작하기 전에 `.env`에서 다음 값을 직접 설정합니다.
@@ -79,16 +80,23 @@ make down
 | 로그 확인 | `make logs` |
 | Migration 적용 | `make migrate` |
 | Local/Test Identity Seed | `make seed` |
+| Outbox 1회 Dispatch | `make outbox` |
 | Ruff Lint | `make lint` |
 | Ruff Format 검사 | `make format-check` |
 | Pyright Type Check | `make typecheck` |
 | CI-safe 테스트 | `make test` |
 | Core 통합 테스트 | `make test-integration` |
 | 전체 로컬 테스트 | `make test-all` |
+| Analysis 집중 테스트 | `make test-analysis` |
+| Analysis PostgreSQL 통합 | `make test-analysis-integration` |
+| Mock Analysis HTTP Smoke | `make smoke-analysis` |
+| 선택적 외부 vLLM | `make test-external-llm` |
 
 `make test`는 Docker 인프라와 GPU를 요구하지 않습니다. `make test-integration`과
 `make test-all`은 먼저 `make up`과 `make migrate`를 실행한 상태에서 사용합니다.
 외부 GPU 테스트는 별도 `external_gpu` Marker로 격리되며 기본 명령에서 실행되지 않습니다.
+`make smoke-analysis`는 Seed된 Reviewer와 실행 중인 API·Dispatcher·Worker를 사용하며 합성
+Case만 생성합니다.
 
 ## Sprint 1 API 흐름
 
@@ -183,12 +191,87 @@ curl -fsS -X POST \
   "http://127.0.0.1:8000/api/v1/cases/$CSIGHT_CASE_ID/evidence/$CSIGHT_EVIDENCE_ID/access-url" \
   -H "Authorization: Bearer $CSIGHT_ACCESS_TOKEN"
 
-unset CSIGHT_ACCESS_TOKEN CSIGHT_CASE_ID CSIGHT_EVIDENCE_ID CSIGHT_IDEMPOTENCY_KEY
+unset CSIGHT_EVIDENCE_ID CSIGHT_IDEMPOTENCY_KEY
 ```
 
 전체 HTTP 계약과 역할·오류 매핑은
 [`CSight_project_docs/docs/05_API_AND_EVENT_CONTRACTS.md`](CSight_project_docs/docs/05_API_AND_EVENT_CONTRACTS.md)를
 참조합니다.
+
+## Sprint 2 Text Analysis 흐름
+
+Reviewer 또는 Admin은 Case와 별도인 Text Analysis Run을 등록할 수 있습니다. 같은
+`Idempotency-Key`와 같은 요청은 기존 Run을 `200`으로 재생하고, 새 요청은 `202`와
+`Location`을 반환합니다. Dispatcher와 Worker가 비동기로 처리하므로 응답 직후에는
+`QUEUED`가 정상입니다.
+
+```bash
+CSIGHT_ANALYSIS_KEY="$(uuidgen)"
+CSIGHT_ANALYSIS_RESPONSE_FILE="$(mktemp)"
+CSIGHT_ANALYSIS_HEADERS="$(
+  curl -sS -D - -o "$CSIGHT_ANALYSIS_RESPONSE_FILE" \
+    -X POST "http://127.0.0.1:8000/api/v1/cases/$CSIGHT_CASE_ID/analysis-runs" \
+    -H "Authorization: Bearer $CSIGHT_ACCESS_TOKEN" \
+    -H "Idempotency-Key: $CSIGHT_ANALYSIS_KEY" \
+    -H 'Content-Type: application/json' \
+    --data '{
+      "pipeline": "product_defect_text_extraction",
+      "pipeline_version": "1.0.0"
+    }'
+)"
+CSIGHT_ANALYSIS_RUN_ID="$(jq -r '.analysis_run_id' "$CSIGHT_ANALYSIS_RESPONSE_FILE")"
+printf '%s\n' "$CSIGHT_ANALYSIS_HEADERS" | sed -n '1p;/^[Ll]ocation:/p'
+jq . "$CSIGHT_ANALYSIS_RESPONSE_FILE"
+
+curl -fsS \
+  "http://127.0.0.1:8000/api/v1/cases/$CSIGHT_CASE_ID/analysis-runs?page=1&page_size=20" \
+  -H "Authorization: Bearer $CSIGHT_ACCESS_TOKEN" | jq
+
+curl -fsS \
+  "http://127.0.0.1:8000/api/v1/cases/$CSIGHT_CASE_ID/analysis-runs/$CSIGHT_ANALYSIS_RUN_ID" \
+  -H "Authorization: Bearer $CSIGHT_ACCESS_TOKEN" | jq
+```
+
+상세 응답의 `run.status`가 `SUCCEEDED`이면 `extraction_result.result`에 검증된 구조화 결과가
+있습니다. 원문 전체 복제본, Raw Prompt, Raw Provider Response, Claim Token과 API Key는
+응답이나 DB에 저장되지 않습니다. Case 상세의 `latest_analysis_run`은 최신 Run의 안전한
+요약이며 Case 자체 상태는 그대로 유지됩니다.
+
+동일 Key Replay와 충돌을 확인할 수 있습니다.
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  -X POST "http://127.0.0.1:8000/api/v1/cases/$CSIGHT_CASE_ID/analysis-runs" \
+  -H "Authorization: Bearer $CSIGHT_ACCESS_TOKEN" \
+  -H "Idempotency-Key: $CSIGHT_ANALYSIS_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{"pipeline":"product_defect_text_extraction","pipeline_version":"1.0.0"}'
+
+make smoke-analysis
+make test-analysis
+```
+
+Mock Timeout·Transient·Permanent·Invalid Schema·Invalid Quote는 기본 테스트에서 네트워크 없이
+검증됩니다. 실제 vLLM은 합성 입력만 사용하는 선택적 환경변수를 설정한 뒤에만 실행합니다.
+Worker Lost·Hard Timeout은 Late Acknowledgment 재전달로, 검증된 메시지 처리 중 일반 예외와
+Soft Timeout은 명시적 재큐잉으로 복구합니다. 활성 Lease 중복 전달은 Lease 만료 시각의
+Outbox Wake-up을 남기며, Claim Token이 바뀐 늦은 Worker는 결과를 Commit할 수 없습니다.
+최종 허용 Lease까지 만료되면 새 Attempt 없이 `ANALYSIS_MAX_RETRIES_EXCEEDED`로 종결됩니다.
+
+```bash
+export RUN_EXTERNAL_GPU_TESTS=1
+export LLM_PROVIDER=vllm
+export LLM_BASE_URL='https://your-vllm-host.example'
+export LLM_MODEL_ID='your-model-id'
+make test-external-llm
+```
+
+```bash
+unset CSIGHT_ACCESS_TOKEN CSIGHT_CASE_ID CSIGHT_ANALYSIS_KEY CSIGHT_ANALYSIS_RUN_ID
+unset CSIGHT_ANALYSIS_HEADERS
+rm -f "$CSIGHT_ANALYSIS_RESPONSE_FILE"
+unset CSIGHT_ANALYSIS_RESPONSE_FILE
+```
 
 ## 설정
 
@@ -196,7 +279,7 @@ unset CSIGHT_ACCESS_TOKEN CSIGHT_CASE_ID CSIGHT_EVIDENCE_ID CSIGHT_IDEMPOTENCY_K
 예시값은 [`.env.example`](.env.example)에 있습니다. 실제 비밀번호, API Key, 운영 URL은
 저장소에 추가하지 않습니다.
 
-Sprint 0의 Provider 설정은 반드시 다음 기본값을 유지합니다.
+기본 Provider 설정은 외부 GPU를 호출하지 않는 다음 값을 유지합니다.
 
 ```dotenv
 LLM_PROVIDER=mock
@@ -206,6 +289,20 @@ VISION_PROVIDER=mock
 `/health/ready`는 PostgreSQL 연결, RabbitMQ 연결, MinIO Bucket 존재 여부를 검사합니다.
 응답에는 성공/실패 상태만 포함되고 Credential, 전체 Connection String, 내부 IP는
 노출하지 않습니다. `/health/live`는 외부 인프라를 조회하지 않습니다.
+외부 vLLM 가용성은 Core API Readiness 조건이 아닙니다. 장애는 Analysis Run의 Retry 또는
+Failure 상태로 격리됩니다.
+
+Analysis 실행의 핵심 설정은 다음과 같습니다.
+
+| 환경변수 | 기본값 | 설명 |
+|---|---:|---|
+| `LLM_PROVIDER` | `mock` | `mock` 또는 `vllm` |
+| `LLM_MODEL_ID` | `csight-mock-llm` | 실행에 Snapshot되는 Model ID |
+| `LLM_CONNECT_TIMEOUT_SECONDS` | `5` | Provider 연결 Timeout |
+| `LLM_READ_TIMEOUT_SECONDS` | `120` | Provider 응답 Timeout |
+| `ANALYSIS_STAGE_LEASE_SECONDS` | `300` | Worker Fencing Lease |
+| `ANALYSIS_OUTBOX_POLL_INTERVAL_SECONDS` | `1` | Dispatcher Poll 주기 |
+| `ANALYSIS_OUTBOX_MAX_ATTEMPTS` | `10` | Publish 최대 시도 |
 
 Evidence 업로드와 접근 정책은 다음 설정을 사용합니다.
 
@@ -232,14 +329,14 @@ Pillow의 고정 안전 한계 때문에 최대 `178956970`까지 설정할 수 
 
 ```text
 app/
-├── interface/      # FastAPI Router, Celery Task, Event 진입점
+├── interface/      # FastAPI Router, Celery Task, Outbox Dispatcher 진입점
 ├── application/    # Port만 조율하는 Use Case
 ├── platform/       # Framework 독립 공통 분석·업무 개념
 ├── domains/        # 교체 가능한 product_defect_cs 확장점
 ├── ports/          # LLM, Vision, 저장소, Repository, MQ, Vector 계약
-├── adapters/       # SQLAlchemy, Mock AI, Readiness 구현
+├── adapters/       # SQLAlchemy, Mock/vLLM, Celery Publisher, Readiness 구현
 └── bootstrap/      # 설정, 조립, 구조화 로깅
-alembic/            # pgvector Baseline + Sprint 1 Identity/Case/Evidence Migration
+alembic/            # Baseline + Sprint 1 Case/Evidence + Sprint 2 Analysis Migration
 infra/              # Core Docker Compose와 공통 App 이미지
 tests/              # Unit, Contract, Architecture, Integration, E2E Skeleton
 ```
@@ -248,16 +345,17 @@ tests/              # Unit, Contract, Architecture, Integration, E2E Skeleton
 모델 SDK를 import하지 않습니다. 이 규칙과 `app/application → app/adapters` 직접 의존
 금지는 AST 기반 Architecture Test가 보호합니다.
 
-LLM과 Vision 결과는 최종 업무 결정이 아닙니다. Mock E2E 결과도 분석 관찰값만 반환하며,
+LLM과 Vision 결과는 최종 업무 결정이 아닙니다. Sprint 2의 LLM 결과도 구조화된 주장만 반환하며,
 향후 최종 결정은 버전 관리된 정책과 Human Review가 소유합니다. 재분석은 새
 `analysis_run_id`를 사용하는 append-only 구조를 전제로 하고, 모델·Prompt·Policy·
 Threshold·Embedding·Retrieval Index 버전을 기록할 계약을 제공합니다.
 
 ## Migration
 
-초기 Baseline은 PostgreSQL `vector` Extension을 생성하고, Sprint 1 Migration은 그
-Baseline을 수정하지 않은 채 Tenant, User, Role, Case, Evidence, 상태 이력과 Case 생성
-Idempotency 테이블을 추가합니다.
+초기 Baseline은 PostgreSQL `vector` Extension을 생성하고, Sprint 1 Migration은 Tenant,
+User, Role, Case, Evidence, 상태 이력과 Case 생성 Idempotency를 추가합니다. Sprint 2
+Migration은 기존 Revision을 수정하지 않고 Analysis Run·Stage·Attempt, 구조화 Result,
+분석 Idempotency와 Outbox 여섯 테이블을 추가합니다.
 
 ```bash
 make migrate
@@ -266,7 +364,8 @@ docker compose --env-file .env -f infra/compose.core.yml run --rm api uv run ale
 
 구현 감사와 실제 검증 결과는
 [`docs/progress/SPRINT_0_FOUNDATION.md`](docs/progress/SPRINT_0_FOUNDATION.md)와
-[`docs/progress/SPRINT_1_CASE_EVIDENCE.md`](docs/progress/SPRINT_1_CASE_EVIDENCE.md)에
+[`docs/progress/SPRINT_1_CASE_EVIDENCE.md`](docs/progress/SPRINT_1_CASE_EVIDENCE.md),
+[`docs/progress/SPRINT_2_ANALYSIS_LLM.md`](docs/progress/SPRINT_2_ANALYSIS_LLM.md)에
 기록합니다.
 
 ## 협업과 작업 인계

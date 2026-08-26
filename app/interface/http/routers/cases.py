@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 from app.application.cases import CreateCaseCommand, ListCasesQuery
 from app.interface.http.dependencies import (
     provide_current_principal,
+    provide_optional_sprint2_services,
     provide_sprint1_services,
 )
 from app.interface.http.schemas import ErrorResponse
-from app.interface.http.services import Sprint1ServiceContainer
+from app.interface.http.services import Sprint1ServiceContainer, Sprint2ServiceContainer
 from app.interface.http.sprint1_schemas import (
     CaseDetailResponse,
     CaseListParameters,
@@ -111,11 +112,26 @@ def get_case_detail(
     case_id: CaseId,
     principal: Annotated[Principal, Depends(provide_current_principal)],
     services: Annotated[Sprint1ServiceContainer, Depends(provide_sprint1_services)],
+    sprint2_services: Annotated[
+        Sprint2ServiceContainer | None,
+        Depends(provide_optional_sprint2_services),
+    ],
 ) -> CaseDetailResponse:
     case = services.get_case.execute(principal=principal, case_id=case_id)
     evidence = services.list_case_evidence.execute(principal=principal, case_id=case_id)
     history = services.get_case_status_history.execute(principal=principal, case_id=case_id)
-    return CaseDetailResponse.from_domain(case=case, evidence=evidence, history=history)
+    latest_analysis_run = None
+    if sprint2_services is not None:
+        latest_analysis_run = sprint2_services.get_latest_analysis_run.execute(
+            principal=principal,
+            case_id=case_id,
+        )
+    return CaseDetailResponse.from_domain(
+        case=case,
+        evidence=evidence,
+        history=history,
+        latest_analysis_run=latest_analysis_run,
+    )
 
 
 @router.get(

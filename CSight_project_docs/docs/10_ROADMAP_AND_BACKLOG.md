@@ -54,18 +54,32 @@
 
 ### Sprint 2 — Async Analysis and LLM
 
-- Celery + RabbitMQ
-- Analysis Run
-- vLLM Adapter
-- 문의 구조화 Schema
-- Retry, Timeout, Idempotency
-- 위 Idempotency는 Analysis Run과 Message 재전달 범위이며 Case 생성은 Sprint 1에서 처리
-- Prompt Version
+- [x] `product_defect_text_extraction` Pipeline `1.0.0`과 `TEXT_EXTRACTION` Stage
+- [x] Append-only Analysis Run/Stage/Attempt와 명시적 상태 전이
+- [x] Tenant-scoped Analysis 등록 Idempotency와 Canonical Request Hash
+- [x] Run + Stage + Idempotency + `analysis.requested.v1`의 단일 Transaction 등록
+- [x] Transactional Outbox Dispatcher, Backoff, Claim/Lease와 Fenced Worker
+- [x] 활성 Lease 중복 Delivery의 Lease-expiry Recovery Outbox와 Stale Token Fencing
+- [x] 정확히 여섯 ID만 전달하는 Celery/RabbitMQ Task
+- [x] Strict LLM 구조화 Schema, Exact Source Quote와 입·출력 상한
+- [x] Code Prompt Manifest `1.0.0`, Canonical SHA-256 Content Hash와 Injection-safe Rendering
+- [x] 결정적 Mock과 OpenAI-compatible vLLM Adapter
+- [x] POST/목록/상세 Analysis HTTP API와 역할·Tenant Scope
+- [x] 외부 GPU 검증을 기본 Suite에서 분리한 `external_gpu` 경계
 
 완료 기준:
 
 - API가 202 응답 후 LLM 구조화 결과를 비동기로 저장
-- 실패와 재시도 이력 확인 가능
+- 동일 요청은 기존 Run을 200으로 재생하고 중복 Run/Stage/Outbox를 만들지 않음
+- 실패·재시도·만료 Attempt와 Provider/Model/Prompt/Schema Snapshot을 조회·감사 가능
+- Celery Retry가 아닌 PostgreSQL 상태와 Outbox가 재시도·복구의 Source of Truth
+- 전체 Prompt, Raw Provider Response, 고객 원문과 Secret이 Outbox/Broker/로그에 남지 않음
+
+설계 결정:
+
+- [ADR-0009: Transactional Outbox와 Fenced Analysis 실행](adr/0009-transactional-outbox-and-fenced-analysis-execution.md)
+- [ADR-0010: Code Prompt Registry와 구조화 결과만 보존](adr/0010-code-prompt-registry-and-structured-output-retention.md)
+- [ADR-0011: Case와 Analysis Run 수명주기 분리](adr/0011-separate-case-and-analysis-lifecycles.md)
 
 ### Sprint 3 — Vision Integration
 
@@ -75,11 +89,17 @@
 - Detection 정규화
 - Model Version 저장
 - LLM·Vision 병렬 실행
+- Evidence Reference Allowlist와 Private Object 접근 경계
+- Vision Stage/Attempt/Result의 Append-only Schema와 Migration
+- Text/Vision 부분 실패와 재개 상태 계약
 
 완료 기준:
 
 - Vision 모델 교체가 Domain 코드 수정 없이 가능
 - 부분 실패 상태가 정상 저장
+
+Sprint 3 시작 시점에 Vision 실행, LLM·Vision 병렬화, Alignment는 아직 구현되지 않은 것으로
+취급한다. Sprint 2 Text Extraction Run을 덮어쓰지 않고 별도 Stage/Result로 확장한다.
 
 ### Sprint 4 — Alignment, Policy, Review
 
@@ -131,9 +151,11 @@
 - [x] MinIO Upload
 - [x] Case Create Idempotency
 - [x] Celery / RabbitMQ Foundation
-- [ ] LLM Structured Output
+- [x] LLM Structured Output
 - [ ] Vision Contract와 Adapter
-- [ ] Analysis Run / Versioning
+- [x] Analysis Run / Versioning
+- [x] Transactional Outbox / Fenced Worker
+- [x] Analysis HTTP API / Idempotency
 - [ ] Alignment v1
 - [ ] Policy Evaluator
 - [ ] Routing Decision
@@ -153,7 +175,23 @@
 - [ ] Tenant별 Threshold
 - [ ] Shadow Mode 비교 화면
 
-## 5. P2 Backlog
+## 5. 명시적 미구현 경계
+
+다음 기능은 Sprint 2 완료 항목이 아니며 후속 Sprint에서 별도 계약, Migration, 테스트와
+운영 Guardrail을 갖춰야 한다.
+
+- [ ] 실제 Vision 분석과 Vision Result
+- [ ] LLM·Vision Evidence Alignment
+- [ ] Policy Version/Rule Evaluation
+- [ ] Routing Decision
+- [ ] Human Review와 최종 업무 결정
+- [ ] Audit Log와 Review 이력
+- [ ] Report 생성·Export
+- [ ] Policy Document RAG와 Retrieval Index
+- [ ] SSE 진행 Event
+- [ ] Terminal Run 수동 Retry/DLQ 운영 API
+
+## 6. P2 Backlog
 
 - [ ] OIDC / SSO
 - [ ] PostgreSQL RLS
@@ -164,7 +202,7 @@
 - [ ] Cloud / Linux Core 배포
 - [ ] Domain Module 추가
 
-## 6. 병렬 사업 검증 Backlog
+## 7. 병렬 사업 검증 Backlog
 
 - [ ] 초기 고객군 인터뷰 대상 5곳 선정
 - [ ] CS 업무 담당자 인터뷰 질문 확정
@@ -175,7 +213,7 @@
 - [ ] PoC 성공 기준 합의
 - [ ] 구축비·구독·건당 과금 가설 비교
 
-## 7. 역할 분담
+## 8. 역할 분담
 
 ### 차인택
 
@@ -204,7 +242,7 @@
 - 평가 Case
 - 멘토링 자료
 
-## 8. Definition of Done
+## 9. Definition of Done
 
 - 기능 요구사항 충족
 - 테스트와 Type Check 통과

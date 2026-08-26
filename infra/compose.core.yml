@@ -29,9 +29,29 @@ x-app-environment: &app-environment
   LLM_PROVIDER: ${LLM_PROVIDER:-mock}
   VISION_PROVIDER: ${VISION_PROVIDER:-mock}
   LLM_BASE_URL: ${LLM_BASE_URL:-http://llm.invalid}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_MODEL_ID: ${LLM_MODEL_ID:-csight-mock-llm}
+  LLM_MODEL_VERSION: ${LLM_MODEL_VERSION:-0.1.0}
+  LLM_MODEL_REVISION: ${LLM_MODEL_REVISION:-}
+  LLM_CONNECT_TIMEOUT_SECONDS: ${LLM_CONNECT_TIMEOUT_SECONDS:-5}
+  LLM_READ_TIMEOUT_SECONDS: ${LLM_READ_TIMEOUT_SECONDS:-120}
+  LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-1024}
+  LLM_MAX_OUTPUT_CHARS: ${LLM_MAX_OUTPUT_CHARS:-20000}
+  LLM_MAX_INPUT_CHARS: ${LLM_MAX_INPUT_CHARS:-20000}
+  LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0}
+  LLM_TLS_VERIFY: "${LLM_TLS_VERIFY:-true}"
   VISION_BASE_URL: ${VISION_BASE_URL:-http://vision.invalid}
   CELERY_TASK_MAX_RETRIES: ${CELERY_TASK_MAX_RETRIES:-3}
   CELERY_RETRY_BACKOFF_MAX_SECONDS: ${CELERY_RETRY_BACKOFF_MAX_SECONDS:-60}
+  ANALYSIS_TASK_SOFT_TIME_LIMIT_SECONDS: ${ANALYSIS_TASK_SOFT_TIME_LIMIT_SECONDS:-150}
+  ANALYSIS_TASK_HARD_TIME_LIMIT_SECONDS: ${ANALYSIS_TASK_HARD_TIME_LIMIT_SECONDS:-180}
+  ANALYSIS_STAGE_LEASE_SECONDS: ${ANALYSIS_STAGE_LEASE_SECONDS:-300}
+  ANALYSIS_OUTBOX_POLL_INTERVAL_SECONDS: ${ANALYSIS_OUTBOX_POLL_INTERVAL_SECONDS:-1}
+  ANALYSIS_OUTBOX_BATCH_SIZE: ${ANALYSIS_OUTBOX_BATCH_SIZE:-100}
+  ANALYSIS_OUTBOX_CLAIM_SECONDS: ${ANALYSIS_OUTBOX_CLAIM_SECONDS:-30}
+  ANALYSIS_OUTBOX_MAX_ATTEMPTS: ${ANALYSIS_OUTBOX_MAX_ATTEMPTS:-10}
+  ANALYSIS_OUTBOX_RETRY_BASE_SECONDS: ${ANALYSIS_OUTBOX_RETRY_BASE_SECONDS:-1}
+  ANALYSIS_OUTBOX_RETRY_MAX_SECONDS: ${ANALYSIS_OUTBOX_RETRY_MAX_SECONDS:-60}
 
 x-app-depends-on: &app-depends-on
   postgres:
@@ -114,6 +134,32 @@ services:
       start_period: 20s
     restart: unless-stopped
     stop_grace_period: 30s
+    networks:
+      - core
+
+  dispatcher:
+    <<: *app-image
+    init: true
+    command:
+      - uv
+      - run
+      - python
+      - -m
+      - app.interface.dispatchers.outbox
+    environment: *app-environment
+    depends_on: *app-depends-on
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import os; os.kill(1, 0)
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 20s
     networks:
       - core
 

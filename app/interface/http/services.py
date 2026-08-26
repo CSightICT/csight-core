@@ -8,6 +8,13 @@ into :func:`app.main.create_app`.
 from dataclasses import dataclass
 from typing import BinaryIO, Protocol
 
+from app.application.analysis import (
+    AnalysisRunDetail,
+    AnalysisRunPage,
+    ListAnalysisRunsQuery,
+    StartTextAnalysisCommand,
+    StartTextAnalysisResult,
+)
 from app.application.auth import LoginCommand, LoginResult
 from app.application.cases import (
     CasePage,
@@ -16,6 +23,7 @@ from app.application.cases import (
     ListCasesQuery,
 )
 from app.application.evidence import EvidenceAccessUrl
+from app.platform.analysis import AnalysisRun
 from app.platform.case import Case, CaseStatusTransition
 from app.platform.evidence import EvidenceMetadata, EvidenceType
 from app.platform.tenant import Principal
@@ -97,6 +105,45 @@ class CreateEvidenceAccessUrlService(Protocol):
     ) -> EvidenceAccessUrl: ...
 
 
+class StartTextAnalysisService(Protocol):
+    def execute(
+        self,
+        *,
+        principal: Principal,
+        case_id: str,
+        command: StartTextAnalysisCommand,
+    ) -> StartTextAnalysisResult: ...
+
+
+class ListAnalysisRunsService(Protocol):
+    def execute(
+        self,
+        *,
+        principal: Principal,
+        case_id: str,
+        query: ListAnalysisRunsQuery,
+    ) -> AnalysisRunPage: ...
+
+
+class GetAnalysisRunService(Protocol):
+    def execute(
+        self,
+        *,
+        principal: Principal,
+        case_id: str,
+        analysis_run_id: str,
+    ) -> AnalysisRunDetail: ...
+
+
+class GetLatestAnalysisRunService(Protocol):
+    def execute(
+        self,
+        *,
+        principal: Principal,
+        case_id: str,
+    ) -> AnalysisRun | None: ...
+
+
 @dataclass(frozen=True, slots=True)
 class Sprint1ServiceContainer:
     """All Sprint 1 use cases required by the HTTP boundary."""
@@ -111,3 +158,13 @@ class Sprint1ServiceContainer:
     list_case_evidence: ListCaseEvidenceService
     get_evidence_metadata: GetEvidenceMetadataService
     create_evidence_access_url: CreateEvidenceAccessUrlService
+
+
+@dataclass(frozen=True, slots=True)
+class Sprint2ServiceContainer:
+    """Analysis use cases optionally composed into the HTTP application."""
+
+    start_text_analysis: StartTextAnalysisService
+    list_analysis_runs: ListAnalysisRunsService
+    get_analysis_run: GetAnalysisRunService
+    get_latest_analysis_run: GetLatestAnalysisRunService

@@ -32,6 +32,26 @@ def test_defaults_use_mock_providers_without_infrastructure_secrets() -> None:
     assert settings.allowed_image_mime_types == {"image/jpeg", "image/png", "image/webp"}
     assert settings.allowed_image_extensions == {"jpg", "jpeg", "png", "webp"}
     assert settings.max_image_pixels == 40_000_000
+    assert settings.llm_api_key is None
+    assert settings.llm_model_id == "csight-mock-llm"
+    assert settings.llm_model_version == "0.1.0"
+    assert settings.llm_model_revision is None
+    assert settings.llm_connect_timeout_seconds == 5.0
+    assert settings.llm_read_timeout_seconds == 120.0
+    assert settings.llm_max_output_tokens == 1024
+    assert settings.llm_max_output_chars == 20_000
+    assert settings.llm_max_input_chars == 20_000
+    assert settings.llm_temperature == 0.0
+    assert settings.llm_tls_verify is True
+    assert settings.analysis_task_soft_time_limit_seconds == 150
+    assert settings.analysis_task_hard_time_limit_seconds == 180
+    assert settings.analysis_stage_lease_seconds == 300
+    assert settings.analysis_outbox_poll_interval_seconds == 1.0
+    assert settings.analysis_outbox_batch_size == 100
+    assert settings.analysis_outbox_claim_seconds == 30
+    assert settings.analysis_outbox_max_attempts == 10
+    assert settings.analysis_outbox_retry_base_seconds == 1.0
+    assert settings.analysis_outbox_retry_max_seconds == 60.0
 
 
 def test_settings_normalize_environment_values_and_hide_secrets(
@@ -158,9 +178,90 @@ def test_image_allowlists_are_normalized_and_reject_unsupported_types(
         )
 
 
-def test_non_mock_provider_requires_base_url() -> None:
+def test_vllm_provider_requires_base_url() -> None:
     with pytest.raises(ValidationError, match="LLM_BASE_URL"):
         Settings(
             _env_file=None,  # pyright: ignore[reportCallIssue]
             llm_provider="vllm",
+        )
+
+
+def test_vllm_settings_are_normalized_bounded_and_keep_api_key_secret() -> None:
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        llm_provider=" VLLM ",
+        llm_base_url="https://llm.example.test/root/",
+        llm_api_key=SecretStr("private-vllm-api-key"),
+        llm_model_id=" configured/model ",
+        llm_model_version=" deployment-v2 ",
+        llm_model_revision=" revision-17 ",
+        llm_connect_timeout_seconds=3.5,
+        llm_read_timeout_seconds=90,
+        llm_max_output_tokens=2048,
+        llm_max_output_chars=40_000,
+        llm_max_input_chars=25_000,
+        llm_temperature=0.1,
+        llm_tls_verify=False,
+    )
+
+    assert settings.llm_provider == "vllm"
+    assert settings.llm_base_url_value == "https://llm.example.test/root"
+    assert settings.llm_api_key_value == "private-vllm-api-key"
+    assert settings.llm_model_id == "configured/model"
+    assert settings.llm_model_version == "deployment-v2"
+    assert settings.llm_model_revision == "revision-17"
+    assert settings.llm_connect_timeout_seconds == 3.5
+    assert settings.llm_read_timeout_seconds == 90
+    assert settings.llm_max_output_tokens == 2048
+    assert settings.llm_max_output_chars == 40_000
+    assert settings.llm_max_input_chars == 25_000
+    assert settings.llm_temperature == 0.1
+    assert settings.llm_tls_verify is False
+    assert "private-vllm-api-key" not in repr(settings)
+
+
+def test_llm_provider_is_allowlisted() -> None:
+    with pytest.raises(ValidationError, match=r"mock.*vllm"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            llm_provider="unknown-provider",
+        )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {
+            "analysis_task_soft_time_limit_seconds": 180,
+            "analysis_task_hard_time_limit_seconds": 180,
+        },
+        {
+            "analysis_task_hard_time_limit_seconds": 300,
+            "analysis_stage_lease_seconds": 300,
+        },
+    ],
+)
+def test_analysis_stage_lease_strictly_exceeds_hard_and_soft_limits(
+    overrides: dict[str, int],
+) -> None:
+    with pytest.raises(ValidationError, match="ANALYSIS_STAGE_LEASE_SECONDS"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            **overrides,
+        )
+
+
+def test_outbox_retry_window_is_ordered_but_claim_is_independent_of_task_limit() -> None:
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        analysis_outbox_claim_seconds=1,
+        analysis_task_hard_time_limit_seconds=180,
+    )
+    assert settings.analysis_outbox_claim_seconds == 1
+
+    with pytest.raises(ValidationError, match="ANALYSIS_OUTBOX_RETRY_MAX_SECONDS"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            analysis_outbox_retry_base_seconds=61,
+            analysis_outbox_retry_max_seconds=60,
         )

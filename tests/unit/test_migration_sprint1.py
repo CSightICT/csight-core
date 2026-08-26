@@ -25,12 +25,11 @@ def _offline_config(output: StringIO) -> Config:
     return config
 
 
-def test_sprint_1_revision_is_the_single_head_after_baseline() -> None:
+def test_sprint_1_revision_follows_the_preserved_baseline() -> None:
     config = _offline_config(StringIO())
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision(SPRINT_1_REVISION)
 
-    assert scripts.get_current_head() == SPRINT_1_REVISION
     assert revision is not None
     assert revision.down_revision == BASELINE_REVISION
 

@@ -20,6 +20,8 @@ from pydantic import (
 
 from app.application.cases import CasePage, CreateCaseResult
 from app.application.evidence import EvidenceAccessUrl
+from app.interface.http.analysis_schemas import AnalysisRunResponse
+from app.platform.analysis import AnalysisRun
 from app.platform.case import (
     Case,
     CaseStatus,
@@ -300,7 +302,7 @@ class CaseDetailResponse(BaseModel):
     updated_at: datetime
     evidence: tuple[EvidenceResponse, ...]
     status_history: tuple[StatusHistoryResponse, ...]
-    latest_analysis_run: None = None
+    latest_analysis_run: AnalysisRunResponse | None = None
 
     @classmethod
     def from_domain(
@@ -309,6 +311,7 @@ class CaseDetailResponse(BaseModel):
         case: Case,
         evidence: tuple[EvidenceMetadata, ...],
         history: tuple[CaseStatusTransition, ...],
+        latest_analysis_run: AnalysisRun | None = None,
     ) -> Self:
         return cls(
             case_id=case.id,
@@ -325,4 +328,9 @@ class CaseDetailResponse(BaseModel):
             updated_at=case.updated_at,
             evidence=tuple(EvidenceResponse.from_evidence(item) for item in evidence),
             status_history=tuple(StatusHistoryResponse.from_transition(item) for item in history),
+            latest_analysis_run=(
+                AnalysisRunResponse.from_run(latest_analysis_run)
+                if latest_analysis_run is not None
+                else None
+            ),
         )

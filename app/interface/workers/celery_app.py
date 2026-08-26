@@ -5,7 +5,7 @@ from celery import Celery
 from app.bootstrap.logging import configure_logging
 from app.bootstrap.settings import Settings, get_settings
 
-ANALYZE_CASE_TASK_NAME = "csight.analysis.analyze_case"
+ANALYSIS_REQUESTED_TASK_NAME = "analysis.requested.v1"
 
 
 def create_celery_app(settings: Settings | None = None) -> Celery:
@@ -23,12 +23,25 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
         task_serializer="json",
         result_serializer="json",
         task_default_queue="default",
-        task_routes={ANALYZE_CASE_TASK_NAME: {"queue": "analysis"}},
+        task_routes={ANALYSIS_REQUESTED_TASK_NAME: {"queue": "analysis"}},
         task_track_started=True,
         task_acks_late=True,
+        task_acks_on_failure_or_timeout=False,
         task_reject_on_worker_lost=True,
+        task_soft_time_limit=resolved_settings.analysis_task_soft_time_limit_seconds,
+        task_time_limit=resolved_settings.analysis_task_hard_time_limit_seconds,
         worker_prefetch_multiplier=1,
+        broker_connection_retry=True,
         broker_connection_retry_on_startup=True,
+        broker_transport_options={"confirm_publish": True},
+        task_publish_retry=True,
+        task_publish_retry_policy={
+            "max_retries": resolved_settings.celery_task_max_retries,
+            "interval_start": 0,
+            "interval_step": 0.2,
+            "interval_max": 1,
+        },
+        task_default_delivery_mode="persistent",
         task_store_errors_even_if_ignored=False,
         task_ignore_result=True,
     )

@@ -3,6 +3,11 @@
 from typing import Protocol, runtime_checkable
 
 from app.platform.analysis import LLMAnalysisRequest, LLMCaseExtraction, ProviderMetadata
+from app.platform.analysis.prompts import PromptManifest
+from app.platform.analysis.schemas import (
+    LLMTextExtractionRequest,
+    LLMTextExtractionResponse,
+)
 
 
 @runtime_checkable
@@ -16,4 +21,12 @@ class LLMProvider(Protocol):
 
     def extract_case(self, request: LLMAnalysisRequest) -> LLMCaseExtraction:
         """Extract claims from customer text without making a business decision."""
+        ...
+
+    def extract_text(
+        self,
+        request: LLMTextExtractionRequest,
+        prompt: PromptManifest,
+    ) -> LLMTextExtractionResponse:
+        """Return one validated, decision-free text extraction and execution metadata."""
         ...

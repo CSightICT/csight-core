@@ -6,8 +6,11 @@
 |---|---|
 | Case | 한 건의 상품 불량 문의와 처리 생명주기 |
 | Evidence | 텍스트, 이미지, 주문정보, 상품정보, 정책 문서 등 판단 근거 |
-| Analysis Run | 특정 모델·프롬프트·Threshold로 실행한 분석 단위 |
-| Finding | LLM 또는 Vision이 반환한 구조화된 관찰 결과 |
+| Analysis Run | 한 Case에 대해 등록된 Pipeline 실행 단위; 재분석마다 새 Run을 만든다 |
+| Analysis Stage Run | Pipeline의 한 단계와 Provider·Model·Prompt·Schema Snapshot |
+| Analysis Stage Attempt | Claim Token으로 식별되는 한 번의 Provider 실행과 결과·실패 이력 |
+| Text Extraction Result | 검증된 LLM 구조화 결과; 성공 Run/Stage당 최대 하나인 Append-only Record |
+| Finding | LLM 또는 Vision이 반환할 일반화된 관찰 결과; Sprint 2 별도 Finding Table은 없음 |
 | Alignment | 고객 주장과 이미지 증거의 유형·위치·충분성 정합성 |
 | Policy | 기업이 정의한 처리 규칙과 유효기간 |
 | Decision | 분석과 정책을 결합한 시스템 권고 경로 |
@@ -31,10 +34,9 @@
   `UNSPECIFIED`)
 - JSON 호환 부가 속성
 - 생성자와 UTC 생성·갱신 시각
-- Evidence 목록
-- 최신 Analysis Run 참조
-- 최신 Decision 참조
-- 최종 Review 참조
+- Evidence 목록은 Evidence Repository 조회로 조합
+- 최신 Analysis Run은 별도 Analysis Repository 조회로 조합하며 Case Row에 복제하지 않음
+- 최신 Decision과 최종 Review 참조는 Sprint 4 이후 미구현 범위
 
 Sprint 1에서 Case는 `RECEIVED`로만 생성한다. 생성과 같은 Transaction에서
 `from_status = null`, `to_status = RECEIVED`, 생성 사용자를 Actor로 하고
@@ -63,17 +65,59 @@ tenants/{tenant_id}/cases/{case_id}/evidence/{evidence_id}/original
 
 ### Analysis Aggregate
 
-- Analysis Run ID
-- Case ID
-- 실행 상태
-- LLM Result
-- Vision Result
-- Alignment Result
-- 모델·프롬프트·Threshold 버전
-- 시작·완료 시각
-- 오류와 재시도 이력
+- `AnalysisRun`: Tenant/Case, Pipeline `product_defect_text_extraction`, Pipeline Version
+  `1.0.0`, Trigger `USER_REQUEST`, 요청자·Correlation·Idempotency Hash, 상태와 시각
+- `AnalysisStageRun`: Sprint 2 실행 Stage `TEXT_EXTRACTION`, Provider/Model/Revision,
+  Prompt Name/Version/Content Hash, Input/Output Schema Version `1.0`, Attempt Summary,
+  Claim Token/Lease와 다음 재시도 시각
+- `AnalysisStageAttempt`: Attempt Number, Execution Token, 등록 당시 Provider/Model/Prompt/Schema
+  Snapshot, 실행 Metadata, 시작·완료 시각과 정규화된 실패
+- `LLMExtractionResult`: `language`, `issue_types`, `claims`, `requested_action`,
+  `missing_information`, `summary`, Schema Version
+- Run/Stage/Attempt와 성공 결과는 기존 실행을 덮어쓰는 재분석 경로를 제공하지 않는다.
+- Provider Request ID, Input/Output Token 수와 Latency는 실행 Metadata로 저장하지만 전체
+  Prompt와 Raw Provider Response는 저장하지 않는다.
+
+Vision Result, Alignment Result, Policy/Threshold Snapshot, Routing Decision은 이 Aggregate의
+후속 확장 지점이며 Sprint 2에는 생성되지 않는다.
+
+### Analysis 상태 머신
+
+Run과 Stage는 동일한 다섯 상태를 사용한다.
+
+```mermaid
+stateDiagram-v2
+    [*] --> QUEUED
+    QUEUED --> RUNNING
+    QUEUED --> FAILED: Outbox dispatch exhausted
+    RUNNING --> SUCCEEDED
+    RUNNING --> RETRY_WAITING
+    RUNNING --> FAILED
+    RETRY_WAITING --> RUNNING
+    RETRY_WAITING --> FAILED: Outbox dispatch exhausted
+```
+
+- `SUCCEEDED`와 `FAILED`는 Terminal이며 이후 전이를 금지한다.
+- `RUNNING` Stage만 Claim Token과 Lease를 가진다. 완료·실패 쓰기는 같은 Token으로 조건부
+  전이될 때만 허용한다.
+- Provider Attempt 상태는 `RUNNING`, `RETRY_WAITING`, `SUCCEEDED`, `FAILED`, `ABANDONED`다.
+  만료된 Lease를 회수하면 이전 `RUNNING` Attempt를 `ABANDONED`로 남긴다.
+- Transient 실패는 Attempt/Stage/Run을 `RETRY_WAITING`으로 기록하고 다음 Outbox Event를
+  같은 Transaction에 추가한다. 영구 실패 또는 최대 시도 소진은 `FAILED`다.
+- 활성 Lease 중 도착한 중복 Delivery는 현재 Claim을 침범하지 않고 Lease 만료 시각의
+  Reference-only Recovery Outbox Event 하나를 저장한다. 기존 Claim Token의 늦은 완료는
+  Fencing되고, Lease 회수 뒤 이전 Attempt는 `ABANDONED`다.
+- Celery 자체 Retry 상태는 업무 상태가 아니다. Run/Stage/Attempt와 미래 Outbox Event가
+  재시도·복구의 Source of Truth다.
+- `QUEUED` 또는 `RETRY_WAITING` 상태에서 Outbox 발행 최대 횟수를 소진하면
+  `OUTBOX_DISPATCH_FAILED`로 실패시킨다.
+
+세부 결정은 [ADR-0009](adr/0009-transactional-outbox-and-fenced-analysis-execution.md)와
+[ADR-0011](adr/0011-separate-case-and-analysis-lifecycles.md)을 따른다.
 
 ### Policy Aggregate
+
+Sprint 2에는 Policy Aggregate가 구현되지 않았다. 다음은 Sprint 4 이후 목표다.
 
 - Policy ID
 - Version
@@ -87,6 +131,8 @@ tenants/{tenant_id}/cases/{case_id}/evidence/{evidence_id}/original
 
 ### Review Aggregate
 
+Sprint 2에는 Review Aggregate가 구현되지 않았다. 다음은 Sprint 4 이후 목표다.
+
 - Review ID
 - AI 권고 원본
 - 담당자 최종 결정
@@ -96,8 +142,9 @@ tenants/{tenant_id}/cases/{case_id}/evidence/{evidence_id}/original
 
 ## 3. Case 상태 머신
 
-아래는 전체 목표 상태 머신이다. Sprint 1은 `RECEIVED` 생성과 최초 이력까지만 구현하며
-Case/Evidence 접수만으로 분석 관련 상태로 전환하지 않는다.
+아래는 전체 목표 Case 상태 머신이다. Sprint 1은 `RECEIVED` 생성과 최초 이력까지 구현했다.
+Sprint 2의 Analysis 등록·성공·실패도 Case 상태를 변경하지 않으며 Analysis의 기술 상태는
+별도 Run/Stage에만 기록한다.
 
 ```mermaid
 stateDiagram-v2
@@ -129,6 +176,7 @@ stateDiagram-v2
 - 외부 요청의 `tenant_id`는 Domain 식별 근거로 사용하지 않는다.
 - 다른 Tenant의 Case·Evidence 존재 여부를 공개하지 않는다.
 - Evidence 업로드는 Case 상태를 분석 관련 상태로 전환하지 않는다.
+- Analysis Run 등록·재시도·실패·성공은 Sprint 2에서 Case 상태를 자동 변경하지 않는다.
 - `APPROVAL_CANDIDATE`는 최종 승인 상태가 아니다.
 - Vision 분석이 필수인 Domain에서 Vision 실패 시 `APPROVAL_CANDIDATE`가 될 수 없다.
 - 고위험 정책 조건이 참이면 모델 신뢰도와 무관하게 담당자 또는 상급자 검토로 이동한다.
@@ -137,6 +185,9 @@ stateDiagram-v2
 - 모든 상태 전환은 Actor와 Reason을 기록한다.
 
 ## 5. 처리 라우팅 매트릭스
+
+아래 매트릭스는 Sprint 4 이후 목표이며 Sprint 2 Text Extraction은 어떤 행도 자동 선택하지
+않는다.
 
 | Evidence / Risk | 정책 명확 | 정책 모호·예외 | 고위험 |
 |---|---|---|---|
@@ -147,7 +198,7 @@ stateDiagram-v2
 
 ## 6. Alignment 모델
 
-초기 Alignment는 규칙 기반으로 시작한다.
+Alignment는 Sprint 2에 구현되지 않았다. Sprint 4의 초기 구현은 규칙 기반으로 시작한다.
 
 ```text
 Alignment Score
@@ -192,7 +243,9 @@ Threshold는 코드 상수가 아니라 버전 관리되는 설정으로 저장�
 - 법적 책임 확정
 - Case 상태 직접 변경
 
-정형 정책은 Python Policy Evaluator가 실행하고, 비정형 정책은 RAG가 근거 조항을 찾는다. LLM은 해당 근거를 설명할 뿐 최종 규칙 실행자가 아니다.
+정형 정책은 후속 Python Policy Evaluator가 실행하고, 비정형 정책은 후속 RAG가 근거 조항을
+찾는다. LLM은 해당 근거를 설명할 뿐 최종 규칙 실행자가 아니다. Policy, Routing, Review,
+Report와 RAG는 Sprint 2에 구현되지 않았다.
 
 ## 8. 다른 서비스로의 확장
 

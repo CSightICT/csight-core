@@ -1,0 +1,237 @@
+"""Runtime composition, Celery, and durable dispatcher contracts for Sprint 2."""
+
+import signal
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from threading import Event
+from types import FrameType
+from typing import Any, cast
+
+import pytest
+from pydantic import SecretStr
+
+import app.main as main_module
+from app.application.outbox import DispatchOutboxResult
+from app.bootstrap.settings import Settings
+from app.interface.dispatchers import outbox as dispatcher_module
+from app.interface.http.services import Sprint2ServiceContainer
+from app.interface.workers.celery_app import (
+    ANALYSIS_REQUESTED_TASK_NAME,
+    create_celery_app,
+)
+
+pytestmark = pytest.mark.unit
+
+
+def test_main_auto_composes_sprint2_but_preserves_explicit_injection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built = cast(Sprint2ServiceContainer, object())
+    injected = cast(Sprint2ServiceContainer, object())
+    build_calls = 0
+
+    def build(_settings: Settings) -> Sprint2ServiceContainer:
+        nonlocal build_calls
+        build_calls += 1
+        return built
+
+    def is_not_configured(_settings: Settings) -> bool:
+        return False
+
+    def is_configured(_settings: Settings) -> bool:
+        return True
+
+    monkeypatch.setattr(main_module, "sprint1_is_configured", is_not_configured)
+    monkeypatch.setattr(main_module, "sprint2_is_configured", is_configured)
+    monkeypatch.setattr(main_module, "build_sprint2_services", build)
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
+
+    auto_application = main_module.create_app(settings)
+    injected_application = main_module.create_app(
+        settings,
+        sprint2_services=injected,
+    )
+
+    assert auto_application.state.sprint2_services is built
+    assert injected_application.state.sprint2_services is injected
+    assert build_calls == 1
+
+
+def test_celery_configuration_uses_durable_db_retries_and_safe_worker_limits() -> None:
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        rabbitmq_url=SecretStr("amqp://user:password@rabbitmq:5672//"),
+        analysis_task_soft_time_limit_seconds=30,
+        analysis_task_hard_time_limit_seconds=40,
+        analysis_stage_lease_seconds=60,
+        celery_task_max_retries=4,
+    )
+
+    application = create_celery_app(settings)
+
+    assert application.conf.task_routes == {ANALYSIS_REQUESTED_TASK_NAME: {"queue": "analysis"}}
+    assert application.conf.task_acks_late is True
+    assert application.conf.task_acks_on_failure_or_timeout is False
+    assert application.conf.task_reject_on_worker_lost is True
+    assert application.conf.worker_prefetch_multiplier == 1
+    assert application.conf.task_soft_time_limit == 30
+    assert application.conf.task_time_limit == 40
+    assert application.conf.task_publish_retry is True
+    assert application.conf.task_publish_retry_policy["max_retries"] == 4
+    assert application.conf.broker_transport_options["confirm_publish"] is True
+    assert application.conf.task_default_delivery_mode == "persistent"
+    assert application.conf.task_ignore_result is True
+
+
+@dataclass(slots=True)
+class _SequenceDispatcher:
+    outcomes: list[DispatchOutboxResult | Exception]
+    stop_event: Event | None = None
+    calls: int = 0
+
+    def execute(self) -> DispatchOutboxResult:
+        outcome = self.outcomes[self.calls]
+        self.calls += 1
+        if isinstance(outcome, Exception):
+            raise outcome
+        if self.stop_event is not None and self.calls == len(self.outcomes):
+            self.stop_event.set()
+        return outcome
+
+
+@dataclass(slots=True)
+class _RecordingLogger:
+    records: list[tuple[str, str, dict[str, object]]] = field(default_factory=list)
+
+    def info(self, event: str, **values: object) -> None:
+        self.records.append(("info", event, values))
+
+    def warning(self, event: str, **values: object) -> None:
+        self.records.append(("warning", event, values))
+
+    def error(self, event: str, **values: object) -> None:
+        self.records.append(("error", event, values))
+
+
+def test_dispatch_loop_once_executes_exactly_one_bounded_batch() -> None:
+    dispatcher = _SequenceDispatcher(
+        outcomes=[DispatchOutboxResult(claimed=2, published=1, retried=1, failed=0)]
+    )
+
+    exit_code = dispatcher_module.run_dispatch_loop(
+        dispatcher,
+        once=True,
+        poll_interval_seconds=0.01,
+        stop_event=Event(),
+    )
+
+    assert exit_code == 0
+    assert dispatcher.calls == 1
+
+
+def test_dispatch_loop_retries_startup_failure_without_logging_database_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stop_event = Event()
+    dispatcher = _SequenceDispatcher(
+        outcomes=[
+            RuntimeError("postgresql://private-user:private-password@database/csight"),
+            DispatchOutboxResult(claimed=0, published=0, retried=0, failed=0),
+        ],
+        stop_event=stop_event,
+    )
+    recording_logger = _RecordingLogger()
+    monkeypatch.setattr(dispatcher_module, "logger", recording_logger)
+
+    exit_code = dispatcher_module.run_dispatch_loop(
+        dispatcher,
+        once=False,
+        poll_interval_seconds=0.001,
+        stop_event=stop_event,
+    )
+
+    assert exit_code == 0
+    assert dispatcher.calls == 2
+    assert recording_logger.records[0] == (
+        "warning",
+        "outbox_dispatch_iteration_failed",
+        {"iteration": 1, "error_type": "RuntimeError"},
+    )
+    assert "private-password" not in repr(recording_logger.records)
+
+
+def test_dispatcher_cli_builds_celery_queue_and_dispatcher_for_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
+    celery_marker = object()
+    queue_marker = object()
+    dispatcher = _SequenceDispatcher(
+        outcomes=[DispatchOutboxResult(claimed=0, published=0, retried=0, failed=0)]
+    )
+    captured: dict[str, object] = {}
+
+    def ignore_log_level(_level: str) -> None:
+        return None
+
+    def ignore_signal_handlers(_event: Event) -> None:
+        return None
+
+    def create_application(_settings: Settings) -> object:
+        return celery_marker
+
+    monkeypatch.setattr(dispatcher_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(dispatcher_module, "configure_logging", ignore_log_level)
+    monkeypatch.setattr(dispatcher_module, "install_signal_handlers", ignore_signal_handlers)
+    monkeypatch.setattr(dispatcher_module, "_dispatcher_identity", lambda: "dispatcher:test:1")
+    monkeypatch.setattr(dispatcher_module, "create_celery_app", create_application)
+
+    def build_queue(application: object) -> object:
+        captured["celery"] = application
+        return queue_marker
+
+    def build_dispatcher(
+        configured_settings: Settings,
+        *,
+        queue: object,
+        claimed_by: str,
+    ) -> _SequenceDispatcher:
+        captured.update(
+            settings=configured_settings,
+            queue=queue,
+            claimed_by=claimed_by,
+        )
+        return dispatcher
+
+    monkeypatch.setattr(dispatcher_module, "CeleryAnalysisMessageQueue", build_queue)
+    monkeypatch.setattr(dispatcher_module, "build_outbox_dispatcher", build_dispatcher)
+
+    assert dispatcher_module.main(["--once"]) == 0
+    assert captured == {
+        "celery": celery_marker,
+        "settings": settings,
+        "queue": queue_marker,
+        "claimed_by": "dispatcher:test:1",
+    }
+    assert dispatcher.calls == 1
+
+
+def test_dispatcher_registers_sigterm_and_sigint_as_graceful_stop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    handlers: dict[signal.Signals, Callable[[int, FrameType | None], Any]] = {}
+
+    def register(
+        signal_number: signal.Signals,
+        handler: Callable[[int, FrameType | None], Any],
+    ) -> None:
+        handlers[signal_number] = handler
+
+    monkeypatch.setattr(dispatcher_module.signal, "signal", register)
+    stop_event = Event()
+
+    dispatcher_module.install_signal_handlers(stop_event)
+
+    assert handlers.keys() == {signal.SIGTERM, signal.SIGINT}
+    handlers[signal.SIGTERM](signal.SIGTERM, None)
+    assert stop_event.is_set()

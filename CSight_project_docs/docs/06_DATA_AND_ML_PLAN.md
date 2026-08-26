@@ -91,6 +91,9 @@ Test 15%
 
 ## 5. Vision 모델 범위
 
+아래 Vision 범위와 산출물은 Sprint 3 이후 계획이다. Sprint 2는 Vision Provider를 실행하거나
+Vision Result, Alignment를 저장하지 않는다.
+
 ### 담당 기능
 
 - 이미지 품질 판정
@@ -128,6 +131,24 @@ evaluation_report.md
 
 ## 6. LLM 범위
 
+### Sprint 2 구현 범위
+
+- Pipeline: `product_defect_text_extraction` `1.0.0`
+- 실행 Stage: `TEXT_EXTRACTION`
+- Prompt Manifest: `product_defect_text_extraction` `1.0.0`
+- Input/Output Schema Version: `1.0`
+- Provider: 결정적·Network-free Mock 또는 OpenAI-compatible vLLM Adapter
+- 재시도·복구 상태: Celery Retry가 아니라 PostgreSQL Run/Stage/Attempt와 미래 Outbox Event
+- 입력 Allowlist: `customer_message`, `order_ref`, `product_ref`, `requested_action`,
+  `schema_version`
+- 실행 Metadata: Provider/Model/Version/Revision, Provider Request ID, Input/Output Token 수,
+  Latency
+
+Mock은 성공, Timeout, Transient/Permanent 실패, 잘못된 Schema, 잘못된 Quote와 Prompt
+Injection 입력을 결정적으로 재현한다. vLLM Adapter는 연결·읽기 Timeout, 입력·출력 상한,
+TLS 검증, 낮은 Temperature와 `response_format=json_schema`를 적용한다. 기본 검증은 외부 GPU를
+호출하지 않으며 실제 vLLM Smoke Test는 명시적인 `external_gpu` 실행으로 분리한다.
+
 ### 수행
 
 - 문의 구조화
@@ -146,12 +167,35 @@ evaluation_report.md
 ### 출력 원칙
 
 - 자유 텍스트가 아니라 JSON Schema 기반 출력
+- 추가 Field 거부, 입력 최대 20,000자와 구조화 출력 최대 32,000자 계약
 - 낮은 Temperature
-- Prompt Version 기록
+- Prompt Name/Version, Canonical SHA-256 Content Hash와 입·출력 Schema Version 기록
 - Validation 실패 시 제한된 재시도
-- 고객 입력을 지시가 아닌 데이터로 취급
+- 고객 입력을 JSON Escape한 단일 Placeholder의 Untrusted Data로 취급
+- `source_quote`가 있으면 고객 원문의 정확한 연속 부분 문자열인지 재검증
+- 검증된 구조화 결과만 저장하고 전체 Prompt, Raw Provider Response, Chain-of-thought는 저장하거나
+  로그에 남기지 않음
+
+### 구조화 결과 계약
+
+- Issue Type은 정확히 `DENT`, `CRACK`, `BREAKAGE`, `LEAKAGE`, `MISSING_COMPONENT`,
+  `WRONG_ITEM`, `CONTAMINATION`, `FUNCTIONAL_FAILURE`, `PACKAGING_DAMAGE`, `OTHER`,
+  `UNKNOWN` 중 하나다.
+- 결과는 `schema_version`, `language`, 중복 없는 `issue_types`, `claims`,
+  `requested_action`, 중복 없는 `missing_information`, `summary`를 가진다.
+- Claim은 Issue Type, Location, Description과 선택적 Exact `source_quote`를 가진다. 모든 Claim
+  Type은 `issue_types`에도 존재해야 한다.
+- `requested_action`은 텍스트에서 추출한 `REFUND`, `EXCHANGE`, `RESHIPMENT`, `REPAIR`,
+  `INFORMATION`, `OTHER`, `UNKNOWN`이며 최종 업무 결정이 아니다.
+- Confidence, 승인·거절, 보상, 사기, 책임 또는 정책 판정 Field는 제공하지 않는다.
+
+Prompt Registry와 구조화 결과 보존 경계는
+[ADR-0010](adr/0010-code-prompt-registry-and-structured-output-retention.md)을 따른다.
 
 ## 7. RAG 설계
+
+RAG, Policy Document/Chunk 저장과 Retrieval Index는 Sprint 2에 구현되지 않았다. 아래는
+Sprint 5 이후 목표다.
 
 ### 정형 정책
 
@@ -230,7 +274,8 @@ AI 권고
 
 ## 10. 모델 레지스트리
 
-최소 저장 항목:
+Sprint 2는 별도 Model Registry Table 대신 각 Stage와 Attempt에 실제 Provider/Model/Prompt/
+Schema Snapshot을 저장한다. 다음 정식 Registry는 후속 범위이며 최소 항목은 아래와 같다.
 
 - Model name / version
 - Provider

@@ -1,58 +1,69 @@
-"""Thin Celery entrypoints; orchestration remains in application use cases."""
+"""Thin Celery entrypoint for one reference-only text-extraction event."""
 
 from typing import cast
 
 from celery import Task
+from celery.exceptions import Reject
 
-from app.application.analyze_case import AnalyzeCaseCommand
-from app.bootstrap.dependencies import build_analyze_case
+from app.application.analysis import ExecuteTextExtractionCommand
 from app.bootstrap.logging import bind_log_context, get_logger
 from app.bootstrap.settings import get_settings
-from app.interface.workers.celery_app import ANALYZE_CASE_TASK_NAME, celery_app
-from app.platform.analysis import ProviderFailureError, ProviderTimeoutError
+from app.bootstrap.sprint2 import build_execute_text_extraction
+from app.interface.workers.celery_app import ANALYSIS_REQUESTED_TASK_NAME, celery_app
 
 logger = get_logger(__name__)
-_task_settings = get_settings()
 
 
 @celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]
     bind=True,
-    name=ANALYZE_CASE_TASK_NAME,
-    autoretry_for=(ProviderTimeoutError, ProviderFailureError),
-    retry_backoff=True,
-    retry_jitter=True,
-    retry_backoff_max=_task_settings.celery_retry_backoff_max_seconds,
-    retry_kwargs={"max_retries": _task_settings.celery_task_max_retries},
+    name=ANALYSIS_REQUESTED_TASK_NAME,
 )
-def analyze_case_task(
+def execute_text_extraction_task(
     task: Task,
     payload: dict[str, object],
-    correlation_id: str | None = None,
 ) -> dict[str, object]:
-    """Validate a reference-only command and delegate it to ``AnalyzeCase``."""
+    """Validate six opaque identifiers and delegate all work to the use case."""
 
-    command = AnalyzeCaseCommand.model_validate(payload)
-    task_id = cast(str | None, getattr(task.request, "id", None))
-    request_correlation_id = cast(str | None, getattr(task.request, "correlation_id", None))
-    resolved_correlation_id = correlation_id or request_correlation_id
-
-    with bind_log_context(
-        case_id=command.case_id,
-        analysis_run_id=command.analysis_run_id,
-        task_id=task_id,
-        correlation_id=resolved_correlation_id,
-    ):
-        logger.info("analysis_task_started")
-        result = build_analyze_case(get_settings()).execute(command)
-        logger.info("analysis_task_completed")
-        # Celery logs return values at INFO. Keep the task acknowledgement free of
-        # customer text and image references; persistence of the normalized result
-        # belongs to the application/repository workflow introduced after Sprint 0.
-        return {
-            "status": "completed",
-            "case_id": result.case_id,
-            "analysis_run_id": result.analysis_run_id,
-            "llm_provider": result.versions.llm_model.provider,
-            "vision_provider": result.versions.vision_model.provider,
-            "vision_result_count": len(result.vision),
-        }
+    command = ExecuteTextExtractionCommand.model_validate(payload)
+    try:
+        task_id = cast(str | None, getattr(task.request, "id", None))
+        with bind_log_context(
+            event_id=command.event_id,
+            tenant_id=command.tenant_id,
+            case_id=command.case_id,
+            analysis_run_id=command.analysis_run_id,
+            stage_run_id=command.stage_run_id,
+            task_id=task_id,
+            correlation_id=command.correlation_id,
+        ):
+            logger.info("analysis_task_started")
+            result = build_execute_text_extraction(get_settings()).execute(command=command)
+            logger.info(
+                "analysis_task_completed",
+                disposition=result.disposition.value,
+                status=result.status.value if result.status is not None else None,
+            )
+            return {
+                "event_id": command.event_id,
+                "tenant_id": command.tenant_id,
+                "case_id": command.case_id,
+                "analysis_run_id": result.analysis_run_id,
+                "stage_run_id": result.stage_run_id,
+                "correlation_id": command.correlation_id,
+                "disposition": result.disposition.value,
+                "status": result.status.value if result.status is not None else None,
+                "retry_at": result.retry_at.isoformat() if result.retry_at is not None else None,
+            }
+    except Exception as error:
+        # The command itself is already validated.  An unexpected infrastructure
+        # failure must leave the broker delivery unacknowledged/requeued so a
+        # committed outbox event cannot strand a QUEUED or RUNNING stage.  Normal
+        # provider failures are persisted and returned by the application use case.
+        logger.warning(
+            "analysis_task_requeued",
+            exception_type=type(error).__name__,
+        )
+        raise Reject(
+            "analysis task did not reach a durable application outcome",
+            requeue=True,
+        ) from None

@@ -50,7 +50,7 @@ def _foreign_key_contract(table_name: str) -> dict[str, tuple[list[str], list[st
 
 
 def test_all_sprint_1_models_are_registered_on_shared_metadata() -> None:
-    assert {model.__tablename__ for model in PERSISTENCE_MODELS} == EXPECTED_TABLES
+    assert EXPECTED_TABLES.issubset({model.__tablename__ for model in PERSISTENCE_MODELS})
     assert EXPECTED_TABLES.issubset(Base.metadata.tables)
 
 

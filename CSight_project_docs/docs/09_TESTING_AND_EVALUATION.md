@@ -14,6 +14,9 @@ Offline Evaluation
 - 고정 Test Case로 LLM, Vision, Alignment, Policy 평가
 - 실제 업무 처리에 영향 없음
 
+Sprint 2의 구현 대상은 Text Extraction LLM 평가뿐이다. Vision, Alignment와 Policy 평가는
+각 후속 Sprint의 Gate다.
+
 ### Shadow Mode
 
 - 상담원 기존 판단과 동시에 시스템 실행
@@ -37,9 +40,17 @@ Offline Evaluation
 - 독립 Hashing Port의 한 번의 제한된 Streaming Read, 크기·SHA-256과 Stream Rewind
 - File Inspector의 이미지 Decode, MIME·확장자, 폭·높이·Pixel 검증
 - Evidence `PENDING` → `AVAILABLE` 및 실패 보상
-- Policy 조건
-- Alignment 계산
-- Workflow 상태 전환
+- Analysis Run/Stage의 허용 전이와 Terminal 전이 거부
+- Analysis Attempt, Claim Token/Lease와 만료 Attempt `ABANDONED`
+- 활성 Lease 중 중복 Delivery가 Lease 만료 시각의 Recovery Outbox Event 하나를 저장하고,
+  기존 Worker 완료 시 Terminal No-op이 되는지 검증
+- Analysis 등록 Canonical Hash, Tenant-scoped Idempotency 재생·충돌
+- Text Extraction 성공·중복 No-op·Transient Retry·최대 시도·Permanent 실패
+- 지수 Backoff의 결정성·상한과 미래 Outbox 생성
+- Outbox Claim/Publish/Release/Terminal Failure와 정확한 여섯 ID Queue Payload
+- Code Prompt Manifest의 Canonical SHA-256와 Injection-safe JSON Rendering
+- Strict Extraction Schema, 정확한 Issue Taxonomy, 추가 Field 거부와 Exact Source Quote
+- Policy 조건, Alignment 계산과 후속 Workflow 전환은 Sprint 4 이후 테스트 범위
 - Domain Validation
 - 버전 선택 로직
 
@@ -53,27 +64,42 @@ Offline Evaluation
 - Idempotency Unique Claim의 동시 요청
 - Development Seed 반복 실행
 - RabbitMQ와 Celery
-- pgvector 검색
+- Analysis 여섯 Table의 Tenant 복합 FK, Check/Unique Constraint와 Repository Mapping
+- `FOR UPDATE SKIP LOCKED` Outbox Claim, Stale Claim Recovery와 Token 조건부 완료
+- Stage Claim/Lease, Attempt Fencing, Append-only Result Unique Constraint
+- pgvector 검색은 RAG 도입 Sprint의 후속 범위
+
+PostgreSQL/MinIO/RabbitMQ처럼 실제 Core Service가 필요한 Integration Test는 명시적인 Local
+Core 실행에서 분리한다. 기본 Test Suite가 외부 Service나 GPU의 가용성에 의존하지 않게 한다.
 
 ### Contract Test
 
 - 인증·Case·Evidence HTTP Schema와 오류 Envelope
 - Case 생성 Body의 `tenant_id` 거부
 - Case 생성 `201`과 Idempotency 재생 `200`
-- LLM Schema
-- Vision Schema
-- Event Schema
+- Sprint 2 Mock LLM의 성공/Timeout/Transient/Permanent/Invalid Schema/Invalid Quote 계약
+- vLLM OpenAI-compatible 요청 Body, JSON Schema Response Format, 오류 정규화와 상한 계약
+- Vision Schema는 Sprint 0 호환 Skeleton; 실제 Integration은 Sprint 3 범위
+- Outbox Event Envelope와 Celery 여섯 ID Event Payload
 - API Response
 - 모델 버전과 좌표 체계
+
+vLLM Contract Test는 실제 Network 대신 통제된 HTTP Client를 주입한다. 실제 GPU/vLLM
+연결은 `external_gpu` Marker와 별도 환경 설정을 요구하는 명시적 Smoke Test로만 수행하고,
+기본 `pytest`에서는 제외한다.
 
 ### E2E Test
 
 - Seed → 로그인 → Case 생성 → 이미지 업로드 → 목록·상세 → Signed URL → Object GET
 - Tenant A의 Case를 Tenant B가 요청할 때 `404`
-- Case 접수부터 Review 확정까지
-- 추가 자료 요청 후 재접수
-- 부분 실패와 재시도
-- 정책 버전 변경 후 재분석
+- Case 저장부터 Text Analysis 등록·구조화 결과 조회까지
+- Analysis Idempotency Replay, 중복 Event No-op와 Transient 재시도
+- Celery Retry가 아닌 DB Run/Stage/Attempt와 Outbox가 복구 Source of Truth인지 검증
+- Case 접수부터 Review 확정, 추가 자료 요청, Vision 부분 실패와 정책 버전 재분석은 후속 범위
+
+Sprint 2 E2E 경계는 Thin Celery Task가 정확히 여섯 ID를 검증해 Application Use Case로
+위임하는 흐름까지다. Vision, Alignment, Policy, Routing, Human Review, Report와 RAG를
+포함한 Case-to-Decision E2E는 아직 구현 완료 기준으로 간주하지 않는다.
 
 ### Security Test
 
@@ -85,6 +111,9 @@ Offline Evaluation
 - 권한 없는 Review
 - 위험 파일 업로드
 - Prompt Injection 입력
+- Queue/Outbox에 고객 원문, Prompt, Raw Response, JWT, Signed URL, Secret이 없는지 검증
+- Analysis HTTP Projection에서 Idempotency/Request Hash, Claim/Lease, 내부 실패 Message와
+  Provider Request ID가 제외되는지 검증
 
 ## 3. 핵심 E2E 사례
 
@@ -96,10 +125,13 @@ Offline Evaluation
 6. QualityViewer 생성·업로드 → `403`, 조회 → 성공
 7. 위장 이미지·빈 파일·과대 파일·과대 Pixel → 정의된 오류로 차단
 8. Storage/DB 실패 → 성공 응답 없이 보상 경로 실행
-9. 명확한 누액 → 승인 후보 → 상담원 승인 (Sprint 4 목표)
-10. 흐린 이미지 → 추가 자료 요청 (Sprint 3~4 목표)
-11. Vision Timeout → Partial Failure (Sprint 3 목표)
-12. 모델 버전 변경 → 기존 결과 유지, 새 Run 추가 (Sprint 2 이후 목표)
+9. 저장된 Case → Analysis 등록 `202` → Outbox/Worker → 구조화 결과 상세 조회 (Sprint 2)
+10. 동일 Analysis Idempotency Key/요청 → 기존 Run `200`, 중복 Run/Stage/Outbox 없음
+11. 중복 Event 또는 늦은 Worker → Append-only 결과 중복·덮어쓰기 없음
+12. 명확한 누액 → 승인 후보 → 상담원 승인 (Sprint 4 목표)
+13. 흐린 이미지 → 추가 자료 요청 (Sprint 3~4 목표)
+14. Vision Timeout → Partial Failure (Sprint 3 목표)
+15. Model 또는 Prompt Version 변경 → 기존 결과 유지, 새 Run 추가
 
 ## 4. 기술 지표와 업무 지표
 
@@ -185,4 +217,5 @@ Pull Request 완료 전:
 - Migration 검증
 - API Schema Diff 검토
 - 개인정보 로그 노출 검사
+- 기본 Suite에서 외부 GPU 호출이 없고 `external_gpu` 검증이 명시적으로 분리되는지 확인
 - 주요 E2E Scenario 회귀 없음

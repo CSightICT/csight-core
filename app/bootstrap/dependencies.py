@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from app.adapters.llm import MockLLMProvider
+from app.adapters.llm import MockLLMProvider, VLLMLLMProvider
 from app.adapters.messaging import RabbitMQReadinessProbe
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.readiness import PostgresReadinessProbe
@@ -71,7 +71,29 @@ def build_readiness_service(settings: Settings) -> ReadinessService:
 
 def build_llm_provider(settings: Settings) -> LLMProvider:
     if settings.llm_provider == "mock":
-        return MockLLMProvider()
+        return MockLLMProvider(
+            model_name=settings.llm_model_id,
+            model_version=settings.llm_model_version,
+            model_revision=settings.llm_model_revision or "deterministic",
+        )
+    if settings.llm_provider == "vllm":
+        base_url = settings.llm_base_url_value
+        if base_url is None:
+            raise ProviderConfigurationError("LLM_BASE_URL is required for the vLLM adapter")
+        return VLLMLLMProvider(
+            base_url=base_url,
+            api_key=settings.llm_api_key_value,
+            model_id=settings.llm_model_id,
+            model_version=settings.llm_model_version,
+            model_revision=settings.llm_model_revision,
+            connect_timeout_seconds=settings.llm_connect_timeout_seconds,
+            read_timeout_seconds=settings.llm_read_timeout_seconds,
+            max_output_tokens=settings.llm_max_output_tokens,
+            max_output_chars=settings.llm_max_output_chars,
+            max_input_chars=settings.llm_max_input_chars,
+            temperature=settings.llm_temperature,
+            tls_verify=settings.llm_tls_verify,
+        )
     raise ProviderConfigurationError(
         f"LLM provider adapter is not available: {settings.llm_provider!r}"
     )

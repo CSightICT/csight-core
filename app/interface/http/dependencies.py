@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.bootstrap.dependencies import build_readiness_service
 from app.bootstrap.settings import Settings
-from app.interface.http.services import Sprint1ServiceContainer
+from app.interface.http.services import Sprint1ServiceContainer, Sprint2ServiceContainer
 from app.platform.errors import AuthenticationRequiredError
 from app.platform.tenant import Principal
 from app.ports.readiness import ReadinessService
@@ -43,6 +43,26 @@ def provide_sprint1_services(request: Request) -> Sprint1ServiceContainer:
             headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
         )
     return cast(Sprint1ServiceContainer, configured_services)
+
+
+def provide_optional_sprint2_services(request: Request) -> Sprint2ServiceContainer | None:
+    """Return the optional Sprint 2 composition without making Sprint 1 routes unavailable."""
+
+    configured_services = getattr(request.app.state, "sprint2_services", None)
+    if configured_services is None:
+        return None
+    return cast(Sprint2ServiceContainer, configured_services)
+
+
+def provide_sprint2_services(request: Request) -> Sprint2ServiceContainer:
+    configured_services = provide_optional_sprint2_services(request)
+    if configured_services is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Sprint 2 analysis services are unavailable.",
+            headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
+        )
+    return configured_services
 
 
 def provide_current_principal(

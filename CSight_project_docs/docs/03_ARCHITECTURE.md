@@ -7,6 +7,8 @@
 - Platform Core, Domain Module, Provider Adapter의 경계를 유지한다.
 - LLM과 Vision 모델 서버는 독립적인 Stateless Inference Node로 운영한다.
 - 업무 데이터와 최종 상태는 Core Application & Data Plane만 소유한다.
+- Analysis 등록과 RabbitMQ 발행 사이를 Transactional Outbox로 연결하고, 중복 전달과 늦은
+  Worker 응답을 정상적인 장애 조건으로 다룬다.
 - PoC 장비에서 시작하되 Core를 Linux 또는 Cloud로 이전할 수 있게 한다.
 
 ## 2. 3-Node 배포 아키텍처
@@ -19,12 +21,13 @@ flowchart TB
 
     subgraph CORE[Core Application & Data Plane]
         API[FastAPI API]
+        DISPATCHER[Outbox Dispatcher]
         WORKER[Celery Worker]
         AUTH[Identity / Tenant Boundary]
         DB[(PostgreSQL + pgvector)]
         MQ[(RabbitMQ)]
         OBJ[(MinIO)]
-        DOMAIN[Case / Policy / Workflow\nReview / Report / Audit]
+        DOMAIN[Case / Evidence / Analysis\nFuture: Policy / Review / Report]
     end
 
     subgraph LLM[LLM Inference Node]
@@ -38,13 +41,14 @@ flowchart TB
     WEB -->|REST API / SSE| API
     API --> AUTH
     AUTH --> DB
-    API --> DB
     API --> OBJ
-    API --> MQ
+    API -->|Run + Stage + Idempotency + Outbox| DB
+    DISPATCHER -->|Claim / Publish 상태| DB
+    DISPATCHER -->|6-ID Payload| MQ
     MQ --> WORKER
+    WORKER -->|입력 재조회 / Fenced 결과 저장| DB
     WORKER -->|Private Network| VLLM
-    WORKER -->|Private Network| CVSVC
-    WORKER --> DB
+    WORKER -.->|Sprint 3 이후| CVSVC
     WORKER --> OBJ
     DOMAIN --- API
     DOMAIN --- WORKER
@@ -53,22 +57,25 @@ flowchart TB
 ### Core Application & Data Plane
 
 - FastAPI API
+- Transactional Outbox Dispatcher
 - Celery Worker
 - PostgreSQL + pgvector
 - RabbitMQ
 - MinIO
-- Case, Policy, Workflow, Review, Report, Audit
+- Case, Evidence와 Append-only Analysis Run/Stage/Attempt
+- 후속 범위인 Policy, Workflow, Review, Report, Audit의 확장 경계
 - JWT 기반 로컬 Identity와 Tenant Scope
 
 ### LLM Inference Node
 
 - vLLM
-- 문의 구조화
-- 검색된 정책 문서 설명
-- 상담원용 검토 보고서 생성
+- Sprint 2의 Strict JSON 문의 구조화
+- 검색된 정책 문서 설명과 상담원용 검토 보고서 생성은 후속 범위
 - DB 직접 접근 금지
 
 ### Vision Inference Node
+
+Sprint 2에는 실제 Vision 실행이 연결되어 있지 않다. 다음 항목은 Sprint 3 이후 목표다.
 
 - 초기 FastAPI Wrapper
 - 모델 계약 안정화 후 Triton 검토
@@ -84,8 +91,8 @@ flowchart TB
 ```mermaid
 flowchart TB
     I[Interface Layer\nREST / SSE / Worker / Webhook]
-    A[Application Use Cases\nCreate / Analyze / Evaluate / Review / Report]
-    C[Reusable Platform Core\nCase / Evidence / Analysis / Workflow\nPolicy / Decision / Review / Report / Audit]
+    A[Application Use Cases\nCase / Evidence / Start Analysis\nExecute Text / Dispatch Outbox / Query]
+    C[Reusable Platform Core\nCase / Evidence / Analysis Contracts\nFuture: Workflow / Policy / Review / Report]
     D[Domain Module\nTaxonomy / Workflow / Policy / Prompt / Template]
     P[Ports\nRepository / Identity / Storage / Security\nFile Inspection / Hashing / LLM / Vision / MQ / Vector Store]
     X[Provider Adapters\nSQLAlchemy / MinIO / JWT / Pillow / SHA-256\nLLM / Vision / MQ]
@@ -111,6 +118,7 @@ flowchart TB
 
 - Use Case 순서 조정
 - Transaction Boundary
+- Transactional Outbox 등록·발행과 Claim/Lease 조정
 - Port 호출
 - Domain 객체와 DTO 변환
 - 업무 이벤트 발행
@@ -119,16 +127,15 @@ flowchart TB
 ### Platform Core
 
 - Case와 Evidence
-- Analysis Run과 Finding
-- Workflow와 상태 전환
-- Policy와 Decision
-- Human Review
-- Report와 Audit
+- Analysis Run, Stage Run, Stage Attempt와 Text Extraction Result
+- 명시적인 Analysis 상태 전환과 Provider/Prompt/Schema Snapshot
+- Workflow, Policy/Decision, Human Review, Report/Audit는 후속 범위
 - Tenant와 Version History
 
 ### Domain Module
 
 `product_defect_cs`에 한정된 다음 내용을 보유한다.
+Sprint 2 구현은 Text Extraction Taxonomy와 Code Prompt까지이며 나머지는 후속 확장 책임이다.
 
 - 결함 Taxonomy
 - 결함 위치·심각도
@@ -177,39 +184,51 @@ sequenceDiagram
     A-->>U: 짧게 만료되는 Presigned GET URL
 ```
 
-### Sprint 2 이후 — 비동기 분석 목표
+### Sprint 2 — Append-only Text Analysis
 
-다음 흐름은 Sprint 1 API가 제공하지 않는 후속 목표다.
+Sprint 2는 `product_defect_text_extraction` Pipeline `1.0.0`의 `TEXT_EXTRACTION` Stage만
+실행한다. API는 Broker에 직접 발행하지 않고 Run, Stage, 분석 Idempotency Record와
+`analysis.requested.v1` Outbox Event를 한 PostgreSQL Transaction으로 저장한다.
 
 ```mermaid
 sequenceDiagram
     participant U as 상담원 Web
     participant A as FastAPI API
-    participant D as PostgreSQL/MinIO
+    participant D as PostgreSQL
+    participant X as Outbox Dispatcher
     participant Q as RabbitMQ
     participant W as Celery Worker
     participant L as LLM Node
-    participant V as Vision Node
 
-    U->>A: 저장된 Case 분석 등록
-    A->>D: Analysis Run 저장
-    A->>Q: analysis.requested.v1
-    A-->>U: 202 Accepted + IDs
-    Q->>W: 분석 작업 전달
-    par 병렬 분석
-        W->>L: 문의 구조화 요청
-        L-->>W: 구조화 JSON
-    and
-        W->>V: 이미지 분석 요청
-        V-->>W: Vision JSON
-    end
-    W->>W: Alignment + Policy 평가
-    W->>D: Analysis/Decision 저장
-    U->>A: 상태 조회 또는 SSE
-    A-->>U: 결과 및 Review 화면
-    U->>A: 승인/수정/이관
-    A->>D: Human Review + Audit 저장
+    U->>A: Case 분석 등록 + 필수 Idempotency-Key
+    A->>D: Run + TEXT Stage + Idempotency + Outbox Commit
+    A-->>U: 202 Accepted 또는 200 Replay
+    X->>D: PENDING Event Claim 후 Commit
+    X->>Q: event_id 등 정확히 6개 ID 발행
+    X->>D: Claim Token으로 PUBLISHED 완료
+    Q->>W: Reference-only 작업 전달
+    W->>D: Case 재조회 + Stage Lease Claim + Attempt 생성
+    W->>L: Allowlist Text DTO + Versioned Prompt
+    L-->>W: Strict Structured JSON + 실행 Metadata
+    W->>D: Token Fencing 후 Result + Attempt + Stage + Run Commit
+    U->>A: Run 목록 또는 상세 조회
+    A-->>U: 상태, Stage Snapshot, 구조화 결과
 ```
+
+Provider 호출은 DB Transaction 밖에서 수행한다. Transient 실패는 Run/Stage를
+`RETRY_WAITING`으로 전환하고 미래 시각의 새 Outbox Event를 같은 Transaction에 저장한다.
+Outbox Dispatcher와 Worker는 At-least-once 전달을 전제로 Claim Token과 Lease로 늦은 쓰기를
+차단한다. 활성 Lease 중 중복 작업이 도착해 Claim하지 못하면 그 중복 처리는 Lease 만료 시각에
+사용 가능한 Reference-only Recovery Outbox Event 하나를 저장한다. 기존 Worker가 먼저
+완료하면 Recovery Delivery는 Terminal No-op이고, 완료하지 못하면 만료 Lease를 회수해 이전
+Attempt를 `ABANDONED`로 남긴다. Celery Retry/Ack 상태는 업무 상태의 Source of Truth가 아니며
+PostgreSQL의 Run/Stage/Attempt와 Outbox가 복구 상태를 소유한다.
+
+### Sprint 3 이후 — 미구현 흐름
+
+Vision, LLM·Vision 병렬 실행, Alignment, Policy Evaluation, Routing, Human Review, Report,
+RAG와 SSE는 Sprint 2에 구현되지 않았다. 이 기능들은 현재 Text Extraction 성공을 최종 업무
+결정으로 해석하지 않고 별도 Stage와 Aggregate로 추가한다.
 
 MinIO의 일반 업로드·삭제는 내부 Endpoint를 사용한다. Presigned URL에는 클라이언트가
 도달할 별도 Hostname을 사용할 수 있으며, Production에서는 신뢰할 수 있는 Gateway가
@@ -220,11 +239,11 @@ Private 상태를 유지한다.
 
 | 상황 | 처리 |
 |---|---|
-| LLM Timeout | Retry 후 실패 저장, Vision 결과만으로 자동 승인 금지 |
-| Vision Timeout | 자동 처리 금지, Human Review 또는 재시도 |
-| JSON Schema 오류 | 제한된 횟수 재요청 후 실패 격리 |
-| 동일 작업 재전달 | Idempotency 검증 후 중복 저장 차단 |
-| RabbitMQ 장애 | Outbox 또는 재발행 가능한 작업 상태 유지 |
+| LLM Timeout/Unavailable | `RETRY_WAITING` + 제한된 지수 Backoff + 미래 Outbox; 소진 시 `FAILED` |
+| LLM 영구 오류/Schema·Quote 오류 | 재시도 없이 Attempt·Stage·Run `FAILED` |
+| Vision Timeout | Sprint 3 이후 범위; 자동 처리 금지 원칙 유지 |
+| 동일 작업 재전달 | Stage Claim Token, Lease와 Result Unique Constraint로 중복·늦은 쓰기 차단 |
+| RabbitMQ 장애 | Outbox를 Backoff 후 재발행; 소진 시 미실행 Run·Stage를 `OUTBOX_DISPATCH_FAILED` 처리 |
 | 모델 버전 변경 | 기존 결과 유지, 새 Analysis Run 생성 |
 | Core 재시작 | DB에 저장된 상태로 작업 복구 가능 |
 | Evidence Object 저장 실패 | Object 삭제와 `FAILED` 전환을 최선 노력으로 수행, 성공 응답 금지 |
@@ -238,3 +257,9 @@ Private 상태를 유지한다.
 - Vector 검색 요구가 pgvector 범위를 넘을 때만 별도 Vector DB를 검토한다.
 - 상용화 시 Core를 Linux 또는 Cloud로 이동하고 동일 API 계약을 유지한다.
 - 마이크로서비스 분리는 실제 팀·배포·확장 문제가 발생한 모듈부터 수행한다.
+
+## 8. Accepted Architecture Decisions
+
+- [ADR-0009: Transactional Outbox와 Fenced Analysis 실행](adr/0009-transactional-outbox-and-fenced-analysis-execution.md)
+- [ADR-0010: Code Prompt Registry와 구조화 결과만 보존](adr/0010-code-prompt-registry-and-structured-output-retention.md)
+- [ADR-0011: Case와 Analysis Run 수명주기 분리](adr/0011-separate-case-and-analysis-lifecycles.md)

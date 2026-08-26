@@ -17,14 +17,22 @@ class Permission(StrEnum):
     CASE_CREATE = "CASE_CREATE"
     CASE_READ = "CASE_READ"
     EVIDENCE_UPLOAD = "EVIDENCE_UPLOAD"
+    ANALYSIS_CREATE = "ANALYSIS_CREATE"
+    ANALYSIS_READ = "ANALYSIS_READ"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.ADMIN: frozenset(Permission),
     Role.REVIEWER: frozenset(
-        {Permission.CASE_CREATE, Permission.CASE_READ, Permission.EVIDENCE_UPLOAD}
+        {
+            Permission.CASE_CREATE,
+            Permission.CASE_READ,
+            Permission.EVIDENCE_UPLOAD,
+            Permission.ANALYSIS_CREATE,
+            Permission.ANALYSIS_READ,
+        }
     ),
-    Role.QUALITY_VIEWER: frozenset({Permission.CASE_READ}),
+    Role.QUALITY_VIEWER: frozenset({Permission.CASE_READ, Permission.ANALYSIS_READ}),
 }
 
 

@@ -2,19 +2,20 @@
 
 이 문서는 다음 작업 세션의 시작점이다. 최신 상태 요약은 갱신할 수 있지만, 세션 로그는
 append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
-`SPRINT_1_CASE_EVIDENCE.md`, 독립 감사 증거는 `SPRINT_1_CLOSEOUT.md`를 참조한다.
+`SPRINT_1_CASE_EVIDENCE.md`, 독립 감사 증거는 `SPRINT_1_CLOSEOUT.md`, 현재 분석 경로는
+`SPRINT_2_ANALYSIS_LLM.md`와 독립 감사 원장 `SPRINT_2_CLOSEOUT.md`를 참조한다.
 
 ## 0. 문서 메타데이터
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 1 — Case & Evidence Vertical Slice Closeout |
-| 진행 중 작업 | 독립 감사·전체 검증 완료, 이 문서를 포함한 로컬 기준점 Commit 생성; Push 미수행 |
+| 현재 완료 단계 | Sprint 2 — 독립 Closeout Gate 통과 |
+| 진행 중 작업 | 승인된 Sprint 2 로컬 Commit 후 별도 Sprint 2.5 Qwen3.8 실제 서빙 검증; Push·PR 금지 |
 | 마지막 갱신일 | 2026-08-26, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 1 변경은 Push하지 않음 |
-| 로컬 Git | `feature/sprint-1-case-evidence`, Closeout 로컬 Commit이 Branch Tip, `chore/github-governance` 기반, PR #2 Open |
-| 마지막 런타임 관측 | 2026-08-26, Closeout 이미지 재빌드 후 Core 장기 서비스 5개 Healthy |
+| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 2·2.5 변경 Push 금지 |
+| 로컬 Git | `feature/sprint-2-analysis-llm`, 독립 Closeout Gate 통과, 승인된 로컬 Commit 생성 단계 |
+| 마지막 런타임 관측 | 2026-08-26, Closeout 재빌드 후 Core 장기 서비스 6개 Healthy |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -36,6 +37,11 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 1 독립 Closeout | PASS | P0/P1 미해결 0, 격리 Migration·Live Tenant·Object HEAD 포함 |
 | Sprint 1 Migration·Seed | PASS | Head `20260826_0002`, Drift 없음, Seed 2회 반복 성공 |
 | Sprint 1 Tenant·파일 보안 | PASS | Principal Scope, Role, Private MinIO, 실제 저장 메타데이터 검증, 요청·이미지 상한 적용 |
+| Sprint 2 Analysis·LLM | PASS | Append-only Run/Attempt/Result, Outbox, Celery, Mock, vLLM Adapter, API |
+| Sprint 2 Migration·Live | PASS | Head `20260826_0003`, 격리 왕복·Drift, 실제 RabbitMQ Mock Vertical Slice |
+| Sprint 2 복구·멱등성 | PASS | Replay/Conflict, Duplicate 1 Result, Lease Recovery·Fencing·Max Attempt 종결 |
+| Sprint 2 독립 Closeout | PASS | P0/P1 미해결 0, 정적·회귀·Migration·Docker·Live Gate 재통과 |
+| Sprint 2.5 Qwen3.8 실제 서빙 | PENDING | Sprint 2 로컬 Commit과 새 브랜치 후 GPU 환경·Artifact부터 검증 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -77,7 +83,28 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 독립 Closeout에서 P1 3건과 P2 4건을 수정·검증하고 P0/P1 미해결 0 확인
 - [x] Closeout 승인 범위의 로컬 기준점 Commit만 생성하고 Push하지 않음
 
-## 5. GitHub 협업 구축 체크리스트
+## 5. Sprint 2 완료 체크리스트
+
+- [x] Sprint 1 기준점 `244c282`에서 `feature/sprint-2-analysis-llm` Branch 생성
+- [x] Case와 분리된 Append-only Analysis Run·Stage·Attempt·Result 계약 구현
+- [x] Code Prompt Manifest, Content Hash, Strict Schema와 정확한 Source Quote 검증
+- [x] 결정적 Mock과 OpenAI-compatible vLLM JSON Schema Adapter 구현
+- [x] Run·Stage·Idempotency·Outbox 원자적 생성과 여섯 ID Queue Payload 적용
+- [x] `FOR UPDATE SKIP LOCKED` Dispatcher와 Claim Token·Lease Fencing Worker 구현
+- [x] Transient Backoff, Permanent Failure, Max Attempt, Worker Lost·Timeout 복구 구현
+- [x] POST 202/Replay 200/Conflict 409, 목록·상세, Case Latest Analysis 연결
+- [x] Tenant `404`, 역할 권한, Raw Prompt·Response·Secret 비보존 검증
+- [x] 기존 Revision 불변의 `20260826_0003` Migration과 여섯 테이블 구현
+- [x] Ruff, 158-file Format, Pyright 0, Fast 291, Core Integration 31 통과
+- [x] 실제 Docker Login→Case→Outbox→RabbitMQ→Celery→SUCCEEDED와 중복 전달 통과
+- [x] 격리 Migration 왕복·Drift, 검증 행·임시 DB 정리, 장기 서비스 6개 Healthy 확인
+- [x] README, 핵심 설계 문서 03–10, ADR-0009~0011, Progress 문서 동기화
+- [x] Vision·Alignment·Policy·Routing·Review·Report·RAG를 구현하지 않음
+- [x] 독립 Closeout에서 P0/P1 미해결 0과 전체 Gate 재통과 확인
+- [x] 승인된 Sprint 2 로컬 Commit만 생성하고 Push·PR은 만들지 않음
+- [x] 미추적 Kaputt 문서를 수정·삭제·Stage하지 않고 보존
+
+## 6. GitHub 협업 구축 체크리스트
 
 - [x] 연결 계정 `it0615` 확인
 - [x] 경량 GitFlow와 브랜치 명명 규칙 문서화
@@ -103,7 +130,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [ ] `main`과 `develop` Branch protection 적용 — 현재 Private 플랜 제약으로 BLOCKED, Issue #1
 - [ ] 팀·협업자 권한과 조직 단위 CODEOWNERS 갱신
 
-## 6. 마지막 검증 원장
+## 7. 마지막 검증 원장
 
 | 날짜 | 명령·검사 | 상태 | 실제 결과 |
 |---|---|---|---|
@@ -166,8 +193,28 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-26 | 누락 Evidence Object | PASS | DB `AVAILABLE`이어도 URL `500 EVIDENCE_UPLOAD_FAILED` |
 | 2026-08-26 | Closeout 검증 데이터 정리 | PASS | 업무 테이블 Row 0, MinIO Object 0, 임시 DB 2개 삭제 |
 | 2026-08-26 | Closeout Commit 안전성 | PASS | `.env`·Secret·생성물·Kaputt 문서를 Stage하지 않고 로컬 Commit만 생성 |
+| 2026-08-26 | Sprint 2 시작 Baseline | PASS | Fast 189 passed·18 deselected, Integration 18 passed·189 deselected |
+| 2026-08-26 | Sprint 2 Ruff / Format | PASS | Lint 통과, Python 대상 158 files already formatted |
+| 2026-08-26 | Sprint 2 Pyright strict | PASS | 0 errors, 0 warnings, 0 informations |
+| 2026-08-26 | Sprint 2 기본 pytest | PASS | 291 passed·36 deselected·0 failed |
+| 2026-08-26 | Sprint 2 Core Integration | PASS | 31 passed·5 external skipped·291 deselected·0 failed |
+| 2026-08-26 | Sprint 2 Analysis Focus | PASS | Fast 76 passed·251 deselected; Integration 13 passed·5 skipped·309 deselected |
+| 2026-08-26 | Sprint 2 Unit / Contract / Architecture | PASS | 227 passed·100 deselected / 45·282 / 4·0 |
+| 2026-08-26 | Sprint 2 HTTP / RabbitMQ·Outbox / E2E | PASS | 29·0 / 18 passed·309 deselected / 6·321 |
+| 2026-08-26 | Sprint 2 Migration Unit | PASS | 6 passed·0 failed |
+| 2026-08-26 | Sprint 2 External vLLM | SKIPPED | 외부 Endpoint 미설정; 5 skipped·322 deselected, 호출 0 |
+| 2026-08-26 | Sprint 2 PostgreSQL App E2E | PASS | 8 passed; Retry·Duplicate·Worker Lost·Lease Max·Fencing 포함 |
+| 2026-08-26 | Sprint 2 격리 Migration | PASS | Empty→0003, 0003→0002→0003, Empty→0002→0003, Drift 없음 |
+| 2026-08-26 | Sprint 2 Docker Build·Migration·Seed | PASS | 최종 이미지 Build, Head 적용, Development Seed 성공 |
+| 2026-08-26 | Sprint 2 Live HTTP·Async | PASS | 202, Replay 200, Conflict 409, Tenant 404, Mock `SUCCEEDED` |
+| 2026-08-26 | Sprint 2 Live Duplicate | PASS | 같은 Celery Message 재전달 뒤 Attempt 1·Result 1 유지 |
+| 2026-08-26 | Sprint 2 Runtime Health | PASS | API·Worker·Dispatcher·PostgreSQL·RabbitMQ·MinIO 6개 Healthy |
+| 2026-08-26 | Sprint 2 Queue·검증 데이터 정리 | PASS | Queue 0, Analysis 6개 Table 0, 합성 Case/Tenant 0, MinIO Object 0 |
+| 2026-08-26 | Sprint 2 `git diff --check` | PASS | Whitespace 오류 없음 |
+| 2026-08-26 | Sprint 2 Git 안전성 | PASS | Closeout 전 Commit·Push 0, 사용자 Kaputt 문서 수정·Stage·삭제 0 |
+| 2026-08-26 | Sprint 2 독립 Closeout | PASS | P0 0, P1 0; 정적·291 Fast·31 Integration·세 Migration·Docker·Live 재통과 |
 
-## 7. 미해결 사항과 사용자 결정
+## 8. 미해결 사항과 사용자 결정
 
 - 저장소를 Private로 유지하는 현재 플랜에서는 `main`·`develop` Branch protection API가
   HTTP 403을 반환한다. 저장소 공개 전환 없이 지원 플랜을 적용할지 Issue #1에서 결정한다.
@@ -182,19 +229,27 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   Retention·삭제 정책은 실제 데이터 반입 전에 결정해야 한다.
 - Refresh Token·Revocation·OIDC/SSO·PostgreSQL RLS와 Production MinIO Gateway,
   Secret Rotation, Edge 동시 업로드 제한은 후속 운영 범위다.
-- 실제 LLM·Vision, Analysis Run, 비동기 `202`, Policy·Routing·Review·Report·RAG는
-  구현하지 않았고 Case/Evidence 접수로 자동 시작되지 않는다.
+- Closeout까지 실제 외부 vLLM 호출은 실행하지 않았다. Adapter와 다섯 합성 `external_gpu`
+  계약의 Skip은 PASS가 아니며 Sprint 2.5에서 고정 Qwen3.8 Artifact로 별도 검증한다.
+- Vision, Text/Vision Alignment, Policy·Routing·Review·Report·RAG는 구현하지 않았고
+  Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
+- Sprint 2는 DLQ, 운영자 수동 재처리·취소 API, SSE, Provider 자동 선택·Fallback과 Prompt
+  관리 UI를 제공하지 않는다. Raw Prompt·Provider Response를 보존하지 않는 것은 의도된
+  보안·재현성 경계다.
 - 실제 제품 측 결정인 결함 Taxonomy, 정책 표현, 개인정보 보존 기간, 인증·Tenant 범위는
   다음 Sprint의 ADR 대상으로 남아 있다.
-- Sprint 1 Closeout은 `feature/sprint-1-case-evidence`의 로컬 기준점 Commit으로 확정하며
-  Push하지 않았다. 이 브랜치는 아직 병합되지 않은 거버넌스 작업을 기반으로 한다.
-- 루트의 미추적 `kaputt_best_vision_architecture.md`는 Sprint 1과 무관한 사용자 작업물이다.
-  Closeout에서 수정·삭제·Stage하지 않았으며 후속 소유 작업에서 별도로 다룬다.
+- Sprint 2는 독립 Closeout Gate를 통과했으며 승인된 로컬 Commit만 생성한다. 원격 Push와
+  PR은 금지한다.
+- 루트의 미추적 `kaputt_best_vision_architecture.md`는 Sprint 2와 무관한 사용자 작업물이다.
+  이번 작업에서도 수정·삭제·Stage하지 않았으며 후속 소유 작업에서 별도로 다룬다.
 
-## 8. 다음 실행 항목
+## 9. 다음 실행 항목
 
 - [x] Sprint 1 Diff를 독립 Closeout 감사하고 로컬 기준점 Commit을 생성한다.
-- [ ] 사용자가 Push·PR을 별도로 승인할 때까지 로컬 Commit을 원격에 전송하지 않는다.
+- [x] Sprint 2 Append-only Analysis·Outbox·LLM Vertical Slice와 최종 검증을 완료한다.
+- [x] Sprint 2 Diff를 독립 감사하고 승인된 로컬 Closeout Commit만 생성한다.
+- [ ] 깨끗한 Sprint 2 Commit에서 `feature/sprint-2-5-qwen38-serving` 브랜치를 만든다.
+- [ ] 고정 Qwen3.8 Artifact Revision과 GPU/vLLM 환경을 확인하고 실제 서빙 Gate를 실행한다.
 - [ ] 원격 작업 전 거버넌스 PR #2 병합 또는 Sprint 1 Branch 재정렬 순서를 결정한다.
 - [ ] PR #2에 유효한 사람 리뷰와 승인을 확보한다.
 - [ ] GitHub Private 저장소 Branch protection을 지원하는 플랜 적용 여부를 결정한다.
@@ -202,12 +257,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [ ] 플랜·리뷰어 결정 후 Issue #1의 목표 규칙을 `main`과 `develop`에 적용한다.
 - [ ] 정책에 맞는 유효 승인 또는 명시적인 Bootstrap 예외 결정 후 PR #2를 `develop`에
   병합한다.
-- [ ] 별도 Sprint 2 지시를 받은 뒤 Append-only Analysis Run, `202 Accepted`, 얇은 Celery
-  Use Case, Retry·Timeout·재전달 Idempotency와 모델·Prompt·Policy 버전을 연결한다.
+- [ ] 외부 GPU Endpoint를 명시적으로 구성한 경우에만 다섯 `external_gpu` 합성 계약을
+  실행하고 실제 Model Revision을 검증 원장에 추가한다.
+- [ ] 별도 Sprint 3 지시 후 Vision Stage와 Text/Vision Alignment·Partial Failure 경계를
+  ADR로 먼저 고정하고 기존 Append-only Run·Attempt·Outbox를 확장한다.
 - [ ] Evidence Reconciliation·Orphan Cleanup·업로드 Idempotency와 Retention 정책을
   우선순위에 따라 별도 작업으로 계획한다.
 
-## 9. 세션 종료 체크리스트
+## 10. 세션 종료 체크리스트
 
 - [x] 변경한 파일과 목적을 기록했다.
 - [x] 실제 실행한 검증 명령과 결과만 기록했다.
@@ -218,7 +275,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Secret, 고객 원문, 전체 URL을 기록하지 않았다.
 - [x] 아래 세션 로그를 추가했다.
 
-## 10. 세션 로그
+## 11. 세션 로그
 
 ### 2026-08-26 — Sprint 0 Foundation 완료
 
@@ -284,3 +341,36 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Git: 정확한 Sprint 1 후보만 로컬 Commit, Push·PR 없음. 범위 밖 미추적 Kaputt 문서는
   사용자 파일로 보존
 - 다음 작업: 별도 승인 전 Push 금지; 원격 전 PR #2/Branch 순서 결정; 별도 지시 후 Sprint 2
+
+### 2026-08-26 — Sprint 2 Append-only Analysis & LLM Vertical Slice 완료
+
+- 목표: 인증된 Reviewer/Admin의 명시적 요청을 Append-only Analysis Run으로 등록하고
+  PostgreSQL Outbox·RabbitMQ·Celery를 거쳐 Strict Text Extraction Result까지 완성
+- Branch: `feature/sprint-2-analysis-llm`; Sprint 2 변경은 미커밋이며 Commit·Push하지 않음
+- 완료: Run·Stage·Attempt·Result·Idempotency·Outbox, Prompt/Schema Snapshot, 결정적 Mock,
+  vLLM Adapter, 생성·목록·상세·Case Latest API, Dispatcher·Worker·Compose와 ADR-0009~0011
+- 복구: Provider Retry/Max, Worker Lost, Soft/Hard Timeout, 활성 Lease Wake-up, Claim Token
+  Fencing, 최종 Lease 만료의 원자적 Failed 종결과 Duplicate Result 방지
+- 검증: Ruff, Python Format 158, Pyright 0, Fast 291, Core Integration 31, Analysis Focus
+  76/13, PostgreSQL Application E2E 8, 격리 Migration 세 경로와 Drift 없음
+- Live: 실제 202·Replay 200·Conflict 409·Tenant 404, Mock `SUCCEEDED`, 같은 Celery Message
+  재전달 뒤 Attempt 1·Result 1, 장기 서비스 6개 Healthy
+- Skip: 외부 vLLM Endpoint 미설정으로 합성 GPU 계약 5건 Skip; 외부 호출은 하지 않음
+- 정리: Analysis 여섯 Table, 합성 Case·Tenant, RabbitMQ Ready/Unacked와 임시 DB가 모두 0
+- Git: Commit·Push·PR 없음. 사용자 소유 미추적 Kaputt 문서는 수정·삭제·Stage하지 않음
+- 다음 작업: 사용자 Diff 검토와 별도 Git 승인 대기; 이후 별도 Sprint 3 지시가 있으면
+  Vision·Alignment·Partial Failure 경계를 ADR부터 확정
+
+### 2026-08-26 — Sprint 2 Closeout 독립 감사
+
+- 목표: 미커밋 Sprint 2 전체 Diff를 이전 완료 보고와 독립적으로 감사하고 재현 가능한 로컬
+  기준점으로 확정
+- 발견: P0 0, P1 0, P2 문서 상태 2건, P3 후속 운영 경계 3건; P0/P1 미해결 0
+- 검증: Ruff, Format 158, Pyright 0, Fast 291, Unit 227, Contract 45, Architecture 4,
+  Integration 31, HTTP 29, 실제 PostgreSQL 세 Migration 경로와 Drift 없음
+- Live: 최종 Docker Build, Core 6개 Healthy, 202·200·409·Tenant 404·`SUCCEEDED`, 같은
+  Message 2회 재발행 뒤 Result 1·Attempt 1
+- 정리: Analysis 여섯 Table, 합성 Tenant, RabbitMQ Ready/Unacked와 임시 DB가 모두 0
+- Git: 승인된 Sprint 2 범위만 로컬 Commit하고 Push·PR 금지; Kaputt 사용자 파일은
+  수정·삭제·Stage하지 않음
+- 다음 작업: 깨끗한 Commit에서 Sprint 2.5 브랜치를 만들고 고정 Qwen3.8 실제 서빙 검증

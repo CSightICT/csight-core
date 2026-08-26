@@ -9,7 +9,21 @@ from typing import Any
 import structlog
 from structlog.typing import EventDict, WrappedLogger
 
-LOG_CONTEXT_KEYS = ("case_id", "analysis_run_id", "task_id", "correlation_id")
+LOG_CONTEXT_KEYS = (
+    "correlation_id",
+    "tenant_id",
+    "case_id",
+    "analysis_run_id",
+    "stage_run_id",
+    "task_id",
+    "event_id",
+    "attempt_count",
+    "provider",
+    "model",
+    "prompt_version",
+    "status_transition",
+    "latency_ms",
+)
 REDACTED = "[REDACTED]"
 _SENSITIVE_LOG_KEY_PARTS = (
     "access_key",

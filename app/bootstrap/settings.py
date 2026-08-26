@@ -115,9 +115,68 @@ class Settings(BaseSettings):
         validation_alias="MAX_IMAGE_PIXELS",
     )
 
-    llm_provider: str = Field(default="mock", min_length=1, validation_alias="LLM_PROVIDER")
+    llm_provider: Literal["mock", "vllm"] = Field(
+        default="mock",
+        validation_alias="LLM_PROVIDER",
+    )
     vision_provider: str = Field(default="mock", min_length=1, validation_alias="VISION_PROVIDER")
     llm_base_url: AnyHttpUrl | None = Field(default=None, validation_alias="LLM_BASE_URL")
+    llm_api_key: SecretStr | None = Field(default=None, validation_alias="LLM_API_KEY")
+    llm_model_id: str = Field(
+        default="csight-mock-llm",
+        min_length=1,
+        max_length=255,
+        validation_alias="LLM_MODEL_ID",
+    )
+    llm_model_version: str = Field(
+        default="0.1.0",
+        min_length=1,
+        max_length=100,
+        validation_alias="LLM_MODEL_VERSION",
+    )
+    llm_model_revision: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        validation_alias="LLM_MODEL_REVISION",
+    )
+    llm_connect_timeout_seconds: float = Field(
+        default=5.0,
+        gt=0.0,
+        le=60.0,
+        validation_alias="LLM_CONNECT_TIMEOUT_SECONDS",
+    )
+    llm_read_timeout_seconds: float = Field(
+        default=120.0,
+        gt=0.0,
+        le=900.0,
+        validation_alias="LLM_READ_TIMEOUT_SECONDS",
+    )
+    llm_max_output_tokens: int = Field(
+        default=1024,
+        ge=1,
+        le=32768,
+        validation_alias="LLM_MAX_OUTPUT_TOKENS",
+    )
+    llm_max_output_chars: int = Field(
+        default=20_000,
+        ge=256,
+        le=1_000_000,
+        validation_alias="LLM_MAX_OUTPUT_CHARS",
+    )
+    llm_max_input_chars: int = Field(
+        default=20_000,
+        ge=1,
+        le=1_000_000,
+        validation_alias="LLM_MAX_INPUT_CHARS",
+    )
+    llm_temperature: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=2.0,
+        validation_alias="LLM_TEMPERATURE",
+    )
+    llm_tls_verify: bool = Field(default=True, validation_alias="LLM_TLS_VERIFY")
     vision_base_url: AnyHttpUrl | None = Field(default=None, validation_alias="VISION_BASE_URL")
 
     readiness_timeout_seconds: float = Field(
@@ -136,6 +195,60 @@ class Settings(BaseSettings):
         le=3600,
         validation_alias="CELERY_RETRY_BACKOFF_MAX_SECONDS",
     )
+    analysis_task_soft_time_limit_seconds: int = Field(
+        default=150,
+        ge=1,
+        le=3600,
+        validation_alias="ANALYSIS_TASK_SOFT_TIME_LIMIT_SECONDS",
+    )
+    analysis_task_hard_time_limit_seconds: int = Field(
+        default=180,
+        ge=2,
+        le=7200,
+        validation_alias="ANALYSIS_TASK_HARD_TIME_LIMIT_SECONDS",
+    )
+    analysis_stage_lease_seconds: int = Field(
+        default=300,
+        ge=3,
+        le=86400,
+        validation_alias="ANALYSIS_STAGE_LEASE_SECONDS",
+    )
+    analysis_outbox_poll_interval_seconds: float = Field(
+        default=1.0,
+        gt=0.0,
+        le=60.0,
+        validation_alias="ANALYSIS_OUTBOX_POLL_INTERVAL_SECONDS",
+    )
+    analysis_outbox_batch_size: int = Field(
+        default=100,
+        ge=1,
+        le=1000,
+        validation_alias="ANALYSIS_OUTBOX_BATCH_SIZE",
+    )
+    analysis_outbox_claim_seconds: int = Field(
+        default=30,
+        ge=1,
+        le=3600,
+        validation_alias="ANALYSIS_OUTBOX_CLAIM_SECONDS",
+    )
+    analysis_outbox_max_attempts: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        validation_alias="ANALYSIS_OUTBOX_MAX_ATTEMPTS",
+    )
+    analysis_outbox_retry_base_seconds: float = Field(
+        default=1.0,
+        gt=0.0,
+        le=3600.0,
+        validation_alias="ANALYSIS_OUTBOX_RETRY_BASE_SECONDS",
+    )
+    analysis_outbox_retry_max_seconds: float = Field(
+        default=60.0,
+        gt=0.0,
+        le=86400.0,
+        validation_alias="ANALYSIS_OUTBOX_RETRY_MAX_SECONDS",
+    )
 
     @field_validator("log_level", mode="before")
     @classmethod
@@ -149,6 +262,21 @@ class Settings(BaseSettings):
     def normalize_provider(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip().lower()
+        return value
+
+    @field_validator("llm_model_id", "llm_model_version", mode="before")
+    @classmethod
+    def normalize_required_llm_identity(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+    @field_validator("llm_model_revision", "llm_api_key", mode="before")
+    @classmethod
+    def normalize_optional_llm_identity(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
         return value
 
     @field_validator("jwt_algorithm", mode="before")
@@ -230,10 +358,25 @@ class Settings(BaseSettings):
                 "ALLOWED_IMAGE_MIME_TYPES and ALLOWED_IMAGE_EXTENSIONS must share a format"
             )
 
-        if self.llm_provider != "mock" and self.llm_base_url is None:
-            raise ValueError("LLM_BASE_URL is required for a non-mock LLM provider")
+        if self.llm_provider == "vllm" and self.llm_base_url is None:
+            raise ValueError("LLM_BASE_URL is required for the vllm provider")
         if self.vision_provider != "mock" and self.vision_base_url is None:
             raise ValueError("VISION_BASE_URL is required for a non-mock Vision provider")
+        if not (
+            self.analysis_stage_lease_seconds
+            > self.analysis_task_hard_time_limit_seconds
+            > self.analysis_task_soft_time_limit_seconds
+        ):
+            raise ValueError(
+                "ANALYSIS_STAGE_LEASE_SECONDS must be greater than "
+                "ANALYSIS_TASK_HARD_TIME_LIMIT_SECONDS, which must be greater than "
+                "ANALYSIS_TASK_SOFT_TIME_LIMIT_SECONDS"
+            )
+        if self.analysis_outbox_retry_max_seconds < self.analysis_outbox_retry_base_seconds:
+            raise ValueError(
+                "ANALYSIS_OUTBOX_RETRY_MAX_SECONDS must be greater than or equal to "
+                "ANALYSIS_OUTBOX_RETRY_BASE_SECONDS"
+            )
         return self
 
     @property
@@ -261,6 +404,18 @@ class Settings(BaseSettings):
         if self.jwt_secret_key is None:
             return None
         return self.jwt_secret_key.get_secret_value()
+
+    @property
+    def llm_api_key_value(self) -> str | None:
+        if self.llm_api_key is None:
+            return None
+        return self.llm_api_key.get_secret_value()
+
+    @property
+    def llm_base_url_value(self) -> str | None:
+        if self.llm_base_url is None:
+            return None
+        return str(self.llm_base_url).rstrip("/")
 
     @property
     def minio_presigned_endpoint_value(self) -> str | None:

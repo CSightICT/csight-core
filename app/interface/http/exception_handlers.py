@@ -14,7 +14,14 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.bootstrap.logging import bind_log_context, get_logger
 from app.interface.http.schemas import ErrorDetail, ErrorResponse
-from app.platform.analysis import AnalysisProviderError, ProviderTimeoutError
+from app.platform.analysis import (
+    AnalysisAlreadyTerminalError,
+    AnalysisError,
+    AnalysisPipelineNotSupportedError,
+    AnalysisProviderError,
+    AnalysisRunNotFoundError,
+    ProviderTimeoutError,
+)
 from app.platform.errors import CSightError, FileTooLargeError
 
 logger = get_logger(__name__)
@@ -255,6 +262,38 @@ async def _handle_provider_exception(request: Request, exception: Exception) -> 
     )
 
 
+async def _handle_analysis_exception(request: Request, exception: Exception) -> JSONResponse:
+    if not isinstance(exception, AnalysisError):
+        raise TypeError("analysis handler received an incompatible exception")
+    if isinstance(exception, AnalysisRunNotFoundError):
+        return _error_response(
+            request,
+            status_code=404,
+            code=exception.code,
+            message="The requested analysis run was not found.",
+        )
+    if isinstance(exception, AnalysisPipelineNotSupportedError):
+        return _error_response(
+            request,
+            status_code=422,
+            code=exception.code,
+            message="The requested analysis pipeline or version is not supported.",
+        )
+    if isinstance(exception, AnalysisAlreadyTerminalError):
+        return _error_response(
+            request,
+            status_code=409,
+            code=exception.code,
+            message="The analysis run is already in a terminal state.",
+        )
+    return _error_response(
+        request,
+        status_code=500,
+        code="ANALYSIS_ERROR",
+        message="The analysis request could not be completed.",
+    )
+
+
 async def _handle_unexpected_exception(request: Request, exception: Exception) -> JSONResponse:
     logger.error(
         "unhandled_http_exception",
@@ -277,6 +316,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, _handle_validation_exception)
     app.add_exception_handler(CSightError, _handle_csight_exception)
     app.add_exception_handler(AnalysisProviderError, _handle_provider_exception)
+    app.add_exception_handler(AnalysisError, _handle_analysis_exception)
     app.add_exception_handler(Exception, _handle_unexpected_exception)
 
 

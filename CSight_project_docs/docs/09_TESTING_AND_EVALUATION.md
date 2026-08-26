@@ -247,3 +247,10 @@ v2 strict schema/source quote/completeness/prompt hash, corpus stable build/vers
 Gold count/split/clause existence/tenant isolation을 기본 Suite에서 검증한다. Reference Gold
 self-check는 evaluator contract 검증이며 외부 모델 평가가 아니다. Qwen test split은 Prompt hash
 freeze 뒤 한 번만 실행한다.
+
+## 11. Sprint 4B Retrieval Gate
+
+Unit은 tokenizer/BM25/vector/RRF/metric을, contract는 인증 API/provider 장애를, PostgreSQL
+integration은 ingestion idempotency/version conflict/filter/vector/index activation을 검증한다.
+실제 embedding은 `external_embedding` opt-in이다. Dev 80 tune 뒤 profile을 freeze했고 Test 40을 한
+번 실행했다. correctness rate 0/100% gate와 slice/latency를 함께 보존한다.

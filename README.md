@@ -2,7 +2,7 @@
 
 > 이미지·텍스트 기반 상품 불량 CS 의사결정 지원 플랫폼
 
-이 저장소는 CSight의 **Sprint 3 Vision Analysis & Multimodal Slice**입니다. Python 3.12,
+이 저장소는 CSight의 **Sprint 4B Policy Retrieval Baseline**입니다. Python 3.12,
 FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며,
 API와 Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
 
@@ -10,7 +10,9 @@ Sprint 1의 JWT, Tenant 격리, Case와 Private Evidence 기능 위에 Analysis 
 Transactional Outbox, 얇은 Celery Worker, 버전 고정 Prompt Registry, Text/Vision Provider,
 Evidence Snapshot과 append-only image result를 제공합니다. Analysis는 명시적 `202 Accepted`
 요청으로만 시작하며 Case 상태를 변경하지 않습니다. LLM과 Vision은 Evidence 분석만 수행하고
-정책 판정, 승인, Alignment, Routing, Human Review, RAG와 Report는 포함하지 않습니다.
+Sprint 4B는 immutable policy corpus ingestion, exact BM25, pinned Qwen3 embedding, pgvector
+exact cosine, versioned RRF와 read-only retrieval API를 추가합니다. 검색 결과는 정책 판정이나
+승인이 아니며 reranker, query builder 실행, grounded answer, Policy Engine은 포함하지 않습니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -92,10 +94,15 @@ make down
 | Mock Analysis HTTP Smoke | `make smoke-analysis` |
 | 선택적 외부 vLLM | `make test-external-llm` |
 | 선택적 외부 Vision | `make test-external-vision` |
+| Policy Corpus 적재/검증 | `make ingest-policy-corpus`; `make validate-policy-db` |
+| Private Embedding 시작/검증 | `make start-embedding`; `make health-embedding` |
+| Clause Embedding/Index | `make build-policy-embeddings`; `make list-policy-indexes` |
+| 잠긴 Retrieval 결과 검증 | `make evaluate-policy-retrieval` |
+| Policy Search Smoke | `make smoke-policy-search` |
 
 `make test`는 Docker 인프라와 GPU를 요구하지 않습니다. `make test-integration`과
 `make test-all`은 먼저 `make up`과 `make migrate`를 실행한 상태에서 사용합니다.
-외부 GPU/서비스 테스트는 `external_gpu`, `external_vision` Marker로 격리되며 기본 명령에서
+외부 GPU/서비스 테스트는 `external_gpu`, `external_vision`, `external_embedding` Marker로 격리되며 기본 명령에서
 실행되지 않습니다.
 `make smoke-analysis`는 Seed된 Reviewer와 실행 중인 API·Dispatcher·Worker를 사용하며 합성
 Case만 생성합니다.
@@ -258,6 +265,29 @@ Mock Timeout·Transient·Permanent·Invalid Schema·Invalid Quote는 기본 테�
 Worker Lost·Hard Timeout은 Late Acknowledgment 재전달로, 검증된 메시지 처리 중 일반 예외와
 Soft Timeout은 명시적 재큐잉으로 복구합니다. 활성 Lease 중복 전달은 Lease 만료 시각의
 Outbox Wake-up을 남기며, Claim Token이 바뀐 늦은 Worker는 결과를 Commit할 수 없습니다.
+
+## Sprint 4B Policy Retrieval
+
+Core migration과 합성 reference corpus를 명시적으로 준비한 뒤 host-native embedding service를
+실행합니다.
+
+```bash
+make migrate
+make ingest-policy-corpus
+make start-embedding
+make health-embedding
+make build-policy-embeddings
+make validate-policy-db
+make seed-policy-identities
+make smoke-policy-search
+```
+
+`POST /api/v1/policy-retrieval/search`는 ADMIN/REVIEWER/QUALITY_VIEWER의 JWT principal tenant를
+사용하며 body에서 tenant/index/model override를 받지 않습니다. `LEXICAL`, `DENSE`, `HYBRID`를
+지원합니다. Embedding service가 내려가면 lexical만 정상이고 dense/hybrid는 안전한 503입니다.
+운영·profile·평가 계약은 [`docs/rag/`](docs/rag/)와
+[`docs/model-manifests/qwen3-embedding-0.6b.md`](docs/model-manifests/qwen3-embedding-0.6b.md)를
+참조합니다.
 최종 허용 Lease까지 만료되면 새 Attempt 없이 `ANALYSIS_MAX_RETRIES_EXCEEDED`로 종결됩니다.
 
 ## Sprint 3 Multimodal Analysis 흐름

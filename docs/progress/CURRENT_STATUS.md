@@ -10,13 +10,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 4A Closeout — `PASS`, 미해결 P0/P1 0 |
-| 진행 중 작업 | 승인된 Sprint 4A 범위만 로컬 Commit 후 Sprint 4B 전용 Branch 생성 |
+| 현재 완료 단계 | Sprint 4B Closeout — `SPRINT_4B_CLOSEOUT=PASS` |
+| 진행 중 작업 | 검증된 Sprint 4B 범위의 로컬 Commit 생성; Push·PR 금지 |
 | 마지막 갱신일 | 2026-08-26, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 2·2.5 변경 Push 금지 |
-| 로컬 Git | `feature/sprint-4a-llm-reference-data`, Base `330cbdb`, Closeout Commit 직전 |
-| 마지막 런타임 관측 | 2026-08-26, Core 6개 Network-free Mock, Migration `0005`, Queue 0 |
+| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B Push·PR 없음 |
+| 로컬 Git | `feature/sprint-4b-policy-retrieval`, Base `6f3a667`, Closeout PASS·Commit 대기 |
+| 마지막 런타임 관측 | 2026-08-26, Core 6개 Healthy, Migration `0006`, Qwen MPS 재검증 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -50,6 +50,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 4A Evaluation Data | PASS | 160/120/50/30/10, Gold missing·cross-tenant 0 |
 | Sprint 4A 실제 Qwen 평가 | SKIPPED | Endpoint 미사용; `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE` |
 | Sprint 4A 독립 Closeout | PASS | P0/P1 0, 정적·전체 회귀·데이터·Migration·Docker 재검증 |
+| Sprint 4A 로컬 Commit | PASS | `6f3a667 feat: add LLM contract v2 and policy reference corpus`, Push·PR 없음 |
+| Sprint 4B Corpus Ingestion | PASS | Tenant 2, Document 24, Clause 168, idempotent reuse, conflict 차단 |
+| Sprint 4B Lexical/Dense/Hybrid | QUALIFIED_WITH_LIMITATIONS | Exact BM25, Qwen 1024-d exact cosine, weighted RRF; 합성 corpus 한계 |
+| Sprint 4B Retrieval API | PASS | Principal tenant, 세 mode, metadata 선필터, provider-down 격리 |
+| Sprint 4B Locked Evaluation | PASS | Dev 80 freeze, Test 40 한 번, correctness 위반 0 |
+| Sprint 4B 독립 Closeout | PASS | P0/P1 0, 전체 회귀·실제 MPS·Migration·Docker 재통과 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -167,6 +173,26 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 실제 Docker v2 Mock `SUCCEEDED`와 합성 row/queue 정리
 - [x] Sprint 4A 최종 전체 Gate 실측값 확정
 - [x] Sprint 4A Commit·Push·PR 없음, Kaputt 파일 미수정·미Stage
+
+## 5.4. Sprint 4B 완료 체크리스트
+
+- [x] Sprint 4A 독립 Closeout 후 정확한 로컬 Commit `6f3a667` 생성
+- [x] `feature/sprint-4b-policy-retrieval` Branch 생성, Closeout 후 로컬 Commit 승인, Push·PR 없음
+- [x] `20260826_0006`과 ingestion/document/clause/profile/embedding/index 6개 table
+- [x] Normalized JSONL/manifest 기반 ingestion, 24 document/168 clause, 반복 run 재사용
+- [x] 동일 document version의 다른 content hash를 명시적 mismatch로 차단
+- [x] Principal tenant, ACTIVE, effective interval과 allowlisted metadata 선필터
+- [x] Exact BM25와 versioned Korean tokenizer; dev k1 1.2/b 0.75 freeze
+- [x] Qwen3-Embedding-0.6B pinned revision, 실제 1024-d MPS embedding 168개
+- [x] pgvector exact cosine similarity와 NaN/Inf/dimension 검증
+- [x] Versioned weighted RRF k20/lexical1.5/dense0.5, dedupe/stable tie
+- [x] Read-only LEXICAL/DENSE/HYBRID API; decision/tenant/vector/internal ID 미노출
+- [x] Provider down에서 lexical 200, dense/hybrid 503, Core ready 200
+- [x] Dev 80에서 profile 선택 후 Test 40 한 번 실행; 이후 재튜닝/재평가 없음
+- [x] Cross-tenant/future/retired/wrong-version/hard-negative/duplicate 0, determinism 100%
+- [x] Qwen host-native qualification, external embedding Skip 0
+- [x] ADR-0026~0038, RAG guide 4개, model manifest, 설계 03~10, README 갱신
+- [x] 사용자 `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -328,6 +354,19 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-26 | Sprint 4A Migration 3경로 | PASS | empty→0005, 0005→0004→0005, 0004→0005, drift 0; 임시 DB 0 |
 | 2026-08-26 | Sprint 4A Final Runtime | PASS | 최신 image, Core 6개 Healthy, live/ready 200, analysis 0/0 |
 | 2026-08-26 | Sprint 4A Git 인계 | PASS | `git diff --check`, Stage 0, Sprint 4A Commit·Push·PR 0, Kaputt 미추적 보존 |
+| 2026-08-26 | Sprint 4A Closeout Commit | PASS | `6f3a667 feat: add LLM contract v2 and policy reference corpus`; Push·PR 없음 |
+| 2026-08-26 | Sprint 4B Static | PASS | Ruff, Format 210, Pyright 0 errors/warnings |
+| 2026-08-26 | Sprint 4B Fast Regression | PASS | 376 passed, 48 deselected, 31 warnings |
+| 2026-08-26 | Sprint 4B 대상별 Test | PASS | Unit 299, Architecture 6, Contract 58, E2E+Policy API 14; 중복 포함 |
+| 2026-08-26 | Sprint 4B PostgreSQL Integration | PASS | 전체 41 passed, external GPU 5 skipped, 378 deselected; policy 전용 5 passed |
+| 2026-08-26 | Sprint 4B Ingestion/DB | PASS | run `252afd4b-05be-41aa-a961-ac42d91388fa` reuse, 2/24/168/168, active index 2 |
+| 2026-08-26 | Sprint 4B Embedding | PASS | Qwen MPS 1024-d, external 1 passed·423 deselected, truncation/NaN/Inf/dimension mismatch 0 |
+| 2026-08-26 | Sprint 4B Locked Evaluation | PASS | Dev 80/Test 40, Test 재실행 0, 세 mode result/profile artifact 검증 |
+| 2026-08-26 | Sprint 4B Migration | PASS | empty→0006, 0005→0006, 0006→0005→0006, 두 DB drift 0, 임시 DB 삭제 |
+| 2026-08-26 | Sprint 4B API Smoke | PASS | 두 tenant×세 mode 6건 200; provider down lexical 200/dense·hybrid 503, ready 200 |
+| 2026-08-26 | Sprint 4B Runtime | PASS | 최신 image Core 6/6 Healthy, live/ready 200 |
+| 2026-08-26 | Embedding Make lifecycle 첫 점검 | FAIL | 도구 셸 종료가 background descendant를 정리해 다음 호출 health 연결 거부 |
+| 2026-08-26 | Embedding 전용 세션 재검증 | PASS | foreground 장기 세션에서 health/model/external embedding 1건 통과 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -370,10 +409,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   PR은 금지한다.
 - 루트의 미추적 `kaputt_best_vision_architecture.md`는 Sprint 2와 무관한 사용자 작업물이다.
   이번 작업에서도 수정·삭제·Stage하지 않았으며 후속 소유 작업에서 별도로 다룬다.
-- Sprint 4A Policy Corpus/Gold는 전부 합성 Reference이며 실제 기업 정책 정확성·법률 효력은
-  검증하지 않았다. Retrieval, Embedding, BM25, pgvector, Reranker, RAG와 Policy Engine은 없다.
-- v2 실제 Qwen dev/test는 endpoint를 사용하지 않아 Skip이다. Reference self-check는 모델
-  평가가 아니며 향후 Prompt hash freeze 뒤 test 40건을 한 번만 실행해야 한다.
+- Sprint 4B Policy Corpus/Gold는 전부 합성 Reference이며 실제 기업 정책 정확성·법률 효력과
+  실제 사용자 query 분포는 검증하지 않았다. Baseline corpus는 168 clause 규모다.
+- Retrieval Test 40은 frozen profile로 한 번 실행 완료했다. Reranker, 실제 Query Builder,
+  Grounded Explanation/Citation answer, Policy Engine과 승인·routing은 구현하지 않았다.
+- Mac MPS embedding은 qualified지만 서비스 요청은 lock으로 직렬화되며 concurrency 2와 장시간
+  swap/thrashing은 측정하지 않았다. Production network/process supervisor는 후속 운영 범위다.
 
 ## 9. 다음 실행 항목
 
@@ -406,8 +447,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Sprint 3 Closeout Commit `330cbdb`와 Sprint 4A 전용 Branch를 확인한다.
 - [x] LLM Contract v2, 합성 Policy Corpus와 고정 Evaluation Dataset을 구현한다.
 - [x] Sprint 4A 최종 Gate를 확정하고 미커밋 상태로 인계한다.
-- [ ] Sprint 4B에서는 Policy Document/Clause DB schema와 ingestion을 먼저 만들고 BM25
-  baseline→dense embedding→pgvector→metadata filter→hybrid retrieval 평가 순서로 진행한다.
+- [x] Sprint 4B Policy ingestion→BM25→Qwen embedding→exact pgvector→RRF→locked evaluation을
+  완료한다.
+- [ ] Sprint 4C는 frozen candidate baseline을 변경하지 않고 Qwen3-Reranker-0.6B profile,
+  candidate reranking과 locked evaluation부터 진행한다.
+- [ ] Reranker qualification 뒤에만 Policy Query Builder, citation pack, grounded explanation,
+  citation validation과 unsupported claim detection을 별도 계약으로 연결한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -639,3 +684,45 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 안전: `kaputt_best_vision_architecture.md`는 사용자 파일로 계속 미수정·미Stage
 - 다음 작업: 승인 범위만 Stage/Commit하고 해당 SHA에서
   `feature/sprint-4b-policy-retrieval`을 생성
+
+### 2026-08-26 — Sprint 4B Policy Corpus Ingestion과 Hybrid Retrieval
+
+- Git: Sprint 4A를 `6f3a667 feat: add LLM contract v2 and policy reference corpus`로 로컬
+  Commit하고 `feature/sprint-4b-policy-retrieval` 생성; Sprint 4B Commit·Push·PR 없음
+- Persistence: `20260826_0006`, manifest-driven immutable ingestion, tenant 2/document 24/clause
+  168/embedding 168, idempotent run reuse와 version content mismatch 차단
+- Retrieval: `ko_policy_lexical:1.0.0` exact BM25, pinned Qwen3 1024-d last-token normalized
+  embedding, metadata-filtered pgvector exact cosine, weighted `policy_rrf:1.0.0`
+- API: JWT principal tenant 기반 read-only 세 mode; 두 tenant 6 smoke 통과. Provider down에서
+  lexical 200, dense/hybrid 503, Core readiness 200
+- Evaluation: Dev 80에서 BM25/RRF freeze 후 Test 40 한 번 실행. Cross-tenant, future, retired,
+  wrong-version, hard-negative, duplicate 0; determinism 100%
+- Qualification: Apple M4/32 GB/macOS/MPS에서 model load와 168-clause embedding 실제 측정,
+  external embedding Skip 0. Process supervisor/concurrency 2는 미검증
+- 검증: Ruff/Format/Pyright, Fast, Unit/Contract/Architecture/API, 전체 Integration, migration
+  3경로/drift 0, 최신 Core 6개 Healthy. 정확한 최종 count는 같은 날짜 검증 원장 최신 행 참조
+- 실패 기록: 첫 embedding DB build FK flush, 첫 API image의 dev-only dependency, Dev result directory,
+  도구 background process 수명주기 실패를 수정·재검증하고 숨기지 않음
+- 문서: ADR-0026~0038, RAG guide 4개, Qwen manifest, 설계 03~10, README와 Sprint 4B progress
+- 안전: `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage
+- 다음 작업: Sprint 4C에서 reranker를 먼저 독립 qualification하고 그 뒤 query builder/citation/
+  grounded explanation을 별도 locked evaluation으로 진행
+
+### 2026-08-26 — Sprint 4B 독립 Closeout 감사
+
+- 목표: 미커밋 Sprint 4B 전체 Diff를 코드·DB·평가 artifact·실서비스 기준으로 재감사하고
+  로컬 기준점 Commit 조건을 확정
+- 판정: P0 0, P1 0, `SPRINT_4B_CLOSEOUT=PASS`
+- 검증: Ruff, Format 210, Pyright 0, Fast 376/48 deselected, Unit 306,
+  Architecture 6, Contract 58/1 deselected, E2E 6, Integration 41/외부 GPU 5 skipped
+- 데이터: tenant 2/document 24/clause 168/embedding 168/ACTIVE index 2, 동일 ingestion run
+  재사용, parent/dimension mismatch 0
+- 실제 모델/API: Qwen embedding MPS, external 1/423 deselected, 두 tenant 세 mode smoke,
+  provider down LEXICAL 200·DENSE/HYBRID 503·Core ready 200
+- Migration/Runtime: empty/previous/round-trip 세 경로 `0006`, drift 0, 임시 DB 정리,
+  Core 6개 Healthy
+- 문서 공백: 요청된 `PROJECT_BLUEPRINT.md`는 저장소에 없으며 canonical 설계 문서는
+  `CSight_project_docs/docs`에서 감사
+- 안전: 사용자 `kaputt_best_vision_architecture.md`는 미수정·미삭제·미Stage
+- 다음 작업: 승인된 Sprint 4B 범위만 `feat: add hybrid policy retrieval baseline`으로 로컬
+  Commit하고 Push/PR 없이 Sprint 4C-1 브랜치를 생성

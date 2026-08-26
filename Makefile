@@ -5,10 +5,15 @@ COMPOSE ?= docker compose
 COMPOSE_FILE := infra/compose.core.yml
 ENV_FILE ?= .env
 COMPOSE_CMD := $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
+EMBEDDING_PORT ?= 8091
+EMBEDDING_BASE_URL ?= http://127.0.0.1:$(EMBEDDING_PORT)
+EMBEDDING_PID_FILE ?= .embedding-service.pid
+POLICY_TENANT ?= csight-demo-brand
+POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 report-reference-data
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search
 
 help:
 	@echo "CSight Core commands"
@@ -35,6 +40,16 @@ help:
 	@echo "  make validate-evaluation-data  Validate counts, references, splits, and tenant isolation"
 	@echo "  make evaluate-extraction-v2  Run the reference gold self-check (not an external model eval)"
 	@echo "  make report-reference-data  Generate aggregate JSON and Markdown quality reports"
+	@echo "  make ingest-policy-corpus  Explicitly ingest the validated synthetic corpus"
+	@echo "  make validate-policy-db  Verify corpus, embedding, and active-index invariants"
+	@echo "  make start-embedding  Start the private host-native Qwen embedding service"
+	@echo "  make stop-embedding  Stop the private embedding service started by Make"
+	@echo "  make health-embedding  Probe embedding health and pinned model metadata"
+	@echo "  make build-policy-embeddings  Build/reuse embeddings and activate complete indexes"
+	@echo "  make activate-policy-index POLICY_TENANT=... POLICY_INDEX_VERSION=..."
+	@echo "  make list-policy-indexes  List versioned policy indexes"
+	@echo "  make evaluate-policy-{lexical,dense,hybrid,retrieval}  Verify locked results"
+	@echo "  make smoke-policy-search  Run two-tenant authenticated retrieval smoke"
 
 up:
 	$(COMPOSE_CMD) up --build --detach --wait
@@ -58,13 +73,13 @@ lint:
 	$(UV) run ruff check .
 
 format-check:
-	$(UV) run ruff format --check app tests alembic scripts
+	$(UV) run ruff format --check app tests alembic scripts infra/embedding
 
 typecheck:
 	$(UV) run pyright
 
 test:
-	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision"
+	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision and not external_embedding"
 
 test-integration:
 	RUN_CORE_INTEGRATION=1 $(UV) run pytest -q -m integration
@@ -82,6 +97,9 @@ test-external-llm:
 
 test-external-vision:
 	RUN_EXTERNAL_VISION_TESTS=1 $(UV) run pytest -q -m external_vision
+
+test-external-embedding:
+	RUN_EXTERNAL_EMBEDDING_TESTS=1 EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run pytest -q -m external_embedding
 
 smoke-analysis:
 	$(UV) run python scripts/smoke_analysis.py --env-file $(ENV_FILE)
@@ -103,3 +121,47 @@ evaluate-extraction-v2:
 
 report-reference-data:
 	$(UV) run python scripts/generate_reference_reports.py
+
+ingest-policy-corpus:
+	$(UV) run python scripts/ingest_policy_corpus.py --env-file $(ENV_FILE)
+
+validate-policy-db:
+	$(UV) run python scripts/validate_policy_db.py --env-file $(ENV_FILE)
+
+start-embedding:
+	@test ! -f $(EMBEDDING_PID_FILE) || ! kill -0 $$(cat $(EMBEDDING_PID_FILE)) 2>/dev/null || { echo "Embedding service already running"; exit 1; }
+	@nohup env EMBEDDING_PORT=$(EMBEDDING_PORT) .venv-embedding/bin/uvicorn infra.embedding.server:app --host 127.0.0.1 --port $(EMBEDDING_PORT) --no-access-log > .embedding-service.log 2>&1 & echo $$! > $(EMBEDDING_PID_FILE)
+
+stop-embedding:
+	@if ! test -f $(EMBEDDING_PID_FILE); then echo "No Make-managed embedding service"; else pid=$$(cat $(EMBEDDING_PID_FILE)); case "$$pid" in ''|*[!0-9]*) echo "Invalid embedding PID file"; exit 1;; esac; if kill -0 $$pid 2>/dev/null; then kill $$pid; fi; rm -f $(EMBEDDING_PID_FILE); fi
+
+health-embedding:
+	@curl --fail --silent $(EMBEDDING_BASE_URL)/health
+	@curl --fail --silent $(EMBEDDING_BASE_URL)/v1/models
+
+build-policy-embeddings:
+	$(UV) run python scripts/build_policy_embeddings.py --env-file $(ENV_FILE) --embedding-base-url $(EMBEDDING_BASE_URL)
+
+activate-policy-index:
+	$(UV) run python scripts/activate_policy_index.py --env-file $(ENV_FILE) --tenant $(POLICY_TENANT) --index-version $(POLICY_INDEX_VERSION)
+
+list-policy-indexes:
+	$(UV) run python scripts/list_policy_indexes.py --env-file $(ENV_FILE)
+
+seed-policy-identities:
+	$(UV) run python scripts/seed_policy_demo_identities.py --env-file $(ENV_FILE)
+
+evaluate-policy-lexical:
+	$(UV) run python scripts/verify_policy_retrieval_results.py --mode lexical
+
+evaluate-policy-dense:
+	$(UV) run python scripts/verify_policy_retrieval_results.py --mode dense
+
+evaluate-policy-hybrid:
+	$(UV) run python scripts/verify_policy_retrieval_results.py --mode hybrid
+
+evaluate-policy-retrieval:
+	$(UV) run python scripts/verify_policy_retrieval_results.py --mode all
+
+smoke-policy-search:
+	$(UV) run python scripts/smoke_policy_search.py

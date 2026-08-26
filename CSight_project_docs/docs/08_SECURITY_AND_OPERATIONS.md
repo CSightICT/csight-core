@@ -240,3 +240,9 @@ Network ACL과 제한된 Presign Gateway를 별도로 구성한다.
 Corpus와 Gold는 합성 데이터만 포함한다. Prompt v2는 고객 문장을 untrusted JSON data로 다루고
 secret/prompt/reasoning/decision field를 금지한다. Query Builder tenant filter는 Application이
 주입하며 Grounded Explanation citation은 제공된 Clause ID allowlist로 검증한다.
+
+## 13. Sprint 4B Retrieval Security
+
+Tenant/status/effective filter를 두 retriever의 candidate 계산 전에 적용한다. Raw query/clause/vector,
+JWT, DB URL은 로그하지 않는다. Embedding service는 loopback/private network, access log off, DB 접근
+없음으로 운영하고 tenant/internal ID를 model input에 보내지 않는다. 장애 시 mock fallback하지 않는다.

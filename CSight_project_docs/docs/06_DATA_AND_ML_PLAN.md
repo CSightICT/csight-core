@@ -312,3 +312,9 @@ micro PRF 외 exact set, macro-case F1, label support와 empty-set diagnostics�
 Extraction v2 160, Retrieval 120, Grounding 50, Injection 30, Demo 10 합성 record를 fixed split과
 hash로 관리한다. Policy Corpus는 2 tenant/24 document/168 clause이며 Clause parent/version을
 보존한다. Test split은 Prompt tuning에 사용하지 않고 실제 Qwen이 없으면 external 평가는 Skip이다.
+
+## 13. Sprint 4B Retrieval Baseline
+
+Exact BM25는 dev에서 k1 1.2/b 0.75, weighted RRF는 k 20/lexical 1.5/dense 0.5로 freeze했다.
+Qwen3-Embedding-0.6B pinned revision의 1024-d normalized last-token vector를 사용하고 pgvector exact
+cosine부터 측정한다. Retrieval Test 40은 freeze 후 한 번만 실행했다.

@@ -20,6 +20,7 @@ FORBIDDEN_TECHNOLOGIES = {
     "multipart",
     "openai",
     "pwdlib",
+    "sentence_transformers",
     "sqlalchemy",
     "vllm",
 }
@@ -104,3 +105,20 @@ def test_http_interface_does_not_import_persistence_entities() -> None:
                 violations.append(str(path.relative_to(PROJECT_ROOT)))
 
     assert not violations, "HTTP interface imports persistence types: " + ", ".join(violations)
+
+
+@pytest.mark.unit
+def test_policy_retrieval_router_contains_no_scoring_implementation() -> None:
+    path = PROJECT_ROOT / "app" / "interface" / "http" / "routers" / "policy_retrieval.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden = ("cosine_distance", "inverse_document_frequency", "rrf_k", "fusion_score =")
+    assert not [token for token in forbidden if token in source]
+
+
+@pytest.mark.unit
+def test_private_embedding_service_has_no_core_database_dependency() -> None:
+    path = PROJECT_ROOT / "infra" / "embedding" / "server.py"
+    roots = imported_roots(path)
+    assert not roots & {"sqlalchemy", "psycopg", "pgvector"}
+    source = path.read_text(encoding="utf-8").lower()
+    assert "database_url" not in source

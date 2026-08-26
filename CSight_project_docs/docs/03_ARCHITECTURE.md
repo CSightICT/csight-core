@@ -294,3 +294,9 @@ Text Extraction v2는 기존 async Stage를 재사용하되 Prompt/Schema snapsh
 append-only child result로 v1을 보존한다. LLM text ambiguity와 Application completeness를
 분리한다. Policy Corpus와 Gold는 file artifact이며 Retrieval/index/RAG runtime에는 연결하지
 않는다. Query Builder와 Grounded Explanation은 design-only contract이고 최종 결정을 만들지 않는다.
+
+## 11. Sprint 4B Retrieval Boundary
+
+Retrieval application은 repository/retriever/embedding port만 사용한다. Bootstrap이 exact BM25,
+SQLAlchemy/pgvector와 private HTTP embedding adapter를 조립한다. Router에는 scoring이 없고 host
+embedding service는 Core DB를 알지 못한다. Provider 장애는 dense/hybrid에만 503으로 격리된다.

@@ -7,7 +7,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.bootstrap.dependencies import build_readiness_service
 from app.bootstrap.settings import Settings
-from app.interface.http.services import Sprint1ServiceContainer, Sprint2ServiceContainer
+from app.interface.http.services import (
+    Sprint1ServiceContainer,
+    Sprint2ServiceContainer,
+    Sprint4BServiceContainer,
+)
 from app.platform.errors import AuthenticationRequiredError
 from app.platform.tenant import Principal
 from app.ports.readiness import ReadinessService
@@ -63,6 +67,17 @@ def provide_sprint2_services(request: Request) -> Sprint2ServiceContainer:
             headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
         )
     return configured_services
+
+
+def provide_sprint4b_services(request: Request) -> Sprint4BServiceContainer:
+    configured_services = getattr(request.app.state, "sprint4b_services", None)
+    if configured_services is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Policy retrieval services are unavailable.",
+            headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
+        )
+    return cast(Sprint4BServiceContainer, configured_services)
 
 
 def provide_current_principal(

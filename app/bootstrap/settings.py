@@ -230,6 +230,15 @@ class Settings(BaseSettings):
         validation_alias="VISION_MAX_IMAGE_BYTES",
     )
     vision_tls_verify: bool = Field(default=True, validation_alias="VISION_TLS_VERIFY")
+    embedding_base_url: AnyHttpUrl | None = Field(
+        default=None, validation_alias="EMBEDDING_BASE_URL"
+    )
+    embedding_timeout_seconds: float = Field(
+        default=30.0,
+        gt=0.0,
+        le=300.0,
+        validation_alias="EMBEDDING_TIMEOUT_SECONDS",
+    )
 
     readiness_timeout_seconds: float = Field(
         default=2.0,

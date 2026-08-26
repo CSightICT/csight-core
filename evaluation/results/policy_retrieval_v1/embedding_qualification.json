@@ -1,0 +1,43 @@
+{
+  "batch_size": 168,
+  "cached_cold_load_seconds": 4.668898,
+  "clause_count": 168,
+  "clause_embedding_seconds": 8.882475333986804,
+  "health": {
+    "device": "mps",
+    "device_allocated_bytes": 1191553536,
+    "model_loaded": true,
+    "status": "ok"
+  },
+  "model": {
+    "artifact": "Qwen/Qwen3-Embedding-0.6B",
+    "dimension": 1024,
+    "id": "csight-qwen3-embedding-0.6b",
+    "max_tokens": 8192,
+    "normalized": true,
+    "pooling": "last-token",
+    "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+  },
+  "model_download_seconds": 38.0,
+  "peak_memory_bytes": 1772980072,
+  "qualification": "QWEN3_EMBEDDING_QUALIFIED",
+  "query_latency_ms": {
+    "p50": 39.63435406330973,
+    "p95": 47.37362498417497
+  },
+  "request_batch_size": 16,
+  "runtime": {
+    "device": "mps",
+    "python": "3.12.13",
+    "pytorch": "2.13.0",
+    "sentence_transformers": "6.0.0",
+    "transformers": "5.15.1"
+  },
+  "token_count": {
+    "maximum": 102,
+    "minimum": 89,
+    "p50": 95.0,
+    "p95": 100,
+    "truncation_count": 0
+  }
+}

@@ -12,6 +12,9 @@ htmlcov/
 
 # Virtual environments and local configuration
 .venv/
+.venv-embedding/
+.embedding-service.pid
+.embedding-service.log
 .env
 .env.*
 !.env.example

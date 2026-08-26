@@ -495,3 +495,10 @@ ID 목록, object key, Binary, Base64, Signed URL과 credential은 포함하지 
 `extraction_result_v2`에 schema version, requested action list, text ambiguity, deterministic
 system missing/action consistency와 completeness rule version을 명시한다. Queue event는 기존
 6-ID 계약을 변경하지 않는다.
+
+## 16. Policy Retrieval API
+
+`POST /api/v1/policy-retrieval/search`는 읽기 권한 세 역할에 LEXICAL/DENSE/HYBRID 검색을 제공한다.
+Query 2–2000자, top_k 1–20, mode/filter allowlist를 검증한다. Tenant는 JWT principal에서만 오며
+response는 clause, version/effective metadata와 rank/score만 포함한다. Provider/index 장애는 각각
+`503 EMBEDDING_PROVIDER_UNAVAILABLE`/`POLICY_INDEX_UNAVAILABLE`이다.

@@ -23,6 +23,7 @@ from app.application.cases import (
     ListCasesQuery,
 )
 from app.application.evidence import EvidenceAccessUrl
+from app.application.policy_retrieval import SearchPolicyClauses
 from app.platform.analysis import AnalysisRun
 from app.platform.case import Case, CaseStatusTransition
 from app.platform.evidence import EvidenceMetadata, EvidenceType
@@ -168,3 +169,10 @@ class Sprint2ServiceContainer:
     list_analysis_runs: ListAnalysisRunsService
     get_analysis_run: GetAnalysisRunService
     get_latest_analysis_run: GetLatestAnalysisRunService
+
+
+@dataclass(frozen=True, slots=True)
+class Sprint4BServiceContainer:
+    """Read-only policy retrieval use cases composed by the bootstrap layer."""
+
+    search_policy_clauses: SearchPolicyClauses

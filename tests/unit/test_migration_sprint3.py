@@ -34,7 +34,7 @@ def test_sprint_3_is_the_single_head_and_follows_sprint_2() -> None:
     scripts = ScriptDirectory.from_config(_offline_config(StringIO()))
     revision = scripts.get_revision(SPRINT_3_REVISION)
 
-    assert scripts.get_heads() == ["20260826_0005"]
+    assert scripts.get_heads() == ["20260826_0006"]
     assert revision is not None
     assert revision.down_revision == SPRINT_2_REVISION
 

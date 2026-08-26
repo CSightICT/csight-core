@@ -294,3 +294,15 @@ Alignment는 Sprint 3 결과 계약을 입력으로 하는 다음 단계이며 �
 
 Sprint 4A는 검색·결정 runtime을 미리 구현하지 않고 Sprint 4B가 측정할 Reference와 Gold를 먼저
 고정한다.
+
+## 12. Sprint 4B 완료와 Sprint 4C 경계
+
+- [x] Policy Document/Clause PostgreSQL ingestion과 immutable conflict
+- [x] Exact BM25, pinned Qwen embedding, exact pgvector cosine
+- [x] Versioned RRF와 principal-scoped read-only API
+- [x] Locked Dev 80/Test 40 retrieval baseline
+- [ ] Qwen3-Reranker-0.6B와 candidate reranking
+- [ ] Policy Query Builder 실행과 citation pack
+- [ ] Grounded explanation/citation validation/unsupported claim evaluation
+
+Policy Engine, 승인·거절, routing, human review와 report는 별도 후속 단계다.

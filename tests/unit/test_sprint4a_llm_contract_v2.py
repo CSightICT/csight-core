@@ -179,10 +179,10 @@ def _offline_config(output: StringIO) -> Config:
     return config
 
 
-def test_migration_0005_is_head_and_creates_v2_child_without_mutating_v1() -> None:
+def test_migration_0005_precedes_0006_and_creates_v2_child_without_mutating_v1() -> None:
     scripts = ScriptDirectory.from_config(_offline_config(StringIO()))
     revision = scripts.get_revision("20260826_0005")
-    assert scripts.get_heads() == ["20260826_0005"]
+    assert scripts.get_heads() == ["20260826_0006"]
     assert revision is not None and revision.down_revision == "20260826_0004"
     output = StringIO()
     command.upgrade(_offline_config(output), "20260826_0004:20260826_0005", sql=True)

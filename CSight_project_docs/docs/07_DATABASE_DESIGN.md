@@ -363,3 +363,10 @@ Downgrade는 Detection→Result→Snapshot 역순으로 새 테이블만 제거�
 `llm_extraction_results_v2`를 추가한다. v2 row는 복수 requested actions, text ambiguities,
 system missing, action consistency와 completeness rule version을 보존하며 Run/Stage당 하나다.
 Repository는 add/get만 제공한다. Policy Corpus는 아직 DB table로 적재하지 않는다.
+
+## 12. Sprint 4B Policy Retrieval Persistence
+
+`20260826_0006`은 ingestion run, immutable document, clause, embedding profile, clause embedding,
+index version 6개 table을 추가한다. Vector dimension은 migration type에 추측해 하드코딩하지 않고
+profile/row의 실제 dimension 1024로 검증한다. Tenant/effective/status index와 array GIN index,
+성공 ingestion identity 및 tenant/index당 one-active partial unique index를 둔다.

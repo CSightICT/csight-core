@@ -4,14 +4,17 @@ ORM objects stay inside the persistence adapter.  Repositories are responsible
 for translating them to and from framework-independent domain entities.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
+    Float,
     ForeignKeyConstraint,
     Index,
     Integer,
@@ -23,7 +26,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.adapters.persistence.base import Base
@@ -118,6 +121,17 @@ VISION_CANONICAL_LABELS = (
     "OTHER",
     "UNKNOWN",
 )
+POLICY_DOCUMENT_STATUSES = ("ACTIVE", "RETIRED")
+POLICY_CLAUSE_TYPES = (
+    "RULE",
+    "EXCEPTION",
+    "EVIDENCE_REQUIREMENT",
+    "ESCALATION",
+    "DEFINITION",
+    "PROCEDURE",
+)
+POLICY_INGESTION_STATUSES = ("PENDING", "RUNNING", "SUCCEEDED", "FAILED")
+POLICY_INDEX_STATUSES = ("BUILDING", "ACTIVE", "FAILED", "RETIRED")
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -1303,6 +1317,285 @@ class OutboxEventModel(TimestampMixin, Base):
     last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
 
+class PolicyIngestionRunModel(TimestampMixin, Base):
+    __tablename__ = "policy_ingestion_runs"
+    __table_args__ = (
+        CheckConstraint(
+            f"status IN ({_sql_values(POLICY_INGESTION_STATUSES)})", name="status_allowed"
+        ),
+        CheckConstraint("expected_document_count >= 0", name="expected_documents_nonnegative"),
+        CheckConstraint("ingested_document_count >= 0", name="ingested_documents_nonnegative"),
+        CheckConstraint("expected_clause_count >= 0", name="expected_clauses_nonnegative"),
+        CheckConstraint("ingested_clause_count >= 0", name="ingested_clauses_nonnegative"),
+        Index(
+            "uq_policy_ingestion_runs_succeeded_identity",
+            "corpus_source_hash",
+            "manifest_hash",
+            "builder_version",
+            unique=True,
+            postgresql_where=text("status = 'SUCCEEDED'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    corpus_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    corpus_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    corpus_source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expected_document_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    ingested_document_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    expected_clause_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    ingested_clause_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    builder_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class PolicyDocumentModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_documents"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id",), ("tenants.id",), name="fk_policy_documents_tenant", ondelete="RESTRICT"
+        ),
+        ForeignKeyConstraint(
+            ("ingestion_run_id",),
+            ("policy_ingestion_runs.id",),
+            name="fk_policy_documents_ingestion_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"document_status IN ({_sql_values(POLICY_DOCUMENT_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint(
+            "effective_to IS NULL OR effective_to >= effective_from", name="dates_valid"
+        ),
+        UniqueConstraint(
+            "tenant_id", "document_id", "document_version", name="uq_policy_documents_version"
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_documents_tenant_id"),
+        Index(
+            "ix_policy_documents_tenant_effective_status",
+            "tenant_id",
+            "document_status",
+            "effective_from",
+            "effective_to",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    document_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    document_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    policy_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    authority_level: Mapped[str] = mapped_column(String(128), nullable=False)
+    product_categories: Mapped[list[str]] = mapped_column(ARRAY(String(128)), nullable=False)
+    effective_from: Mapped[date] = mapped_column(Date, nullable=False)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    document_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    supersedes_document_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    supersedes_document_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    superseded_by_document_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    superseded_by_document_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ingestion_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+
+
+class PolicyClauseModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_clauses"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id",), ("tenants.id",), name="fk_policy_clauses_tenant", ondelete="RESTRICT"
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "document_row_id"),
+            ("policy_documents.tenant_id", "policy_documents.id"),
+            name="fk_policy_clauses_tenant_document",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("ingestion_run_id",),
+            ("policy_ingestion_runs.id",),
+            name="fk_policy_clauses_ingestion_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"clause_type IN ({_sql_values(POLICY_CLAUSE_TYPES)})", name="type_allowed"
+        ),
+        CheckConstraint(
+            f"document_status IN ({_sql_values(POLICY_DOCUMENT_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint(
+            "effective_to IS NULL OR effective_to >= effective_from", name="dates_valid"
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "document_id",
+            "document_version",
+            "clause_id",
+            name="uq_policy_clauses_version_clause",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_clauses_tenant_id"),
+        Index(
+            "ix_policy_clauses_tenant_effective_status",
+            "tenant_id",
+            "document_status",
+            "effective_from",
+            "effective_to",
+        ),
+        Index("ix_policy_clauses_tenant_policy_type", "tenant_id", "policy_type"),
+        Index("ix_policy_clauses_categories_gin", "product_categories", postgresql_using="gin"),
+        Index("ix_policy_clauses_defects_gin", "defect_types", postgresql_using="gin"),
+        Index("ix_policy_clauses_actions_gin", "actions", postgresql_using="gin"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    document_row_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    document_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    document_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    clause_id: Mapped[str] = mapped_column(String(320), nullable=False)
+    section_path: Mapped[list[str]] = mapped_column(ARRAY(String(500)), nullable=False)
+    clause_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    parent_clause_id: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    policy_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    product_categories: Mapped[list[str]] = mapped_column(ARRAY(String(128)), nullable=False)
+    defect_types: Mapped[list[str]] = mapped_column(ARRAY(String(128)), nullable=False)
+    actions: Mapped[list[str]] = mapped_column(ARRAY(String(128)), nullable=False)
+    requires_human_review: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    effective_from: Mapped[date] = mapped_column(Date, nullable=False)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    document_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    ingestion_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+
+
+class PolicyEmbeddingProfileModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_embedding_profiles"
+    __table_args__ = (
+        UniqueConstraint(
+            "profile_name", "profile_version", name="uq_policy_embedding_profiles_version"
+        ),
+        CheckConstraint("embedding_dimension > 0", name="dimension_positive"),
+        CheckConstraint("max_query_tokens > 0", name="query_tokens_positive"),
+        CheckConstraint("max_document_tokens > 0", name="document_tokens_positive"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_artifact: Mapped[str] = mapped_column(String(255), nullable=False)
+    model_revision: Mapped[str] = mapped_column(String(255), nullable=False)
+    embedding_dimension: Mapped[int] = mapped_column(Integer, nullable=False)
+    pooling_strategy: Mapped[str] = mapped_column(String(128), nullable=False)
+    normalize_embeddings: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    query_instruction: Mapped[str] = mapped_column(Text, nullable=False)
+    query_instruction_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_template_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    document_template_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_template_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    max_query_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_document_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class PolicyClauseEmbeddingModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_clause_embeddings"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_clause_row_id"),
+            ("policy_clauses.tenant_id", "policy_clauses.id"),
+            name="fk_policy_clause_embeddings_tenant_clause",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("embedding_profile_id",),
+            ("policy_embedding_profiles.id",),
+            name="fk_policy_clause_embeddings_profile",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "policy_clause_row_id",
+            "embedding_profile_id",
+            name="uq_policy_clause_embeddings_clause_profile",
+        ),
+        CheckConstraint("embedding_dimension > 0", name="dimension_positive"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_clause_row_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    embedding_profile_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(), nullable=False)
+    embedding_dimension: Mapped[int] = mapped_column(Integer, nullable=False)
+    document_text_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyIndexVersionModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_index_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id",),
+            ("tenants.id",),
+            name="fk_policy_index_versions_tenant",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("embedding_profile_id",),
+            ("policy_embedding_profiles.id",),
+            name="fk_policy_index_versions_profile",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(f"status IN ({_sql_values(POLICY_INDEX_STATUSES)})", name="status_allowed"),
+        CheckConstraint("expected_clause_count >= 0", name="expected_clauses_nonnegative"),
+        CheckConstraint("indexed_clause_count >= 0", name="indexed_clauses_nonnegative"),
+        UniqueConstraint(
+            "tenant_id", "index_name", "index_version", name="uq_policy_index_versions_version"
+        ),
+        Index(
+            "uq_policy_index_versions_one_active",
+            "tenant_id",
+            "index_name",
+            unique=True,
+            postgresql_where=text("status = 'ACTIVE'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    index_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    index_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    corpus_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    corpus_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    corpus_source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    lexical_profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    lexical_profile_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    lexical_k1: Mapped[float] = mapped_column(Float, nullable=False)
+    lexical_b: Mapped[float] = mapped_column(Float, nullable=False)
+    embedding_profile_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    fusion_profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    fusion_profile_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    fusion_rrf_k: Mapped[int] = mapped_column(Integer, nullable=False)
+    fusion_lexical_weight: Mapped[float] = mapped_column(Float, nullable=False)
+    fusion_dense_weight: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    expected_clause_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    indexed_clause_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
@@ -1322,4 +1615,10 @@ PERSISTENCE_MODELS = (
     VisionDetectionModel,
     AnalysisRequestIdempotencyRecordModel,
     OutboxEventModel,
+    PolicyIngestionRunModel,
+    PolicyDocumentModel,
+    PolicyClauseModel,
+    PolicyEmbeddingProfileModel,
+    PolicyClauseEmbeddingModel,
+    PolicyIndexVersionModel,
 )

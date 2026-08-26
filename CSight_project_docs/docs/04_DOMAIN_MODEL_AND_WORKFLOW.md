@@ -275,3 +275,10 @@ Case의 declared requested action과 LLM의 extracted action list는 별도 값�
 completeness rule `1.0.0`이 `system_missing_information`과 `action_consistency`를 계산한다.
 Policy Reference는 tenant/document/version/effective date와 clause/parent relation을 가지지만
 Policy Aggregate나 Decision workflow에는 아직 적재·연결하지 않는다.
+
+## 11. Sprint 4B Policy Retrieval Workflow
+
+Manifest ingestion run은 immutable document/clause version을 append한다. Embedding profile과 index
+version도 append-only이며 tenant/index name당 ACTIVE 하나만 유지한다. Search는 principal tenant와
+as-of date로 후보를 제한하고 BM25, dense 또는 RRF hit를 반환하지만 Case/Decision 상태를 변경하지
+않는다.

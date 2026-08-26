@@ -1,0 +1,50 @@
+{
+  "code_commit": "6f3a6671be66351aef431b12fe3d04c4a65ce277",
+  "corpus_hash": "8e60f4ce869ba83288ac094ba09465481a9d2e431cfe45a7ac4de4114092c237",
+  "document_serialization": {
+    "name": "policy_clause_passage",
+    "template": "문서: {title}\n섹션: {section_path}\n정책 유형: {policy_type}\n조항 유형: {clause_type}\n본문: {text}",
+    "template_hash": "dd18f403f0a2eb7bcfde99d5b2222774876468aadc001d6e5de70b5038176ad5",
+    "version": "1.0.0"
+  },
+  "embedding": {
+    "document_template_name": "policy_clause_passage",
+    "document_template_version": "1.0.0",
+    "embedding_dimension": 1024,
+    "max_document_tokens": 8192,
+    "max_query_tokens": 8192,
+    "model_artifact": "Qwen/Qwen3-Embedding-0.6B",
+    "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "name": "qwen3_embedding_0.6b",
+    "normalize_embeddings": true,
+    "pooling_strategy": "last-token",
+    "provider_name": "host_sentence_transformers",
+    "query_instruction": "Given a web search query, retrieve relevant passages that answer the query",
+    "version": "1.0.0"
+  },
+  "frozen_at": "2026-08-26T11:26:23.259941+00:00",
+  "fusion": {
+    "dense_weight": 0.5,
+    "lexical_weight": 1.5,
+    "name": "policy_rrf",
+    "rrf_k": 20,
+    "version": "1.0.0"
+  },
+  "lexical": {
+    "b": 0.75,
+    "k1": 1.2,
+    "name": "ko_policy_lexical",
+    "ngram_version": "hangul-bigram-v1",
+    "normalization_version": "nfkc-lower-v1",
+    "stopword_version": "minimal-v1",
+    "tokenizer_version": "ko-policy-tokenizer-v1",
+    "version": "1.0.0"
+  },
+  "profile_name": "policy_retrieval_v1",
+  "profile_version": "1.0.0",
+  "query_instruction_hash": "29424fc0d15af89561bb30ae522c46b932f64389d2c687a1b62a85fb3f282782",
+  "retrieval_dataset_hash": "40d6072594328ed4b8d11d359a897e8141365665e6d99ec38b3b169c0ded1e68",
+  "sprint_4b_worktree_uncommitted": true,
+  "test_evaluated": true,
+  "test_evaluated_at": "2026-08-26T11:26:36.996595+00:00"
+}

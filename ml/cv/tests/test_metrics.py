@@ -1,5 +1,4 @@
 import pytest
-
 from csight_cv.metrics import binary_metrics
 
 

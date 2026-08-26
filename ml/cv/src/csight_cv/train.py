@@ -229,7 +229,20 @@ def main() -> None:
         mode=args.wandb_mode,
         tags=list(config["wandb"].get("tags", [])) + [args.mode],
         job_type=args.mode,
-        settings=wandb.Settings(start_method="thread"),
+    )
+    print(
+        json.dumps(
+            {
+                "event": "run_started",
+                "run_directory": str(run_directory),
+                "training_mode": args.mode,
+                "train_samples": len(train_dataset),
+                "validation_samples": len(validation_dataset),
+                "wandb_url": run.url,
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
     )
     run.define_metric("train/global_step")
     run.define_metric("train/*", step_metric="train/global_step")
@@ -297,6 +310,7 @@ def main() -> None:
             **{f"validation/{key}": value for key, value in validation_metrics.items()},
         }
         run.log(epoch_metrics)
+        print(json.dumps(epoch_metrics, ensure_ascii=False), flush=True)
         improved = validation_metrics["ap_any"] > best_ap
         if improved:
             best_ap = validation_metrics["ap_any"]
@@ -329,6 +343,13 @@ def main() -> None:
     run.summary["best_validation_ap_any"] = best_ap
     run.summary["checkpoint_directory"] = str(run_directory)
     run.finish()
+    print(
+        json.dumps(
+            {"event": "run_finished", "best_validation_ap_any": best_ap},
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

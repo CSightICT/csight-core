@@ -8,10 +8,13 @@ from celery.exceptions import Reject
 from app.application.analysis import ExecuteTextExtractionCommand
 from app.bootstrap.logging import bind_log_context, get_logger
 from app.bootstrap.settings import get_settings
-from app.bootstrap.sprint2 import build_execute_text_extraction
+from app.bootstrap.sprint2 import build_execute_analysis_stage
 from app.interface.workers.celery_app import ANALYSIS_REQUESTED_TASK_NAME, celery_app
 
 logger = get_logger(__name__)
+
+# Compatibility seam retained for Sprint 2 worker tests and alternate composition.
+build_execute_text_extraction = build_execute_analysis_stage
 
 
 @celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]

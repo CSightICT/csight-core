@@ -270,3 +270,20 @@ Private 상태를 유지한다.
 - [ADR-0009: Transactional Outbox와 Fenced Analysis 실행](adr/0009-transactional-outbox-and-fenced-analysis-execution.md)
 - [ADR-0010: Code Prompt Registry와 구조화 결과만 보존](adr/0010-code-prompt-registry-and-structured-output-retention.md)
 - [ADR-0011: Case와 Analysis Run 수명주기 분리](adr/0011-separate-case-and-analysis-lifecycles.md)
+
+## 9. Sprint 3 Multimodal Architecture
+
+`product_defect_multimodal_analysis`은 한 트랜잭션에서 Text/Vision Stage와 독립 Outbox Event를
+만든다. Dispatcher는 동일한 reference-only Event 계약으로 RabbitMQ에 fan-out하고 Worker는
+DB의 Stage type을 조회해 Text 또는 Vision Application use case로 라우팅한다. Celery chord가
+아니라 각 Stage terminal 전이 시 PostgreSQL 상태를 재집계해 join한다.
+
+Vision Worker는 `analysis_run_evidence` Snapshot만 읽고 MinIO에서 bounded read와 SHA-256
+검증을 수행한다. Vision Provider에는 DB/MinIO credential, object key, Signed URL을 주지 않는다.
+Remote HTTP, native taxonomy와 pixel normalization은 `app/adapters/vision`에만 존재한다.
+
+- [ADR-0013: Canonical Vision Result](adr/0013-canonical-vision-result-schema.md)
+- [ADR-0014: Evidence Snapshot](adr/0014-analysis-evidence-snapshot.md)
+- [ADR-0015: Multimodal Fan-out/Join](adr/0015-multimodal-fanout-join.md)
+- [ADR-0016: Partial Success](adr/0016-partial-success-semantics.md)
+- [ADR-0017: Vision Taxonomy Boundary](adr/0017-vision-taxonomy-boundary.md)

@@ -18,14 +18,18 @@ from app.adapters.llm.mock import MockLLMProvider
 from app.adapters.persistence.engine import clear_engine_cache, get_engine
 from app.adapters.persistence.models import (
     AnalysisRequestIdempotencyRecordModel,
+    AnalysisRunEvidenceModel,
     AnalysisRunModel,
     AnalysisStageAttemptModel,
     AnalysisStageRunModel,
+    CaseEvidenceModel,
     CaseModel,
     LLMExtractionResultModel,
     OutboxEventModel,
     TenantModel,
     UserModel,
+    VisionAnalysisResultModel,
+    VisionDetectionModel,
 )
 from app.adapters.persistence.unit_of_work import (
     SQLAlchemyAnalysisUnitOfWork,
@@ -33,10 +37,13 @@ from app.adapters.persistence.unit_of_work import (
     create_analysis_unit_of_work_factory,
 )
 from app.adapters.runtime import Uuid4Generator
+from app.adapters.vision import MockVisionProvider, VisionMockMode
 from app.application.analysis import (
+    ExecuteRequestedAnalysisStage,
     ExecuteTextExtraction,
     ExecuteTextExtractionCommand,
     ExecuteTextExtractionResult,
+    ExecuteVisionAnalysis,
     ExecutionDisposition,
     GetAnalysisRun,
     StartTextAnalysis,
@@ -47,6 +54,7 @@ from app.application.outbox import DispatchOutbox, DispatchOutboxResult
 from app.bootstrap.settings import Settings
 from app.domains.product_defect_cs.prompts import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT
 from app.platform.analysis import (
+    MULTIMODAL_ANALYSIS_PIPELINE_VERSION,
     TEXT_EXTRACTION_PIPELINE_VERSION,
     AnalysisAttemptStatus,
     AnalysisPipeline,
@@ -63,8 +71,10 @@ from app.platform.analysis import (
 )
 from app.platform.case import Case, RequestedAction
 from app.platform.errors import CaseNotFoundError, IdempotencyKeyReusedError
+from app.platform.evidence import EvidenceMetadata, EvidenceType, EvidenceUploadStatus
 from app.platform.tenant import Principal, Role
 from app.ports.analysis_repository import OutboxEventRepository
+from app.ports.storage import ReadableObjectStorage
 
 pytestmark = pytest.mark.integration
 
@@ -145,6 +155,17 @@ class RecordingQueue:
         return True
 
 
+class PrivateBytesStorage:
+    def __init__(self, objects: Mapping[str, bytes]) -> None:
+        self._objects = dict(objects)
+
+    def get(self, key: str, *, max_bytes: int) -> bytes:
+        value = self._objects[key]
+        if len(value) > max_bytes:
+            raise ValueError("object exceeds configured read limit")
+        return value
+
+
 class NoCallMockLLMProvider(MockLLMProvider):
     """Fail the test if an exhausted expired lease reaches the provider."""
 
@@ -215,6 +236,8 @@ class ApplicationContext:
     case_a: Case
     conflict_case_a: Case
     case_b: Case
+    evidence_a: EvidenceMetadata
+    image_bytes: bytes
 
 
 def _case(*, tenant_id: str, user_id: str, suffix: str) -> Case:
@@ -228,6 +251,30 @@ def _case(*, tenant_id: str, user_id: str, suffix: str) -> Case:
         attributes={"source": "synthetic-integration"},
         created_by=user_id,
         now=NOW,
+    )
+
+
+def _evidence(*, case: Case, user_id: str, image: bytes) -> EvidenceMetadata:
+    import hashlib
+
+    evidence_id = str(uuid4())
+    return EvidenceMetadata(
+        id=evidence_id,
+        tenant_id=case.tenant_id,
+        case_id=case.id,
+        evidence_type=EvidenceType.IMAGE,
+        upload_status=EvidenceUploadStatus.AVAILABLE,
+        storage_bucket="evidence",
+        object_key=(f"tenants/{case.tenant_id}/cases/{case.id}/evidence/{evidence_id}/original"),
+        original_filename="synthetic.png",
+        content_type="image/png",
+        size_bytes=len(image),
+        sha256=hashlib.sha256(image).hexdigest(),
+        width=64,
+        height=48,
+        created_by=user_id,
+        created_at=NOW,
+        updated_at=NOW,
     )
 
 
@@ -279,10 +326,14 @@ def application_context(
     case_a = _case(tenant_id=tenant_a, user_id=user_a, suffix="A-1")
     conflict_case_a = _case(tenant_id=tenant_a, user_id=user_a, suffix="A-2")
     case_b = _case(tenant_id=tenant_b, user_id=user_b, suffix="B-1")
+    image_bytes = b"sprint-3-private-synthetic-image"
+    evidence_a = _evidence(case=case_a, user_id=user_a, image=image_bytes)
     factory = create_analysis_unit_of_work_factory(application_engine)
     with factory() as unit_of_work:
         for case in (case_a, conflict_case_a, case_b):
             unit_of_work.cases.add(tenant_id=case.tenant_id, case=case)
+        unit_of_work.flush()
+        unit_of_work.evidence.add(tenant_id=tenant_a, evidence=evidence_a)
         unit_of_work.commit()
 
     context = ApplicationContext(
@@ -293,12 +344,27 @@ def application_context(
         case_a=case_a,
         conflict_case_a=conflict_case_a,
         case_b=case_b,
+        evidence_a=evidence_a,
+        image_bytes=image_bytes,
     )
     try:
         yield context
     finally:
         tenant_ids = [UUID(tenant_a), UUID(tenant_b)]
         with application_engine.begin() as connection:
+            connection.execute(
+                delete(VisionDetectionModel).where(VisionDetectionModel.tenant_id.in_(tenant_ids))
+            )
+            connection.execute(
+                delete(VisionAnalysisResultModel).where(
+                    VisionAnalysisResultModel.tenant_id.in_(tenant_ids)
+                )
+            )
+            connection.execute(
+                delete(AnalysisRunEvidenceModel).where(
+                    AnalysisRunEvidenceModel.tenant_id.in_(tenant_ids)
+                )
+            )
             connection.execute(
                 delete(OutboxEventModel).where(OutboxEventModel.tenant_id.in_(tenant_ids))
             )
@@ -322,6 +388,9 @@ def application_context(
             )
             connection.execute(
                 delete(AnalysisRunModel).where(AnalysisRunModel.tenant_id.in_(tenant_ids))
+            )
+            connection.execute(
+                delete(CaseEvidenceModel).where(CaseEvidenceModel.tenant_id.in_(tenant_ids))
             )
             connection.execute(delete(CaseModel).where(CaseModel.tenant_id.in_(tenant_ids)))
             connection.execute(delete(UserModel).where(UserModel.tenant_id.in_(tenant_ids)))
@@ -397,6 +466,67 @@ def _execute(
         retry_max=timedelta(seconds=2),
         retry_jitter_ratio=0,
     ).execute(command=command)
+
+
+def _start_multimodal(
+    context: ApplicationContext,
+    *,
+    clock: MutableClock,
+    key: str,
+) -> StartTextAnalysisResult:
+    return StartTextAnalysis(
+        uow_factory=context.factory,
+        provider=MockLLMProvider(),
+        vision_provider=MockVisionProvider(),
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        clock=clock,
+        id_generator=Uuid4Generator(),
+    ).execute(
+        principal=context.principal_a,
+        case_id=context.case_a.id,
+        command=StartTextAnalysisCommand(
+            pipeline=AnalysisPipeline.PRODUCT_DEFECT_MULTIMODAL_ANALYSIS,
+            pipeline_version=MULTIMODAL_ANALYSIS_PIPELINE_VERSION,
+            idempotency_key=key,
+            correlation_id=f"correlation-{key}",
+        ),
+    )
+
+
+def _multimodal_executor(
+    context: ApplicationContext,
+    *,
+    clock: MutableClock,
+    llm_mode: MockProviderMode = MockProviderMode.SUCCESS,
+    vision_mode: VisionMockMode = VisionMockMode.SUCCESS_SINGLE_DEFECT,
+) -> ExecuteRequestedAnalysisStage:
+    return ExecuteRequestedAnalysisStage(
+        uow_factory=context.factory,
+        text=ExecuteTextExtraction(
+            uow_factory=context.factory,
+            provider=MockLLMProvider(mode=llm_mode),
+            prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+            clock=clock,
+            id_generator=Uuid4Generator(),
+            retry_base=timedelta(seconds=1),
+            retry_max=timedelta(seconds=1),
+            retry_jitter_ratio=0,
+        ),
+        vision=ExecuteVisionAnalysis(
+            uow_factory=context.factory,
+            provider=MockVisionProvider(mode=vision_mode),
+            storage=cast(
+                ReadableObjectStorage,
+                PrivateBytesStorage({context.evidence_a.object_key: context.image_bytes}),
+            ),
+            clock=clock,
+            id_generator=Uuid4Generator(),
+            max_image_bytes=1024,
+            retry_base=timedelta(seconds=1),
+            retry_max=timedelta(seconds=1),
+            retry_jitter_ratio=0,
+        ),
+    )
 
 
 def test_start_is_atomic_replays_conflicts_and_hides_cross_tenant_run(
@@ -1197,3 +1327,182 @@ def test_outbox_terminal_exhaustion_fails_queued_run_and_stage(
         max_attempts=1,
     )
     assert duplicate_dispatch.claimed == 0
+
+
+def test_multimodal_mock_e2e_persists_snapshot_text_vision_and_safe_duplicate(
+    application_context: ApplicationContext,
+) -> None:
+    clock = MutableClock(NOW)
+    started = _start_multimodal(
+        application_context,
+        clock=clock,
+        key=f"multimodal-success-{uuid4()}",
+    )
+    queue = RecordingQueue()
+    dispatched = _dispatch(application_context, queue=queue, clock=clock)
+    assert dispatched.published == 2
+    assert len(queue.messages) == 2
+
+    executor = _multimodal_executor(application_context, clock=clock)
+    executions = [
+        executor.execute(command=ExecuteTextExtractionCommand.model_validate(message.payload))
+        for message in queue.messages
+    ]
+    assert all(result.disposition is ExecutionDisposition.SUCCEEDED for result in executions)
+
+    detail = GetAnalysisRun(uow_factory=application_context.factory).execute(
+        principal=application_context.principal_a,
+        case_id=application_context.case_a.id,
+        analysis_run_id=started.run.id,
+    )
+    assert detail.run.status is AnalysisRunStatus.SUCCEEDED
+    assert len(detail.stages) == 2
+    assert detail.extraction_result is not None
+    assert len(detail.vision_results) == 1
+    assert len(detail.vision_results[0].result.detections) == 1
+    assert detail.failed_stages == ()
+
+    duplicate = executor.execute(
+        command=ExecuteTextExtractionCommand.model_validate(queue.messages[-1].payload)
+    )
+    assert duplicate.disposition is ExecutionDisposition.NOOP
+
+    tenant_uuid = UUID(application_context.principal_a.tenant_id)
+    run_uuid = UUID(started.run.id)
+    with Session(application_context.engine) as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(AnalysisRunEvidenceModel)
+                .where(
+                    AnalysisRunEvidenceModel.tenant_id == tenant_uuid,
+                    AnalysisRunEvidenceModel.analysis_run_id == run_uuid,
+                )
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(VisionAnalysisResultModel)
+                .where(VisionAnalysisResultModel.analysis_run_id == run_uuid)
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(VisionDetectionModel)
+                .where(VisionDetectionModel.tenant_id == tenant_uuid)
+            )
+            == 1
+        )
+    with application_context.factory() as unit_of_work:
+        assert (
+            unit_of_work.vision_results.list_by_run(
+                tenant_id=application_context.principal_b.tenant_id,
+                analysis_run_id=started.run.id,
+            )
+            == ()
+        )
+
+
+@pytest.mark.parametrize(
+    ("llm_mode", "vision_mode", "expected"),
+    [
+        (
+            MockProviderMode.SUCCESS,
+            VisionMockMode.PERMANENT_ERROR,
+            AnalysisRunStatus.PARTIAL_SUCCESS,
+        ),
+        (
+            MockProviderMode.PERMANENT_ERROR,
+            VisionMockMode.SUCCESS_SINGLE_DEFECT,
+            AnalysisRunStatus.PARTIAL_SUCCESS,
+        ),
+        (
+            MockProviderMode.PERMANENT_ERROR,
+            VisionMockMode.PERMANENT_ERROR,
+            AnalysisRunStatus.FAILED,
+        ),
+    ],
+)
+def test_multimodal_terminal_join_preserves_partial_results(
+    application_context: ApplicationContext,
+    llm_mode: MockProviderMode,
+    vision_mode: VisionMockMode,
+    expected: AnalysisRunStatus,
+) -> None:
+    clock = MutableClock(NOW)
+    started = _start_multimodal(
+        application_context,
+        clock=clock,
+        key=f"multimodal-partial-{uuid4()}",
+    )
+    queue = RecordingQueue()
+    assert _dispatch(application_context, queue=queue, clock=clock).published == 2
+    executor = _multimodal_executor(
+        application_context,
+        clock=clock,
+        llm_mode=llm_mode,
+        vision_mode=vision_mode,
+    )
+    for message in queue.messages:
+        executor.execute(command=ExecuteTextExtractionCommand.model_validate(message.payload))
+
+    detail = GetAnalysisRun(uow_factory=application_context.factory).execute(
+        principal=application_context.principal_a,
+        case_id=application_context.case_a.id,
+        analysis_run_id=started.run.id,
+    )
+    assert detail.run.status is expected
+    assert (detail.extraction_result is not None) is (llm_mode is MockProviderMode.SUCCESS)
+    assert bool(detail.vision_results) is (vision_mode is VisionMockMode.SUCCESS_SINGLE_DEFECT)
+    expected_failures = int(llm_mode is not MockProviderMode.SUCCESS) + int(
+        vision_mode is not VisionMockMode.SUCCESS_SINGLE_DEFECT
+    )
+    assert len(detail.failed_stages) == expected_failures
+
+
+def test_multimodal_vision_timeout_retries_then_joins_successfully(
+    application_context: ApplicationContext,
+) -> None:
+    clock = MutableClock(NOW)
+    started = _start_multimodal(
+        application_context,
+        clock=clock,
+        key=f"multimodal-retry-{uuid4()}",
+    )
+    queue = RecordingQueue()
+    assert _dispatch(application_context, queue=queue, clock=clock).published == 2
+    first_executor = _multimodal_executor(
+        application_context,
+        clock=clock,
+        vision_mode=VisionMockMode.TIMEOUT,
+    )
+    dispositions = {
+        first_executor.execute(
+            command=ExecuteTextExtractionCommand.model_validate(message.payload)
+        ).disposition
+        for message in queue.messages
+    }
+    assert dispositions == {
+        ExecutionDisposition.SUCCEEDED,
+        ExecutionDisposition.RETRY_WAITING,
+    }
+
+    clock.advance(timedelta(seconds=1))
+    retry_queue = RecordingQueue()
+    assert _dispatch(application_context, queue=retry_queue, clock=clock).published == 1
+    retried = _multimodal_executor(application_context, clock=clock).execute(
+        command=ExecuteTextExtractionCommand.model_validate(retry_queue.messages[0].payload)
+    )
+    assert retried.disposition is ExecutionDisposition.SUCCEEDED
+
+    detail = GetAnalysisRun(uow_factory=application_context.factory).execute(
+        principal=application_context.principal_a,
+        case_id=application_context.case_a.id,
+        analysis_run_id=started.run.id,
+    )
+    assert detail.run.status is AnalysisRunStatus.SUCCEEDED
+    assert len(detail.vision_results) == 1

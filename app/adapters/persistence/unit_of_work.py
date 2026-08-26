@@ -7,12 +7,14 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.adapters.persistence.analysis_repositories import (
+    SQLAlchemyAnalysisEvidenceSnapshotRepository,
     SQLAlchemyAnalysisRequestIdempotencyRepository,
     SQLAlchemyAnalysisRunRepository,
     SQLAlchemyAnalysisStageAttemptRepository,
     SQLAlchemyAnalysisStageRunRepository,
     SQLAlchemyLLMExtractionResultRepository,
     SQLAlchemyOutboxEventRepository,
+    SQLAlchemyVisionAnalysisResultRepository,
 )
 from app.adapters.persistence.repositories import (
     SQLAlchemyCaseRepository,
@@ -22,12 +24,15 @@ from app.adapters.persistence.repositories import (
 )
 from app.adapters.persistence.session import create_session_factory
 from app.ports.analysis_repository import (
+    AnalysisEvidenceSnapshotRepository,
     AnalysisRequestIdempotencyRepository,
     AnalysisRunRepository,
     AnalysisStageAttemptRepository,
     AnalysisStageRunRepository,
+    AnalysisUnitOfWork,
     LLMExtractionResultRepository,
     OutboxEventRepository,
+    VisionAnalysisResultRepository,
 )
 from app.ports.case_repository import (
     CaseRepository,
@@ -43,10 +48,10 @@ class SQLAlchemyCaseUnitOfWork:
     def __init__(self, session: Session) -> None:
         self._session = session
         self.cases: CaseRepository = SQLAlchemyCaseRepository(session)
+        self.evidence: EvidenceRepository = SQLAlchemyEvidenceRepository(session)
         self.status_history: CaseStatusHistoryRepository = SQLAlchemyCaseStatusHistoryRepository(
             session
         )
-        self.evidence: EvidenceRepository = SQLAlchemyEvidenceRepository(session)
         self.idempotency: IdempotencyRepository = SQLAlchemyIdempotencyRepository(session)
 
     def __enter__(self) -> Self:
@@ -82,12 +87,13 @@ class SQLAlchemyCaseUnitOfWorkFactory:
         return SQLAlchemyCaseUnitOfWork(self._session_factory())
 
 
-class SQLAlchemyAnalysisUnitOfWork:
+class SQLAlchemyAnalysisUnitOfWork(AnalysisUnitOfWork):
     """One explicit session for Analysis Run, result, and Outbox transactions."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
         self.cases: CaseRepository = SQLAlchemyCaseRepository(session)
+        self.evidence: EvidenceRepository = SQLAlchemyEvidenceRepository(session)
         self.analysis_runs: AnalysisRunRepository = SQLAlchemyAnalysisRunRepository(session)
         self.stage_runs: AnalysisStageRunRepository = SQLAlchemyAnalysisStageRunRepository(session)
         self.stage_attempts: AnalysisStageAttemptRepository = (
@@ -98,6 +104,12 @@ class SQLAlchemyAnalysisUnitOfWork:
         )
         self.extraction_results: LLMExtractionResultRepository = (
             SQLAlchemyLLMExtractionResultRepository(session)
+        )
+        self.evidence_snapshots: AnalysisEvidenceSnapshotRepository = (
+            SQLAlchemyAnalysisEvidenceSnapshotRepository(session)
+        )
+        self.vision_results: VisionAnalysisResultRepository = (
+            SQLAlchemyVisionAnalysisResultRepository(session)
         )
         self.outbox: OutboxEventRepository = SQLAlchemyOutboxEventRepository(session)
 

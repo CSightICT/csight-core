@@ -20,8 +20,12 @@ from app.platform.analysis.models import (
     OutboxEvent,
     ProviderExecutionMetadata,
 )
-from app.platform.analysis.schemas import LLMExtractionResultRecord
-from app.ports.case_repository import CaseRepository
+from app.platform.analysis.schemas import (
+    AnalysisEvidenceSnapshot,
+    LLMExtractionResultRecord,
+    VisionAnalysisResultRecord,
+)
+from app.ports.case_repository import CaseRepository, EvidenceRepository
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,6 +208,24 @@ class LLMExtractionResultRepository(Protocol):
 
 
 @runtime_checkable
+class AnalysisEvidenceSnapshotRepository(Protocol):
+    def add(self, *, tenant_id: str, snapshot: AnalysisEvidenceSnapshot) -> None: ...
+
+    def list(
+        self, *, tenant_id: str, analysis_run_id: str
+    ) -> tuple[AnalysisEvidenceSnapshot, ...]: ...
+
+
+@runtime_checkable
+class VisionAnalysisResultRepository(Protocol):
+    def add(self, *, tenant_id: str, result: VisionAnalysisResultRecord) -> None: ...
+
+    def list_by_run(
+        self, *, tenant_id: str, analysis_run_id: str
+    ) -> tuple[VisionAnalysisResultRecord, ...]: ...
+
+
+@runtime_checkable
 class OutboxEventRepository(Protocol):
     def add(self, *, tenant_id: str, event: OutboxEvent) -> None: ...
 
@@ -258,11 +280,14 @@ class OutboxEventRepository(Protocol):
 @runtime_checkable
 class AnalysisUnitOfWork(Protocol):
     cases: CaseRepository
+    evidence: EvidenceRepository
     analysis_runs: AnalysisRunRepository
     stage_runs: AnalysisStageRunRepository
     stage_attempts: AnalysisStageAttemptRepository
     request_idempotency: AnalysisRequestIdempotencyRepository
     extraction_results: LLMExtractionResultRepository
+    evidence_snapshots: AnalysisEvidenceSnapshotRepository
+    vision_results: VisionAnalysisResultRepository
     outbox: OutboxEventRepository
 
     def __enter__(self) -> Self: ...
@@ -287,6 +312,7 @@ class AnalysisUnitOfWorkFactory(Protocol):
 
 
 __all__ = [
+    "AnalysisEvidenceSnapshotRepository",
     "AnalysisRequestIdempotencyClaim",
     "AnalysisRequestIdempotencyRepository",
     "AnalysisRunListCriteria",
@@ -297,4 +323,5 @@ __all__ = [
     "AnalysisUnitOfWorkFactory",
     "LLMExtractionResultRepository",
     "OutboxEventRepository",
+    "VisionAnalysisResultRepository",
 ]

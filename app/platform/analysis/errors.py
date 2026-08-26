@@ -93,3 +93,27 @@ class AnalysisMaxRetriesExceededError(AnalysisError):
 
 class OutboxDispatchFailedError(AnalysisError):
     code = "OUTBOX_DISPATCH_FAILED"
+
+
+class ImageEvidenceRequiredError(AnalysisError):
+    code = "IMAGE_EVIDENCE_REQUIRED"
+
+
+class VisionProviderTimeoutError(ProviderTimeoutError):
+    code = "VISION_PROVIDER_TIMEOUT"
+
+
+class VisionProviderUnavailableError(ProviderFailureError):
+    code = "VISION_PROVIDER_UNAVAILABLE"
+
+
+class VisionProviderAuthenticationError(AnalysisProviderError):
+    code = "VISION_PROVIDER_AUTHENTICATION_FAILED"
+
+
+class VisionProviderRequestRejectedError(AnalysisProviderError):
+    code = "VISION_PROVIDER_REQUEST_REJECTED"
+
+
+class VisionInvalidStructuredOutputError(ProviderSchemaError):
+    code = "VISION_INVALID_STRUCTURED_OUTPUT"

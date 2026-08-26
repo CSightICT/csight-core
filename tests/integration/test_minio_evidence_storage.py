@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.adapters.storage import MinioObjectStorage
+from app.adapters.storage import MinioObjectStorage, StoredObjectIntegrityError
 from app.bootstrap.settings import Settings
 
 pytestmark = pytest.mark.integration
@@ -74,6 +74,9 @@ def test_private_object_round_trip_requires_a_short_lived_signature(
         assert stored.key == key
         assert stored.sha256 == sha256
         assert storage.exists(key) is True
+        assert storage.get(key, max_bytes=len(payload)) == payload
+        with pytest.raises(StoredObjectIntegrityError, match="configured read limit"):
+            storage.get(key, max_bytes=len(payload) - 1)
         signed_url = storage.presign_get(key, expires_in=timedelta(seconds=60))
         with urlopen(signed_url, timeout=5) as response:
             assert response.read() == payload

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import cast
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import ColumnElement, and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
@@ -10,16 +10,21 @@ from sqlalchemy.orm import Session
 
 from app.adapters.persistence.models import (
     AnalysisRequestIdempotencyRecordModel,
+    AnalysisRunEvidenceModel,
     AnalysisRunModel,
     AnalysisStageAttemptModel,
     AnalysisStageRunModel,
     LLMExtractionResultModel,
     OutboxEventModel,
+    VisionAnalysisResultModel,
+    VisionDetectionModel,
 )
 from app.platform.analysis.enums import (
     AnalysisAttemptStatus,
     AnalysisRunStatus,
     AnalysisStageStatus,
+    CoordinateSystem,
+    DefectType,
     OutboxStatus,
     require_run_transition,
     require_stage_transition,
@@ -34,8 +39,14 @@ from app.platform.analysis.models import (
     ProviderExecutionMetadata,
 )
 from app.platform.analysis.schemas import (
+    AnalysisEvidenceSnapshot,
+    BoundingBox,
+    DetectionFinding,
+    ImageQualityResult,
     LLMExtractionResultRecord,
     LLMTextExtractionResult,
+    VisionAnalysisResult,
+    VisionAnalysisResultRecord,
 )
 from app.platform.errors import InconsistentPersistenceStateError
 from app.ports.analysis_repository import (
@@ -358,6 +369,144 @@ def result_entity_from_model(model: LLMExtractionResultModel) -> LLMExtractionRe
     )
 
 
+def evidence_snapshot_model_from_entity(
+    snapshot: AnalysisEvidenceSnapshot,
+) -> AnalysisRunEvidenceModel:
+    return AnalysisRunEvidenceModel(
+        id=_required_uuid(snapshot.id),
+        tenant_id=_required_uuid(snapshot.tenant_id),
+        analysis_run_id=_required_uuid(snapshot.analysis_run_id),
+        evidence_id=_required_uuid(snapshot.evidence_id),
+        position=snapshot.position,
+        sha256=snapshot.sha256,
+        created_at=snapshot.created_at,
+    )
+
+
+def evidence_snapshot_entity_from_model(
+    model: AnalysisRunEvidenceModel,
+) -> AnalysisEvidenceSnapshot:
+    return AnalysisEvidenceSnapshot(
+        id=str(model.id),
+        tenant_id=str(model.tenant_id),
+        analysis_run_id=str(model.analysis_run_id),
+        evidence_id=str(model.evidence_id),
+        position=model.position,
+        sha256=model.sha256,
+        created_at=model.created_at,
+    )
+
+
+def vision_result_model_from_entity(
+    result: VisionAnalysisResultRecord,
+) -> VisionAnalysisResultModel:
+    value = result.result
+    return VisionAnalysisResultModel(
+        id=_required_uuid(result.id),
+        tenant_id=_required_uuid(result.tenant_id),
+        analysis_run_id=_required_uuid(result.analysis_run_id),
+        stage_run_id=_required_uuid(result.stage_run_id),
+        evidence_id=_required_uuid(result.evidence_id),
+        schema_version=value.schema_version,
+        provider_name=value.provider_name,
+        model_name=value.model_name,
+        model_version=value.model_version,
+        model_revision=value.model_revision,
+        dataset_version=value.dataset_version,
+        taxonomy_version=value.taxonomy_version,
+        threshold_version=value.threshold_version,
+        preprocess_version=value.preprocess_version,
+        postprocess_version=value.postprocess_version,
+        framework=value.framework,
+        runtime=value.runtime,
+        precision=value.precision,
+        image_width=value.image_width,
+        image_height=value.image_height,
+        image_quality=cast(dict[str, object], value.image_quality.model_dump(mode="json")),
+        latency_ms=value.latency_ms,
+        created_at=result.created_at,
+    )
+
+
+def detection_model_from_finding(
+    *,
+    tenant_id: str,
+    vision_result_id: str,
+    detection_id: str,
+    index: int,
+    finding: DetectionFinding,
+    created_at: datetime,
+) -> VisionDetectionModel:
+    return VisionDetectionModel(
+        id=_required_uuid(detection_id),
+        tenant_id=_required_uuid(tenant_id),
+        vision_result_id=_required_uuid(vision_result_id),
+        detection_index=index,
+        detection_id=finding.id,
+        canonical_label=finding.label.value,
+        model_class_id=finding.model_class_id,
+        model_class_name=finding.model_class_name,
+        confidence=finding.confidence,
+        geometry_type=finding.geometry.type.value,
+        coordinate_system=finding.geometry.coordinate_system.value,
+        x1=finding.geometry.x1,
+        y1=finding.geometry.y1,
+        x2=finding.geometry.x2,
+        y2=finding.geometry.y2,
+        created_at=created_at,
+    )
+
+
+def vision_result_entity_from_models(
+    model: VisionAnalysisResultModel,
+    detections: tuple[VisionDetectionModel, ...],
+) -> VisionAnalysisResultRecord:
+    return VisionAnalysisResultRecord(
+        id=str(model.id),
+        tenant_id=str(model.tenant_id),
+        analysis_run_id=str(model.analysis_run_id),
+        stage_run_id=str(model.stage_run_id),
+        evidence_id=str(model.evidence_id),
+        result=VisionAnalysisResult(
+            schema_version="1.0",
+            provider_name=model.provider_name,
+            model_name=model.model_name,
+            model_version=model.model_version,
+            model_revision=model.model_revision,
+            dataset_version=model.dataset_version,
+            taxonomy_version=model.taxonomy_version,
+            threshold_version=model.threshold_version,
+            preprocess_version=model.preprocess_version,
+            postprocess_version=model.postprocess_version,
+            framework=model.framework,
+            runtime=model.runtime,
+            precision=model.precision,
+            image_width=model.image_width,
+            image_height=model.image_height,
+            image_quality=ImageQualityResult.model_validate(model.image_quality),
+            detections=tuple(
+                DetectionFinding(
+                    id=detection.detection_id,
+                    label=DefectType(detection.canonical_label),
+                    model_class_id=detection.model_class_id,
+                    model_class_name=detection.model_class_name,
+                    confidence=detection.confidence,
+                    geometry=BoundingBox(
+                        coordinate_system=CoordinateSystem.NORMALIZED_XYXY,
+                        x1=detection.x1,
+                        y1=detection.y1,
+                        x2=detection.x2,
+                        y2=detection.y2,
+                    ),
+                )
+                for detection in detections
+            ),
+            latency_ms=model.latency_ms,
+        ),
+        created_at=model.created_at,
+    )
+
+
 def idempotency_values(record: AnalysisRequestIdempotencyRecord) -> dict[str, object]:
     return {
         "id": _required_uuid(record.id),
@@ -565,7 +714,11 @@ class SQLAlchemyAnalysisRunRepository:
         if target_status is AnalysisRunStatus.RUNNING:
             values["started_at"] = func.coalesce(AnalysisRunModel.started_at, now)
             values["completed_at"] = None
-        elif target_status in {AnalysisRunStatus.SUCCEEDED, AnalysisRunStatus.FAILED}:
+        elif target_status in {
+            AnalysisRunStatus.PARTIAL_SUCCESS,
+            AnalysisRunStatus.SUCCEEDED,
+            AnalysisRunStatus.FAILED,
+        }:
             values["started_at"] = func.coalesce(AnalysisRunModel.started_at, now)
             values["completed_at"] = now
         else:
@@ -1014,6 +1167,95 @@ class SQLAlchemyLLMExtractionResultRepository:
         return result_entity_from_model(model) if model is not None else None
 
 
+class SQLAlchemyAnalysisEvidenceSnapshotRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, *, tenant_id: str, snapshot: AnalysisEvidenceSnapshot) -> None:
+        _require_tenant_scope(tenant_id=tenant_id, entity_tenant_id=snapshot.tenant_id)
+        self._session.add(evidence_snapshot_model_from_entity(snapshot))
+
+    def list(
+        self,
+        *,
+        tenant_id: str,
+        analysis_run_id: str,
+    ) -> tuple[AnalysisEvidenceSnapshot, ...]:
+        tenant_uuid = _optional_uuid(tenant_id)
+        run_uuid = _optional_uuid(analysis_run_id)
+        if tenant_uuid is None or run_uuid is None:
+            return ()
+        statement = (
+            select(AnalysisRunEvidenceModel)
+            .where(
+                AnalysisRunEvidenceModel.tenant_id == tenant_uuid,
+                AnalysisRunEvidenceModel.analysis_run_id == run_uuid,
+            )
+            .order_by(AnalysisRunEvidenceModel.position.asc())
+        )
+        return tuple(
+            evidence_snapshot_entity_from_model(model) for model in self._session.scalars(statement)
+        )
+
+
+class SQLAlchemyVisionAnalysisResultRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, *, tenant_id: str, result: VisionAnalysisResultRecord) -> None:
+        _require_tenant_scope(tenant_id=tenant_id, entity_tenant_id=result.tenant_id)
+        self._session.add(vision_result_model_from_entity(result))
+        for index, finding in enumerate(result.result.detections):
+            detection_uuid = str(
+                uuid5(NAMESPACE_URL, f"csight:{result.id}:vision-detection:{index}")
+            )
+            self._session.add(
+                detection_model_from_finding(
+                    tenant_id=tenant_id,
+                    vision_result_id=result.id,
+                    detection_id=detection_uuid,
+                    index=index,
+                    finding=finding,
+                    created_at=result.created_at,
+                )
+            )
+
+    def list_by_run(
+        self,
+        *,
+        tenant_id: str,
+        analysis_run_id: str,
+    ) -> tuple[VisionAnalysisResultRecord, ...]:
+        tenant_uuid = _optional_uuid(tenant_id)
+        run_uuid = _optional_uuid(analysis_run_id)
+        if tenant_uuid is None or run_uuid is None:
+            return ()
+        results = tuple(
+            self._session.scalars(
+                select(VisionAnalysisResultModel)
+                .where(
+                    VisionAnalysisResultModel.tenant_id == tenant_uuid,
+                    VisionAnalysisResultModel.analysis_run_id == run_uuid,
+                )
+                .order_by(VisionAnalysisResultModel.created_at.asc(), VisionAnalysisResultModel.id)
+            )
+        )
+        records: list[VisionAnalysisResultRecord] = []
+        for model in results:
+            detections = tuple(
+                self._session.scalars(
+                    select(VisionDetectionModel)
+                    .where(
+                        VisionDetectionModel.tenant_id == tenant_uuid,
+                        VisionDetectionModel.vision_result_id == model.id,
+                    )
+                    .order_by(VisionDetectionModel.detection_index.asc())
+                )
+            )
+            records.append(vision_result_entity_from_models(model, detections))
+        return tuple(records)
+
+
 def _sanitize_error(value: str) -> str:
     normalized = value.strip()[:500]
     return normalized or "OUTBOX_DISPATCH_FAILED"
@@ -1225,12 +1467,14 @@ class SQLAlchemyOutboxEventRepository:
 
 
 __all__ = [
+    "SQLAlchemyAnalysisEvidenceSnapshotRepository",
     "SQLAlchemyAnalysisRequestIdempotencyRepository",
     "SQLAlchemyAnalysisRunRepository",
     "SQLAlchemyAnalysisStageAttemptRepository",
     "SQLAlchemyAnalysisStageRunRepository",
     "SQLAlchemyLLMExtractionResultRepository",
     "SQLAlchemyOutboxEventRepository",
+    "SQLAlchemyVisionAnalysisResultRepository",
     "analysis_run_entity_from_model",
     "analysis_run_model_from_entity",
     "attempt_entity_from_model",

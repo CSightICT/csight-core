@@ -220,3 +220,17 @@ Container 내부 `0.0.0.0` listen은 private host publish와 함께만 허용한
 Local Compose의 Published Port는 모두 `127.0.0.1`에만 Bind한다. 이것은 개발 편의 설정일
 뿐 Production 접근 통제를 대신하지 않으며, Production에서는 HTTPS, Secret Store,
 Network ACL과 제한된 Presign Gateway를 별도로 구성한다.
+
+## 11. Sprint 3 Vision Security와 운영
+
+- Vision Service는 CSight DB와 MinIO에 직접 접근하지 않는다.
+- Worker가 private Storage에서 size-bounded read하고 Snapshot SHA-256을 확인한다.
+- Queue/Outbox에 이미지, Base64, object key, Signed URL, credential을 넣지 않는다.
+- Provider API key는 Authorization header로만 보내며 로그·오류·metadata에 저장하지 않는다.
+- Adapter는 Provider가 반환한 path/URL/object key를 계약에 허용하지 않는다.
+- 모든 Snapshot/Result 조회와 쓰기는 tenant/run/case/evidence 복합 FK와 repository scope를 따른다.
+- 구조화 로그에는 run/stage/attempt/evidence/provider/model/version/taxonomy/threshold/latency/count/
+  status context만 허용하고 고객 원문과 이미지 content는 금지한다.
+
+기본 Provider는 deterministic Mock이며 외부 Vision은 `external_vision` opt-in marker로만
+실행한다. 실제 Service가 없을 때 상태는 `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE`이다.

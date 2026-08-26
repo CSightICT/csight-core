@@ -59,6 +59,10 @@ class _MinioClient(Protocol):
     def bucket_exists(self, bucket_name: str) -> bool: ...
 
 
+class _ReadableMinioClient(Protocol):
+    def get_object(self, bucket_name: str, object_name: str) -> object: ...
+
+
 class MinioObjectStorage:
     """Store private evidence through internal DNS and sign URLs for public DNS."""
 
@@ -169,6 +173,28 @@ class MinioObjectStorage:
                 return False
             raise
         return True
+
+    def get(self, key: str, *, max_bytes: int) -> bytes:
+        _validate_object_key(key)
+        if max_bytes <= 0:
+            raise ValueError("max_bytes must be positive")
+        readable_client = cast(_ReadableMinioClient, self._internal_client)
+        response = readable_client.get_object(self._bucket, key)
+        try:
+            read = response.read  # type: ignore[attr-defined]
+            value = read(max_bytes + 1)
+            if not isinstance(value, bytes):
+                raise StoredObjectIntegrityError("Object storage returned non-binary content.")
+            if len(value) > max_bytes:
+                raise StoredObjectIntegrityError("Stored object exceeds the configured read limit.")
+            return value
+        finally:
+            close = getattr(response, "close", None)
+            if callable(close):
+                close()
+            release_conn = getattr(response, "release_conn", None)
+            if callable(release_conn):
+                release_conn()
 
     def presign_get(self, key: str, *, expires_in: timedelta) -> str:
         _validate_object_key(key)

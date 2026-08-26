@@ -7,7 +7,7 @@ from app.adapters.messaging import RabbitMQReadinessProbe
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.readiness import PostgresReadinessProbe
 from app.adapters.storage import MinioReadinessProbe
-from app.adapters.vision import MockVisionProvider
+from app.adapters.vision import MockVisionProvider, RemoteVisionProvider
 from app.application.analyze_case import AnalyzeCase
 from app.bootstrap.settings import Settings
 from app.ports.llm import LLMProvider
@@ -101,7 +101,28 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
 
 def build_vision_provider(settings: Settings) -> VisionProvider:
     if settings.vision_provider == "mock":
-        return MockVisionProvider()
+        return MockVisionProvider(
+            mode=settings.vision_mock_mode,
+            model_name=settings.vision_model_id,
+            model_version=settings.vision_model_version,
+        )
+    if settings.vision_provider == "remote":
+        base_url = settings.vision_base_url_value
+        if base_url is None:
+            raise ProviderConfigurationError(
+                "VISION_BASE_URL is required for the remote Vision adapter"
+            )
+        return RemoteVisionProvider(
+            base_url=base_url,
+            api_key=settings.vision_api_key_value,
+            model_id=settings.vision_model_id,
+            model_version=settings.vision_model_version,
+            model_revision=settings.vision_model_revision,
+            connect_timeout_seconds=settings.vision_connect_timeout_seconds,
+            read_timeout_seconds=settings.vision_read_timeout_seconds,
+            max_image_bytes=settings.vision_max_image_bytes,
+            tls_verify=settings.vision_tls_verify,
+        )
     raise ProviderConfigurationError(
         f"Vision provider adapter is not available: {settings.vision_provider!r}"
     )

@@ -265,3 +265,19 @@ Sprint 3 시작 시점에 Vision 실행, LLM·Vision 병렬화, Alignment는 아
 - 개인정보 영향 검토
 - 모델·프롬프트·정책 버전 기록
 - Demo Scenario 실행 가능
+
+## 10. Sprint 3 완료와 후속 순서
+
+- [x] Canonical Vision schema와 Remote/Mock Adapter
+- [x] Evidence Snapshot과 image별 append-only Result/Detection
+- [x] Text/Vision fan-out, Stage join, `PARTIAL_SUCCESS`
+- [x] 기존 text-only Pipeline 호환
+- [x] 외부 Vision opt-in 분리
+- [ ] 실제 Vision model/dataset/threshold calibration qualification
+- [ ] Evidence Alignment와 Claim↔Detection matching
+- [ ] Confidence calibration과 evidence sufficiency
+- [ ] Policy Engine과 Human Review
+
+Alignment는 Sprint 3 결과 계약을 입력으로 하는 다음 단계이며 이번 Sprint에서 점수나 match를
+계산하지 않는다. Policy/Approval은 LLM·Vision 모델이 아니라 versioned rule과 Human Review가
+소유한다.

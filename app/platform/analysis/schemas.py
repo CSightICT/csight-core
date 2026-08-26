@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.platform.analysis.enums import (
     CoordinateSystem,
@@ -13,6 +13,8 @@ from app.platform.analysis.enums import (
     ExtractedRequestedAction,
     ExtractionIssueType,
     GeometryType,
+    ImageQualityRejectionReason,
+    ImageUsability,
     MissingInformation,
     VisionTask,
 )
@@ -231,19 +233,29 @@ class AnalysisRequestedEvent(AnalysisContract):
 
 
 class VisionAnalysisRequest(AnalysisContract):
-    """A reference-only image request; binary data never crosses the queue boundary."""
+    """Safe metadata passed beside image bytes at the provider port."""
 
     schema_version: Literal["1.0"] = SCHEMA_VERSION
-    case_id: str = Field(min_length=1)
-    image_reference: str = Field(min_length=1)
+    evidence_id: str | None = Field(default=None, min_length=1)
+    content_type: str = Field(default="image/png", min_length=1, max_length=127)
+    image_width: int = Field(default=1, gt=0)
+    image_height: int = Field(default=1, gt=0)
+    case_id: str | None = Field(default=None, min_length=1, deprecated=True)
+    image_reference: str | None = Field(default=None, min_length=1, deprecated=True)
     task: VisionTask = VisionTask.QUALITY_AND_DEFECT_DETECTION
+
+    @model_validator(mode="after")
+    def require_evidence_identity(self) -> "VisionAnalysisRequest":
+        if self.evidence_id is None and self.image_reference is None:
+            raise ValueError("evidence_id is required")
+        return self
 
 
 class BoundingBox(AnalysisContract):
     """Normalized coordinates for a provider-independent detection geometry."""
 
     type: Literal[GeometryType.BOUNDING_BOX] = GeometryType.BOUNDING_BOX
-    coordinate_system: Literal[CoordinateSystem.NORMALIZED] = CoordinateSystem.NORMALIZED
+    coordinate_system: CoordinateSystem = CoordinateSystem.NORMALIZED
     x1: float = Field(ge=0.0, le=1.0)
     y1: float = Field(ge=0.0, le=1.0)
     x2: float = Field(ge=0.0, le=1.0)
@@ -259,25 +271,111 @@ class BoundingBox(AnalysisContract):
 
 
 class ImageQualityResult(AnalysisContract):
-    blurred: bool
-    too_dark: bool
-    product_visible: bool
-    defect_area_visible: bool
-    score: float = Field(ge=0.0, le=1.0)
+    usable: ImageUsability
+    score: float | None = Field(default=None, ge=0.0, le=1.0)
+    blurred: bool | None = None
+    dark: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("dark", "too_dark"),
+    )
+    overexposed: bool | None = None
+    product_visible: bool | None = None
+    defect_area_visible: bool | None = None
+    rejection_reasons: tuple[ImageQualityRejectionReason, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_quality_state(self) -> "ImageQualityResult":
+        if len(set(self.rejection_reasons)) != len(self.rejection_reasons):
+            raise ValueError("rejection_reasons must not contain duplicates")
+        if self.usable is ImageUsability.NOT_EVALUATED and any(
+            value is not None
+            for value in (
+                self.score,
+                self.blurred,
+                self.dark,
+                self.overexposed,
+                self.product_visible,
+                self.defect_area_visible,
+            )
+        ):
+            raise ValueError("NOT_EVALUATED quality fields must remain null")
+        return self
 
 
 class DetectionFinding(AnalysisContract):
     """A detection already mapped from provider-specific class IDs."""
 
+    id: str = Field(default="detection-0", min_length=1, max_length=100)
     label: DefectType
+    model_class_id: str | None = Field(default=None, min_length=1, max_length=100)
+    model_class_name: str | None = Field(default=None, min_length=1, max_length=255)
     confidence: float = Field(ge=0.0, le=1.0)
     geometry: BoundingBox
 
 
 class VisionAnalysisResult(AnalysisContract):
     schema_version: Literal["1.0"] = SCHEMA_VERSION
-    model: ProviderMetadata
-    image_reference: str = Field(min_length=1)
+    provider_name: str = Field(min_length=1, max_length=100)
+    model_name: str = Field(min_length=1, max_length=255)
+    model_version: str = Field(min_length=1, max_length=100)
+    model_revision: str | None = Field(default=None, min_length=1, max_length=255)
+    dataset_version: str | None = Field(default=None, min_length=1, max_length=100)
+    taxonomy_version: str = Field(min_length=1, max_length=100)
+    threshold_version: str = Field(min_length=1, max_length=100)
+    preprocess_version: str = Field(min_length=1, max_length=100)
+    postprocess_version: str = Field(min_length=1, max_length=100)
+    framework: str | None = Field(default=None, min_length=1, max_length=100)
+    runtime: str | None = Field(default=None, min_length=1, max_length=100)
+    precision: str | None = Field(default=None, min_length=1, max_length=100)
+    image_width: int = Field(gt=0)
+    image_height: int = Field(gt=0)
+    image_reference: str | None = Field(default=None, min_length=1, deprecated=True)
     image_quality: ImageQualityResult
     detections: tuple[DetectionFinding, ...] = ()
     latency_ms: int = Field(ge=0)
+
+    @property
+    def model(self) -> ProviderMetadata:
+        """Compatibility projection for the original Sprint 0 provider contract."""
+
+        return ProviderMetadata(
+            provider=self.provider_name,
+            name=self.model_name,
+            version=self.model_version,
+            revision=self.model_revision,
+            preprocess_version=self.preprocess_version,
+        )
+
+
+class AnalysisEvidenceSnapshot(AnalysisContract):
+    id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    analysis_run_id: str = Field(min_length=1)
+    evidence_id: str = Field(min_length=1)
+    position: int = Field(ge=0)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def require_snapshot_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("created_at must be timezone-aware")
+        return value.astimezone(UTC)
+
+
+class VisionAnalysisResultRecord(AnalysisContract):
+    id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    analysis_run_id: str = Field(min_length=1)
+    stage_run_id: str = Field(min_length=1)
+    evidence_id: str = Field(min_length=1)
+    result: VisionAnalysisResult
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def require_result_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("created_at must be timezone-aware")
+        return value.astimezone(UTC)

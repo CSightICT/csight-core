@@ -2,15 +2,15 @@
 
 > 이미지·텍스트 기반 상품 불량 CS 의사결정 지원 플랫폼
 
-이 저장소는 CSight의 **Sprint 2 Append-only Analysis & LLM Text Extraction Slice**입니다. Python 3.12,
+이 저장소는 CSight의 **Sprint 3 Vision Analysis & Multimodal Slice**입니다. Python 3.12,
 FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며,
 API와 Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
 
 Sprint 1의 JWT, Tenant 격리, Case와 Private Evidence 기능 위에 Analysis Run·Stage·Attempt,
-Transactional Outbox, 얇은 Celery Worker, 버전 고정 Prompt Registry, 결정적 Mock LLM과
-선택적 vLLM Adapter를 추가했습니다. Text Analysis는 명시적 `202 Accepted` 요청으로만
-시작하며 Case 상태를 변경하지 않습니다. LLM은 문의 구조화만 수행하고 정책 판정, 승인,
-Routing, Human Review, RAG, Report와 Vision 실행은 포함하지 않습니다.
+Transactional Outbox, 얇은 Celery Worker, 버전 고정 Prompt Registry, Text/Vision Provider,
+Evidence Snapshot과 append-only image result를 제공합니다. Analysis는 명시적 `202 Accepted`
+요청으로만 시작하며 Case 상태를 변경하지 않습니다. LLM과 Vision은 Evidence 분석만 수행하고
+정책 판정, 승인, Alignment, Routing, Human Review, RAG와 Report는 포함하지 않습니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -91,10 +91,12 @@ make down
 | Analysis PostgreSQL 통합 | `make test-analysis-integration` |
 | Mock Analysis HTTP Smoke | `make smoke-analysis` |
 | 선택적 외부 vLLM | `make test-external-llm` |
+| 선택적 외부 Vision | `make test-external-vision` |
 
 `make test`는 Docker 인프라와 GPU를 요구하지 않습니다. `make test-integration`과
 `make test-all`은 먼저 `make up`과 `make migrate`를 실행한 상태에서 사용합니다.
-외부 GPU 테스트는 별도 `external_gpu` Marker로 격리되며 기본 명령에서 실행되지 않습니다.
+외부 GPU/서비스 테스트는 `external_gpu`, `external_vision` Marker로 격리되며 기본 명령에서
+실행되지 않습니다.
 `make smoke-analysis`는 Seed된 Reviewer와 실행 중인 API·Dispatcher·Worker를 사용하며 합성
 Case만 생성합니다.
 
@@ -257,6 +259,35 @@ Worker Lost·Hard Timeout은 Late Acknowledgment 재전달로, 검증된 메시�
 Soft Timeout은 명시적 재큐잉으로 복구합니다. 활성 Lease 중복 전달은 Lease 만료 시각의
 Outbox Wake-up을 남기며, Claim Token이 바뀐 늦은 Worker는 결과를 Commit할 수 없습니다.
 최종 허용 Lease까지 만료되면 새 Attempt 없이 `ANALYSIS_MAX_RETRIES_EXCEEDED`로 종결됩니다.
+
+## Sprint 3 Multimodal Analysis 흐름
+
+Image Evidence가 `AVAILABLE`인 Case는 기존 Analysis endpoint에 multimodal pipeline을 요청할
+수 있습니다. Run 시작 시 현재 이미지 ID·순서·SHA-256을 Snapshot하며 이후 추가된 Evidence는
+기존 Run에 포함되지 않습니다.
+
+```bash
+CSIGHT_MULTIMODAL_KEY="$(uuidgen)"
+curl -fsS -X POST \
+  "http://127.0.0.1:8000/api/v1/cases/$CSIGHT_CASE_ID/analysis-runs" \
+  -H "Authorization: Bearer $CSIGHT_ACCESS_TOKEN" \
+  -H "Idempotency-Key: $CSIGHT_MULTIMODAL_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{
+    "pipeline":"product_defect_multimodal_analysis",
+    "pipeline_version":"1.0.0"
+  }' | jq
+```
+
+Text와 Vision Stage/Event는 같은 트랜잭션에 생성되지만 독립 실행된다. 둘 다 성공하면 Run은
+`SUCCEEDED`, 하나만 성공하면 결과를 보존한 `PARTIAL_SUCCESS`, 둘 다 실패하면 `FAILED`다.
+Vision 결과는 이미지별 `vision_results`에 나타나며 model-native class와 canonical defect,
+confidence, `normalized_xyxy` bbox, model/taxonomy/threshold/pre/postprocess version을 포함한다.
+
+기본 `VISION_PROVIDER=mock`은 네트워크 없이 10개 결정론적 시나리오를 지원한다. Remote
+Provider는 private `POST /v1/vision/analyze` multipart 계약을 사용하며 Binary, Signed URL,
+MinIO credential과 Raw provider JSON을 Queue/DB에 저장하지 않는다. 실제 Vision 검증은
+설정된 endpoint와 sample image가 있을 때만 `make test-external-vision`으로 실행한다.
 
 ```bash
 export RUN_EXTERNAL_GPU_TESTS=1

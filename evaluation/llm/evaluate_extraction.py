@@ -15,6 +15,11 @@ from typing import Any
 from urllib import request
 
 from app.domains.product_defect_cs.prompts import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT
+from app.platform.analysis import (
+    ExtractedRequestedAction,
+    ExtractionIssueType,
+    MissingInformation,
+)
 from app.platform.analysis.schemas import LLMTextExtractionResult
 
 MODEL = "csight-qwen3.8-27b"
@@ -291,13 +296,38 @@ def _strict_schema_valid(value: dict[str, Any]) -> bool:
 
 
 def PRF(results: list[CaseResult], expected_name: str, actual_name: str) -> dict[str, float]:
+    """Backward-compatible micro set metric used by the Sprint 2.5 report."""
+
+    metrics = set_metrics(results, expected_name, actual_name)
+    return {name: metrics[name] for name in ("precision", "recall", "f1")}
+
+
+def set_metrics(
+    results: list[CaseResult], expected_name: str, actual_name: str
+) -> dict[str, float | int]:
+    """Return micro and per-case diagnostics, including explicit empty-set behavior."""
+
     true_positive = false_positive = false_negative = 0
+    exact_matches = 0
+    empty_expected = 0
+    empty_actual = 0
+    per_case_f1: list[float] = []
     for result in results:
         expected = getattr(result, expected_name)
         actual = getattr(result, actual_name)
         true_positive += len(expected & actual)
         false_positive += len(actual - expected)
         false_negative += len(expected - actual)
+        exact_matches += expected == actual
+        empty_expected += not expected
+        empty_actual += not actual
+        case_precision = len(expected & actual) / len(actual) if actual else 1.0
+        case_recall = len(expected & actual) / len(expected) if expected else 1.0
+        per_case_f1.append(
+            2 * case_precision * case_recall / (case_precision + case_recall)
+            if case_precision + case_recall
+            else 0.0
+        )
     precision = (
         true_positive / (true_positive + false_positive) if true_positive + false_positive else 1.0
     )
@@ -305,7 +335,54 @@ def PRF(results: list[CaseResult], expected_name: str, actual_name: str) -> dict
         true_positive / (true_positive + false_negative) if true_positive + false_negative else 1.0
     )
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-    return {"precision": precision, "recall": recall, "f1": f1}
+    count = len(results)
+    return {
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "macro_case_f1": statistics.fmean(per_case_f1) if per_case_f1 else 1.0,
+        "exact_set_match_rate": exact_matches / count if count else 1.0,
+        "expected_label_support": true_positive + false_negative,
+        "predicted_label_support": true_positive + false_positive,
+        "empty_expected_cases": empty_expected,
+        "empty_actual_cases": empty_actual,
+    }
+
+
+def evaluation_contract_diagnostics(cases: list[dict[str, Any]]) -> dict[str, object]:
+    """Expose taxonomy equality and the action-input/gold semantic ambiguity."""
+
+    input_actions = Counter(
+        str(case.get("input_requested_action", "UNSPECIFIED")) for case in cases
+    )
+    expected_actions = Counter(str(case["expected_requested_action"]) for case in cases)
+    missing_support = Counter(
+        str(label) for case in cases for label in case["required_missing_information"]
+    )
+    return {
+        "schema_version": "1.0",
+        "issue_taxonomy_matches_output_enum": {value.value for value in ExtractionIssueType}
+        == ISSUE_TYPES,
+        "action_taxonomy_matches_output_enum": {value.value for value in ExtractedRequestedAction}
+        == ACTIONS,
+        "missing_taxonomy_matches_output_enum": {value.value for value in MissingInformation}
+        == MISSING_INFORMATION,
+        "input_requested_action_distribution": dict(sorted(input_actions.items())),
+        "expected_requested_action_distribution": dict(sorted(expected_actions.items())),
+        "missing_information_label_support": dict(sorted(missing_support.items())),
+        "requested_action_semantic_ambiguity": (
+            set(input_actions) == {"UNSPECIFIED"}
+            and any(action != "UNKNOWN" for action in expected_actions)
+        ),
+        "requested_action_semantic_note": (
+            "Every input action is UNSPECIFIED while gold labels require message extraction; "
+            "the prompt does not state precedence between those two meanings."
+        ),
+        "empty_set_convention": (
+            "precision=1 when no labels are predicted; recall=1 when no labels are expected; "
+            "exact-set and macro-case diagnostics are reported separately"
+        ),
+    }
 
 
 def ratio(results: list[CaseResult], field: str) -> float:
@@ -364,7 +441,8 @@ def main() -> int:
         "source_quote_exact_match_rate": ratio(results, "quotes_valid"),
         "issue_type": PRF(results, "expected_issues", "actual_issues"),
         "requested_action_accuracy": action_accuracy,
-        "missing_information": PRF(results, "expected_missing", "actual_missing"),
+        "missing_information": set_metrics(results, "expected_missing", "actual_missing"),
+        "evaluation_contract": evaluation_contract_diagnostics(cases),
         "forbidden_field_rate": ratio(results, "forbidden"),
         "prompt_injection_violation_rate": ratio(injection_results, "injection_violation"),
         "raw_reasoning_leakage_rate": ratio(results, "reasoning_leak"),

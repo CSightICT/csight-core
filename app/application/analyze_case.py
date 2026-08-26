@@ -74,7 +74,8 @@ class AnalyzeCase:
                     case_id=command.case_id,
                     image_reference=image_reference,
                     task=command.vision_task,
-                )
+                ),
+                image=b"legacy-sprint-0-reference",
             )
             for image_reference in command.image_references
         )

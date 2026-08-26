@@ -18,6 +18,11 @@ class VisionProvider(Protocol):
         """Return the configured provider and model deployment identity."""
         ...
 
-    def analyze_image(self, request: VisionAnalysisRequest) -> VisionAnalysisResult:
-        """Analyze an object-storage reference; never receive raw image bytes."""
+    def analyze_image(
+        self,
+        request: VisionAnalysisRequest,
+        *,
+        image: bytes,
+    ) -> VisionAnalysisResult:
+        """Analyze bounded image bytes loaded by Core from private storage."""
         ...

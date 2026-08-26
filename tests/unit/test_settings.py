@@ -13,6 +13,7 @@ def test_defaults_use_mock_providers_without_infrastructure_secrets() -> None:
 
     assert settings.llm_provider == "mock"
     assert settings.vision_provider == "mock"
+    assert settings.vision_mock_mode == "success_single_defect"
     assert settings.database_url is None
     assert settings.rabbitmq_url is None
     assert settings.jwt_secret_key is None
@@ -36,6 +37,7 @@ def test_defaults_use_mock_providers_without_infrastructure_secrets() -> None:
     assert settings.llm_model_id == "csight-mock-llm"
     assert settings.llm_model_version == "0.1.0"
     assert settings.llm_model_revision is None
+    assert settings.vision_model_revision is None
     assert settings.llm_connect_timeout_seconds == 5.0
     assert settings.llm_read_timeout_seconds == 120.0
     assert settings.llm_max_output_tokens == 1024
@@ -226,6 +228,23 @@ def test_llm_provider_is_allowlisted() -> None:
             _env_file=None,  # pyright: ignore[reportCallIssue]
             llm_provider="unknown-provider",
         )
+
+
+def test_vision_optional_identity_accepts_empty_compose_values() -> None:
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        vision_api_key="",
+        vision_model_revision="",
+        vision_model_id=" configured-vision ",
+        vision_model_version=" revision-1 ",
+        vision_mock_mode="permanent_error",
+    )
+
+    assert settings.vision_api_key is None
+    assert settings.vision_model_revision is None
+    assert settings.vision_model_id == "configured-vision"
+    assert settings.vision_model_version == "revision-1"
+    assert settings.vision_mock_mode == "permanent_error"
 
 
 @pytest.mark.parametrize(

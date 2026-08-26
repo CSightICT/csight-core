@@ -8,7 +8,7 @@ COMPOSE_CMD := $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm smoke-analysis
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision smoke-analysis
 
 help:
 	@echo "CSight Core commands"
@@ -27,6 +27,7 @@ help:
 	@echo "  make test-analysis Run CI-safe analysis-focused tests"
 	@echo "  make test-analysis-integration  Run analysis integration tests"
 	@echo "  make test-external-llm  Opt in to the configured external vLLM test"
+	@echo "  make test-external-vision  Opt in to the configured external Vision test"
 	@echo "  make smoke-analysis  Run the authenticated Mock analysis smoke flow"
 
 up:
@@ -57,7 +58,7 @@ typecheck:
 	$(UV) run pyright
 
 test:
-	$(UV) run pytest -q -m "not integration and not external_gpu"
+	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision"
 
 test-integration:
 	RUN_CORE_INTEGRATION=1 $(UV) run pytest -q -m integration
@@ -72,6 +73,9 @@ test-analysis-integration:
 
 test-external-llm:
 	RUN_EXTERNAL_GPU_TESTS=1 $(UV) run pytest -q -m external_gpu
+
+test-external-vision:
+	RUN_EXTERNAL_VISION_TESTS=1 $(UV) run pytest -q -m external_vision
 
 smoke-analysis:
 	$(UV) run python scripts/smoke_analysis.py --env-file $(ENV_FILE)

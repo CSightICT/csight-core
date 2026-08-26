@@ -291,3 +291,18 @@ Schema Snapshot을 저장한다. 다음 정식 Registry는 후속 범위이며 �
 - Dataset Version
 - Evaluation 결과
 - 배포 시작·종료 시각
+
+## 11. Sprint 3 Vision Data Contract
+
+KAPUT 참고 taxonomy는 penetration, deformation, actuation, deconstruction, spillage,
+superficial, missing_unit의 image-level multi-label과 item mask를 포함한다. 이를 defect bbox
+ground truth로 과장하지 않는다. Adapter mapping v1은 각각 CRACK, DENT, FUNCTIONAL_FAILURE,
+BREAKAGE, LEAKAGE, SURFACE_DAMAGE, MISSING_COMPONENT로 정규화하고 unknown은 UNKNOWN이다.
+
+Dataset-native class ID/name과 CSight canonical label은 별도 field/version으로 보존한다. 실제
+Vision qualification 전에는 Mock detection을 모델 성능으로 보고하지 않는다. Model revision,
+dataset/taxonomy/threshold/preprocess/postprocess version 변경은 재평가 대상이다.
+
+Sprint 3의 Qwen 평가 감사 결과 taxonomy/PRF 공식 오류는 없었다. 다만 100개 입력 action이 모두
+UNSPECIFIED인데 Gold는 message action 추출을 요구해 prompt 의미가 모호하다. Missing metric에는
+micro PRF 외 exact set, macro-case F1, label support와 empty-set diagnostics를 함께 사용한다.

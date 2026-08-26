@@ -609,6 +609,9 @@ def test_dispatch_outbox_exhaustion_fails_event_and_queued_run_and_stage() -> No
         attempt_count=0,
         claim_token=None,
     )
+    failure_uow.stage_runs.list.return_value = (
+        _stage(AnalysisStageStatus.FAILED, attempt_count=0, claim_token=None),
+    )
     service = DispatchOutbox(
         uow_factory=_factory(claim_uow, failure_uow),
         queue=cast(MessageQueue, RecordingQueue(fail=True)),

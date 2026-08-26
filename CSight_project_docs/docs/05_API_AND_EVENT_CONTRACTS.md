@@ -467,3 +467,23 @@ SSE 상태 Event는 Sprint 3 이후 Backlog다. 현재 OpenAPI 계약으로 간�
 관련 결정은 [ADR-0009](adr/0009-transactional-outbox-and-fenced-analysis-execution.md),
 [ADR-0010](adr/0010-code-prompt-registry-and-structured-output-retention.md),
 [ADR-0011](adr/0011-separate-case-and-analysis-lifecycles.md)을 따른다.
+
+## 14. Sprint 3 Multimodal API와 Vision Contract
+
+기존 `POST /api/v1/cases/{case_id}/analysis-runs`에서 아래 body를 추가 지원한다.
+
+```json
+{"pipeline":"product_defect_multimodal_analysis","pipeline_version":"1.0.0"}
+```
+
+AVAILABLE Image가 없으면 `422 IMAGE_EVIDENCE_REQUIRED`다. Text-only body와 의미는 그대로다.
+상세 응답은 `vision_results`와 `failed_stages`를 추가하며 각 Vision Result는 evidence 한 건에
+대응한다. `PARTIAL_SUCCESS`에서도 성공한 `extraction_result` 또는 `vision_results`를 반환한다.
+
+Remote Vision 계약은 private `POST /v1/vision/analyze`, multipart `file`과
+`task=product_defect_detection`이다. Adapter는 응답을 schema `1.0`, tri-state image quality,
+canonical label, confidence, `normalized_xyxy` bbox와 version metadata로 검증한다. 429/5xx와
+transport timeout은 retryable, 400/401/403/schema/geometry 오류는 permanent다.
+
+Queue payload는 Sprint 2와 같은 event/tenant/case/run/stage/correlation ID 6개뿐이다. Evidence
+ID 목록, object key, Binary, Base64, Signed URL과 credential은 포함하지 않는다.

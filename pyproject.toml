@@ -48,6 +48,7 @@ markers = [
     "contract: provider and external-boundary contract tests",
     "e2e: end-to-end application skeleton tests",
     "external_gpu: tests requiring an explicitly configured GPU provider",
+    "external_vision: tests requiring an explicitly configured external Vision service",
 ]
 
 [tool.ruff]

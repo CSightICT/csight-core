@@ -60,10 +60,20 @@ EVIDENCE_TYPES = ("TEXT", "IMAGE", "DOCUMENT", "AUDIO", "METADATA")
 EVIDENCE_UPLOAD_STATUSES = ("PENDING", "AVAILABLE", "FAILED")
 IDEMPOTENCY_OPERATIONS = ("case.create.v1",)
 IDEMPOTENCY_RESOURCE_TYPES = ("case",)
-ANALYSIS_PIPELINES = ("product_defect_text_extraction",)
+ANALYSIS_PIPELINES = (
+    "product_defect_text_extraction",
+    "product_defect_multimodal_analysis",
+)
 ANALYSIS_PIPELINE_VERSIONS = ("1.0.0",)
 ANALYSIS_TRIGGERS = ("USER_REQUEST",)
-ANALYSIS_RUN_STATUSES = ("QUEUED", "RUNNING", "RETRY_WAITING", "SUCCEEDED", "FAILED")
+ANALYSIS_RUN_STATUSES = (
+    "QUEUED",
+    "RUNNING",
+    "RETRY_WAITING",
+    "PARTIAL_SUCCESS",
+    "SUCCEEDED",
+    "FAILED",
+)
 ANALYSIS_STAGE_TYPES = (
     "TEXT_EXTRACTION",
     "VISION_ANALYSIS",
@@ -72,7 +82,7 @@ ANALYSIS_STAGE_TYPES = (
     "ROUTING",
     "REPORT_GENERATION",
 )
-ANALYSIS_STAGE_STATUSES = ANALYSIS_RUN_STATUSES
+ANALYSIS_STAGE_STATUSES = ("QUEUED", "RUNNING", "RETRY_WAITING", "SUCCEEDED", "FAILED")
 ANALYSIS_ATTEMPT_STATUSES = (
     "RUNNING",
     "RETRY_WAITING",
@@ -91,6 +101,23 @@ EXTRACTED_REQUESTED_ACTIONS = (
 )
 OUTBOX_STATUSES = ("PENDING", "PROCESSING", "PUBLISHED", "FAILED")
 ANALYSIS_IDEMPOTENCY_OPERATIONS = ("analysis.create.v1",)
+VISION_CANONICAL_LABELS = (
+    "LEAKAGE",
+    "CONTAINER_DAMAGE",
+    "DENT",
+    "CRACK",
+    "SCRATCH",
+    "DISCOLORATION",
+    "MISSING_PART",
+    "BREAKAGE",
+    "MISSING_COMPONENT",
+    "FUNCTIONAL_FAILURE",
+    "PACKAGING_DAMAGE",
+    "CONTAMINATION",
+    "SURFACE_DAMAGE",
+    "OTHER",
+    "UNKNOWN",
+)
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -505,7 +532,7 @@ class AnalysisRunModel(TimestampMixin, Base):
             "(status = 'QUEUED' AND started_at IS NULL AND completed_at IS NULL) OR "
             "(status IN ('RUNNING', 'RETRY_WAITING') AND started_at IS NOT NULL "
             "AND completed_at IS NULL) OR "
-            "(status IN ('SUCCEEDED', 'FAILED') AND started_at IS NOT NULL "
+            "(status IN ('PARTIAL_SUCCESS', 'SUCCEEDED', 'FAILED') AND started_at IS NOT NULL "
             "AND completed_at IS NOT NULL)",
             name="status_timestamps_consistent",
         ),
@@ -911,6 +938,169 @@ class LLMExtractionResultModel(CreatedAtMixin, Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class AnalysisRunEvidenceModel(CreatedAtMixin, Base):
+    __tablename__ = "analysis_run_evidence"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id"),
+            ("analysis_runs.tenant_id", "analysis_runs.id"),
+            name="fk_analysis_run_evidence_tenant_run_analysis_runs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "evidence_id"),
+            ("case_evidence.tenant_id", "case_evidence.id"),
+            name="fk_analysis_run_evidence_tenant_evidence_case_evidence",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("position >= 0", name="position_nonnegative"),
+        CheckConstraint("sha256 ~ '^[0-9a-f]{64}$'", name="sha256_lower_hex"),
+        UniqueConstraint(
+            "tenant_id", "analysis_run_id", "evidence_id", name="uq_analysis_run_evidence_item"
+        ),
+        UniqueConstraint(
+            "tenant_id", "analysis_run_id", "position", name="uq_analysis_run_evidence_position"
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_analysis_run_evidence_tenant_id_id"),
+        Index(
+            "ix_analysis_run_evidence_tenant_run_position",
+            "tenant_id",
+            "analysis_run_id",
+            "position",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    evidence_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class VisionAnalysisResultModel(CreatedAtMixin, Base):
+    __tablename__ = "vision_analysis_results"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id"),
+            ("analysis_runs.tenant_id", "analysis_runs.id"),
+            name="fk_vision_results_tenant_run_analysis_runs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id", "stage_run_id", "stage_type"),
+            (
+                "analysis_stage_runs.tenant_id",
+                "analysis_stage_runs.analysis_run_id",
+                "analysis_stage_runs.id",
+                "analysis_stage_runs.stage_type",
+            ),
+            name="fk_vision_results_tenant_run_stage_type_stage_runs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "evidence_id"),
+            ("case_evidence.tenant_id", "case_evidence.id"),
+            name="fk_vision_results_tenant_evidence_case_evidence",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("stage_type = 'VISION_ANALYSIS'", name="stage_type_vision_analysis"),
+        CheckConstraint("image_width > 0 AND image_height > 0", name="image_dimensions_positive"),
+        CheckConstraint("latency_ms >= 0", name="latency_nonnegative"),
+        CheckConstraint("jsonb_typeof(image_quality) = 'object'", name="image_quality_object"),
+        UniqueConstraint(
+            "tenant_id",
+            "analysis_run_id",
+            "evidence_id",
+            name="uq_vision_results_tenant_run_evidence",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_vision_results_tenant_id_id"),
+        Index(
+            "ix_vision_results_tenant_run_created",
+            "tenant_id",
+            "analysis_run_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    stage_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    stage_type: Mapped[str] = mapped_column(
+        String(64), nullable=False, server_default=text("'VISION_ANALYSIS'")
+    )
+    evidence_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    model_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    model_revision: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dataset_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    taxonomy_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    threshold_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    preprocess_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    postprocess_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    framework: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    runtime: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    precision: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    image_width: Mapped[int] = mapped_column(Integer, nullable=False)
+    image_height: Mapped[int] = mapped_column(Integer, nullable=False)
+    image_quality: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class VisionDetectionModel(CreatedAtMixin, Base):
+    __tablename__ = "vision_detections"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "vision_result_id"),
+            ("vision_analysis_results.tenant_id", "vision_analysis_results.id"),
+            name="fk_vision_detections_tenant_result_vision_results",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("detection_index >= 0", name="detection_index_nonnegative"),
+        CheckConstraint(
+            f"canonical_label IN ({_sql_values(VISION_CANONICAL_LABELS)})",
+            name="canonical_label_allowed",
+        ),
+        CheckConstraint("confidence BETWEEN 0 AND 1", name="confidence_range"),
+        CheckConstraint("geometry_type = 'BOUNDING_BOX'", name="geometry_type_bbox"),
+        CheckConstraint(
+            "coordinate_system = 'normalized_xyxy'",
+            name="coordinate_system_normalized",
+        ),
+        CheckConstraint("x1 >= 0 AND x1 < x2 AND x2 <= 1", name="x_coordinates_ordered"),
+        CheckConstraint("y1 >= 0 AND y1 < y2 AND y2 <= 1", name="y_coordinates_ordered"),
+        UniqueConstraint(
+            "tenant_id", "vision_result_id", "detection_index", name="uq_vision_detection_index"
+        ),
+        Index(
+            "ix_vision_detections_tenant_result_index",
+            "tenant_id",
+            "vision_result_id",
+            "detection_index",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    vision_result_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    detection_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    detection_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    canonical_label: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_class_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    model_class_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    confidence: Mapped[float] = mapped_column(nullable=False)
+    geometry_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    coordinate_system: Mapped[str] = mapped_column(String(32), nullable=False)
+    x1: Mapped[float] = mapped_column(nullable=False)
+    y1: Mapped[float] = mapped_column(nullable=False)
+    x2: Mapped[float] = mapped_column(nullable=False)
+    y2: Mapped[float] = mapped_column(nullable=False)
+
+
 class AnalysisRequestIdempotencyRecordModel(CreatedAtMixin, Base):
     __tablename__ = "analysis_request_idempotency_records"
     __table_args__ = (
@@ -1068,6 +1258,9 @@ PERSISTENCE_MODELS = (
     AnalysisStageRunModel,
     AnalysisStageAttemptModel,
     LLMExtractionResultModel,
+    AnalysisRunEvidenceModel,
+    VisionAnalysisResultModel,
+    VisionDetectionModel,
     AnalysisRequestIdempotencyRecordModel,
     OutboxEventModel,
 )

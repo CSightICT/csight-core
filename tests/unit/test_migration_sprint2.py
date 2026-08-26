@@ -33,12 +33,12 @@ def _offline_config(output: StringIO) -> Config:
     return config
 
 
-def test_sprint_2_revision_is_the_single_head_after_sprint_1() -> None:
+def test_sprint_2_revision_is_followed_by_the_sprint_3_revision() -> None:
     config = _offline_config(StringIO())
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision(SPRINT_2_REVISION)
 
-    assert scripts.get_current_head() == SPRINT_2_REVISION
+    assert scripts.get_current_head() == "20260826_0004"
     assert revision is not None
     assert revision.down_revision == SPRINT_1_REVISION
 

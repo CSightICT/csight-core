@@ -22,3 +22,11 @@
 - [ADR-0007](adr/0007-private-evidence-storage-and-compensation.md): Private Evidence 저장,
   내부/Presign Endpoint와 최선 노력 보상
 - [ADR-0008](adr/0008-case-create-idempotency.md): Tenant 단위 Case 생성 Idempotency
+
+## Sprint 3 Accepted ADR
+
+- [ADR-0013](adr/0013-canonical-vision-result-schema.md): Provider-independent Vision schema
+- [ADR-0014](adr/0014-analysis-evidence-snapshot.md): Run별 immutable Evidence input
+- [ADR-0015](adr/0015-multimodal-fanout-join.md): Text/Vision fan-out와 DB-owned join
+- [ADR-0016](adr/0016-partial-success-semantics.md): Partial result 보존과 Run 상태
+- [ADR-0017](adr/0017-vision-taxonomy-boundary.md): Native/canonical taxonomy 분리

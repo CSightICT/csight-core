@@ -225,3 +225,18 @@ Pull Request 완료 전:
 - 개인정보 로그 노출 검사
 - 기본 Suite에서 외부 GPU 호출이 없고 `external_gpu` 검증이 명시적으로 분리되는지 확인
 - 주요 E2E Scenario 회귀 없음
+
+## 9. Sprint 3 Vision Gate
+
+- Unit: bbox/coordinate/confidence, tri-state quality, taxonomy/unknown, stable Snapshot, join truth table
+- Contract: 10개 deterministic Mock scenario와 Remote multipart/status/timeout/JSON/schema/geometry
+- PostgreSQL: image별 Result/Detection/Snapshot, append-only duplicate, tenant isolation, partial join
+- MinIO: bounded private read, SHA mismatch, missing object와 unavailable storage
+- RabbitMQ/Application: Text+Vision event 2개, duplicate no-op, retry event와 terminal aggregation
+- E2E: success/success, success/fail, fail/success, fail/fail, Vision timeout→retry→success
+- Migration: empty→head, previous→0004, downgrade/upgrade와 drift
+- 기본 suite는 `external_gpu`와 `external_vision`을 모두 제외한다.
+
+실제 Vision qualification은 health, immutable metadata, real image detection/geometry/latency,
+timeout/invalid image를 별도로 기록한다. 현재 endpoint가 없으면 Mock 결과를 실제 모델 통과로
+표현하지 않는다.

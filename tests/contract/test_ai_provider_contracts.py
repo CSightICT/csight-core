@@ -105,4 +105,4 @@ def test_vision_failure_modes_are_normalized(
         invoke()
 
     assert error.value.provider == "mock"
-    assert error.value.code.startswith("PROVIDER_")
+    assert error.value.code.startswith(("PROVIDER_", "VISION_PROVIDER_"))

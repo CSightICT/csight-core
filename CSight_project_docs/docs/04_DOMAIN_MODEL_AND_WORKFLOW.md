@@ -257,3 +257,14 @@ Report와 RAG는 Sprint 2에 구현되지 않았다.
 - `manufacturing_quality_review`
 
 확장 대상은 Evidence를 분석해 정책에 따른 Decision으로 연결하는 유사 업무군으로 제한한다.
+
+## 9. Sprint 3 Vision과 Run Join
+
+Vision은 이미지 품질, 노출 여부, 결함 후보·유형·geometry·confidence와 model metadata만
+생성하는 Evidence Analyzer다. 환불·교환 승인, 책임, 사기, 정책과 Case Decision을 생성하지
+않는다. 품질은 `USABLE`, `NOT_USABLE`, `NOT_EVALUATED`로 구분해 `false`와 미평가를 섞지 않는다.
+
+Multimodal Run은 `TEXT_EXTRACTION`과 `VISION_ANALYSIS` 두 Stage를 가진다. 둘 다 성공하면
+`SUCCEEDED`, 하나만 성공하면 `PARTIAL_SUCCESS`, 둘 다 실패하면 `FAILED`다. Pending/Running이
+있으면 `RUNNING`, retry Stage가 있으면 `RETRY_WAITING`이며 성공한 Stage Result는 보존한다.
+Alignment/Policy/Review는 아직 실행하지 않는다.

@@ -9,6 +9,7 @@ from app.application.analysis import (
     DEFAULT_RETRY_BASE,
     DEFAULT_RETRY_JITTER_RATIO,
     DEFAULT_RETRY_MAX,
+    aggregate_run_status,
     deterministic_retry_delay,
 )
 from app.platform.analysis import (
@@ -205,18 +206,6 @@ class DispatchOutbox:
                     analysis_run_id=requested_event.analysis_run_id,
                     stage_run_id=requested_event.stage_run_id,
                 )
-                if run is not None and run.status in {
-                    AnalysisRunStatus.QUEUED,
-                    AnalysisRunStatus.RETRY_WAITING,
-                }:
-                    uow.analysis_runs.transition(
-                        tenant_id=requested_event.tenant_id,
-                        analysis_run_id=requested_event.analysis_run_id,
-                        expected_status=run.status,
-                        target_status=AnalysisRunStatus.FAILED,
-                        now=now,
-                        failure=failure,
-                    )
                 if stage is not None and stage.status in {
                     AnalysisStageStatus.QUEUED,
                     AnalysisStageStatus.RETRY_WAITING,
@@ -230,6 +219,20 @@ class DispatchOutbox:
                         now=now,
                         failure=failure,
                     )
+                    stages = uow.stage_runs.list(
+                        tenant_id=requested_event.tenant_id,
+                        analysis_run_id=requested_event.analysis_run_id,
+                    )
+                    target_run = aggregate_run_status(stages)
+                    if run is not None and target_run is not run.status:
+                        uow.analysis_runs.transition(
+                            tenant_id=requested_event.tenant_id,
+                            analysis_run_id=requested_event.analysis_run_id,
+                            expected_status=run.status,
+                            target_status=target_run,
+                            now=now,
+                            failure=failure if target_run is AnalysisRunStatus.FAILED else None,
+                        )
             uow.flush()
             uow.commit()
         return True

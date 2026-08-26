@@ -43,3 +43,10 @@ class ObjectStorage(Protocol):
         ...
 
     def is_ready(self) -> bool: ...
+
+
+@runtime_checkable
+class ReadableObjectStorage(ObjectStorage, Protocol):
+    def get(self, key: str, *, max_bytes: int) -> bytes:
+        """Read a bounded private object without creating a signed URL."""
+        ...

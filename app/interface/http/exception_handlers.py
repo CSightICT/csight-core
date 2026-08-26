@@ -20,6 +20,7 @@ from app.platform.analysis import (
     AnalysisPipelineNotSupportedError,
     AnalysisProviderError,
     AnalysisRunNotFoundError,
+    ImageEvidenceRequiredError,
     ProviderTimeoutError,
 )
 from app.platform.errors import CSightError, FileTooLargeError
@@ -278,6 +279,13 @@ async def _handle_analysis_exception(request: Request, exception: Exception) -> 
             status_code=422,
             code=exception.code,
             message="The requested analysis pipeline or version is not supported.",
+        )
+    if isinstance(exception, ImageEvidenceRequiredError):
+        return _error_response(
+            request,
+            status_code=422,
+            code=exception.code,
+            message="At least one available image evidence item is required.",
         )
     if isinstance(exception, AnalysisAlreadyTerminalError):
         return _error_response(

@@ -18,6 +18,7 @@ from app.platform.analysis import (
     LLMExtractionResultRecord,
     LLMTextExtractionResult,
     ProviderExecutionMetadata,
+    VisionAnalysisResultRecord,
 )
 
 ANALYSIS_MODEL_CONFIG = ConfigDict(
@@ -236,6 +237,8 @@ class AnalysisRunDetailResponse(BaseModel):
     run: AnalysisRunResponse
     stages: tuple[AnalysisStageRunResponse, ...]
     extraction_result: LLMExtractionResultResponse | None
+    vision_results: tuple[VisionAnalysisResultRecord, ...] = ()
+    failed_stages: tuple[AnalysisStageType, ...] = ()
 
     @classmethod
     def from_detail(cls, detail: AnalysisRunDetail) -> Self:
@@ -243,4 +246,6 @@ class AnalysisRunDetailResponse(BaseModel):
             run=AnalysisRunResponse.from_run(detail.run),
             stages=tuple(AnalysisStageRunResponse.from_stage(stage) for stage in detail.stages),
             extraction_result=LLMExtractionResultResponse.from_record(detail.extraction_result),
+            vision_results=detail.vision_results,
+            failed_stages=detail.failed_stages,
         )

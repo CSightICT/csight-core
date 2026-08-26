@@ -119,7 +119,21 @@ class Settings(BaseSettings):
         default="mock",
         validation_alias="LLM_PROVIDER",
     )
-    vision_provider: str = Field(default="mock", min_length=1, validation_alias="VISION_PROVIDER")
+    vision_provider: Literal["mock", "remote"] = Field(
+        default="mock", validation_alias="VISION_PROVIDER"
+    )
+    vision_mock_mode: Literal[
+        "success_single_defect",
+        "success_multiple_defects",
+        "no_defect",
+        "low_quality_image",
+        "empty_detections",
+        "timeout",
+        "transient_error",
+        "permanent_error",
+        "invalid_schema",
+        "invalid_geometry",
+    ] = Field(default="success_single_defect", validation_alias="VISION_MOCK_MODE")
     llm_base_url: AnyHttpUrl | None = Field(default=None, validation_alias="LLM_BASE_URL")
     llm_api_key: SecretStr | None = Field(default=None, validation_alias="LLM_API_KEY")
     llm_model_id: str = Field(
@@ -178,6 +192,44 @@ class Settings(BaseSettings):
     )
     llm_tls_verify: bool = Field(default=True, validation_alias="LLM_TLS_VERIFY")
     vision_base_url: AnyHttpUrl | None = Field(default=None, validation_alias="VISION_BASE_URL")
+    vision_api_key: SecretStr | None = Field(default=None, validation_alias="VISION_API_KEY")
+    vision_model_id: str = Field(
+        default="csight-mock-vision",
+        min_length=1,
+        max_length=255,
+        validation_alias="VISION_MODEL_ID",
+    )
+    vision_model_version: str = Field(
+        default="0.1.0",
+        min_length=1,
+        max_length=100,
+        validation_alias="VISION_MODEL_VERSION",
+    )
+    vision_model_revision: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        validation_alias="VISION_MODEL_REVISION",
+    )
+    vision_connect_timeout_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        le=60,
+        validation_alias="VISION_CONNECT_TIMEOUT_SECONDS",
+    )
+    vision_read_timeout_seconds: float = Field(
+        default=120.0,
+        gt=0,
+        le=900,
+        validation_alias="VISION_READ_TIMEOUT_SECONDS",
+    )
+    vision_max_image_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        ge=1,
+        le=100 * 1024 * 1024,
+        validation_alias="VISION_MAX_IMAGE_BYTES",
+    )
+    vision_tls_verify: bool = Field(default=True, validation_alias="VISION_TLS_VERIFY")
 
     readiness_timeout_seconds: float = Field(
         default=2.0,
@@ -264,14 +316,26 @@ class Settings(BaseSettings):
             return value.strip().lower()
         return value
 
-    @field_validator("llm_model_id", "llm_model_version", mode="before")
+    @field_validator(
+        "llm_model_id",
+        "llm_model_version",
+        "vision_model_id",
+        "vision_model_version",
+        mode="before",
+    )
     @classmethod
     def normalize_required_llm_identity(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip()
         return value
 
-    @field_validator("llm_model_revision", "llm_api_key", mode="before")
+    @field_validator(
+        "llm_model_revision",
+        "llm_api_key",
+        "vision_model_revision",
+        "vision_api_key",
+        mode="before",
+    )
     @classmethod
     def normalize_optional_llm_identity(cls, value: object) -> object:
         if isinstance(value, str):
@@ -416,6 +480,18 @@ class Settings(BaseSettings):
         if self.llm_base_url is None:
             return None
         return str(self.llm_base_url).rstrip("/")
+
+    @property
+    def vision_api_key_value(self) -> str | None:
+        if self.vision_api_key is None:
+            return None
+        return self.vision_api_key.get_secret_value()
+
+    @property
+    def vision_base_url_value(self) -> str | None:
+        if self.vision_base_url is None:
+            return None
+        return str(self.vision_base_url).rstrip("/")
 
     @property
     def minio_presigned_endpoint_value(self) -> str | None:

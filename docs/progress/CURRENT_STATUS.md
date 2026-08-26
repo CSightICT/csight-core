@@ -3,19 +3,20 @@
 이 문서는 다음 작업 세션의 시작점이다. 최신 상태 요약은 갱신할 수 있지만, 세션 로그는
 append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 `SPRINT_1_CASE_EVIDENCE.md`, 독립 감사 증거는 `SPRINT_1_CLOSEOUT.md`, 현재 분석 경로는
-`SPRINT_2_ANALYSIS_LLM.md`와 독립 감사 원장 `SPRINT_2_CLOSEOUT.md`를 참조한다.
+`SPRINT_2_ANALYSIS_LLM.md`, 독립 감사 원장 `SPRINT_2_CLOSEOUT.md`, 실제 모델 기록
+`SPRINT_2_5_QWEN38_SERVING.md`와 현재 `SPRINT_3_VISION_ANALYSIS.md`를 참조한다.
 
 ## 0. 문서 메타데이터
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 2.5 — Qwen3.8 실제 서빙 `QUALIFIED_WITH_LIMITATIONS` |
-| 진행 중 작업 | Sprint 2.5 로컬 Commit Gate와 인계 확정; Push·PR 금지 |
+| 현재 완료 단계 | Sprint 3 — Vision Analysis `MOCK_QUALIFIED`, 외부 Vision `NOT_AVAILABLE` |
+| 진행 중 작업 | Sprint 3 Closeout Gate 재통과; 승인된 로컬 Commit 직전, Push·PR 금지 |
 | 마지막 갱신일 | 2026-08-26, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 2·2.5 변경 Push 금지 |
-| 로컬 Git | `feature/sprint-2-5-qwen38-serving`, Base `294cb5b`, 로컬 Commit Gate 단계 |
-| 마지막 런타임 관측 | 2026-08-26, Core 6개 Mock 기본값 Healthy; private Qwen Node Healthy |
+| 로컬 Git | `feature/sprint-3-vision-analysis`, Base `7d63cbb`, Closeout Commit 후보 |
+| 마지막 런타임 관측 | 2026-08-26, Core 6개 Network-free Mock 기본값 Healthy, Queue 0 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -42,6 +43,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 2 복구·멱등성 | PASS | Replay/Conflict, Duplicate 1 Result, Lease Recovery·Fencing·Max Attempt 종결 |
 | Sprint 2 독립 Closeout | PASS | P0/P1 미해결 0, 정적·회귀·Migration·Docker·Live Gate 재통과 |
 | Sprint 2.5 Qwen3.8 실제 서빙 | QUALIFIED_WITH_LIMITATIONS | 4090 Cold Start 2회, 26분 안정성, 안전 Gate와 실제 Backend E2E 통과; Action/Missing 품질 제한 |
+| Sprint 3 Vision·Multimodal | MOCK_QUALIFIED | Canonical Vision, Snapshot, Text/Vision fan-out/join, Partial Success와 live Mock E2E 통과 |
+| Sprint 3 실제 Vision | NOT_AVAILABLE | Endpoint/model/sample 미제공; `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE` 1건 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -121,6 +124,27 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] README, 설계 03·05·06·08·09·10, ADR-0012, Manifest와 Progress 동기화
 - [x] 이 문서를 포함한 로컬 Commit `chore: qualify qwen3.8 27b serving on single 4090` 생성;
   정확한 SHA는 `git log -1`과 최종 인계에서 확인
+
+## 5.2. Sprint 3 완료 체크리스트
+
+- [x] Base `7d63cbb` 확인 후 `feature/sprint-3-vision-analysis` Branch 생성
+- [x] Qwen 평가 taxonomy/metric/empty-set 감사와 diagnostics regression
+- [x] Canonical Vision schema, tri-state quality, normalized bbox, native taxonomy mapping
+- [x] 10개 deterministic Mock와 private multipart Remote Adapter
+- [x] `analysis_run_evidence` Snapshot, bounded MinIO read와 SHA-256 검증
+- [x] `vision_analysis_results`/`vision_detections` image별 append-only persistence
+- [x] Text-only 호환과 multimodal Text/Vision independent Outbox fan-out
+- [x] Application-level join, `PARTIAL_SUCCESS`, partial result 보존과 retry
+- [x] 병렬 Run CAS 경쟁에서 Stage 고립 방지 및 live 재검증
+- [x] `20260826_0004` empty/previous/downgrade-upgrade/drift Migration Gate
+- [x] API detail `vision_results`/`failed_stages`, no-image 422
+- [x] PostgreSQL/MinIO/RabbitMQ/tenant/duplicate/retry/partial Mock E2E
+- [x] ADR-0013~0017, 설계 03~10, README와 Sprint 3 Progress 동기화
+- [x] Ruff, Format 167, Pyright 0, Fast 328, Core Integration 36
+- [x] Docker 6개 Healthy, Queue 0, 합성 Case 5/Object 4 정리
+- [x] 외부 Vision은 실제 endpoint 미제공을 숨기지 않고 1건 Skip
+- [x] 독립 Closeout에서 P0/P1 미해결 0과 전체 Gate 재통과
+- [x] Push·PR 없음, Kaputt 사용자 파일 미수정·미Stage
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -245,6 +269,25 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-26 | Qwen Duplicate·Timeout | PASS | 재전달 Result/Attempt 1/1; Timeout Retry 후 Attempt 2 Max 종결 |
 | 2026-08-26 | Sprint 2.5 정리·복구 | PASS | 합성 Case/Run 22 삭제, Queue/Orphan 0, Core 6개 Mock Healthy |
 | 2026-08-26 | Sprint 2.5 최종 회귀 | PASS | Ruff, Format 162, Pyright 0, Fast 291, Integration 31 |
+| 2026-08-26 | Sprint 3 시작 Baseline | PASS | Base `7d63cbb`; Fast 291 passed·36 deselected, Integration 31 passed·5 skipped·291 deselected |
+| 2026-08-26 | Sprint 3 LLM 평가 감사 | PASS_WITH_LIMITS | Enum/PRF 수식 일치; Action input/gold 의미 모호, Missing support 진단 추가, 재평가 미실행 |
+| 2026-08-26 | Sprint 3 Ruff / Format / Pyright | PASS | Ruff 0, Format 167 files, Pyright 0 errors·0 warnings |
+| 2026-08-26 | Sprint 3 Fast Suite | PASS | 328 passed·42 deselected·0 failed |
+| 2026-08-26 | Sprint 3 Core Integration | PASS | 36 passed·5 external-vLLM skipped·329 deselected·0 failed |
+| 2026-08-26 | Sprint 3 Architecture·Contract·E2E | PASS | 합계 55 passed·0 failed; 기본 외부 호출 0 |
+| 2026-08-26 | Sprint 3 PostgreSQL Multimodal E2E | PASS | Success, 양방향 Partial, Both Fail, Timeout Retry, Duplicate, Tenant 격리 5 tests |
+| 2026-08-26 | Sprint 3 MinIO bounded read | PASS | 실제 Object read와 max size rejection 1 test |
+| 2026-08-26 | Sprint 3 Migration lifecycle | PASS | Empty→0004, 0004→0003→0004, previous→0004, drift 0 |
+| 2026-08-26 | Sprint 3 Live HTTP success | PASS | Login→PNG→Text success→2-Stage Multimodal success, Vision Result/Detection 각 1 |
+| 2026-08-26 | Sprint 3 Live partial | PASS | 병렬 CAS 결함 수정 후 Text success/Vision permanent failure→`PARTIAL_SUCCESS` |
+| 2026-08-26 | Sprint 3 Live no image | PASS | HTTP 422 `IMAGE_EVIDENCE_REQUIRED` |
+| 2026-08-26 | Sprint 3 External Vision | SKIPPED | 1 skipped·369 deselected; `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE` |
+| 2026-08-26 | Sprint 3 Docker·Queue | PASS | API/Worker/Dispatcher/PostgreSQL/RabbitMQ/MinIO 6개 Healthy; ready/unacked 0 |
+| 2026-08-26 | Sprint 3 정리 | PASS | 합성 Case 5개와 private MinIO Object 4개 제거, 대상 Case 0 |
+| 2026-08-26 | Sprint 3 Git 안전성 | PASS | `git diff --check`; Commit·Push·PR 0, Kaputt 파일 미수정·미Stage |
+| 2026-08-26 | Sprint 3 Closeout 재감사 | PASS | P0/P1 0, Ruff, Format 165, Pyright 0, Fast 328, Integration 36 |
+| 2026-08-26 | Sprint 3 Closeout Migration | PASS | empty→0004, 0004→0003→0004, 0003→0004, 두 DB drift 0 |
+| 2026-08-26 | Sprint 3 Closeout Runtime | PASS | Core 6개 Healthy, HTTP ready, analysis queue ready/unacked 0 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -264,8 +307,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Sprint 2.5에서 실제 Qwen Endpoint와 `external_gpu` 5건, Backend E2E 10건을 검증했다.
   다만 합성 기준 Action Accuracy 0.23과 Missing Information F1 0.00이므로 자동 Workflow
   결정에 사용하지 않고 Policy·Human Review 경계를 유지한다.
-- Vision, Text/Vision Alignment, Policy·Routing·Review·Report·RAG는 구현하지 않았고
-  Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
+- Sprint 3 Vision Stage는 Mock-qualified지만 실제 Vision server/model/dataset/threshold
+  calibration은 검증하지 않았다. 외부 endpoint/model/sample이 없어 실제 검증은 1건 Skip이다.
+- Text/Vision Alignment, Claim↔Detection matching, Policy·Routing·Review·Report·RAG는 구현하지
+  않았고 Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
+- KAPUT 참고 자료는 image-level 7-class multi-label과 item mask이며 defect bbox ground truth가
+  아니다. Native→canonical mapping v1은 실제 모델 qualification 전까지 계약 가설이다.
+- Vision image quality가 Provider에 없으면 `NOT_EVALUATED/null`이며 Mock quality를 실제 성능으로
+  해석하지 않는다. Multi-image는 한 Stage에서 순차 처리하므로 throughput은 미측정이다.
 - Sprint 2는 DLQ, 운영자 수동 재처리·취소 API, SSE, Provider 자동 선택·Fallback과 Prompt
   관리 UI를 제공하지 않는다. Raw Prompt·Provider Response를 보존하지 않는 것은 의도된
   보안·재현성 경계다.
@@ -274,6 +323,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Qwen Node는 Peak VRAM 23,825 MiB로 24GB 여유가 매우 작고 FP8 KV cache를 사용한다.
   Context·동시성 변경과 실제 고객 분포 평가는 별도 requalification 대상이다.
 - Community quantization의 calibration dataset은 Model Card에 기록되지 않아 제한사항이다.
+- Qwen 평가 공식/enum 오류는 없었으나 100건 모두 input action `UNSPECIFIED`이고 Gold는 message
+  action 추출을 요구해 Action 0.23의 의미가 모호하다. Metric bug가 아니므로 100건 재평가는
+  실행하지 않았고 `QUALIFIED_WITH_LIMITATIONS`를 유지한다.
 - Sprint 2는 독립 Closeout Gate를 통과했으며 승인된 로컬 Commit만 생성한다. 원격 Push와
   PR은 금지한다.
 - 루트의 미추적 `kaputt_best_vision_architecture.md`는 Sprint 2와 무관한 사용자 작업물이다.
@@ -297,10 +349,16 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Sprint 2.5 로컬 Commit은 `git log -1`로 확인하고 Push·PR 없이 인계한다.
 - [ ] 실제 고객 Data 반입 전에 개인정보·Retention 승인과 Action/Missing 품질 Dataset을
   별도 설계하고 Human Review Gate를 유지한다.
-- [ ] 별도 Sprint 3 지시 후 Vision Stage와 Text/Vision Alignment·Partial Failure 경계를
-  ADR로 먼저 고정하고 기존 Append-only Run·Attempt·Outbox를 확장한다.
+- [x] Sprint 3 Vision Stage, Evidence Snapshot, Text/Vision fan-out/join과 Partial Failure를
+  ADR로 고정하고 Append-only Run·Attempt·Outbox를 확장한다.
+- [ ] 실제 Vision endpoint, immutable model/dataset/taxonomy/threshold와 qualification image를
+  제공받으면 `make test-external-vision`으로 real model Gate를 실행한다.
+- [ ] 다음 기능 Sprint에서는 먼저 Evidence Alignment 입력 계약과 Claim↔Detection matching,
+  confidence calibration을 설계하고 Policy/Approval을 계속 분리한다.
 - [ ] Evidence Reconciliation·Orphan Cleanup·업로드 Idempotency와 Retention 정책을
   우선순위에 따라 별도 작업으로 계획한다.
+- [ ] Sprint 3 Closeout Commit을 확인하고 `feature/sprint-4a-llm-reference-data`에서 LLM
+  Contract v2와 합성 Reference Data를 구현한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -435,3 +493,40 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 검증: Ruff, Format 162, Pyright 0, Fast 291, Core Integration 31, 실제 External 5
 - 판정: `QUALIFIED_WITH_LIMITATIONS`; Push·PR 없음. 다음 작업은 로컬 Commit SHA 기록과
   Sprint 3 Vision 계약 준비
+
+### 2026-08-26 — Sprint 3 Vision Analysis와 Multimodal Fan-out/Join
+
+- 목표: 기존 Append-only Analysis에 image별 Vision Stage/Result, immutable Evidence Snapshot,
+  Text/Vision 독립 fan-out과 terminal join을 추가
+- Branch/Base: `feature/sprint-3-vision-analysis` / `7d63cbb`; Commit·Push·PR 없음
+- 완료: canonical schema/quality/bbox, KAPUT native mapping, 10 Mock scenario, Remote multipart
+  Adapter, `20260826_0004`, Snapshot/Result/Detection repository, API detail과 no-image 422
+- Workflow: text-only 유지, multimodal 2 Stage/Event, multi-image 순차 append, retry/lease/fencing,
+  `SUCCEEDED`/`PARTIAL_SUCCESS`/`FAILED` 집계와 partial result 보존
+- 발견·수정: 병렬 Worker가 동시에 Run `QUEUED→RUNNING` CAS를 시도할 때 패한 Stage claim이
+  rollback되어 고립되던 결함. Run이 이미 `RUNNING`이면 claim을 유지하도록 양 Stage 수정
+- LLM 감사: taxonomy/metric 수식 오류 0, Missing set/empty convention 정상. Action input/gold
+  의미 모호성을 확인하고 exact/macro/support diagnostics와 regression test 추가; 재평가 미실행
+- 검증: Ruff, Format 167, Pyright 0, Fast 328, Integration 36, Architecture/Contract/E2E 55,
+  isolated Migration lifecycle/drift, 실제 MinIO bounded read, Docker 6개 Healthy와 Queue 0
+- Live: Login→PNG upload→text-only success→multimodal success(2 Stage, Result/Detection 1),
+  no-image 422, Text success/Vision failure partial success; 합성 Case 5/Object 4 정리
+- External Vision: endpoint/model/sample 미제공으로 1 skipped·369 deselected,
+  `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE`; 판정 `MOCK_QUALIFIED`
+- 문서: ADR-0013~0017, 설계 03~10, README, Sprint 3 Progress와 현재 상태 동기화
+- 다음 작업: 실제 Vision qualification 자산 확보 또는 별도 Sprint에서 Evidence Alignment 입력
+  계약과 Claim↔Detection matching/calibration을 먼저 설계
+
+### 2026-08-26 — Sprint 3 Closeout 감사
+
+- 목표: 미커밋 Sprint 3 전체 Diff를 코드·테스트·Migration·Runtime 기준으로 재감사하고 로컬
+  기준점 Commit 조건을 확정
+- 감사: Evidence Snapshot, append-only Vision Result/Detection, 독립 fan-out, CAS 경쟁 수정,
+  DB 기반 join, 네 partial 조합, 6-ID Queue, tenant 복합 FK와 canonical geometry 확인
+- 검증: Ruff, Format 165, Pyright 0, Fast 328, Unit 264, Contract 45, Architecture 4, E2E 6,
+  Core Integration 36, 격리 Migration 세 경로와 drift 0
+- Runtime: API/Worker/Dispatcher/PostgreSQL/RabbitMQ/MinIO 6개 Healthy, HTTP ready,
+  RabbitMQ analysis queue ready/unacked 0
+- Skip: 실제 Vision 자산 미제공으로 외부 Vision 1건 `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE`
+- 판정: P0 0, P1 0, `SPRINT_3_CLOSEOUT=PASS`; Push·PR 금지, Kaputt 사용자 파일 제외
+- 다음 작업: 승인된 Sprint 3 범위만 로컬 Commit한 뒤 Sprint 4A 전용 브랜치를 생성

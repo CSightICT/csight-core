@@ -338,3 +338,21 @@ PoC에서는 테스트 데이터와 제한된 접근권한을 기본으로 한�
 
 Case와 Evidence의 Hard Delete API는 Sprint 1에 없다. 보관·삭제 요구가 확정되기 전까지
 Migration이나 운영 명령으로 임의 삭제하지 않는다.
+
+## 10. Sprint 3 Vision Persistence
+
+`20260826_0004`는 기존 revision을 수정하지 않고 아래를 추가한다.
+
+| 테이블 | 목적 |
+|---|---|
+| `analysis_run_evidence` | Run 시작 시 evidence ID, 안정 position, SHA-256 Snapshot |
+| `vision_analysis_results` | evidence별 canonical quality/result와 provider/model/version metadata |
+| `vision_detections` | result별 순번, native provenance, canonical label, confidence, normalized bbox |
+
+모든 FK는 tenant를 포함하고 `ON DELETE RESTRICT`다. `(tenant, run, evidence)` Vision Result와
+Snapshot evidence/position은 unique다. Confidence와 coordinate 범위/순서는 DB check constraint로
+재검증한다. Result/Detection/Snapshot update/delete repository는 제공하지 않는다.
+
+Run pipeline constraint에 multimodal `1.0.0`을, status에 `PARTIAL_SUCCESS`를 추가한다.
+Downgrade는 Detection→Result→Snapshot 역순으로 새 테이블만 제거한 뒤 Sprint 2 constraint를
+복원한다.

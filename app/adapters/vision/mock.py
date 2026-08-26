@@ -1,22 +1,44 @@
 """Deterministic, network-free Vision adapter used in Sprint 0."""
 
 import hashlib
+from enum import StrEnum
 
 from pydantic import ValidationError
 
 from app.platform.analysis import (
     BoundingBox,
+    CoordinateSystem,
     DefectType,
     DetectionFinding,
+    ImageQualityRejectionReason,
     ImageQualityResult,
+    ImageUsability,
     MockProviderMode,
     ProviderFailureError,
     ProviderMetadata,
     ProviderSchemaError,
-    ProviderTimeoutError,
     VisionAnalysisRequest,
     VisionAnalysisResult,
+    VisionInvalidStructuredOutputError,
+    VisionProviderRequestRejectedError,
+    VisionProviderTimeoutError,
+    VisionProviderUnavailableError,
 )
+
+
+class VisionMockMode(StrEnum):
+    """Deterministic Sprint 3 scenarios for workflow and contract testing."""
+
+    SUCCESS_SINGLE_DEFECT = "success_single_defect"
+    SUCCESS_MULTIPLE_DEFECTS = "success_multiple_defects"
+    NO_DEFECT = "no_defect"
+    LOW_QUALITY_IMAGE = "low_quality_image"
+    EMPTY_DETECTIONS = "empty_detections"
+    TIMEOUT = "timeout"
+    TRANSIENT_ERROR = "transient_error"
+    PERMANENT_ERROR = "permanent_error"
+    INVALID_SCHEMA = "invalid_schema"
+    INVALID_GEOMETRY = "invalid_geometry"
 
 
 class MockVisionProvider:
@@ -25,12 +47,20 @@ class MockVisionProvider:
     def __init__(
         self,
         *,
-        mode: MockProviderMode | str = MockProviderMode.SUCCESS,
+        mode: MockProviderMode | VisionMockMode | str = VisionMockMode.SUCCESS_SINGLE_DEFECT,
         model_name: str = "csight-mock-vision",
         model_version: str = "0.1.0",
     ) -> None:
         normalized_mode = mode.replace("-", "_")
-        self._mode = MockProviderMode(normalized_mode)
+        if normalized_mode == MockProviderMode.SUCCESS.value:
+            self._mode = VisionMockMode.SUCCESS_SINGLE_DEFECT
+        elif normalized_mode in {
+            MockProviderMode.FAILURE.value,
+            MockProviderMode.SCHEMA_ERROR.value,
+        }:
+            self._mode = MockProviderMode(normalized_mode)
+        else:
+            self._mode = VisionMockMode(normalized_mode)
         self._metadata = ProviderMetadata(
             provider="mock",
             name=model_name,
@@ -42,46 +72,121 @@ class MockVisionProvider:
     def provider_metadata(self) -> ProviderMetadata:
         return self._metadata
 
-    def analyze_image(self, request: VisionAnalysisRequest) -> VisionAnalysisResult:
+    def analyze_image(
+        self,
+        request: VisionAnalysisRequest,
+        *,
+        image: bytes = b"csight-mock-image",
+    ) -> VisionAnalysisResult:
+        if not image:
+            raise ProviderSchemaError(
+                provider=self._metadata.provider,
+                message="mock Vision received an empty image",
+            )
         self._raise_configured_failure()
-        if self._mode is MockProviderMode.SCHEMA_ERROR:
-            self._raise_schema_error(request)
+        if self._mode in {MockProviderMode.SCHEMA_ERROR, VisionMockMode.INVALID_SCHEMA}:
+            self._raise_schema_error(
+                request,
+                canonical=self._mode is VisionMockMode.INVALID_SCHEMA,
+            )
+        if self._mode is VisionMockMode.INVALID_GEOMETRY:
+            self._raise_geometry_error()
 
         fingerprint = hashlib.sha256(
-            f"{request.case_id}\0{request.image_reference}\0{request.task.value}".encode()
+            f"{request.evidence_id or request.image_reference}\0{request.content_type}\0"
+            f"{request.task.value}".encode()
+            + image
         ).digest()
         offset = fingerprint[0] / 2550
         confidence = round(0.80 + fingerprint[1] / 2550, 4)
         quality_score = round(0.85 + fingerprint[2] / 2550, 4)
 
-        return VisionAnalysisResult(
-            model=self._metadata,
-            image_reference=request.image_reference,
-            image_quality=ImageQualityResult(
-                blurred=False,
-                too_dark=False,
+        quality = ImageQualityResult(
+            usable=ImageUsability.USABLE,
+            blurred=False,
+            dark=False,
+            overexposed=False,
+            product_visible=True,
+            defect_area_visible=True,
+            score=quality_score,
+        )
+        if self._mode is VisionMockMode.LOW_QUALITY_IMAGE:
+            quality = ImageQualityResult(
+                usable=ImageUsability.NOT_USABLE,
+                blurred=True,
+                dark=False,
+                overexposed=False,
                 product_visible=True,
-                defect_area_visible=True,
-                score=quality_score,
-            ),
-            detections=(
-                DetectionFinding(
-                    label=DefectType.LEAKAGE,
-                    confidence=confidence,
-                    geometry=BoundingBox(
-                        x1=round(0.20 + offset, 4),
-                        y1=0.40,
-                        x2=round(0.70 + offset, 4),
-                        y2=0.90,
-                    ),
+                defect_area_visible=False,
+                score=0.2,
+                rejection_reasons=(
+                    ImageQualityRejectionReason.BLURRED,
+                    ImageQualityRejectionReason.DEFECT_AREA_NOT_VISIBLE,
+                ),
+            )
+        detections = (
+            DetectionFinding(
+                id="detection-0",
+                label=DefectType.LEAKAGE,
+                model_class_id="4",
+                model_class_name="spillage",
+                confidence=confidence,
+                geometry=BoundingBox(
+                    coordinate_system=CoordinateSystem.NORMALIZED_XYXY,
+                    x1=round(0.20 + offset, 4),
+                    y1=0.40,
+                    x2=round(0.70 + offset, 4),
+                    y2=0.90,
                 ),
             ),
+        )
+        if self._mode is VisionMockMode.SUCCESS_MULTIPLE_DEFECTS:
+            detections += (
+                DetectionFinding(
+                    id="detection-1",
+                    label=DefectType.DENT,
+                    model_class_id="1",
+                    model_class_name="deformation",
+                    confidence=round(max(0.0, confidence - 0.1), 4),
+                    geometry=BoundingBox(
+                        coordinate_system=CoordinateSystem.NORMALIZED_XYXY,
+                        x1=0.05,
+                        y1=0.10,
+                        x2=0.30,
+                        y2=0.35,
+                    ),
+                ),
+            )
+        if self._mode in {
+            VisionMockMode.NO_DEFECT,
+            VisionMockMode.EMPTY_DETECTIONS,
+            VisionMockMode.LOW_QUALITY_IMAGE,
+        }:
+            detections = ()
+
+        return VisionAnalysisResult(
+            provider_name=self._metadata.provider,
+            model_name=self._metadata.name,
+            model_version=self._metadata.version,
+            model_revision=self._metadata.revision,
+            dataset_version="synthetic-v1",
+            taxonomy_version="csight-defect-v1",
+            threshold_version="mock-threshold-v1",
+            preprocess_version=self._metadata.preprocess_version or "mock-preprocess-v1",
+            postprocess_version="mock-postprocess-v1",
+            runtime="python",
+            precision="deterministic",
+            image_width=request.image_width,
+            image_height=request.image_height,
+            image_reference=request.image_reference,
+            image_quality=quality,
+            detections=detections,
             latency_ms=20 + fingerprint[3] % 31,
         )
 
     def _raise_configured_failure(self) -> None:
-        if self._mode is MockProviderMode.TIMEOUT:
-            raise ProviderTimeoutError(
+        if self._mode is VisionMockMode.TIMEOUT:
+            raise VisionProviderTimeoutError(
                 provider=self._metadata.provider,
                 message="mock Vision deadline exceeded",
             )
@@ -90,17 +195,37 @@ class MockVisionProvider:
                 provider=self._metadata.provider,
                 message="mock Vision inference failed",
             )
+        if self._mode is VisionMockMode.TRANSIENT_ERROR:
+            raise VisionProviderUnavailableError(
+                provider=self._metadata.provider,
+                message="mock Vision service is temporarily unavailable",
+            )
+        if self._mode is VisionMockMode.PERMANENT_ERROR:
+            raise VisionProviderRequestRejectedError(
+                provider=self._metadata.provider,
+                message="mock Vision permanently rejected the image",
+            )
 
-    def _raise_schema_error(self, request: VisionAnalysisRequest) -> None:
+    def _raise_schema_error(self, request: VisionAnalysisRequest, *, canonical: bool) -> None:
         try:
             VisionAnalysisResult.model_validate(
                 {
                     "schema_version": "1.0",
-                    "model": self._metadata.model_dump(),
-                    "image_reference": request.image_reference,
+                    "provider_name": self._metadata.provider,
+                    "model_name": self._metadata.name,
+                    "model_version": self._metadata.version,
+                    "model_revision": self._metadata.revision,
+                    "taxonomy_version": "csight-defect-v1",
+                    "threshold_version": "mock-threshold-v1",
+                    "preprocess_version": "mock-preprocess-v1",
+                    "postprocess_version": "mock-postprocess-v1",
+                    "image_width": request.image_width,
+                    "image_height": request.image_height,
                     "image_quality": {
+                        "usable": "USABLE",
                         "blurred": False,
-                        "too_dark": False,
+                        "dark": False,
+                        "overexposed": False,
                         "product_visible": True,
                         "defect_area_visible": True,
                         "score": 1.2,
@@ -110,8 +235,25 @@ class MockVisionProvider:
                 }
             )
         except ValidationError as error:
-            raise ProviderSchemaError(
+            error_type = VisionInvalidStructuredOutputError if canonical else ProviderSchemaError
+            raise error_type(
                 provider=self._metadata.provider,
                 message="mock Vision response violated the common schema",
             ) from error
         raise AssertionError("mock schema-error payload unexpectedly validated")
+
+    def _raise_geometry_error(self) -> None:
+        try:
+            BoundingBox(
+                coordinate_system=CoordinateSystem.NORMALIZED_XYXY,
+                x1=0.8,
+                y1=0.2,
+                x2=0.1,
+                y2=0.7,
+            )
+        except ValidationError as error:
+            raise VisionInvalidStructuredOutputError(
+                provider=self._metadata.provider,
+                message="mock Vision returned invalid geometry",
+            ) from error
+        raise AssertionError("mock invalid geometry unexpectedly validated")

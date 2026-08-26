@@ -10,6 +10,9 @@ TEXT_EXTRACTION_PIPELINE_VERSION: Final = "1.0.0"
 TEXT_EXTRACTION_PROMPT_VERSION: Final = "1.0.1"
 TEXT_EXTRACTION_INPUT_SCHEMA_VERSION: Final = "1.0"
 TEXT_EXTRACTION_OUTPUT_SCHEMA_VERSION: Final = "1.0"
+MULTIMODAL_ANALYSIS_PIPELINE_VERSION: Final = "1.0.0"
+VISION_INPUT_SCHEMA_VERSION: Final = "1.0"
+VISION_OUTPUT_SCHEMA_VERSION: Final = "1.0"
 
 
 class DefectType(StrEnum):
@@ -22,6 +25,12 @@ class DefectType(StrEnum):
     SCRATCH = "SCRATCH"
     DISCOLORATION = "DISCOLORATION"
     MISSING_PART = "MISSING_PART"
+    BREAKAGE = "BREAKAGE"
+    MISSING_COMPONENT = "MISSING_COMPONENT"
+    FUNCTIONAL_FAILURE = "FUNCTIONAL_FAILURE"
+    PACKAGING_DAMAGE = "PACKAGING_DAMAGE"
+    CONTAMINATION = "CONTAMINATION"
+    SURFACE_DAMAGE = "SURFACE_DAMAGE"
     OTHER = "OTHER"
     UNKNOWN = "UNKNOWN"
 
@@ -94,12 +103,13 @@ class AnalysisRunStatus(StrEnum):
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     RETRY_WAITING = "RETRY_WAITING"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
 
     @property
     def is_terminal(self) -> bool:
-        return self in {self.SUCCEEDED, self.FAILED}
+        return self in {self.SUCCEEDED, self.PARTIAL_SUCCESS, self.FAILED}
 
 
 class AnalysisStageStatus(StrEnum):
@@ -128,6 +138,7 @@ class AnalysisAttemptStatus(StrEnum):
 
 class AnalysisPipeline(StrEnum):
     PRODUCT_DEFECT_TEXT_EXTRACTION = "product_defect_text_extraction"
+    PRODUCT_DEFECT_MULTIMODAL_ANALYSIS = "product_defect_multimodal_analysis"
 
 
 class AnalysisTrigger(StrEnum):
@@ -156,14 +167,20 @@ _RUN_TRANSITIONS = MappingProxyType(
         AnalysisRunStatus.RUNNING: frozenset(
             {
                 AnalysisRunStatus.SUCCEEDED,
+                AnalysisRunStatus.PARTIAL_SUCCESS,
                 AnalysisRunStatus.RETRY_WAITING,
                 AnalysisRunStatus.FAILED,
             }
         ),
         AnalysisRunStatus.RETRY_WAITING: frozenset(
-            {AnalysisRunStatus.RUNNING, AnalysisRunStatus.FAILED}
+            {
+                AnalysisRunStatus.RUNNING,
+                AnalysisRunStatus.PARTIAL_SUCCESS,
+                AnalysisRunStatus.FAILED,
+            }
         ),
         AnalysisRunStatus.SUCCEEDED: frozenset(),
+        AnalysisRunStatus.PARTIAL_SUCCESS: frozenset(),
         AnalysisRunStatus.FAILED: frozenset(),
     }
 )
@@ -204,10 +221,28 @@ def require_stage_transition(current: AnalysisStageStatus, target: AnalysisStage
 
 class GeometryType(StrEnum):
     BOUNDING_BOX = "BOUNDING_BOX"
+    MASK = "MASK"
 
 
 class CoordinateSystem(StrEnum):
+    NORMALIZED_XYXY = "normalized_xyxy"
     NORMALIZED = "NORMALIZED"
+
+
+class ImageQualityRejectionReason(StrEnum):
+    BLURRED = "BLURRED"
+    TOO_DARK = "TOO_DARK"
+    OVEREXPOSED = "OVEREXPOSED"
+    PRODUCT_NOT_VISIBLE = "PRODUCT_NOT_VISIBLE"
+    DEFECT_AREA_NOT_VISIBLE = "DEFECT_AREA_NOT_VISIBLE"
+    UNSUPPORTED_IMAGE = "UNSUPPORTED_IMAGE"
+    OTHER = "OTHER"
+
+
+class ImageUsability(StrEnum):
+    USABLE = "USABLE"
+    NOT_USABLE = "NOT_USABLE"
+    NOT_EVALUATED = "NOT_EVALUATED"
 
 
 class VisionTask(StrEnum):

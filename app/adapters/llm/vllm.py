@@ -45,6 +45,13 @@ from app.platform.analysis.schemas import (
     LLMTextExtractionResult,
     ProviderMetadata,
 )
+from app.platform.grounding import (
+    GroundedExplanationInput,
+    GroundedExplanationInvalidOutputError,
+    GroundedExplanationResponse,
+    GroundedPolicyExplanation,
+    validate_grounded_explanation,
+)
 from app.platform.query_builder import (
     PolicyQueryBuilderInput,
     PolicyQueryBuilderInvalidOutputError,
@@ -312,6 +319,59 @@ class VLLMLLMProvider:
             ),
         )
 
+    def explain_policy_grounded(
+        self,
+        request: GroundedExplanationInput,
+        prompt: PromptManifest,
+    ) -> GroundedExplanationResponse:
+        """Generate and structurally validate a citation-allowlisted explanation."""
+
+        if prompt.name != "grounded_policy_explanation" or (
+            prompt.input_schema_version != "1.0" or prompt.output_schema_version != "1.0"
+        ):
+            raise LLMProviderRequestRejectedError(
+                provider=_PROVIDER_NAME,
+                message="the prompt does not match grounded explanation schema v1",
+            )
+        user_message = prompt.render_user(request.model_dump(mode="json"))
+        if len(user_message) > self._max_input_chars:
+            raise LLMProviderRequestRejectedError(
+                provider=_PROVIDER_NAME,
+                message="the grounded explanation input exceeds the configured character limit",
+            )
+        payload = self._request_payload(
+            system_message=prompt.system_template,
+            user_message=user_message,
+            schema=GroundedPolicyExplanation.model_json_schema(),
+            schema_name="csight_grounded_policy_explanation",
+        )
+        started_at = self._clock()
+        status, provider_request_id, raw_response = self._post(payload)
+        latency_ms = max(0, round((self._clock() - started_at) * 1000))
+        self._raise_for_status(status)
+        decoded = _decode_json_object(raw_response)
+        content = _choice_content(decoded, max_chars=self._max_output_chars)
+        try:
+            explanation = GroundedPolicyExplanation.model_validate_json(content)
+            validate_grounded_explanation(explanation, request.citation_pack)
+        except (ValueError, ValidationError):
+            raise GroundedExplanationInvalidOutputError() from None
+        input_tokens, output_tokens = _usage(decoded)
+        body_request_id = _optional_request_id(decoded.get("id"))
+        return GroundedExplanationResponse(
+            explanation=explanation,
+            metadata=ProviderExecutionMetadata(
+                provider_name=_PROVIDER_NAME,
+                model_name=self._model_id,
+                model_version=self._model_version,
+                model_revision=self._model_revision,
+                provider_request_id=provider_request_id or body_request_id,
+                input_token_count=input_tokens,
+                output_token_count=output_tokens,
+                latency_ms=latency_ms,
+            ),
+        )
+
     def _validate_prompt_contract(
         self,
         *,
@@ -335,6 +395,7 @@ class VLLMLLMProvider:
         system_message: str,
         user_message: str,
         schema: dict[str, Any],
+        schema_name: str = _RESPONSE_SCHEMA_NAME,
     ) -> dict[str, object]:
         return {
             "model": self._model_id,
@@ -352,7 +413,7 @@ class VLLMLLMProvider:
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": _RESPONSE_SCHEMA_NAME,
+                    "name": schema_name,
                     "strict": True,
                     "schema": schema,
                 },

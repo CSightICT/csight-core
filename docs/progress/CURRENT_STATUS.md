@@ -10,13 +10,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 4C-2 — `BLOCKED_EXTERNAL_LLM` 제한사항과 함께 로컬 Closeout |
-| 진행 중 작업 | Sprint 4C-3A Citation Pack·구조적 Grounding Guardrail 착수 준비 |
+| 현재 완료 단계 | Sprint 4C-3A — 구조적 Grounding Qualified, 의미 평가는 SKIPPED |
+| 진행 중 작업 | Sprint 4C-3A 독립 Closeout 완료; 로컬 Commit 및 Sprint 4C-3B 브랜치 생성 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B/4C Push·PR 없음 |
-| 로컬 Git | `feature/sprint-4c2-policy-query-builder`; 로컬 Closeout Commit, Push·PR 없음 |
-| 마지막 런타임 관측 | 2026-08-27, Migration `0008` drift 0, API/Worker live smoke, Core ready 200 |
+| 로컬 Git | `feature/sprint-4c3a-citation-grounding-guards`, Base `a282817`, Closeout Commit 준비 |
+| 마지막 런타임 관측 | 2026-08-27, 최신 image, Migration `0009` drift 0, 4 queues consumer 1, Core 6 healthy |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -69,6 +69,11 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 4C-2 LLM 실제 평가 | SKIPPED | `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`; Mock 성능 미보고 |
 | Sprint 4C-2 Locked Evaluation | BLOCKED_EXTERNAL_LLM | RAW가 deterministic보다 우수; 실제 LLM 미평가 |
 | Sprint 4C-2 로컬 Commit | PASS | `feat: add case-based policy retrieval query planning`; Push·PR 없음 |
+| Sprint 4C-3A Citation Pack | PASS | clause/version/source/query provenance immutable snapshot |
+| Sprint 4C-3A Structural Guardrails | PASS | Grounding 50 + Injection 30, 위반 0, replay 100% |
+| Sprint 4C-3A Async Runtime | PASS | PostgreSQL/RabbitMQ/Celery Mock, replay 200, tenant 404, provider-down no fallback |
+| Sprint 4C-3A Semantic Grounding | SKIPPED | 실제 Qwen 부재; precision/recall/faithfulness 미주장 |
+| Sprint 4C-3A 독립 Closeout | PASS | P0 0, P1 0, 전체 회귀·Migration·최신 Docker·Live Gate 통과 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -225,6 +230,24 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Ruff·Format·Pyright·Fast·대상별·Integration·External·Migration·Runtime Gate 통과
 - [x] `RERANKER_NO_MEASURABLE_GAIN`을 숨기지 않고 Sprint 4C-2 입력으로 보존
 - [x] Sprint 4C-1 Commit·Stage·Push·PR 없음, Kaputt 파일 미수정·미삭제·미Stage
+
+## 5.6. Sprint 4C-3A 완료 체크리스트
+
+- [x] Sprint 4C-2를 `a282817` 로컬 Commit으로 고정하고 전용 Branch 생성
+- [x] 성공 Retrieval Run에서 immutable content-hashed Citation Pack 생성
+- [x] rank, clause/document version, source/effective/query/retrieval provenance snapshot
+- [x] 고정 중립 summary, 문장별 citation 필수, decision-free strict output schema
+- [x] Citation allowlist, duplicate normalization, tenant/version/effective-date fail-closed 검증
+- [x] Append-only profile/pack/item/run/result/outbox Migration `20260827_0009`
+- [x] Identifier-only Queue, thin Celery Worker, no silent fallback
+- [x] Case 하위 POST/List/Get, Principal tenant scope, Viewer read-only
+- [x] Mock orchestration과 vLLM strict JSON/citation contract 테스트
+- [x] Grounding 50 + Prompt Injection 30 구조 평가, 위반 0, replay 100%
+- [x] Semantic citation/unsupported claim/faithfulness를 실제 Qwen 부재로 SKIPPED
+- [x] ADR-0059~0064, RAG architecture/evaluation guide, manifest, progress 동기화
+- [x] 독립 Closeout에서 P0/P1 미해결 0, 최신 Docker Build·Live Runtime 재통과
+- [ ] 실제 Qwen 4C-3B Dev qualification → freeze → sealed Test
+- [ ] Sprint 5 versioned Policy Engine + Human Review 연결
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -420,6 +443,23 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-27 | Sprint 4C-1 Closeout Evaluation | PASS | Dev 80 재계산 mismatch 0, Test 미호출, candidate mutation 0 |
 | 2026-08-27 | Sprint 4C-1 Closeout Migration | PASS | empty/previous/round-trip `0007`, drift 0, 임시 DB 3개 정리 |
 | 2026-08-27 | Sprint 4C-1 Closeout API | PASS | base mode 200, reranked down 503, ready 200, Core 6 healthy |
+| 2026-08-27 | Sprint 4C-2 Closeout Commit | PASS | `a282817 feat: add case-based policy retrieval query planning`; Push·PR 없음 |
+| 2026-08-27 | Sprint 4C-3A Static | PASS | Format 258, Ruff 0, Pyright 0 errors/warnings |
+| 2026-08-27 | Sprint 4C-3A Fast Regression | PASS | 431 passed, 3 external skipped, 47 deselected, 31 warnings |
+| 2026-08-27 | Sprint 4C-3A Target Tests | PASS | Grounding unit/contract/migration 12 passed |
+| 2026-08-27 | Sprint 4C-3A Integration | PASS | 42 passed, 5 external GPU skipped, 434 deselected |
+| 2026-08-27 | Sprint 4C-3A Structural Evaluation | PASS | Grounding 50 + Injection 30, 위반 0, replay 100% |
+| 2026-08-27 | Sprint 4C-3A Semantic Evaluation | SKIPPED | `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE` |
+| 2026-08-27 | Sprint 4C-3A Migration | PASS | empty/previous/round-trip `0009`, drift 0, 임시 DB 3개 정리 |
+| 2026-08-27 | Sprint 4C-3A Live Async | PASS | PostgreSQL/RabbitMQ/Celery, 10 citations/statements, replay 200, tenant 404 |
+| 2026-08-27 | Sprint 4C-3A Provider Down | PASS | stable unavailable error, result 0, Mock fallback 0 |
+| 2026-08-27 | Sprint 4C-3A Runtime Cleanup | PASS | 대상 run 3·result 2·outbox 3·item 10·pack 1 삭제, 대상 run 0 |
+| 2026-08-27 | Sprint 4C-3A Compose Contract | PASS | 기본 Worker가 `grounded-explanation` queue를 소비하도록 보완, config render 통과 |
+| 2026-08-27 | Sprint 4C-3A Docker Rebuild | BLOCKED | 외부 registry metadata 응답 정지; Dockerfile diff 0, 기존 Core 6 healthy |
+| 2026-08-27 | Sprint 4C-3A Docker Rebuild Retry | PASS | 최신 image build, Dockerfile diff 0, Core 6 healthy, live/ready 200 |
+| 2026-08-27 | Sprint 4C-3A Docker Queue/E2E | PASS | 4 queues consumer 1·depth 0, 10 citations/statements, replay 200, tenant 404 |
+| 2026-08-27 | Sprint 4C-3A Duplicate Delivery | PASS | terminal event 2회 재전달 뒤 run 1·result 1·queue depth 0 |
+| 2026-08-27 | Sprint 4C-3A Independent Closeout | PASS | P0 0, P1 0; 전체 Gate 통과; semantic model quality는 SKIPPED 유지 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -441,8 +481,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   결정에 사용하지 않고 Policy·Human Review 경계를 유지한다.
 - Sprint 3 Vision Stage는 Mock-qualified지만 실제 Vision server/model/dataset/threshold
   calibration은 검증하지 않았다. 외부 endpoint/model/sample이 없어 실제 검증은 1건 Skip이다.
-- Text/Vision Alignment, Claim↔Detection matching, Policy·Routing·Review·Report·RAG는 구현하지
-  않았고 Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
+- Text/Vision Alignment, Claim↔Detection matching, Policy Engine·Routing·Review·Report는 구현하지
+  않았고 Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다. RAG는 합성 Reference
+  corpus의 retrieval과 구조적 citation grounding까지만 구현됐다.
 - KAPUT 참고 자료는 image-level 7-class multi-label과 item mask이며 defect bbox ground truth가
   아니다. Native→canonical mapping v1은 실제 모델 qualification 전까지 계약 가설이다.
 - Vision image quality가 Provider에 없으면 `NOT_EVALUATED/null`이며 Mock quality를 실제 성능으로
@@ -464,8 +505,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   이번 작업에서도 수정·삭제·Stage하지 않았으며 후속 소유 작업에서 별도로 다룬다.
 - Sprint 4B Policy Corpus/Gold는 전부 합성 Reference이며 실제 기업 정책 정확성·법률 효력과
   실제 사용자 query 분포는 검증하지 않았다. Baseline corpus는 168 clause 규모다.
-- Retrieval Test 40은 frozen profile로 한 번 실행 완료했다. Reranker, 실제 Query Builder,
-  Grounded Explanation/Citation answer, Policy Engine과 승인·routing은 구현하지 않았다.
+- Retrieval Test 40은 frozen profile로 한 번 실행 완료했다. 실제 LLM Query Builder와
+  Grounded Explanation의 의미 품질은 미평가이며, Policy Engine과 승인·routing은 구현하지 않았다.
 - Mac MPS embedding은 qualified지만 서비스 요청은 lock으로 직렬화되며 concurrency 2와 장시간
   swap/thrashing은 측정하지 않았다. Production network/process supervisor는 후속 운영 범위다.
 - Qwen reranker는 Mac MPS에서 실제 qualification했지만 단일 process lock과 concurrency 1로
@@ -474,6 +515,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   자동 활성화 확대나 파라미터 재튜닝을 하지 않고 `RERANKER_NO_MEASURABLE_GAIN`으로 보존한다.
 - 후보 K20 이후 recall 이득이 없고 candidate recall 0.9375가 현 corpus/query의 절대 상한이다.
   Query Builder 평가와 corpus recall 개선을 reranker 재튜닝보다 먼저 수행해야 한다.
+- Sprint 4C-2의 실제 LLM Query Builder 3-way qualification은 계속
+  `BLOCKED_EXTERNAL_LLM`이다. 4C-3A는 선택된 RAW 검색 결과와 독립적으로 진행했으며 이를
+  LLM Query Builder 품질 증거로 해석하지 않는다.
+- Sprint 4C-3A는 구조적 citation allowlist와 금지 field를 검증했지만 citation이 문장을
+  의미적으로 지지하는지, 정책을 과장하지 않았는지는 실제 Qwen 4C-3B 전까지 미검증이다.
+- Citation Pack은 합성 Reference corpus의 immutable snapshot이다. 실제 기업 정책 정확성,
+  법률 효력, 실제 사용자 분포, 보관·삭제 정책은 검증하지 않았다.
 
 ## 9. 다음 실행 항목
 
@@ -512,8 +560,17 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   candidate reranking과 locked evaluation을 완료한다.
 - [x] Sprint 4C-2에서 negative reranker 결과를 고정하고 raw/deterministic/LLM query builder를
   동일 candidate/evaluation 계약으로 분리 비교한다.
-- [ ] Query Builder qualification 뒤에만 citation pack, grounded explanation, citation validation과
-  unsupported claim detection을 Sprint 4C-3 별도 계약으로 연결한다.
+- [x] Citation Pack, strict grounded explanation schema, deterministic citation validation과
+  Mock E2E를 Sprint 4C-3A 별도 계약으로 연결한다.
+- [x] Sprint 4C-3A를 독립 감사하고 최신 Docker·Broker Gate까지 재통과한다.
+- [ ] 승인된 4C-3A 범위만 `feat: add citation grounding guardrails`로 로컬 Commit하고 새
+  `feature/sprint-4c3b-local-mlx-grounding` 브랜치를 생성한다.
+- [ ] 승인된 실제 Qwen Endpoint가 생기면 Grounding Dev 40 + Injection Dev 20에서 4C-3B를
+  qualification하고 prompt/profile freeze 뒤 sealed Test 각 10건을 한 번만 실행한다.
+- [ ] 실제 Qwen으로 semantic citation precision/recall, unsupported policy claim rate와
+  paraphrase faithfulness를 측정하기 전에는 구조 통과를 의미 품질 통과로 승격하지 않는다.
+- [ ] Sprint 5에서 versioned Policy Engine과 Human Review를 연결하고 Grounded Explanation이
+  최종 결정을 소유하지 않게 유지한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -858,3 +915,48 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   Core 6 healthy, 실제 RabbitMQ Worker vertical slice PASS, `git diff --check` PASS
 - 다음 작업: 승인된 Qwen Endpoint가 생기면 Dev qualification부터 수행하고, 이후 4C-3
   Citation Pack/Grounded Explanation gate로 진행
+
+### 2026-08-27 — Sprint 4C-2 Closeout and Sprint 4C-3A Citation Grounding
+
+- Git: 4C-2를 `a282817 feat: add case-based policy retrieval query planning`으로 로컬
+  Commit하고 `feature/sprint-4c3a-citation-grounding-guards` 생성; Push·PR 없음
+- Citation Pack: 성공 Retrieval Run의 rank, clause/document version, title/section/type/text,
+  effective interval, source hash, query IDs/strategy와 retrieval profile hash를 immutable snapshot
+- Contract: 고정 중립 summary, statement별 citation 필수, extra field 금지, unresolved condition만
+  허용; approval/rejection/fraud/responsibility/liability/final decision field 부재
+- Validation: pack-local `CIT-NNN` allowlist, duplicate normalization, ACTIVE/as-of/version/tenant
+  recheck, unknown citation fail-closed; Raw prompt/response/reasoning 비저장
+- Async/API: append-only profile/pack/item/run/result/outbox, identifier-only RabbitMQ payload,
+  thin Celery Worker, Case 하위 POST/List/Get, tenant isolation
+- Evaluation: 합성 Grounding 50 + Injection 30에서 structural violation 0, replay 100%; semantic
+  citation precision/recall, unsupported claim, paraphrase faithfulness는 실제 Qwen 부재로 SKIPPED
+- Verification: Format 258/Ruff/Pyright PASS, Fast 431 passed/3 external skipped,
+  Integration 42 passed/5 external GPU skipped, Grounding 대상 12 passed
+- Migration/Runtime: empty/previous/round-trip `0009`와 drift 0; 실제 PostgreSQL/RabbitMQ/Celery
+  Mock에서 10 citation/statement, replay 200, tenant 404. Provider-down은 stable unavailable로
+  종료하고 result·Mock fallback 0; 검증 행 정리 완료
+- Runtime audit fix: Compose 기본 Worker queue 목록에 `grounded-explanation`을 추가하고 rendered
+  config에서 소비 대상 포함을 확인
+- Docker: 외부 registry metadata 응답 정지로 새 image rebuild는 BLOCKED. Dockerfile diff 0,
+  기존 Core 6개는 Healthy/live·ready 200이며 host-native 4C-3A broker flow로 런타임 검증
+- 다음 작업: 4C-3A를 미커밋·Push/PR 없음으로 인계하고, 실제 Qwen 사용 가능 시 4C-3B Dev
+  qualification부터 수행. Registry 복구 후 Docker image rebuild 재검증
+
+### 2026-08-27 — Sprint 4C-3A Independent Closeout
+
+- Audit: Citation Pack snapshot/allowlist, decision-free strict schema, append-only persistence,
+  identifier-only broker payload와 thin Worker를 실제 코드·DB·API·Broker 기준으로 재검토
+- 판정: P0 0, P1 0, `APPLICATION_QUALIFICATION=PASS`; semantic citation 품질은 실제 모델
+  평가 전이므로 `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE` 유지
+- Regression: Format 258, Ruff 0, Pyright 0, Fast 431 passed/3 skipped/47 deselected,
+  Architecture+Unit+Contract+E2E 431 passed/2 skipped, Integration 42 passed/5 skipped
+- Migration: empty/previous/round-trip `0009`, drift 0, 임시 DB 3개 정리
+- Docker recovery: 제한적 재시도에서 최신 image build 성공; Dockerfile diff 0, Core 6 healthy,
+  live/ready 200, 4 queues consumer 1·depth 0
+- Live: 10 citations/statements, replay 200, tenant 404; terminal event 2회 재전달 뒤 run/result
+  각 1건; provider-down은 stable unavailable, result 0, Mock fallback 0
+- Cleanup: 검증용 Grounding run/result/outbox/item/pack을 범위 한정 삭제하고 대상 run 0 확인
+- Git: `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지 않음; Closeout Commit만 생성하고
+  Push·PR은 하지 않음
+- 다음 작업: 지정 Commit에서 `feature/sprint-4c3b-local-mlx-grounding`을 만들고 preferred
+  MLX artifact 존재성·revision·호환성을 먼저 검증한 뒤 Dev→freeze→Test 순서로 진행

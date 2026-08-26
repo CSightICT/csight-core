@@ -131,7 +131,7 @@ services:
       - worker
       - --loglevel=${LOG_LEVEL:-INFO}
       - --hostname=worker@%h
-      - --queues=default,analysis,policy-retrieval
+      - --queues=default,analysis,policy-retrieval,grounded-explanation
       - --concurrency=${CELERY_WORKER_CONCURRENCY:-2}
     environment: *app-environment
     depends_on: *app-depends-on

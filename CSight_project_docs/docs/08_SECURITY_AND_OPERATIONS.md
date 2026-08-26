@@ -258,3 +258,9 @@ candidate와 invalid score는 fail-closed이며 provider down은 reranked mode�
 Core owns tenant, ACTIVE status, and as-of hard filters. Only trusted product category may be an
 additional hard filter. Logs and messages exclude customer text, prompts, raw responses, reasoning,
 query text, clause text, JWTs, keys, and vectors. Provider failures never silently change strategy.
+
+## Sprint 4C-3A Grounding Security
+
+Citation allowlist는 tenant/retrieval/version 경계를 fail-closed로 검증한다. Raw prompt,
+provider response, reasoning, 고객 원문, clause text, token, secret은 broker나 log에 넣지 않는다.
+Provider 장애는 Grounded Run 실패로 격리하고 Core readiness와 기존 retrieval은 유지한다.

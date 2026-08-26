@@ -512,3 +512,9 @@ Reranker 장애는 `503 RERANKER_PROVIDER_UNAVAILABLE`이며 silent fallback과 
 `POST /api/v1/cases/{case_id}/policy-retrieval-runs` requires Idempotency-Key and returns 202 or replay
 200. List and detail GET endpoints are tenant scoped. The broker message is
 `policy_retrieval.requested.v1` and contains exactly event, tenant, Case, run, and correlation IDs.
+
+## Sprint 4C-3A Grounded Explanation Contract
+
+`POST/GET /api/v1/cases/{case_id}/grounded-explanation-runs`는 성공한 retrieval run ID만 받아
+`202` 비동기 실행을 생성하고 List/Get을 제공한다. Queue payload는 event, tenant, Case,
+grounded-run, correlation ID만 포함한다. 응답은 내부 clause row ID와 tenant를 노출하지 않는다.

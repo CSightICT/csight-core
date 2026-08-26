@@ -135,6 +135,7 @@ POLICY_INDEX_STATUSES = ("BUILDING", "ACTIVE", "FAILED", "RETIRED")
 POLICY_EXECUTION_PROFILE_STATUSES = ("ACTIVE", "RETIRED")
 POLICY_QUERY_STRATEGIES = ("RAW", "DETERMINISTIC", "LLM")
 POLICY_RETRIEVAL_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
+GROUNDED_EXPLANATION_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -1920,6 +1921,248 @@ class PolicyRetrievalOutboxEventModel(CreatedAtMixin, Base):
     available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class GroundingProfileModel(CreatedAtMixin, Base):
+    __tablename__ = "grounding_profiles"
+    __table_args__ = (
+        UniqueConstraint("profile_name", "profile_version", name="uq_grounding_profiles_version"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_artifact: Mapped[str] = mapped_column(String(255), nullable=False)
+    model_revision: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    prompt_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    output_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    validator_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    validator_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyCitationPackModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_citation_packs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "retrieval_run_id"),
+            ("policy_retrieval_runs.tenant_id", "policy_retrieval_runs.id"),
+            name="fk_policy_citation_packs_retrieval_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_policy_citation_packs_case",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("content_hash ~ '^[0-9a-f]{64}$'", name="content_hash_lower_hex"),
+        CheckConstraint(
+            "retrieval_profile_hash ~ '^[0-9a-f]{64}$'",
+            name="retrieval_profile_hash_lower_hex",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_citation_packs_tenant_id"),
+        UniqueConstraint(
+            "tenant_id", "retrieval_run_id", name="uq_policy_citation_packs_retrieval_run"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    retrieval_profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyCitationPackItemModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_citation_pack_items"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "citation_pack_id"),
+            ("policy_citation_packs.tenant_id", "policy_citation_packs.id"),
+            name="fk_policy_citation_pack_items_pack",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_clause_row_id"),
+            ("policy_clauses.tenant_id", "policy_clauses.id"),
+            name="fk_policy_citation_pack_items_clause",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("rank > 0", name="rank_positive"),
+        CheckConstraint("citation_id ~ '^CIT-[0-9]{3}$'", name="citation_id_valid"),
+        UniqueConstraint(
+            "tenant_id", "citation_pack_id", "rank", name="uq_citation_pack_items_rank"
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "citation_pack_id",
+            "citation_id",
+            name="uq_citation_pack_items_citation_id",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    citation_pack_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    citation_id: Mapped[str] = mapped_column(String(16), nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_clause_row_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_clause_id: Mapped[str] = mapped_column(String(320), nullable=False)
+    document_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    document_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    section_path: Mapped[list[str]] = mapped_column(ARRAY(String(500)), nullable=False)
+    clause_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    clause_text: Mapped[str] = mapped_column(Text, nullable=False)
+    effective_from: Mapped[date] = mapped_column(Date, nullable=False)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    retrieval_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    query_strategy: Mapped[str] = mapped_column(String(32), nullable=False)
+    matched_query_ids: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    retrieval_profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class GroundedExplanationRunModel(CreatedAtMixin, Base):
+    __tablename__ = "grounded_explanation_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "retrieval_run_id"),
+            ("policy_retrieval_runs.tenant_id", "policy_retrieval_runs.id"),
+            name="fk_grounded_explanation_runs_retrieval",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "citation_pack_id"),
+            ("policy_citation_packs.tenant_id", "policy_citation_packs.id"),
+            name="fk_grounded_explanation_runs_pack",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_grounded_explanation_runs_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "requested_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_grounded_explanation_runs_user",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("grounding_profile_id",),
+            ("grounding_profiles.id",),
+            name="fk_grounded_explanation_runs_profile",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(GROUNDED_EXPLANATION_RUN_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="request_hash_lower_hex"),
+        CheckConstraint(
+            "(status = 'QUEUED' AND started_at IS NULL AND completed_at IS NULL) OR "
+            "(status = 'RUNNING' AND started_at IS NOT NULL AND completed_at IS NULL) OR "
+            "(status IN ('SUCCEEDED','FAILED') AND started_at IS NOT NULL "
+            "AND completed_at IS NOT NULL)",
+            name="status_timestamps_consistent",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_grounded_explanation_runs_tenant_id"),
+        UniqueConstraint(
+            "tenant_id", "idempotency_key", name="uq_grounded_explanation_runs_tenant_key"
+        ),
+        Index(
+            "ix_grounded_explanation_runs_case_created",
+            "tenant_id",
+            "case_id",
+            "created_at",
+            "id",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    citation_pack_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    grounding_profile_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    requested_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class GroundedExplanationResultModel(CreatedAtMixin, Base):
+    __tablename__ = "grounded_explanation_results"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "grounded_explanation_run_id"),
+            ("grounded_explanation_runs.tenant_id", "grounded_explanation_runs.id"),
+            name="fk_grounded_explanation_results_run",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "grounded_explanation_run_id",
+            name="uq_grounded_explanation_results_run",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    grounded_explanation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    policy_statements: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    unresolved_conditions: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    validation_metrics: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    model_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    model_revision: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    prompt_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class GroundedExplanationOutboxEventModel(CreatedAtMixin, Base):
+    __tablename__ = "grounded_explanation_outbox_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "grounded_explanation_run_id"),
+            ("grounded_explanation_runs.tenant_id", "grounded_explanation_runs.id"),
+            name="fk_grounded_explanation_outbox_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')", name="status_allowed"
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "grounded_explanation_run_id",
+            name="uq_grounded_explanation_outbox_run",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    grounded_explanation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
@@ -1952,4 +2195,10 @@ PERSISTENCE_MODELS = (
     PolicyRetrievalRunQueryModel,
     PolicyRetrievalRunHitModel,
     PolicyRetrievalOutboxEventModel,
+    GroundingProfileModel,
+    PolicyCitationPackModel,
+    PolicyCitationPackItemModel,
+    GroundedExplanationRunModel,
+    GroundedExplanationResultModel,
+    GroundedExplanationOutboxEventModel,
 )

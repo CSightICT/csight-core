@@ -330,3 +330,9 @@ Qwen reranker의 official yes/no normalized pair score를 사용한다. Dev 80 �
 The independent `policy_query_builder_v1` holdout has Dev 80 and sealed Test 40. RAW,
 deterministic 1.0.0, and real LLM prompt 1.1.0 share frozen HYBRID. Gold and Model Extraction results
 are separate; unavailable external Qwen cells remain Skipped.
+
+## Sprint 4C-3A Evaluation Boundary
+
+Grounding 50과 Prompt Injection 30으로 구조적 citation/decision/injection/replay 지표를
+평가한다. 실제 Qwen이 없으면 semantic citation precision/recall, unsupported claim rate와
+paraphrase faithfulness는 Skip이며 Mock 결과를 모델 성능으로 보고하지 않는다.

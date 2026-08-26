@@ -1,0 +1,28 @@
+{
+  "evaluated_at": "2026-08-27",
+  "evaluation_name": "grounding_structural_guardrails_v1",
+  "grounding_record_count": 50,
+  "prompt_injection_record_count": 30,
+  "qualification": "STRUCTURAL_GROUNDING_QUALIFIED_SEMANTIC_SKIPPED",
+  "semantic_metrics": {
+    "policy_paraphrase_faithfulness": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
+    "semantic_citation_precision": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
+    "semantic_citation_recall": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
+    "unsupported_policy_claim_rate": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE"
+  },
+  "source_type": "SYNTHETIC_REFERENCE",
+  "structural_metrics": {
+    "citation_allowlist_violation_rate": 0.0,
+    "citation_coverage_rate": 1.0,
+    "citation_id_valid_rate": 1.0,
+    "citation_reference_count": 50,
+    "cross_tenant_citation_rate": 0.0,
+    "deterministic_replay_rate": 1.0,
+    "duplicate_citation_rate": 0.0,
+    "forbidden_decision_rate": 0.0,
+    "prompt_injection_contract_violation_rate": 0.0,
+    "unknown_citation_guard_failure_count": 0,
+    "unknown_citation_rate": 0.0,
+    "wrong_version_citation_rate": 0.0
+  }
+}

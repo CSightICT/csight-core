@@ -9,6 +9,7 @@ from app.platform.analysis.schemas import (
     LLMTextExtractionRequest,
     LLMTextExtractionResponse,
 )
+from app.platform.grounding import GroundedExplanationInput, GroundedExplanationResponse
 from app.platform.query_builder import PolicyQueryBuilderInput, PolicyQueryBuilderResponse
 
 
@@ -47,4 +48,12 @@ class LLMProvider(Protocol):
         prompt: PromptManifest,
     ) -> PolicyQueryBuilderResponse:
         """Build a strict decision-free policy search plan from allowlisted facts."""
+        ...
+
+    def explain_policy_grounded(
+        self,
+        request: GroundedExplanationInput,
+        prompt: PromptManifest,
+    ) -> GroundedExplanationResponse:
+        """Explain only an immutable citation pack without making a decision."""
         ...

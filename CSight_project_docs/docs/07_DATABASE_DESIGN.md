@@ -382,3 +382,9 @@ score semantics와 contract hash를 저장하고 partial unique index로 base in
 Revision `20260826_0008` adds immutable query-builder profiles, append-only retrieval runs, generated
 query provenance, clause-FK hits, and an identifier-only transactional outbox. Raw Case text is not
 copied into the query table.
+
+## Sprint 4C-3A Tables
+
+Migration `20260827_0009`는 grounding profile, citation pack/item, grounded explanation
+run/result/outbox 6개 table을 추가한다. Pack item은 정책 조항과 retrieval provenance를
+snapshot하고 Result는 validated structure와 version metadata만 저장한다.

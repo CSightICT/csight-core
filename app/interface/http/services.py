@@ -23,6 +23,11 @@ from app.application.cases import (
     ListCasesQuery,
 )
 from app.application.evidence import EvidenceAccessUrl
+from app.application.grounding import (
+    GetGroundedExplanationRun,
+    ListGroundedExplanationRuns,
+    StartGroundedExplanation,
+)
 from app.application.policy_query_runs import (
     GetPolicyRetrievalRun,
     ListPolicyRetrievalRuns,
@@ -190,3 +195,12 @@ class Sprint4C2ServiceContainer:
     start_policy_retrieval_run: StartPolicyRetrievalRun
     list_policy_retrieval_runs: ListPolicyRetrievalRuns
     get_policy_retrieval_run: GetPolicyRetrievalRun
+
+
+@dataclass(frozen=True, slots=True)
+class Sprint4C3AServiceContainer:
+    """Citation-pack and structurally grounded explanation services."""
+
+    start_grounded_explanation: StartGroundedExplanation
+    list_grounded_explanations: ListGroundedExplanationRuns
+    get_grounded_explanation: GetGroundedExplanationRun

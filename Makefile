@@ -18,7 +18,7 @@ POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation
 
 help:
 	@echo "CSight Core commands"
@@ -47,6 +47,8 @@ help:
 	@echo "  make evaluate-extraction-v2-qwen  Run or explicitly skip real Qwen v2 qualification"
 	@echo "  make build-query-builder-dataset / validate-query-builder-dataset"
 	@echo "  make evaluate-query-builder  Compare frozen-HYBRID query strategies"
+	@echo "  make evaluate-grounding-contract  Qualify deterministic citation guardrails"
+	@echo "  make smoke-grounded-explanation  Run authenticated Mock grounding smoke"
 	@echo "  make report-reference-data  Generate aggregate JSON and Markdown quality reports"
 	@echo "  make ingest-policy-corpus  Explicitly ingest the validated synthetic corpus"
 	@echo "  make validate-policy-db  Verify corpus, embedding, and active-index invariants"
@@ -159,6 +161,12 @@ evaluate-query-builder:
 
 smoke-policy-retrieval-run:
 	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/smoke_policy_retrieval_run.py
+
+evaluate-grounding-contract:
+	$(UV) run python scripts/evaluate_grounding_contract.py
+
+smoke-grounded-explanation:
+	$(UV) run python scripts/smoke_grounded_explanation.py --env-file $(ENV_FILE)
 
 report-reference-data:
 	$(UV) run python scripts/generate_reference_reports.py

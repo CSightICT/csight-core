@@ -40,6 +40,14 @@ from app.platform.analysis.llm_v2 import (
     TextAmbiguity,
 )
 from app.platform.analysis.prompts import PromptManifest
+from app.platform.grounding import (
+    GroundedExplanationInput,
+    GroundedExplanationResponse,
+    GroundedPolicyExplanation,
+    GroundedPolicyStatement,
+    UnresolvedPolicyCondition,
+    validate_grounded_explanation,
+)
 from app.platform.query_builder import PolicyQueryBuilderInput, PolicyQueryBuilderResponse
 
 
@@ -259,6 +267,53 @@ class MockLLMProvider:
                 provider_request_id=f"mock-query-{plan.content_hash[:16]}",
                 input_token_count=1,
                 output_token_count=max(1, len(plan.model_dump_json()) // 4),
+                latency_ms=0,
+            ),
+        )
+
+    def explain_policy_grounded(
+        self,
+        request: GroundedExplanationInput,
+        prompt: PromptManifest,
+    ) -> GroundedExplanationResponse:
+        """Produce deterministic cited output for orchestration tests only."""
+
+        self._raise_configured_text_failure()
+        if prompt.name != "grounded_policy_explanation":
+            raise LLMProviderRequestRejectedError(
+                provider=self._metadata.provider,
+                message="prompt does not match grounded policy explanation",
+            )
+        prompt.render_user(request.model_dump(mode="json"))
+        statements = tuple(
+            GroundedPolicyStatement(
+                statement_id=f"S{index}",
+                text=citation.text,
+                citation_ids=(citation.citation_id,),
+            )
+            for index, citation in enumerate(request.citation_pack.citations, start=1)
+        )
+        explanation = GroundedPolicyExplanation(
+            policy_statements=statements,
+            unresolved_conditions=(
+                UnresolvedPolicyCondition(
+                    condition="정책 적용 여부는 실제 증거와 사람 검토가 필요합니다.",
+                    required_evidence="HUMAN_REVIEW",
+                ),
+            ),
+        )
+        validate_grounded_explanation(explanation, request.citation_pack)
+        serialized = explanation.model_dump_json()
+        return GroundedExplanationResponse(
+            explanation=explanation,
+            metadata=ProviderExecutionMetadata(
+                provider_name=self._metadata.provider,
+                model_name=self._metadata.name,
+                model_version=self._metadata.version,
+                model_revision=self._metadata.revision,
+                provider_request_id=f"mock-grounding-{request.citation_pack.content_hash[:16]}",
+                input_token_count=max(1, len(request.case_summary.split())),
+                output_token_count=max(1, len(serialized) // 4),
                 latency_ms=0,
             ),
         )

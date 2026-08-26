@@ -8,6 +8,7 @@ from app.bootstrap.sprint1 import build_sprint1_services, sprint1_is_configured
 from app.bootstrap.sprint2 import build_sprint2_services, sprint2_is_configured
 from app.bootstrap.sprint4b import build_sprint4b_services, sprint4b_is_configured
 from app.bootstrap.sprint4c2 import build_sprint4c2_services, sprint4c2_is_configured
+from app.bootstrap.sprint4c3a import build_sprint4c3a_services, sprint4c3a_is_configured
 from app.interface.http import (
     register_correlation_id_middleware,
     register_evidence_upload_body_limit_middleware,
@@ -18,6 +19,7 @@ from app.interface.http.routers import (
     auth_router,
     cases_router,
     evidence_router,
+    grounding_router,
     health_router,
     policy_query_runs_router,
     policy_retrieval_router,
@@ -28,6 +30,7 @@ from app.interface.http.services import (
     Sprint2ServiceContainer,
     Sprint4BServiceContainer,
     Sprint4C2ServiceContainer,
+    Sprint4C3AServiceContainer,
 )
 from app.ports.readiness import ReadinessService
 
@@ -40,6 +43,7 @@ def create_app(
     sprint2_services: Sprint2ServiceContainer | None = None,
     sprint4b_services: Sprint4BServiceContainer | None = None,
     sprint4c2_services: Sprint4C2ServiceContainer | None = None,
+    sprint4c3a_services: Sprint4C3AServiceContainer | None = None,
 ) -> FastAPI:
     """Create an independently configurable API instance for deployment or tests."""
 
@@ -57,6 +61,9 @@ def create_app(
     resolved_sprint4c2_services = sprint4c2_services
     if resolved_sprint4c2_services is None and sprint4c2_is_configured(resolved_settings):
         resolved_sprint4c2_services = build_sprint4c2_services(resolved_settings)
+    resolved_sprint4c3a_services = sprint4c3a_services
+    if resolved_sprint4c3a_services is None and sprint4c3a_is_configured(resolved_settings):
+        resolved_sprint4c3a_services = build_sprint4c3a_services(resolved_settings)
 
     application = FastAPI(
         title=resolved_settings.app_name,
@@ -68,6 +75,7 @@ def create_app(
     application.state.sprint2_services = resolved_sprint2_services
     application.state.sprint4b_services = resolved_sprint4b_services
     application.state.sprint4c2_services = resolved_sprint4c2_services
+    application.state.sprint4c3a_services = resolved_sprint4c3a_services
 
     # Register the body cap first so the correlation middleware remains outermost
     # and every early 413 response carries the same trace identifier contract.
@@ -85,6 +93,7 @@ def create_app(
     application.include_router(analysis_router)
     application.include_router(policy_retrieval_router)
     application.include_router(policy_query_runs_router)
+    application.include_router(grounding_router)
     return application
 
 

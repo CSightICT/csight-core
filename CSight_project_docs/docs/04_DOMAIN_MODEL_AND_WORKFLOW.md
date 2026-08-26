@@ -294,3 +294,9 @@ applicability와 업무 상태는 생성하거나 변경하지 않는다.
 One successful Text Extraction v2 result may start append-only RAW, DETERMINISTIC, or LLM retrieval.
 The state machine is QUEUED → RUNNING → SUCCEEDED/FAILED. Every strategy uses Run+Outbox and records
 one Query Plan plus a clause-FK hit set; duplicate delivery is a no-op.
+
+## Sprint 4C-3A Workflow
+
+`SUCCEEDED PolicyRetrievalRun → CitationPack → QUEUED/RUNNING/SUCCEEDED|FAILED
+GroundedExplanationRun` 전이를 사용한다. Citation Pack과 성공 Result는 append-only이며
+Grounded Explanation은 정책 적용이나 최종 업무 상태를 변경하지 않는다.

@@ -267,3 +267,9 @@ scope/version/status 위반 0, Dev deterministic rerun 100%를 요구한다.
 Tune only on the new Dev 80 split, freeze versioned query/retrieval profiles, then access Test 40
 once. Compare direct contract/security and downstream retrieval metrics under identical HYBRID
 conditions. The legacy retrieval Test is regression-only.
+
+## Sprint 4C-3A Gates
+
+Schema extra-field 거부, statement별 citation 필수, allowlist, duplicate normalization,
+cross-tenant/version/effective-date, forbidden decision, prompt injection, duplicate delivery와
+Migration lifecycle을 검증한다. Semantic faithfulness는 실제 pinned model 전용 Gate다.

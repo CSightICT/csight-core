@@ -2,7 +2,7 @@
 
 > 이미지·텍스트 기반 상품 불량 CS 의사결정 지원 플랫폼
 
-이 저장소는 CSight의 **Sprint 4B Policy Retrieval Baseline**입니다. Python 3.12,
+이 저장소는 CSight의 **Sprint 4C-3A Citation Grounding Guardrails**까지 구현합니다. Python 3.12,
 FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며,
 API와 Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
 
@@ -10,9 +10,10 @@ Sprint 1의 JWT, Tenant 격리, Case와 Private Evidence 기능 위에 Analysis 
 Transactional Outbox, 얇은 Celery Worker, 버전 고정 Prompt Registry, Text/Vision Provider,
 Evidence Snapshot과 append-only image result를 제공합니다. Analysis는 명시적 `202 Accepted`
 요청으로만 시작하며 Case 상태를 변경하지 않습니다. LLM과 Vision은 Evidence 분석만 수행하고
-Sprint 4B는 immutable policy corpus ingestion, exact BM25, pinned Qwen3 embedding, pgvector
-exact cosine, versioned RRF와 read-only retrieval API를 추가합니다. 검색 결과는 정책 판정이나
-승인이 아니며 reranker, query builder 실행, grounded answer, Policy Engine은 포함하지 않습니다.
+Sprint 4B는 immutable policy corpus ingestion과 hybrid retrieval을, 4C-2는 Case 기반 query
+planning을 추가했습니다. 4C-3A는 immutable Citation Pack, strict grounded explanation schema,
+결정론적 citation allowlist와 비동기 Mock E2E를 추가합니다. 검색·설명 결과는 정책 판정이나
+승인이 아니며 Policy Engine과 최종 Human Review는 포함하지 않습니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -99,6 +100,7 @@ make down
 | Clause Embedding/Index | `make build-policy-embeddings`; `make list-policy-indexes` |
 | 잠긴 Retrieval 결과 검증 | `make evaluate-policy-retrieval` |
 | Policy Search Smoke | `make smoke-policy-search` |
+| Grounding 구조 평가 | `make evaluate-grounding-contract` |
 
 `make test`는 Docker 인프라와 GPU를 요구하지 않습니다. `make test-integration`과
 `make test-all`은 먼저 `make up`과 `make migrate`를 실행한 상태에서 사용합니다.
@@ -511,3 +513,21 @@ API는 Case 하위 `policy-retrieval-runs` POST/List/Get을 제공한다. tenant
 hard filter이며 LLM hint는 soft metadata다. 현재 실제 Qwen endpoint가 없어 LLM 평가는 Skipped,
 RAW가 평가된 전략 중 Dev에서 선택됐다. 실제 LLM 비교가 없어 최종 판정은
 `BLOCKED_EXTERNAL_LLM`이다.
+
+## Sprint 4C-3A citation grounding
+
+성공한 `policy-retrieval-run`은 immutable Citation Pack을 만들고 비동기 grounded explanation
+run을 시작할 수 있습니다. Pack은 당시 rank, clause/document version, 유효기간, source hash,
+query provenance와 retrieval profile hash를 snapshot합니다. 출력은 고정된 중립 summary,
+문장별 allowlisted citation, unresolved condition만 허용합니다.
+
+```bash
+make migrate
+make evaluate-grounding-contract
+```
+
+Mock은 queue·persistence·validator 계약 검증용이며 실제 모델 성능이 아닙니다. 실제 Qwen이 없어
+semantic citation precision/recall, unsupported claim rate, paraphrase faithfulness는 명시적으로
+`SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`입니다. 구조와 평가 경계는
+[`docs/rag/CITATION_GROUNDING_ARCHITECTURE.md`](docs/rag/CITATION_GROUNDING_ARCHITECTURE.md)와
+[`docs/rag/GROUNDING_EVALUATION_GUIDE.md`](docs/rag/GROUNDING_EVALUATION_GUIDE.md)를 참조합니다.

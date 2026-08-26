@@ -17,6 +17,7 @@ from app.interface.dispatchers import outbox as dispatcher_module
 from app.interface.http.services import Sprint2ServiceContainer
 from app.interface.workers.celery_app import (
     ANALYSIS_REQUESTED_TASK_NAME,
+    GROUNDED_EXPLANATION_REQUESTED_TASK_NAME,
     create_celery_app,
 )
 
@@ -72,6 +73,9 @@ def test_celery_configuration_uses_durable_db_retries_and_safe_worker_limits() -
     assert application.conf.task_routes[ANALYSIS_REQUESTED_TASK_NAME] == {"queue": "analysis"}
     assert application.conf.task_routes["policy_retrieval.requested.v1"] == {
         "queue": "policy-retrieval"
+    }
+    assert application.conf.task_routes[GROUNDED_EXPLANATION_REQUESTED_TASK_NAME] == {
+        "queue": "grounded-explanation"
     }
     assert application.conf.task_acks_late is True
     assert application.conf.task_acks_on_failure_or_timeout is False

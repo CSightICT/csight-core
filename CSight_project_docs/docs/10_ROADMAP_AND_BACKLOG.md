@@ -316,3 +316,9 @@ RAW remains selected because generated queries made no measurable Dev ranking ga
 unqualified without the external Qwen endpoint. Sprint 4C-3 may begin citation-pack design, but
 grounded generation requires clause allowlists, citation validation, unsupported-claim detection,
 injection evaluation, and grounded RAG evaluation.
+
+## Sprint 4C-3A / 4C-3B Split
+
+4C-3A는 Citation Pack, strict grounding schema, deterministic validators, Mock E2E와 구조 평가를
+완료한다. 4C-3B는 실제 Qwen Dev/freeze/Test, semantic faithfulness, unsupported claim과 injection
+모델 평가를 수행한다. Sprint 5에서 versioned Policy Engine과 Human Review를 연결한다.

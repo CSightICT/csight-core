@@ -6,7 +6,9 @@ import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
-def _recall_at_precision(labels: np.ndarray, scores: np.ndarray, minimum: float) -> float:
+def _recall_at_precision(
+    labels: np.ndarray, scores: np.ndarray, minimum: float
+) -> float:
     order = np.argsort(-scores)
     sorted_labels = labels[order]
     true_positives = np.cumsum(sorted_labels)

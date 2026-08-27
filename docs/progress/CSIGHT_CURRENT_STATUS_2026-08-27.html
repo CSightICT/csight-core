@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CSight Sprint 5C 내부 데모 완료 현황과 Limited PoC 승격 계획">
+  <title>CSight 프로젝트 현황 · 2026-08-27</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #102d2a;
+      --muted: #61716e;
+      --paper: #f5f3eb;
+      --card: #fffefa;
+      --line: #dfe4dc;
+      --green: #0e7467;
+      --green-dark: #0c4d46;
+      --mint: #d9f3e9;
+      --mint-strong: #59c9af;
+      --amber: #a85f06;
+      --amber-bg: #fff0cf;
+      --blue: #245fa8;
+      --blue-bg: #eaf2ff;
+      --red: #a23e36;
+      --red-bg: #fcebe8;
+      --shadow: 0 16px 40px rgba(20, 49, 45, 0.08);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(89, 201, 175, 0.14), transparent 28rem),
+        linear-gradient(180deg, #f8f7f1 0%, var(--paper) 100%);
+      color: var(--ink);
+      font-family: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: inherit; }
+    button { font: inherit; }
+    .shell { width: min(1180px, calc(100% - 36px)); margin: 0 auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(248, 247, 241, 0.9);
+      border-bottom: 1px solid rgba(16, 45, 42, 0.08);
+      backdrop-filter: blur(14px);
+    }
+    .topbar-inner {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 850; letter-spacing: -0.03em; }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      background: var(--green);
+      color: white;
+      font-size: 13px;
+      box-shadow: 0 8px 18px rgba(14, 116, 103, 0.23);
+    }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .top-actions a,
+    .print-button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--ink);
+      padding: 9px 14px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .top-actions a:hover,
+    .print-button:hover { border-color: var(--mint-strong); background: white; }
+
+    .hero {
+      margin-top: 30px;
+      overflow: hidden;
+      border-radius: 30px;
+      background: var(--green-dark);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.75fr);
+      gap: 34px;
+      padding: clamp(30px, 5vw, 58px);
+      background:
+        linear-gradient(120deg, transparent 65%, rgba(89, 201, 175, 0.08)),
+        radial-gradient(circle at 92% 16%, rgba(89, 201, 175, 0.22), transparent 17rem);
+    }
+    .eyebrow { margin: 0 0 12px; color: #8fe3cf; font-size: 13px; font-weight: 850; letter-spacing: 0.12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(34px, 5.5vw, 66px); line-height: 1.02; letter-spacing: -0.065em; }
+    .hero-copy { max-width: 720px; margin: 22px 0 0; color: #cae1dc; font-size: clamp(16px, 2vw, 19px); }
+    .verdict {
+      margin-top: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #dcf7f0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.025em;
+    }
+    .verdict-dot { width: 8px; height: 8px; border-radius: 50%; background: #ffd179; box-shadow: 0 0 0 5px rgba(255, 209, 121, 0.13); }
+    .hero-side { align-self: stretch; display: flex; flex-direction: column; justify-content: flex-end; }
+    .hero-side-card {
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 20px;
+      padding: 22px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+    .hero-side-card strong { display: block; margin-bottom: 5px; color: #8fe3cf; font-size: 13px; }
+    .hero-side-card span { font-size: 18px; font-weight: 800; letter-spacing: -0.035em; }
+    .hero-meta { margin-top: 18px; display: grid; gap: 8px; color: #a8c5bf; font-size: 12px; }
+
+    .quick-nav {
+      margin: 18px 0 0;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 0 8px;
+      scrollbar-width: thin;
+    }
+    .quick-nav a {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--card);
+      padding: 9px 13px;
+      text-decoration: none;
+      color: #3e5551;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    main { padding: 34px 0 70px; }
+    section { scroll-margin-top: 86px; margin-top: 44px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    .section-kicker { margin: 0 0 5px; color: var(--green); font-size: 12px; font-weight: 900; letter-spacing: 0.11em; text-transform: uppercase; }
+    h2 { margin: 0; font-size: clamp(25px, 3vw, 34px); line-height: 1.15; letter-spacing: -0.045em; }
+    .section-note { max-width: 560px; margin: 0; color: var(--muted); font-size: 14px; text-align: right; }
+
+    .status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .status-card, .metric, .panel, .scenario, .gate-card {
+      border: 1px solid rgba(16, 45, 42, 0.09);
+      background: var(--card);
+      box-shadow: 0 8px 24px rgba(20, 49, 45, 0.045);
+    }
+    .status-card { min-height: 175px; border-radius: var(--radius); padding: 22px; display: flex; flex-direction: column; }
+    .status-card .label { color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; }
+    .status-card .value { margin-top: 15px; font-size: 24px; font-weight: 900; line-height: 1.12; letter-spacing: -0.045em; }
+    .status-card .detail { margin-top: auto; padding-top: 18px; color: var(--muted); font-size: 13px; }
+    .accent-green { border-top: 4px solid var(--green); }
+    .accent-blue { border-top: 4px solid var(--blue); }
+    .accent-amber { border-top: 4px solid #dd982e; }
+    .accent-dark { border-top: 4px solid var(--ink); }
+
+    .metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+    .metric { border-radius: 18px; padding: 18px; }
+    .metric strong { display: block; font-size: 30px; line-height: 1; letter-spacing: -0.045em; }
+    .metric span { display: block; margin-top: 9px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .metric small { display: block; margin-top: 4px; color: #889591; font-size: 11px; }
+
+    .flow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+    .flow-step {
+      position: relative;
+      min-height: 124px;
+      border-radius: 18px;
+      padding: 18px 15px;
+      background: #e9f4f0;
+      border: 1px solid #cfe5dd;
+    }
+    .flow-step::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -9px;
+      width: 9px;
+      height: 2px;
+      background: #93bbb0;
+    }
+    .flow-step:last-child::after { display: none; }
+    .flow-step .n { color: var(--green); font-size: 11px; font-weight: 900; }
+    .flow-step strong { display: block; margin-top: 10px; font-size: 15px; line-height: 1.25; }
+    .flow-step span { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .flow-step.human { background: var(--blue-bg); border-color: #cadcf3; }
+    .flow-step.action { background: var(--amber-bg); border-color: #efd49e; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel { border-radius: var(--radius); padding: 24px; }
+    .panel h3 { margin: 0 0 16px; font-size: 19px; letter-spacing: -0.03em; }
+    .clean-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+    .clean-list li { display: grid; grid-template-columns: 22px 1fr; gap: 9px; color: #425652; font-size: 14px; }
+    .clean-list li::before {
+      content: "✓";
+      width: 19px;
+      height: 19px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--mint);
+      color: var(--green-dark);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .clean-list.excluded li::before { content: "—"; background: #eeeae0; color: #786f61; }
+
+    .scenario-list { display: grid; gap: 12px; }
+    .scenario {
+      border-radius: 18px;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1.4fr) minmax(200px, 0.8fr);
+      gap: 16px;
+      align-items: center;
+    }
+    .scenario-no { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 13px; background: var(--ink); color: white; font-weight: 900; }
+    .scenario strong { display: block; font-size: 15px; }
+    .scenario p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .evidence { justify-self: end; text-align: right; }
+    .badge { display: inline-flex; border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 850; }
+    .badge.live { background: var(--mint); color: var(--green-dark); }
+    .badge.integration { background: var(--blue-bg); color: var(--blue); }
+    .badge.fixture { background: var(--amber-bg); color: var(--amber); }
+    .evidence small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+
+    .gate-wrap { border-radius: 28px; padding: 26px; background: #192f2c; color: white; }
+    .gate-head { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+    .gate-head h2 { color: white; }
+    .gate-head p { margin: 8px 0 0; color: #a8c5bf; max-width: 690px; }
+    .blocked-badge { flex: 0 0 auto; border-radius: 999px; padding: 8px 12px; background: #ffd88d; color: #5a3504; font-size: 12px; font-weight: 900; }
+    .gate-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .gate-card { border-color: rgba(255,255,255,0.1); border-radius: 16px; padding: 16px; background: rgba(255,255,255,0.055); color: #e7f2ef; }
+    .gate-card strong { display: block; font-size: 14px; }
+    .gate-card span { display: block; margin-top: 4px; color: #a8c5bf; font-size: 12px; }
+    .gate-card strong::before { content: "○"; margin-right: 8px; color: #ffd179; }
+
+    .next-list { counter-reset: next; display: grid; gap: 12px; }
+    .next-item {
+      counter-increment: next;
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      align-items: center;
+      gap: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      padding: 17px 20px;
+    }
+    .next-item::before { content: counter(next); width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: var(--green); color: white; font-weight: 900; }
+    .next-item strong { display: block; font-size: 14px; }
+    .next-item span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .owner { color: var(--green); font-size: 11px; font-weight: 850; white-space: nowrap; }
+
+    .git-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--line);
+    }
+    .git-item { background: var(--card); padding: 19px; }
+    .git-item span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .git-item code { display: block; margin-top: 7px; color: var(--ink); font: 700 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+
+    .notice { margin-top: 16px; border-left: 4px solid #dd982e; border-radius: 0 14px 14px 0; background: var(--amber-bg); padding: 15px 17px; color: #684213; font-size: 13px; }
+    footer { padding: 4px 0 45px; color: var(--muted); font-size: 12px; }
+    footer .footer-inner { border-top: 1px solid var(--line); padding-top: 18px; display: flex; justify-content: space-between; gap: 20px; }
+
+    @media (max-width: 980px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .hero-side { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .hero-meta { margin: 0; align-content: center; }
+      .status-grid { grid-template-columns: repeat(2, 1fr); }
+      .metrics { grid-template-columns: repeat(3, 1fr); }
+      .flow { grid-template-columns: repeat(2, 1fr); }
+      .flow-step::after { display: none; }
+    }
+
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 24px, 1180px); }
+      .topbar-inner { min-height: 60px; }
+      .top-actions a { display: none; }
+      .hero { margin-top: 16px; border-radius: 22px; }
+      .hero-grid { padding: 28px 22px; }
+      .hero-side { grid-template-columns: 1fr; }
+      .section-head { align-items: start; flex-direction: column; }
+      .section-note { text-align: left; }
+      .status-grid, .metrics, .two-col, .gate-grid { grid-template-columns: 1fr; }
+      .metric { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; }
+      .metric strong { grid-row: span 2; }
+      .metric span, .metric small { margin-top: 0; }
+      .flow { grid-template-columns: 1fr; }
+      .scenario { grid-template-columns: 38px 1fr; align-items: start; }
+      .evidence { grid-column: 2; justify-self: start; text-align: left; }
+      .gate-head { flex-direction: column; }
+      .next-item { grid-template-columns: 40px 1fr; }
+      .owner { grid-column: 2; }
+      .git-strip { grid-template-columns: 1fr; }
+      footer .footer-inner { flex-direction: column; }
+    }
+
+    @media print {
+      body { background: white; }
+      .topbar, .quick-nav, .print-button { display: none !important; }
+      .shell { width: 100%; }
+      .hero { margin-top: 0; box-shadow: none; }
+      main { padding-bottom: 20px; }
+      section { break-inside: avoid; margin-top: 26px; }
+      .status-card, .metric, .panel, .scenario { box-shadow: none; }
+      .gate-wrap { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand"><span class="brand-mark">CS</span> CSight 프로젝트 현황</div>
+      <div class="top-actions">
+        <a href="#next">다음 할 일</a>
+        <button class="print-button" type="button" onclick="window.print()">인쇄 / PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">Sprint 5C Closeout · 2026-08-27</p>
+          <h1 id="page-title">내부 데모는 완료.<br>이제 실제 PoC 증거 단계.</h1>
+          <p class="hero-copy">Human Review 이후 Resolution과 안전한 DRY-RUN, 상담원 콘솔, 최종 보고서와 KPI까지 구현·검증했습니다. 실제 고객 데이터와 정책, 개인정보 승인, 모델 평가가 확보되기 전에는 실제 PoC 성능으로 주장하지 않습니다.</p>
+          <div class="verdict"><span class="verdict-dot"></span> SYNTHETIC_MOCK_SIMULATION_DEMO</div>
+        </div>
+        <aside class="hero-side" aria-label="현재 기준점">
+          <div class="hero-side-card">
+            <strong>현재 완료 기준점</strong>
+            <span>Sprint 5C 내부 시뮬레이션 데모</span>
+          </div>
+          <div class="hero-meta">
+            <span>DB Head · 0014</span>
+            <span>기능 기준점 · 0a5f529</span>
+            <span>Closeout · 499c188</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <nav class="quick-nav" aria-label="페이지 바로가기">
+      <a href="#summary">한눈에 보기</a>
+      <a href="#verification">검증 결과</a>
+      <a href="#flow">업무 흐름</a>
+      <a href="#scope">구현 범위</a>
+      <a href="#demo">데모 시나리오</a>
+      <a href="#gate">PoC 승격 Gate</a>
+      <a href="#next">다음 순서</a>
+      <a href="#git">Git 인계</a>
+    </nav>
+  </div>
+
+  <main class="shell">
+    <section id="summary">
+      <div class="section-head">
+        <div><p class="section-kicker">Executive Summary</p><h2>한눈에 보는 현재 상황</h2></div>
+        <p class="section-note">구현 완료와 외부 승격 조건을 분리했습니다.</p>
+      </div>
+      <div class="status-grid">
+        <article class="status-card accent-green">
+          <span class="label">SPRINT 5B</span>
+          <span class="value">신뢰성 Closeout 완료</span>
+          <span class="detail">Outbox 복구·backoff·worker fencing·hash 재검증까지 완료</span>
+        </article>
+        <article class="status-card accent-blue">
+          <span class="label">SPRINT 5C</span>
+          <span class="value">내부 데모 구현 완료</span>
+          <span class="detail">Resolution, DRY-RUN, React 콘솔, Report, KPI</span>
+        </article>
+        <article class="status-card accent-amber">
+          <span class="label">LIMITED POC</span>
+          <span class="value">외부 증거 대기</span>
+          <span class="detail">실제 Case·정책·승인·Vision/Qwen·Shadow Mode 필요</span>
+        </article>
+        <article class="status-card accent-dark">
+          <span class="label">GIT</span>
+          <span class="value">기능 브랜치 백업 완료</span>
+          <span class="detail">PR과 develop 병합은 거버넌스 결정 전까지 보류</span>
+        </article>
+      </div>
+    </section>
+
+    <section id="verification">
+      <div class="section-head">
+        <div><p class="section-kicker">Verification</p><h2>검증 결과</h2></div>
+        <p class="section-note">기본 경로에서 외부 GPU를 호출하지 않았습니다.</p>
+      </div>
+      <div class="metrics">
+        <article class="metric"><strong>554</strong><span>Backend 기본 테스트</span><small>62 deselected</small></article>
+        <article class="metric"><strong>51</strong><span>Integration 통과</span><small>외부 GPU 5 skipped</small></article>
+        <article class="metric"><strong>6</strong><span>Frontend 단위 테스트</span><small>Vitest</small></article>
+        <article class="metric"><strong>5</strong><span>화면 시나리오</span><small>Playwright</small></article>
+        <article class="metric"><strong>7</strong><span>Healthy 서비스</span><small>실행 환경 관측</small></article>
+        <article class="metric"><strong>8</strong><span>업무 Queue 정상</span><small>consumer 1 · depth 0</small></article>
+      </div>
+      <div class="notice">Ruff·Format·Pyright, OpenAPI 동기화와 Production build가 모두 통과했습니다. PostgreSQL은 Head <strong>0014</strong>, schema drift 0입니다.</div>
+    </section>
+
+    <section id="flow">
+      <div class="section-head">
+        <div><p class="section-kicker">Workflow</p><h2>현재 연결된 업무 흐름</h2></div>
+        <p class="section-note">모델은 증거를 정리하고, 정책과 사람이 최종 결정을 소유합니다.</p>
+      </div>
+      <div class="flow" aria-label="Case 처리 흐름">
+        <article class="flow-step"><span class="n">01</span><strong>Case·Evidence</strong><span>고객 문의와 사진 접수</span></article>
+        <article class="flow-step"><span class="n">02</span><strong>Text·Vision</strong><span>구조화 분석과 부분 성공</span></article>
+        <article class="flow-step"><span class="n">03</span><strong>RAW + HYBRID</strong><span>Reranker Off · Top-3</span></article>
+        <article class="flow-step"><span class="n">04</span><strong>Policy</strong><span>버전 고정 규칙 평가</span></article>
+        <article class="flow-step human"><span class="n">05</span><strong>Human Review</strong><span>Claim·자료요청·Resolve</span></article>
+        <article class="flow-step action"><span class="n">06</span><strong>Resolution</strong><span>Decision과 별도 상태</span></article>
+        <article class="flow-step action"><span class="n">07</span><strong>DRY-RUN</strong><span>외부 부작용 0</span></article>
+      </div>
+    </section>
+
+    <section id="scope">
+      <div class="section-head">
+        <div><p class="section-kicker">Scope</p><h2>완료된 것과 제외된 것</h2></div>
+      </div>
+      <div class="two-col">
+        <article class="panel">
+          <h3>이번에 완료</h3>
+          <ul class="clean-list">
+            <li>Case 상태와 분리된 versioned Resolution과 append-only Event</li>
+            <li>Human Decision → REFUND·EXCHANGE·RESHIPMENT·REPAIR 매핑 1.0.0</li>
+            <li>명시 입력만 사용하고 누락·오류 시 ACTION_NEEDS_INPUT 처리</li>
+            <li>immutable Action Intent와 durable Resolution·Simulation Outbox</li>
+            <li>결정론적 DRY-RUN과 side_effects_performed=false 보장</li>
+            <li>상담원 콘솔, immutable Review Report, 인쇄 화면과 PoC KPI</li>
+            <li>Tenant 격리, 중복 전달 NOOP, broker 장애 복구</li>
+          </ul>
+        </article>
+        <article class="panel">
+          <h3>의도적으로 제외</h3>
+          <ul class="clean-list excluded">
+            <li>실제 LIVE 환불·교환·재배송·수리 실행</li>
+            <li>결제·CRM·고객 알림 연동</li>
+            <li>Case Closure와 Human Decision amendment</li>
+            <li>Review 단계 입력 보완 API</li>
+            <li>자동 Assignment·SLA·OIDC·RLS</li>
+            <li>실제 성능·비용 절감·ROI 주장</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="demo">
+      <div class="section-head">
+        <div><p class="section-kicker">Demo Evidence</p><h2>필수 시나리오 5개</h2></div>
+        <p class="section-note">화면 검증과 실제 백엔드 인과 검증의 수준을 구분했습니다.</p>
+      </div>
+      <div class="scenario-list">
+        <article class="scenario"><span class="scenario-no">1</span><div><strong>Repair 또는 사전 입력 Refund → DRY-RUN Validated</strong><p>Decision, Resolution, Intent, Attempt, Result, Report 생성과 Case 상태 불변</p></div><div class="evidence"><span class="badge live">LIVE BACKEND</span><small>실제 causal smoke + UI fixture</small></div></article>
+        <article class="scenario"><span class="scenario-no">2</span><div><strong>환불액·통화 누락 → ACTION_NEEDS_INPUT</strong><p>Intent·Attempt·Result가 하나도 생성되지 않음</p></div><div class="evidence"><span class="badge integration">INTEGRATION</span><small>격리 PostgreSQL + UI fixture</small></div></article>
+        <article class="scenario"><span class="scenario-no">3</span><div><strong>이미지 부족 → 추가자료 요청</strong><p>Decision과 Action 자동 생성 없음</p></div><div class="evidence"><span class="badge fixture">FIXTURE-DRIVEN</span><small>UI/component-backed</small></div></article>
+        <article class="scenario"><span class="scenario-no">4</span><div><strong>Safety Case → Reviewer 차단</strong><p>일반 Reviewer는 차단되고 Admin Resolve만 허용</p></div><div class="evidence"><span class="badge fixture">FIXTURE-DRIVEN</span><small>UI + backend 규칙 개별 검증</small></div></article>
+        <article class="scenario"><span class="scenario-no">5</span><div><strong>Vision Timeout → Partial Success·Human Review</strong><p>자동 Decision·Action 없이 사람 검토로 이동</p></div><div class="evidence"><span class="badge fixture">FIXTURE-DRIVEN</span><small>UI와 backend 경로 개별 검증</small></div></article>
+      </div>
+      <div class="notice">Playwright 5개 통과를 “다섯 개의 실제 업무 E2E가 모두 통과했다”로 해석하지 않습니다. 시나리오 3~5는 화면과 구성요소 수준의 데모입니다.</div>
+    </section>
+
+    <section id="gate" class="gate-wrap">
+      <div class="gate-head">
+        <div><p class="section-kicker">Promotion Gate</p><h2>Limited PoC 승격은 아직 차단</h2><p>아래 항목이 모두 실제 증거와 연결되어야만 제품 판정을 LIMITED_POC로 변경할 수 있습니다.</p></div>
+        <span class="blocked-badge">BLOCKED · 0 / 10</span>
+      </div>
+      <div class="gate-grid">
+        <article class="gate-card"><strong>고객·상품·결함 범위</strong><span>후보 고객, 상품군 1개, 결함 유형 2~3개</span></article>
+        <article class="gate-card"><strong>실제 Case와 Gold</strong><span>비식별 30건 이상과 상담원·전문가 정답</span></article>
+        <article class="gate-card"><strong>실제 기업 정책</strong><span>버전과 효력일을 포함한 정책 원장</span></article>
+        <article class="gate-card"><strong>개인정보 승인</strong><span>보관·삭제·EXIF·접근권한 승인</span></article>
+        <article class="gate-card"><strong>Vision 범위</strong><span>실제 qualification 또는 명시적 제외 승인</span></article>
+        <article class="gate-card"><strong>Qwen3.8 재평가</strong><span>Extraction과 Grounding 실제 분포 평가</span></article>
+        <article class="gate-card"><strong>실제 분포 평가</strong><span>Policy·Case·사용자 Query 분포</span></article>
+        <article class="gate-card"><strong>Shadow Mode</strong><span>사람 결정과 비교 가능한 표본</span></article>
+        <article class="gate-card"><strong>안전 위반 0</strong><span>Tenant·권한·중복·LIVE·추론·변조 등</span></article>
+        <article class="gate-card"><strong>Clean Environment</strong><span>Backend·Frontend 전체 회귀와 데모</span></article>
+      </div>
+    </section>
+
+    <section id="next">
+      <div class="section-head">
+        <div><p class="section-kicker">Next Actions</p><h2>앞으로 해야 할 일</h2></div>
+        <p class="section-note">새 기능 확대보다 실제 증거 확보가 우선입니다.</p>
+      </div>
+      <div class="next-list">
+        <article class="next-item"><div><strong>PoC 대상 범위 확정</strong><span>고객 후보·상품군·결함 2~3종을 한 문서로 고정</span></div><span class="owner">사업·데이터</span></article>
+        <article class="next-item"><div><strong>비식별 실제 Case 30건과 Gold 확보</strong><span>상담원/전문가 Decision과 비교 가능한 형태로 준비</span></div><span class="owner">사업·데이터</span></article>
+        <article class="next-item"><div><strong>정책·개인정보 승인 연결</strong><span>버전·효력일·Retention·삭제·EXIF·접근 증거 기록</span></div><span class="owner">사업·보안</span></article>
+        <article class="next-item"><div><strong>Vision 범위 결정</strong><span>실제 manifest와 결함별 평가 또는 명시적인 제외 승인</span></div><span class="owner">VISION</span></article>
+        <article class="next-item"><div><strong>Qwen·Shadow Mode 재평가</strong><span>실제 분포에서 사람 결정과 비교하고 안전 위반 0 확인</span></div><span class="owner">BACKEND·ML</span></article>
+        <article class="next-item"><div><strong>Clean-environment 데모와 승격 판정</strong><span>모든 증거가 모인 뒤에만 Limited PoC Gate 실행</span></div><span class="owner">전체</span></article>
+      </div>
+    </section>
+
+    <section id="git">
+      <div class="section-head"><div><p class="section-kicker">Handoff</p><h2>Git 인계 상태</h2></div></div>
+      <div class="git-strip">
+        <article class="git-item"><span>Sprint 5B</span><code>4aefae6 · feat: add human review workflow</code></article>
+        <article class="git-item"><span>Sprint 5C 기능</span><code>0a5f529 · feat: add case resolution and PoC console</code></article>
+        <article class="git-item"><span>Sprint 5C Closeout</span><code>499c188 · docs: record Sprint 5C closeout</code></article>
+      </div>
+      <div class="notice">원격 기능 브랜치 백업은 완료했습니다. PR 생성과 <strong>develop</strong> 병합은 거버넌스 PR #2와 보호 규칙 결정 전까지 보류합니다. 사용자 소유 루트 문서 2개는 Commit에서 제외했습니다.</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner">
+      <span>CSight Project Status · 2026-08-27 · Asia/Seoul</span>
+      <span>근거 원장: CURRENT_STATUS.md / SPRINT_5C_CASE_RESOLUTION_CONSOLE.md</span>
+    </div>
+  </footer>
+</body>
+</html>

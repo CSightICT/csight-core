@@ -592,6 +592,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-27 | Sprint 5C Broker Recovery | PASS | 실제 Rabbit outage에서 request `PENDING` attempts 3→복구 뒤 `CONSUMED` attempts 5, final validated |
 | 2026-08-27 | Sprint 5C Commit·Remote Backup | PASS | `0a5f529 feat: add case resolution and PoC console`; `origin/feature/sprint-5c-case-resolution-external-action` Push, PR 없음 |
 | 2026-08-27 | Sprint 5C Limited PoC Gate | BLOCKED | 구현 Gate는 통과했으나 실제 Data/Policy/Vision·Privacy·Shadow·Qwen 외부 증거 미확보 |
+| 2026-08-27 | Current Status HTML | PASS | 단일 HTML 200 응답, 외부 asset 0, 반응형·인쇄/PDF 레이아웃과 내부 데모/PoC Gate 구분 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -1306,3 +1307,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   성능·ROI를 실제 PoC 결과로 주장하지 않는다.
 - Handoff: 상세 원장은 `docs/progress/SPRINT_5C_CASE_RESOLUTION_CONSOLE.md`, 승격 계약은
   `docs/resolution/SPRINT_5C_DEMO_BOUNDARY.md`. 사용자 소유 루트 문서 두 개는 수정·삭제·Stage하지 않음
+
+### 2026-08-27 — Current Status HTML Dashboard
+
+- 산출물: `docs/progress/CSIGHT_CURRENT_STATUS_2026-08-27.html`
+- 목적: Sprint 5B/5C 완료 범위, 검증 수치, 업무 흐름, 5개 데모의 증거 수준, Limited PoC
+  미충족 Gate와 다음 실행 순서를 한 화면에서 확인
+- 표현 경계: 현재 판정을 `SYNTHETIC_MOCK_SIMULATION_DEMO`로 유지하고 Scenario 3–5를
+  fixture-driven으로 표시하며 실제 PoC 성능·ROI를 주장하지 않음
+- 구현: 외부 asset이나 네트워크 의존성이 없는 standalone HTML, 반응형 화면과 인쇄/PDF 지원
+- 검증: 로컬 exact URL HTTP 200, 핵심 판정·검증 수치·Git 기준점 포함, whitespace diff PASS
+- Git 안전: 사용자 소유 루트 문서 두 개는 수정·삭제·Stage하지 않음

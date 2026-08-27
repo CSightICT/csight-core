@@ -74,8 +74,10 @@ def main() -> None:
                     {
                         "capture_id": batch["capture_id"][index],
                         "item_identifier": batch["item_identifier"][index],
+                        "item_material": batch["item_material"][index],
                         "defect": bool(batch_labels[index]),
                         "major_defect": bool(batch_major[index]),
+                        "defect_types": batch["defect_types"][index],
                         "defect_probability": score,
                     }
                 )

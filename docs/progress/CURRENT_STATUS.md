@@ -7,13 +7,13 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 0 — Foundation; CV 학습 파이프라인 준비 |
-| 진행 중 작업 | E3 stage-2 연속 학습 실행 중; test split은 미사용 |
+| 현재 완료 단계 | Sprint 0 — Foundation; CV E1~E3 학습과 held-out 평가 완료 |
+| 진행 중 작업 | PR #4에 E3 결과·PoC 그룹 분석·CI 수정 반영 및 검증 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `kimhrin` |
 | 원격 저장소 | Private `CSightICT/csight-core` |
 | 로컬 Git | `main`·`develop`, Foundation 초기 커밋 `6fc20d3` |
-| 마지막 런타임 관측 | 2026-08-27 10:37 KST, E3 실행 중; GPU 100%, VRAM 19,051/24,564MiB, 오류 없음 |
+| 마지막 런타임 관측 | 2026-08-27 19:02 KST, E3 12 epochs 정상 종료; OOM·NaN·traceback 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -99,25 +99,26 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - [x] E1을 epoch 4 checkpoint까지 보존 후 중단: 최고 validation AP 0.306988, W&B run `93fdt5a0`
 - [x] Full-frame resize + AdamW E2 완료: 8 epochs, AP 0.839467, AUROC 0.917615, W&B run `0kitqdog`
 - [x] E2 validation AP 기준 best checkpoint 확정
-- [x] E3: E2 best 가중치 초기화, batch 16, fused AdamW, 12 epochs 실행 시작 (`e33m1xdx`)
-- [ ] E3 validation AP 기준 최종 best checkpoint 확정
-- [ ] 모델·임계값 고정 후 test split 1회 평가
+- [x] E3: E2 best 가중치 초기화, batch 16, fused AdamW, 12 epochs 완료 (`e33m1xdx`)
+- [x] E3 validation AP 기준 epoch 10 best checkpoint 확정: AP 0.847034, AUROC 0.922177
+- [x] Validation에서 threshold 0.8984375 동결 후 test split 1회 평가: AP 0.884863, precision 0.954333, recall 0.508422
+- [x] 재질·결함군별 PoC 분석: 경질 플라스틱 + deconstruction/actuation 추천
+- [x] Test prediction 원본 SHA-256 기록; 데이터·checkpoint는 GitHub 미업로드
 
 ## 7. 미해결 사항과 사용자 결정
 
-- GitHub 조직 handle이 필요하다. 기본 제안은 `csight-ai-platform`이다.
-- 저장소 기본 제안은 `csight-core`, 공개 범위는 Private이다.
-- GitHub 조직 생성 화면에 로그인해야 한다.
-- 초기에는 `@it0615`가 유일한 CODEOWNER다. 구성원이 정해지면 조직 팀으로 교체한다.
-- 실제 제품 측 결정인 결함 Taxonomy, 정책 표현, 개인정보 보존 기간, 인증·Tenant 범위는
-  다음 Sprint의 ADR 대상으로 남아 있다.
+- 실제 PoC 상품 1종과 재현 가능한 결함 정의를 확정해야 한다.
+- 현재 CV 모델은 이진 분류기이므로 결함 유형·위치 출력 방식(VLM 또는 별도 head)을 정해야 한다.
+- 정책 표현, 개인정보 보존 기간, 인증·Tenant 범위는 다음 Sprint의 ADR 대상으로 남아 있다.
+- PR #4는 draft이며 새 커밋의 GitHub Actions 통과 여부를 확인해야 한다.
 
 ## 8. 다음 실행 항목
 
-1. 조직 handle과 저장소 이름·공개 범위를 사용자에게 확정받는다.
-2. GitHub 조직과 Private 저장소를 생성하고 `main`, `develop`을 Push한다.
-3. 첫 CI 성공 후 두 장기 브랜치에 보호 규칙을 적용한다.
-4. Sprint 1에서 Case/Evidence CRUD와 append-only 분석 영속화를 시작한다.
+1. PR #4의 새 GitHub Actions 결과를 확인하고 남은 오류를 수정한다.
+2. E3 모델·전처리·threshold를 버전된 Vision inference package로 묶는다.
+3. Sprint 1 Case/Evidence CRUD, MinIO 업로드, 실제 Alembic migration을 구현한다.
+4. Append-only Analysis Run과 실제 Vision HTTP adapter를 연결한다.
+5. 경질 플라스틱 1종의 deconstruction/actuation Shadow Mode 평가를 준비한다.
 
 ## 9. 세션 종료 체크리스트
 
@@ -189,3 +190,15 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - 실행 중: W&B run `e33m1xdx`; 초기 GPU 100%, VRAM 19,051/24,564MiB, OOM·NaN·traceback 없음
 - 미실행: test split 평가
 - 다음 작업: validation 지표와 early stopping을 감시하고 최종 best checkpoint를 동결
+
+
+### 2026-08-27 — E3 종료, held-out 평가와 PoC 범위 분석
+
+- 완료: E3 12 epochs 정상 종료, validation AP 기준 epoch 10 `best.pt` 확정
+- Validation: AP(any) 0.847034, AUROC 0.922177
+- Test 1회: AP(any) 0.884863, AUROC 0.931604
+- Threshold: validation에서 0.8984375로 동결; test precision 0.954333, recall 0.508422
+- PoC 후보: 경질 플라스틱 상품군의 `deconstruction`과 `actuation`
+- 코드: 그룹 분석, metadata 보존, 단위 테스트, 기존 Ruff 오류 수정 반영
+- 제한: 이진 분류 모델은 결함 유형·위치를 직접 출력하지 않으며 사람의 최종 결정을 대체하지 않음
+- 다음 작업: CI 통과 확인, 모델 패키징, Case/Evidence와 실제 Vision adapter 구현

@@ -28,4 +28,3 @@ def test_material_metrics_keeps_support_and_detection_rate() -> None:
     assert result["positives"] == 2
     assert result["recall_detection_rate"] == pytest.approx(1.0)
     assert result["false_positive_rate"] == pytest.approx(0.0)
-

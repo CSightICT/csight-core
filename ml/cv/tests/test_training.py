@@ -24,8 +24,7 @@ def test_full_frame_transform_does_not_randomly_crop() -> None:
     )
     assert isinstance(transform.transforms[0], transforms.Resize)
     assert not any(
-        isinstance(operation, transforms.RandomResizedCrop)
-        for operation in transform.transforms
+        isinstance(operation, transforms.RandomResizedCrop) for operation in transform.transforms
     )
 
 
@@ -50,4 +49,3 @@ def test_cosine_scheduler_warms_up_then_decays() -> None:
     assert cosine_with_warmup(0, 100, 10) == pytest.approx(0.1)
     assert cosine_with_warmup(9, 100, 10) == pytest.approx(1.0)
     assert cosine_with_warmup(100, 100, 10) == pytest.approx(0.0)
-

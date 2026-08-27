@@ -27,4 +27,3 @@ class Dinov2BinaryClassifier(nn.Module):
         output = self.backbone(pixel_values=pixel_values)
         cls_token = output.last_hidden_state[:, 0]
         return self.classifier(cls_token).squeeze(-1)
-

@@ -26,16 +26,12 @@ from csight_cv.model import Dinov2BinaryClassifier
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument(
-        "--mode", choices=("linear_probe", "full_finetune"), required=True
-    )
+    parser.add_argument("--mode", choices=("linear_probe", "full_finetune"), required=True)
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--image-size", type=int)
     parser.add_argument("--max-train-samples", type=int)
     parser.add_argument("--max-val-samples", type=int)
-    parser.add_argument(
-        "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
-    )
+    parser.add_argument("--wandb-mode", choices=("online", "offline", "disabled"), default="online")
     checkpoint_group = parser.add_mutually_exclusive_group()
     checkpoint_group.add_argument("--resume", type=Path)
     checkpoint_group.add_argument("--init-checkpoint", type=Path)
@@ -105,11 +101,7 @@ def build_optimizer(
             group_name = f"{component}_{decay_name}"
             groups[group_name] = {
                 "params": [],
-                "lr": (
-                    backbone_learning_rate
-                    if component == "backbone"
-                    else classifier_learning_rate
-                ),
+                "lr": backbone_learning_rate if component == "backbone" else classifier_learning_rate,
                 "weight_decay": decay_value,
                 "group_name": group_name,
             }
@@ -118,9 +110,7 @@ def build_optimizer(
         if not parameter.requires_grad:
             continue
         component = "classifier" if name.startswith("classifier.") else "backbone"
-        decay_name = (
-            "decay" if parameter.ndim > 1 and not name.endswith(".bias") else "no_decay"
-        )
+        decay_name = "decay" if parameter.ndim > 1 and not name.endswith(".bias") else "no_decay"
         groups[f"{component}_{decay_name}"]["params"].append(parameter)
 
     parameter_groups = [group for group in groups.values() if group["params"]]
@@ -152,11 +142,7 @@ def evaluate(
     labels: list[float] = []
     major_labels: list[float] = []
     scores: list[float] = []
-    autocast = (
-        torch.autocast(device_type="cuda", dtype=torch.bfloat16)
-        if use_bf16
-        else nullcontext()
-    )
+    autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else nullcontext()
     for batch in loader:
         pixels = batch["pixel_values"].to(device, non_blocking=True)
         targets = batch["label"].to(device, non_blocking=True)
@@ -200,9 +186,7 @@ def main() -> None:
     config = load_config(args.config, args)
     seed = int(config["seed"])
     seed_everything(seed)
-    torch.set_float32_matmul_precision(
-        str(config.get("float32_matmul_precision", "high"))
-    )
+    torch.set_float32_matmul_precision(str(config.get("float32_matmul_precision", "high")))
     torch.backends.cudnn.benchmark = bool(config.get("cudnn_benchmark", False))
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for this training run")
@@ -210,9 +194,7 @@ def main() -> None:
     use_bf16 = config["mixed_precision"] == "bf16" and torch.cuda.is_bf16_supported()
     dataset_root = Path(config["dataset_root"])
     auto_augment = str(config["train_augmentation"]["auto_augment"])
-    resize_mode = str(
-        config["train_augmentation"].get("resize_mode", "random_resized_crop")
-    )
+    resize_mode = str(config["train_augmentation"].get("resize_mode", "random_resized_crop"))
     horizontal_flip = float(config["train_augmentation"].get("horizontal_flip", 0.5))
     vertical_flip = float(config["train_augmentation"].get("vertical_flip", 0.5))
 
@@ -315,11 +297,7 @@ def main() -> None:
                 "train_samples": len(train_dataset),
                 "validation_samples": len(validation_dataset),
                 "wandb_url": run.url,
-                "init_checkpoint": (
-                    str(args.init_checkpoint)
-                    if args.init_checkpoint is not None
-                    else None
-                ),
+                "init_checkpoint": str(args.init_checkpoint) if args.init_checkpoint is not None else None,
             },
             ensure_ascii=False,
         ),
@@ -343,11 +321,7 @@ def main() -> None:
         best_ap = float(checkpoint["best_validation_ap_any"])
 
     no_improvement = 0
-    autocast = (
-        torch.autocast(device_type="cuda", dtype=torch.bfloat16)
-        if use_bf16
-        else nullcontext()
-    )
+    autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else nullcontext()
     for epoch in range(start_epoch, int(config["epochs"])):
         model.train()
         if args.mode == "linear_probe":
@@ -362,9 +336,9 @@ def main() -> None:
                 loss = criterion(logits, targets) / accumulation
             loss.backward()
             running_loss += float(loss.item()) * accumulation
-            should_update = (
-                batch_index + 1
-            ) % accumulation == 0 or batch_index + 1 == len(train_loader)
+            should_update = (batch_index + 1) % accumulation == 0 or batch_index + 1 == len(
+                train_loader
+            )
             if should_update:
                 optimizer.step()
                 scheduler.step()
@@ -385,11 +359,8 @@ def main() -> None:
                             "train/learning_rate_backbone": learning_rates.get(
                                 "backbone_decay", 0.0
                             ),
-                            "train/learning_rate_classifier": learning_rates[
-                                "classifier_decay"
-                            ],
-                            "train/epoch_fraction": epoch
-                            + (batch_index + 1) / len(train_loader),
+                            "train/learning_rate_classifier": learning_rates["classifier_decay"],
+                            "train/epoch_fraction": epoch + (batch_index + 1) / len(train_loader),
                         }
                     )
 
@@ -448,4 +419,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

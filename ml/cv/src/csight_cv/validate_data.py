@@ -21,10 +21,7 @@ def main() -> None:
         frames[split] = frame
         missing_images = None
         if args.check_images:
-            missing_images = sum(
-                not (args.dataset_root / path).is_file()
-                for path in frame["query_image"]
-            )
+            missing_images = sum(not (args.dataset_root / path).is_file() for path in frame["query_image"])
         report["splits"][split] = {
             "rows": len(frame),
             "expected_rows": expected_rows,
@@ -39,18 +36,14 @@ def main() -> None:
         ("train", "test"),
         ("validation", "test"),
     ):
-        overlap = set(frames[left]["item_identifier"]) & set(
-            frames[right]["item_identifier"]
-        )
+        overlap = set(frames[left]["item_identifier"]) & set(frames[right]["item_identifier"])
         report["item_overlap"][f"{left}__{right}"] = len(overlap)
     failures = [
         split
         for split, values in report["splits"].items()
         if not values["row_count_matches"] or values["missing_images"] not in {None, 0}
     ]
-    overlap_failures = [
-        key for key, value in report["item_overlap"].items() if value != 0
-    ]
+    overlap_failures = [key for key, value in report["item_overlap"].items() if value != 0]
     report["valid"] = not failures and not overlap_failures
     print(json.dumps(report, ensure_ascii=False, indent=2))
     if not report["valid"]:
@@ -59,4 +52,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

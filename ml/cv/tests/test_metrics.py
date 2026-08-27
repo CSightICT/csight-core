@@ -13,4 +13,3 @@ def test_binary_metrics_perfect_ranking() -> None:
     assert metrics["auroc"] == pytest.approx(1.0)
     assert metrics["recall_at_50_precision"] == pytest.approx(1.0)
     assert metrics["recall_at_1_fpr"] == pytest.approx(1.0)
-

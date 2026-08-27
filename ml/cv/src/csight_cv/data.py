@@ -68,9 +68,7 @@ def build_transform(
                     auto_augment,
                     {
                         "translate_const": int(image_size * 0.45),
-                        "img_mean": tuple(
-                            min(255, round(255 * value)) for value in IMAGENET_MEAN
-                        ),
+                        "img_mean": tuple(min(255, round(255 * value)) for value in IMAGENET_MEAN),
                         "interpolation": str_to_pil_interp("bicubic"),
                     },
                 )
@@ -84,9 +82,7 @@ def build_transform(
         return transforms.Compose(operations)
     return transforms.Compose(
         [
-            transforms.Resize(
-                (image_size, image_size), interpolation=InterpolationMode.BICUBIC
-            ),
+            transforms.Resize((image_size, image_size), interpolation=InterpolationMode.BICUBIC),
             transforms.ToTensor(),
             transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
         ]
@@ -133,18 +129,13 @@ class KaputtQueryDataset(Dataset[dict[str, Any]]):
             with Image.open(image_path) as image:
                 pixel_values = self.transform(image.convert("RGB"))
         except Exception as exc:
-            raise RuntimeError(
-                f"Failed to load capture_id={row['capture_id']}"
-            ) from exc
+            raise RuntimeError(f"Failed to load capture_id={row['capture_id']}") from exc
         return {
             "pixel_values": pixel_values,
             "label": torch.tensor(float(row["defect"]), dtype=torch.float32),
-            "major_label": torch.tensor(
-                float(row["major_defect"]), dtype=torch.float32
-            ),
+            "major_label": torch.tensor(float(row["major_defect"]), dtype=torch.float32),
             "capture_id": str(row["capture_id"]),
             "item_identifier": str(row["item_identifier"]),
             "item_material": str(row["item_material"]),
             "defect_types": str(row["defect_types"]),
         }
-

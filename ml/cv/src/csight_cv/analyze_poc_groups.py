@@ -42,9 +42,7 @@ def choose_threshold(frame: pd.DataFrame, target_precision: float) -> dict[str, 
     precision, recall, thresholds = precision_recall_curve(labels, scores)
     candidates = np.flatnonzero(precision[:-1] >= target_precision)
     if candidates.size == 0:
-        raise ValueError(
-            f"No validation threshold reaches precision {target_precision:.3f}"
-        )
+        raise ValueError(f"No validation threshold reaches precision {target_precision:.3f}")
     best = max(
         candidates.tolist(),
         key=lambda index: (recall[index], precision[index], thresholds[index]),
@@ -57,26 +55,18 @@ def choose_threshold(frame: pd.DataFrame, target_precision: float) -> dict[str, 
     }
 
 
-def wilson_interval(
-    successes: int, total: int, confidence: float = 0.95
-) -> tuple[float, float]:
+def wilson_interval(successes: int, total: int, confidence: float = 0.95) -> tuple[float, float]:
     if total == 0:
         return math.nan, math.nan
     z = NormalDist().inv_cdf(0.5 + confidence / 2)
     proportion = successes / total
     denominator = 1 + z**2 / total
     centre = (proportion + z**2 / (2 * total)) / denominator
-    margin = (
-        z
-        * math.sqrt(proportion * (1 - proportion) / total + z**2 / (4 * total**2))
-        / denominator
-    )
+    margin = z * math.sqrt(proportion * (1 - proportion) / total + z**2 / (4 * total**2)) / denominator
     return max(0.0, centre - margin), min(1.0, centre + margin)
 
 
-def classification_metrics(
-    frame: pd.DataFrame, threshold: float
-) -> dict[str, float | int]:
+def classification_metrics(frame: pd.DataFrame, threshold: float) -> dict[str, float | int]:
     labels = frame["defect"].astype(bool).to_numpy()
     scores = frame["defect_probability"].astype(float).to_numpy()
     predicted = scores >= threshold
@@ -129,16 +119,13 @@ def material_metrics(frame: pd.DataFrame, threshold: float) -> pd.DataFrame:
                     else math.nan
                 ),
                 "auroc": (
-                    float(roc_auc_score(labels, scores))
-                    if positives and negatives
-                    else math.nan
+                    float(roc_auc_score(labels, scores)) if positives and negatives else math.nan
                 ),
                 "recall_detection_rate": true_positive / max(positives, 1),
                 "recall_ci95_low": recall_low,
                 "recall_ci95_high": recall_high,
                 "precision": true_positive / max(true_positive + false_positive, 1),
-                "false_positive_rate": false_positive
-                / max(false_positive + true_negative, 1),
+                "false_positive_rate": false_positive / max(false_positive + true_negative, 1),
             }
         )
     return pd.DataFrame(rows)
@@ -235,9 +222,7 @@ def main() -> None:
     args.output_directory.mkdir(parents=True, exist_ok=True)
     materials.to_csv(args.output_directory / "test-by-material.csv", index=False)
     defect_types.to_csv(args.output_directory / "test-by-defect-type.csv", index=False)
-    combinations.to_csv(
-        args.output_directory / "test-by-material-defect-type.csv", index=False
-    )
+    combinations.to_csv(args.output_directory / "test-by-material-defect-type.csv", index=False)
     result = {
         "protocol": {
             "threshold_selected_on": "validation",
@@ -249,24 +234,16 @@ def main() -> None:
         "test_overall": overall,
         "best_eligible_material": eligible_materials.iloc[0].to_dict(),
         "best_eligible_defect_type": eligible_defects.iloc[0].to_dict(),
-        "best_eligible_material_defect_combination": (
-            eligible_combinations.iloc[0].to_dict()
-        ),
+        "best_eligible_material_defect_combination": (eligible_combinations.iloc[0].to_dict()),
         "item_identifier_support": {
             "identifiers": len(item_support),
             "median_samples": float(item_support["samples"].median()),
             "maximum_samples": int(item_support["samples"].max()),
             "both_classes_at_least_5": int(
-                (
-                    (item_support["positives"] >= 5)
-                    & (item_support["negatives"] >= 5)
-                ).sum()
+                ((item_support["positives"] >= 5) & (item_support["negatives"] >= 5)).sum()
             ),
             "both_classes_at_least_10": int(
-                (
-                    (item_support["positives"] >= 10)
-                    & (item_support["negatives"] >= 10)
-                ).sum()
+                ((item_support["positives"] >= 10) & (item_support["negatives"] >= 10)).sum()
             ),
         },
         "item_identifier_note": (
@@ -274,13 +251,10 @@ def main() -> None:
             "material categories are used instead."
         ),
     }
-    with (args.output_directory / "poc-analysis.json").open(
-        "w", encoding="utf-8"
-    ) as handle:
+    with (args.output_directory / "poc-analysis.json").open("w", encoding="utf-8") as handle:
         json.dump(result, handle, ensure_ascii=False, indent=2)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
     main()
-

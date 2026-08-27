@@ -6,9 +6,7 @@ import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
-def _recall_at_precision(
-    labels: np.ndarray, scores: np.ndarray, minimum: float
-) -> float:
+def _recall_at_precision(labels: np.ndarray, scores: np.ndarray, minimum: float) -> float:
     order = np.argsort(-scores)
     sorted_labels = labels[order]
     true_positives = np.cumsum(sorted_labels)
@@ -34,11 +32,7 @@ def binary_metrics(
     p = np.asarray(scores, dtype=np.float64)
     if len(y) == 0 or np.unique(y).size < 2:
         raise ValueError("Both defect classes are required for evaluation")
-    ap_major = (
-        float(average_precision_score(y_major, p))
-        if np.unique(y_major).size == 2
-        else math.nan
-    )
+    ap_major = float(average_precision_score(y_major, p)) if np.unique(y_major).size == 2 else math.nan
     return {
         "ap_any": float(average_precision_score(y, p)),
         "ap_major": ap_major,
@@ -46,4 +40,3 @@ def binary_metrics(
         "recall_at_50_precision": _recall_at_precision(y, p, 0.50),
         "recall_at_1_fpr": _recall_at_fpr(y, p, 0.01),
     }
-

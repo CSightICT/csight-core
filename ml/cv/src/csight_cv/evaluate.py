@@ -29,9 +29,7 @@ def main() -> None:
         config: dict[str, Any] = yaml.safe_load(handle)
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     mode = str(checkpoint["config"]["training_mode"])
-    model = Dinov2BinaryClassifier(
-        str(config["model_name"]), mode, gradient_checkpointing=False
-    )
+    model = Dinov2BinaryClassifier(str(config["model_name"]), mode, gradient_checkpointing=False)
     model.load_state_dict(checkpoint["model_state_dict"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device).eval()
@@ -54,11 +52,7 @@ def main() -> None:
     scores: list[float] = []
     rows: list[dict[str, Any]] = []
     use_bf16 = device.type == "cuda" and torch.cuda.is_bf16_supported()
-    autocast = (
-        torch.autocast(device_type="cuda", dtype=torch.bfloat16)
-        if use_bf16
-        else nullcontext()
-    )
+    autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else nullcontext()
     with torch.inference_mode():
         for batch in loader:
             with autocast:
@@ -84,16 +78,11 @@ def main() -> None:
     metrics = binary_metrics(labels, major_labels, scores)
     output_directory = args.checkpoint.parent / "evaluation"
     output_directory.mkdir(parents=True, exist_ok=True)
-    with (output_directory / f"{args.split}-metrics.json").open(
-        "w", encoding="utf-8"
-    ) as handle:
+    with (output_directory / f"{args.split}-metrics.json").open("w", encoding="utf-8") as handle:
         json.dump(metrics, handle, indent=2)
-    pd.DataFrame(rows).to_parquet(
-        output_directory / f"{args.split}-predictions.parquet"
-    )
+    pd.DataFrame(rows).to_parquet(output_directory / f"{args.split}-predictions.parquet")
     print(json.dumps(metrics, indent=2))
 
 
 if __name__ == "__main__":
     main()
-

@@ -67,6 +67,19 @@ PYTHONPATH=ml/cv/src python -m csight_cv.train \
   --wandb-mode online
 ```
 
+Continue from the E2 best model while resetting optimizer and scheduler state:
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.train \
+  --config ml/cv/configs/kaputt_dinov2_vits14_fullframe_e3_stage2.yaml \
+  --mode full_finetune \
+  --init-checkpoint /home/data/csight-cv-runs/<e2-run>/best.pt \
+  --wandb-mode online
+```
+
+`--resume` restores a full interrupted run. `--init-checkpoint` loads model
+weights only and deliberately starts a new optimizer and learning-rate schedule.
+
 When Kaputt image extraction is still running, use the guarded launcher. It
 waits for the exact official split counts, runs the image and split integrity
 checks, and only then starts full fine-tuning in the background:

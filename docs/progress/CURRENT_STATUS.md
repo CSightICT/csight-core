@@ -5,19 +5,20 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 `SPRINT_1_CASE_EVIDENCE.md`, 독립 감사 증거는 `SPRINT_1_CLOSEOUT.md`, 현재 분석 경로는
 `SPRINT_2_ANALYSIS_LLM.md`, 독립 감사 원장 `SPRINT_2_CLOSEOUT.md`, 실제 모델 기록
 `SPRINT_2_5_QWEN38_SERVING.md`, `SPRINT_3_VISION_ANALYSIS.md`, 최신 구현 원장
-`SPRINT_5C_CASE_RESOLUTION_CONSOLE.md`를 참조한다.
+`SPRINT_5C_CASE_RESOLUTION_CONSOLE.md`와 합성 시나리오 검증 계약
+`SCENARIO_POC_ACCEPTANCE_RUNNER.md`를 참조한다.
 
 ## 0. 문서 메타데이터
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 5C — Resolution·DRY-RUN·React 상담원 콘솔 내부 데모 PASS |
-| 진행 중 작업 | 외부 증거를 확보해 Limited PoC 승격 Gate를 평가 |
-| 마지막 갱신일 | 2026-08-27, Asia/Seoul |
+| 현재 완료 단계 | Sprint 5C 내부 데모 PASS; 합성 HDP-100 Scenario Tech PoC·Mock Binary Vision Live PASS |
+| 진행 중 작업 | Vision 담당자의 실제 E3 checkpoint package·private endpoint 인계 대기 |
+| 마지막 갱신일 | 2026-08-28, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 5B `4aefae6` 기능 브랜치 Push·PR 없음 |
-| 로컬 Git | `feature/sprint-5c-case-resolution-external-action`, 기능 기준점 `0a5f529`, 원격 기능 브랜치 백업 완료 |
-| 마지막 런타임 관측 | 2026-08-27, DB `0014` drift 0; 7 services healthy; 8 queues 정상; Resolution broker recovery·live `DRY_RUN` PASS |
+| 원격 저장소 | `CSightICT/csight-core` — Private, 기능 Commit `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`를 `origin/feature/scenario-poc-hard-plastic`에 백업; PR 없음 |
+| 로컬 Git | `feature/scenario-poc-hard-plastic`; 기능 기준점 `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`, 이후 상태 문서는 별도 closeout 원장으로 관리 |
+| 마지막 런타임 관측 | 2026-08-28, DB Head `0015`; 7 services healthy, 업무 Queue 8개 consumer 1/depth 0; live Run `fc249b72-92b4-4160-adee-2c9b0b66b092` `SUCCEEDED` |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -95,7 +96,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 5C React Console | PASS | OpenAPI 기반 상담원 화면과 5개 fixture-driven Playwright 시나리오; 3–5는 live causal E2E 아님 |
 | Sprint 5C Migration·Live | PASS | Head `0014`, drift 0, 7 services healthy, 8 queues 정상, live validated·broker recovery |
 | Sprint 5C Git Handoff | PASS | `0a5f529 feat: add case resolution and PoC console`, 원격 5C 기능 브랜치 백업 완료; PR 없음 |
-| Limited PoC 승격 | BLOCKED | 실제 Data/Policy/Vision·Privacy 승인·Shadow 비교·Qwen 재평가 증거 미확보 |
+| HDP-100 합성 Scenario Pack | OFFLINE_READY | fictional product, 36 synthetic Case/Gold, 10 clause/7 rule, 5 demo, acceptance 9/9 |
+| E3 보고서 지표 | REPORTED_NOT_REPRODUCED | AP 0.884863, AUROC 0.931604, threshold 0.8984375는 담당자 보고 수치; CSight 재현 아님 |
+| Binary Vision Runtime | MOCK_ONLY | image-level any-defect 계약과 threshold 해석만 Mock으로 live 연결 |
+| 실제 E3 Runtime | BLOCKED | 실제 `best.pt` checkpoint package와 private serving endpoint 부재 |
+| Vision Assessment Migration | PASS | DB Head `0015`, migration lifecycle·drift와 append-only assessment persistence 통과 |
+| Parallel Text/Vision Join | PASS | parent `FOR UPDATE` 직렬화와 terminal redelivery reconciliation; 새 live Run과 기존 orphan 복구 통과 |
+| HDP-100 Git Handoff | PASS | `dfd6db2 feat: add hard-plastic scenario PoC`, 동일 원격 기능 브랜치 SHA 확인; PR·`develop` 병합 미실행 |
+| Limited PoC 승격 | BLOCKED | 실제 기업 Data/Policy는 오늘 범위에서 의도적으로 제외; Privacy·Vision·Shadow·Qwen 증거도 미확보 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -342,6 +350,26 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 5개 demo의 증거 수준을 구분하고 Scenario 3–5를 fixture-driven UI/component-backed로 기록
 - [x] 현재 판정을 `SYNTHETIC_MOCK_SIMULATION_DEMO`로 유지하고 Limited PoC 외부 증거를 미해결로 기록
 - [x] `0a5f529 feat: add case resolution and PoC console` Commit과 동일 원격 기능 브랜치 백업, PR 없음
+- [x] 사용자 소유 루트 문서 두 개 미수정·미삭제·미Stage
+
+## 5.10. HDP-100 합성 시나리오 기술 PoC 진행 체크리스트
+
+- [x] 가상 브랜드의 fictional `HDP-100` 수동 펌프형 경질 플라스틱 상품 범위 고정
+- [x] 실제 기업·고객 자료 없이 synthetic Case 36건과 1:1 Human Gold 36건 구성
+- [x] version/effective date를 가진 synthetic policy 10 clause와 deterministic rule 7개 구성
+- [x] DRY-RUN·입력 누락·기능 증거 요청·Safety·Vision Timeout의 demo 5개 고정
+- [x] pack artifact/hash/reference/safety 경계를 acceptance runner로 offline 9/9 검증
+- [x] E3를 위치·유형 없는 `BINARY_ANY_DEFECT_CLASSIFICATION` 후보로만 명세
+- [x] 담당자 보고 AP 0.884863, AUROC 0.931604, threshold 0.8984375를 출처 경계와 함께 기록
+- [x] 위 E3 지표를 `report_metrics_reproduced_by_csight=false`로 표시하고 CSight 성능 주장 차단
+- [x] score `>= 0.8984375`는 `HIGH_CONFIDENCE_DEFECT_CANDIDATE`, 미만은 정상 판정이 아님을 고정
+- [x] binary image assessment를 기존 Detection과 분리하고 Mock 계약만 live 연결
+- [x] `20260827_0015_vision_image_assessment`를 현재 DB Head로 적용
+- [x] 실제 기업 Data/Policy는 오늘 시나리오 범위에서 의도적으로 제외
+- [ ] 실제 `best.pt` checkpoint package와 private E3 serving endpoint 확보
+- [ ] 실제 E3 이미지 inference, immutable model identity, latency/error/threshold drift를 external gate로 검증
+- [x] parallel Text/Vision terminal join race 수정본의 live causal 재검증 완료
+- [x] 현재 branch의 정확한 default/integration/static/runtime 수치를 별도 원장 행으로 추가
 - [x] 사용자 소유 루트 문서 두 개 미수정·미삭제·미Stage
 
 ## 6. GitHub 협업 구축 체크리스트
@@ -593,9 +621,53 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-27 | Sprint 5C Commit·Remote Backup | PASS | `0a5f529 feat: add case resolution and PoC console`; `origin/feature/sprint-5c-case-resolution-external-action` Push, PR 없음 |
 | 2026-08-27 | Sprint 5C Limited PoC Gate | BLOCKED | 구현 Gate는 통과했으나 실제 Data/Policy/Vision·Privacy·Shadow·Qwen 외부 증거 미확보 |
 | 2026-08-27 | Current Status HTML | PASS | 단일 HTML 200 응답, 외부 asset 0, 반응형·인쇄/PDF 레이아웃과 내부 데모/PoC Gate 구분 |
+| 2026-08-27 | HDP-100 Scenario Dataset | PASS_WITH_SCOPE | fictional product, synthetic Case/Gold 36/36, demo/dev/test 5/21/10; 실제 기업·고객 Data 0 |
+| 2026-08-27 | HDP-100 Synthetic Policy | PASS_WITH_SCOPE | version 1.0.0, effective 2026-08-27, 10 clauses, 7 rules; 법률·상업 효력 없음 |
+| 2026-08-27 | HDP-100 Offline Acceptance | PASS | 필수 artifact/hash, 36 unique Case/Gold, policy, 5 safety demo, binary model boundary 9/9 |
+| 2026-08-27 | E3 Offline Report Metrics | REPORTED_NOT_REPRODUCED | AP 0.884863, AUROC 0.931604, threshold 0.8984375; 담당자 보고 수치이며 CSight 미재현 |
+| 2026-08-27 | Binary Vision Contract Live | PASS_WITH_SCOPE | 실제 E3가 아닌 deterministic Mock any-defect score/threshold 계약만 live 연결 |
+| 2026-08-27 | Actual E3 Runtime | BLOCKED | `best.pt` checkpoint package, serving endpoint와 endpoint reference 모두 NOT_AVAILABLE |
+| 2026-08-27 | Vision Assessment DB | HEAD_APPLIED | 현재 PostgreSQL Head `0015`; `vision_image_assessments` additive schema |
+| 2026-08-27 | Parallel Join Focused Regression | PASS_WITH_SCOPE | 실제 PostgreSQL barrier 회귀 1 passed/14 deselected; live causal 재검증 완료를 뜻하지 않음 |
+| 2026-08-27 | Parallel Text/Vision Join | PENDING_REVERIFICATION | live race 수정 후 재검증 중; 현재 branch 최종 causal 결과와 수치 미확정 |
+| 2026-08-27 | Current Branch Full Regression | PENDING_REVERIFICATION | 기존 Sprint 5C의 554 default/51 integration 수치는 보존; HDP-100 branch 새 수치로 대체하지 않음 |
+| 2026-08-27 | HDP-100 Backend Static | PASS | Ruff, Format 365, Pyright 0 errors·0 warnings·0 informations |
+| 2026-08-27 | HDP-100 Default Regression | PASS | 585 passed, 65 deselected, 36 non-blocking deprecation warnings |
+| 2026-08-27 | HDP-100 Integration | PASS | 54 passed, 5 external-vLLM GPU skipped, 591 deselected; disposable DB 잔존 0 |
+| 2026-08-27 | HDP-100 Frontend | PASS | lint·TypeScript·OpenAPI sync·production build, Vitest 9, Playwright fixture scenario 5 |
+| 2026-08-27 | HDP-100 Live Binary Vision | PASS_WITH_SCOPE | 새 parallel Run `18451c65-ec11-4beb-a814-a52f695f8505` SUCCEEDED; Result/Assessment/Detection 1/1/0, threshold 0.8984375, Mock score 0.965449 |
+| 2026-08-27 | Parallel Join Orphan Recovery | PASS | 기존 orphan Run `e5d01e06-5f93-44b5-959e-1c18da81eb71`의 terminal event redelivery가 NOOP으로 parent를 SUCCEEDED 복구; Result/Assessment/Detection 1/1/0 |
+| 2026-08-27 | HDP-100 Runtime Health | PASS | DB Head `0015`, 7 services healthy, 8 application queues consumer 1/depth 0, API·Web HTTP 200 |
+| 2026-08-28 | HDP-100 Backend Static Reverification | PASS | Ruff PASS, Format 365 files, Pyright 0 |
+| 2026-08-28 | HDP-100 Default Regression Reverification | PASS | 603 passed, 65 deselected |
+| 2026-08-28 | HDP-100 Integration Reverification | PASS | 54 passed, 5 external-GPU skipped, 609 deselected; disposable DB 잔존 0 |
+| 2026-08-28 | HDP-100 Frontend Reverification | PASS | lint·typecheck·generated OpenAPI sync·production build, Vitest 10, Playwright fixture scenario 5 |
+| 2026-08-28 | HDP-100 Scenario Offline Reverification | PASS | acceptance 9/9; pack hash `6be7ad00ba4b92bd99fbcb0ab6c7b9163e387aa8ccd734751c479a2352c24ef1` |
+| 2026-08-28 | Actual E3 Runtime Reverification | BLOCKED | endpoint, checkpoint package, endpoint reference 부재; runtime probe 미실행 |
+| 2026-08-28 | HDP-100 Live Binary Vision Reverification | PASS | Run `fc249b72-92b4-4160-adee-2c9b0b66b092` SUCCEEDED; Mock score 0.961864, threshold 0.8984375, Detection 0, automatic Decision false |
+| 2026-08-28 | HDP-100 Runtime Health Reverification | PASS | DB Head `0015`, 7 services healthy, 8 application queues consumer 1/depth 0 |
+| 2026-08-28 | HDP-100 HTTP Surfaces | PASS | API·Web·상태 HTML 각각 HTTP 200 |
+| 2026-08-28 | HDP-100 Git Commit·Remote Backup | NOT_RUN | 로컬 변경은 최종 검증됐으나 기능 Commit과 원격 기능 브랜치 Push는 아직 pending |
+| 2026-08-28 | HDP-100 Git Commit·Remote Backup | PASS | `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d feat: add hard-plastic scenario PoC`; local·`origin/feature/scenario-poc-hard-plastic` 동일 SHA, PR·`develop` 병합 미실행 |
 
 ## 8. 미해결 사항과 사용자 결정
 
+- HDP-100은 가상 브랜드의 fictional product이고 36 Case/Gold, 10 clause/7 rule, 5 demo가 모두
+  합성이다. Offline acceptance 9/9는 artifact와 안전 계약의 완전성을 뜻하며 실제 고객/상품
+  성능이나 실제 기업 정책 타당성을 뜻하지 않는다.
+- E3 AP 0.884863, AUROC 0.931604, threshold 0.8984375는 담당자가 제공한 offline 보고서 수치다.
+  CSight가 checkpoint로 재계산하거나 prediction artifact를 독립 재현하지 않았으므로
+  `SUPPLIED_OFFLINE_REPORT_WITH_LIMITATIONS`를 유지한다.
+- E3 score가 0.8984375 이상이면 고신뢰 `defect candidate`일 뿐 결함 유형·위치·최종 결정을
+  뜻하지 않는다. 미만은 `정상`이나 결함 없음이 아니라 고신뢰 후보 기준 미만이다.
+- 현재 live 연결은 deterministic Mock binary contract뿐이다. 실제 E3 `best.pt` package와 private
+  endpoint와 endpoint reference가 없고 runtime probe도 실행하지 않아 actual E3 runtime은
+  `RUNTIME_VISION_INTEGRATION_BLOCKED`다.
+- parallel Text/Vision terminal join race는 parent Run row lock과 terminal redelivery
+  reconciliation으로 수정했다. PostgreSQL 동시성 회귀와 새 live Run이 통과했고, 실제로
+  고립됐던 기존 Run도 동일 event 재전달의 `NOOP` 경로에서 `SUCCEEDED`로 복구됐다.
+- 실제 기업 Data와 실제 기업 Policy 반입은 오늘 HDP-100 합성 시나리오 범위에서 의도적으로
+  제외했다. 따라서 실제 고객·정책·Privacy·Shadow 근거를 확보했다는 주장으로 승격하지 않는다.
 - Sprint 5C 구현과 내부 데모 Gate는 통과했지만 현재 판정은
   `SYNTHETIC_MOCK_SIMULATION_DEMO`다. 실제 기업 정책·Case·사용자 Query 분포와 ROI를 검증하지
   않았으며 Local LLM은 `LOCAL_POC`, Vision은 `MOCK_QUALIFIED`로 표시한다.
@@ -607,6 +679,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 5개 Playwright demo는 intercepted API fixture를 사용한다. Scenario 1은 별도 live backend causal
   경로가 있고 Scenario 2는 PostgreSQL integration 경로가 있지만, Scenario 3–5는
   fixture-driven UI/component-backed이며 다섯 건 모두를 live causal E2E로 해석하면 안 된다.
+- HDP-100 기능은 `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`로 Commit했고 동일 원격 기능
+  브랜치 SHA를 확인했다. PR 생성과 `develop` 병합은 아직 실행하지 않았다.
 
 - 저장소를 Private로 유지하는 현재 플랜에서는 `main`·`develop` Branch protection API가
   HTTP 403을 반환한다. 저장소 공개 전환 없이 지원 플랜을 적용할지 Issue #1에서 결정한다.
@@ -724,6 +798,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Sprint 5C Resolution·External Action DRY-RUN, Review Report·KPI와 React 상담원 UI를 구현한다.
 - [x] Sprint 5C 최종 Diff를 검토하고 `0a5f529` 기능 Commit·closeout 원장을 원격 기능 브랜치에 백업한다. PR과
   `develop` 병합은 거버넌스 결정 전까지 보류한다.
+- [x] parallel Text/Vision join race 수정본을 live Mock binary 경로에서 재실행하고 terminal
+  Run/Stage/Result/Assessment row와 duplicate 결과를 인과적으로 확인한다.
+- [x] 재검증이 끝난 뒤에만 HDP-100 branch의 static/default/integration/migration/runtime 정확한
+  수치를 새 원장 행에 추가한다. 기존 Sprint 5C 554/51 수치는 덮어쓰지 않는다.
+- [x] HDP-100 변경을 `dfd6db2 feat: add hard-plastic scenario PoC`로 Commit하고 동일 원격 기능
+  브랜치 SHA를 확인한다. PR과 `develop` 병합은 별도 결정 전까지 보류한다.
+- [ ] 실제 `best.pt` checkpoint package와 private E3 endpoint를 확보한 뒤
+  `external_vision` Gate로 model identity, threshold, inference와 failure path를 검증한다.
 - [ ] 고객 후보, 상품군 1개, 결함 유형 2~3개와 비식별 실제 Case/Human Gold 30건 이상을 확보한다.
 - [ ] 버전·효력일이 있는 실제 기업 정책과 실제 Policy/Case/User Query 분포 평가를 확보한다.
 - [ ] Retention·삭제·EXIF 제거·접근권한 승인을 받고 증거 artifact ID/hash를 Gate에 연결한다.
@@ -1318,3 +1400,88 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 구현: 외부 asset이나 네트워크 의존성이 없는 standalone HTML, 반응형 화면과 인쇄/PDF 지원
 - 검증: 로컬 exact URL HTTP 200, 핵심 판정·검증 수치·Git 기준점 포함, whitespace diff PASS
 - Git 안전: 사용자 소유 루트 문서 두 개는 수정·삭제·Stage하지 않음
+
+### 2026-08-27 — HDP-100 Synthetic Scenario PoC and Binary Vision Contract
+
+- 판정: `SCENARIO_TECH_POC_READY` / offline pack `OFFLINE_SCENARIO_PACK_READY`; 실제 E3 runtime은
+  `RUNTIME_VISION_INTEGRATION_BLOCKED`. Limited PoC 판정은 계속 `BLOCKED`
+- Scope: 가상 브랜드의 fictional `HDP-100` 수동 펌프형 디스펜서. 실제 기업·고객 Data와 실제
+  기업 Policy는 오늘 범위에서 의도적으로 사용하지 않음
+- Artifacts: synthetic Case/Gold 36/36, split demo/dev/test 5/21/10, synthetic policy version
+  1.0.0의 10 clauses/7 rules, 대표 demo 5개, artifact/pack hash 연결
+- Offline verification: required artifact, JSON, synthetic boundary, hashes, Case 수, policy,
+  Gold linkage, demo boundaries, binary model manifest의 9 checks 모두 PASS
+- E3 evidence: epoch 10 `best.pt` 후보의 AP 0.884863, AUROC 0.931604, threshold 0.8984375는
+  담당자 제공 보고서에서 전사한 수치이며 `report_metrics_reproduced_by_csight=false`
+- Threshold boundary: score `>= 0.8984375`는 위치·유형 없는 고신뢰 결함 후보다. 더 낮은
+  score는 `BELOW_HIGH_CONFIDENCE_THRESHOLD`이며 정상이나 결함 없음 판정이 아니다.
+- Runtime: image-level any-defect assessment와 Detection을 분리하고 deterministic Mock binary
+  contract만 live 연결. 실제 `best.pt`, checkpoint package, serving endpoint/reference는 부재
+- Persistence: additive `20260827_0015_vision_image_assessment`가 현재 DB Head. 실제 E3 metric을
+  runtime prediction에 복사하지 않고 score/threshold/outcome만 append-only 저장
+- Pending failure record: parallel Text/Vision terminal join race를 수정했으며 live causal
+  재검증이 진행 중. 실제 PostgreSQL barrier focused regression은 1 passed/14 deselected지만,
+  재검증 완료 전 현재 branch의 새 전체 회귀 수치와 최종 live runtime 판정은
+  `PENDING_REVERIFICATION`; 기존 Sprint 5C 554/51 결과는 역사적 기준점으로 보존
+- Claim boundary: 실제 E3 추론, HDP-100 제품별 정확도, 실제 고객 성능, 정상 자동 판정,
+  실제 기업 정책 검증, 자동 승인, 비용 절감·ROI는 주장하지 않음
+- Documentation verification: acceptance/model/manifest/policy JSON 근거 대조 PASS, HTML5 parse
+  error·중복 ID 0, 필수 section 10개 확인, 로컬 HTTP 200, whitespace diff PASS. Browser visual
+  QA는 연결 가능한 browser runtime이 없어 이번 세션에서 수행하지 못함
+- Git safety: `feature/scenario-poc-hard-plastic`, Base `30297c2`, 현재 변경 미Commit.
+  `CSight_MASTER_HANDOFF_2026-08-27.md`와 `kaputt_best_vision_architecture.md`는 제외
+
+### 2026-08-27 — HDP-100 Scenario PoC Final Regression and Live Recovery
+
+- Root cause: parallel Text/Vision completion transactions at PostgreSQL `READ COMMITTED` each
+  observed its own terminal Stage and the peer's uncommitted `RUNNING` Stage, so neither closed the
+  parent Run. Tenant/case-scoped parent `FOR UPDATE` locking now serializes claim, completion,
+  retry/failure, exhaustion, and Outbox terminal-failure joins.
+- Recovery: terminal Stage redelivery now reconciles an orphan `RUNNING` parent without creating a
+  second Result. The previously reproduced Run `e5d01e06-5f93-44b5-959e-1c18da81eb71` recovered
+  through an actual worker `NOOP` delivery to `SUCCEEDED`, with Result/Assessment/Detection 1/1/0.
+- Fresh live path: Run `18451c65-ec11-4beb-a814-a52f695f8505` completed Text and Mock binary Vision
+  in parallel as `SUCCEEDED`. It persisted exactly one image assessment, no localized Detection,
+  threshold 0.8984375 and deterministic synthetic score 0.965449; normal classification and
+  automatic Decision remained false.
+- Regression: Ruff PASS, Format 365, Pyright 0; Default 585 passed/65 deselected; disposable
+  Integration 54 passed/5 external-vLLM GPU skipped/591 deselected with leftover DB 0.
+- Frontend: lint, TypeScript, generated OpenAPI sync and production build PASS; Vitest 9 and
+  Playwright intercepted-fixture scenarios 5 PASS.
+- Runtime: latest backend/web images rebuilt, PostgreSQL Head `0015`, seven services healthy,
+  eight application queues consumer 1/depth 0, five synthetic demo Cases seeded idempotently.
+- Verdict: `SCENARIO_TECH_POC_READY` with `MOCK_CONTRACT_ONLY_NOT_E3_INFERENCE`. Actual E3 remains
+  `RUNTIME_VISION_INTEGRATION_BLOCKED` until the Vision owner supplies the checkpoint package,
+  immutable identity and private serving endpoint.
+- Git safety: user-owned root documents remain unmodified and excluded; feature Commit and remote
+  branch backup are the next closeout action, with no PR or `develop` merge.
+
+### 2026-08-28 — HDP-100 Final Reverification Closeout
+
+- Backend static: Ruff PASS, Format 365 files, Pyright 0.
+- Backend regression: default 603 passed/65 deselected; disposable PostgreSQL Integration 54
+  passed/5 external-GPU skipped/609 deselected, leftover DB 0.
+- Frontend: lint, typecheck, generated OpenAPI sync and production build PASS; Vitest 10 and
+  Playwright intercepted-fixture scenarios 5 PASS. 이 수치는 다섯 시나리오 모두의 live causal
+  E2E를 뜻하지 않는다.
+- Scenario pack: offline acceptance 9/9, canonical pack hash
+  `6be7ad00ba4b92bd99fbcb0ab6c7b9163e387aa8ccd734751c479a2352c24ef1`.
+- Live Mock binary path: Run `fc249b72-92b4-4160-adee-2c9b0b66b092` `SUCCEEDED`, score
+  0.961864, threshold 0.8984375, localized Detection 0, automatic Decision false.
+- Runtime: PostgreSQL Head `0015`, seven services healthy, eight application queues consumer
+  1/depth 0, API·Web·상태 HTML HTTP 200.
+- External boundary: 실제 E3 endpoint, checkpoint package와 endpoint reference가 없고 runtime
+  probe도 실행하지 않아 `RUNTIME_VISION_INTEGRATION_BLOCKED`를 유지한다.
+- Git safety: HDP-100 기능 Commit과 원격 기능 브랜치 백업은 아직 `NOT_RUN`이다. 사용자 소유
+  `CSight_MASTER_HANDOFF_2026-08-27.md`와 `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지
+  않았다.
+
+### 2026-08-28 — HDP-100 Feature Commit and Remote Backup
+
+- Commit: `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d feat: add hard-plastic scenario PoC`.
+- Branch: local `feature/scenario-poc-hard-plastic`와
+  `origin/feature/scenario-poc-hard-plastic`가 동일 SHA임을 확인했다.
+- Governance boundary: PR 생성과 `develop` 병합은 실행하지 않았다.
+- Documentation boundary: 이 상태 문서 갱신 자체의 Commit SHA는 아직 없으므로 기록하지 않는다.
+- Git safety: 사용자 소유 `CSight_MASTER_HANDOFF_2026-08-27.md`와
+  `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지 않았다.

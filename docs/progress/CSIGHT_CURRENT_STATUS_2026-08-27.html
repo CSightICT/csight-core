@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="CSight Sprint 5C 내부 데모 완료 현황과 Limited PoC 승격 계획">
-  <title>CSight 프로젝트 현황 · 2026-08-27</title>
+  <meta name="description" content="2026-08-28 재검증된 CSight 합성 HDP-100 기술 PoC와 실제 E3 미연결 경계">
+  <title>CSight HDP-100 합성 기술 PoC 현황 · 2026-08-28 재검증</title>
   <style>
     :root {
       color-scheme: light;
@@ -336,8 +336,9 @@
 <body>
   <header class="topbar">
     <div class="shell topbar-inner">
-      <div class="brand"><span class="brand-mark">CS</span> CSight 프로젝트 현황</div>
+      <div class="brand"><span class="brand-mark">CS</span> CSight · 오늘의 HDP-100 데모 상태</div>
       <div class="top-actions">
+        <a href="http://127.0.0.1:8080/login">상담원 콘솔 열기</a>
         <a href="#next">다음 할 일</a>
         <button class="print-button" type="button" onclick="window.print()">인쇄 / PDF</button>
       </div>
@@ -348,20 +349,20 @@
     <section class="hero" aria-labelledby="page-title">
       <div class="hero-grid">
         <div>
-          <p class="eyebrow">Sprint 5C Closeout · 2026-08-27</p>
-          <h1 id="page-title">내부 데모는 완료.<br>이제 실제 PoC 증거 단계.</h1>
-          <p class="hero-copy">Human Review 이후 Resolution과 안전한 DRY-RUN, 상담원 콘솔, 최종 보고서와 KPI까지 구현·검증했습니다. 실제 고객 데이터와 정책, 개인정보 승인, 모델 평가가 확보되기 전에는 실제 PoC 성능으로 주장하지 않습니다.</p>
-          <div class="verdict"><span class="verdict-dot"></span> SYNTHETIC_MOCK_SIMULATION_DEMO</div>
+          <p class="eyebrow">Final Reverification · 2026-08-28</p>
+          <h1 id="page-title">합성 데모 팩은 준비.<br>실제 E3는 아직 연결 전.</h1>
+          <p class="hero-copy">가상의 HDP-100 상품으로 36개 합성 문의와 5개 안전 시나리오를 보여줄 수 있습니다. 현재 화면에 연결된 Vision은 Mock 이진 계약뿐이며, 실제 E3 모델 추론과 제품 성능은 주장할 수 없습니다.</p>
+          <div class="verdict"><span class="verdict-dot"></span> SCENARIO TECH POC READY · MOCK LIVE PASS</div>
         </div>
         <aside class="hero-side" aria-label="현재 기준점">
           <div class="hero-side-card">
-            <strong>현재 완료 기준점</strong>
-            <span>Sprint 5C 내부 시뮬레이션 데모</span>
+            <strong>오늘 보여줄 수 있는 범위</strong>
+            <span>Fictional HDP-100 합성 기술 데모</span>
           </div>
           <div class="hero-meta">
-            <span>DB Head · 0014</span>
-            <span>기능 기준점 · 0a5f529</span>
-            <span>Closeout · 499c188</span>
+            <span>DB Head · 0015</span>
+            <span>Vision · Mock binary only</span>
+            <span>Actual E3 · BLOCKED</span>
           </div>
         </aside>
       </div>
@@ -369,173 +370,201 @@
 
     <nav class="quick-nav" aria-label="페이지 바로가기">
       <a href="#summary">한눈에 보기</a>
-      <a href="#verification">검증 결과</a>
-      <a href="#flow">업무 흐름</a>
-      <a href="#scope">구현 범위</a>
-      <a href="#demo">데모 시나리오</a>
-      <a href="#gate">PoC 승격 Gate</a>
+      <a href="#verification">합성 팩 수치</a>
+      <a href="#claims">보여줄 것 / 금지 주장</a>
+      <a href="#model">E3 보고서 경계</a>
+      <a href="#threshold">점수 해석</a>
+      <a href="#demo">데모 5개</a>
+      <a href="#pending">현재 미완료</a>
       <a href="#next">다음 순서</a>
-      <a href="#git">Git 인계</a>
     </nav>
   </div>
 
   <main class="shell">
     <section id="summary">
       <div class="section-head">
-        <div><p class="section-kicker">Executive Summary</p><h2>한눈에 보는 현재 상황</h2></div>
-        <p class="section-note">구현 완료와 외부 승격 조건을 분리했습니다.</p>
+        <div><p class="section-kicker">Executive Summary</p><h2>오늘 상태, 네 문장으로</h2></div>
+        <p class="section-note">준비된 합성 데모와 아직 없는 실제 모델 증거를 분리했습니다.</p>
       </div>
       <div class="status-grid">
         <article class="status-card accent-green">
-          <span class="label">SPRINT 5B</span>
-          <span class="value">신뢰성 Closeout 완료</span>
-          <span class="detail">Outbox 복구·backoff·worker fencing·hash 재검증까지 완료</span>
+          <span class="label">OFFLINE PACK</span>
+          <span class="value">9 / 9 준비 완료</span>
+          <span class="detail">36 Case·Gold, 합성 정책, 5개 데모와 해시 검증</span>
         </article>
         <article class="status-card accent-blue">
-          <span class="label">SPRINT 5C</span>
-          <span class="value">내부 데모 구현 완료</span>
-          <span class="detail">Resolution, DRY-RUN, React 콘솔, Report, KPI</span>
+          <span class="label">LIVE VISION</span>
+          <span class="value">Mock 계약만 연결</span>
+          <span class="detail">이진 점수·threshold·안전한 화면 표시를 검증</span>
         </article>
         <article class="status-card accent-amber">
-          <span class="label">LIMITED POC</span>
-          <span class="value">외부 증거 대기</span>
-          <span class="detail">실제 Case·정책·승인·Vision/Qwen·Shadow Mode 필요</span>
+          <span class="label">ACTUAL E3</span>
+          <span class="value">실행 차단</span>
+          <span class="detail">checkpoint·endpoint·reference가 없고 probe도 미실행</span>
         </article>
         <article class="status-card accent-dark">
-          <span class="label">GIT</span>
-          <span class="value">기능 브랜치 백업 완료</span>
-          <span class="detail">PR과 develop 병합은 거버넌스 결정 전까지 보류</span>
+          <span class="label">PARALLEL JOIN</span>
+          <span class="value">복구 검증 완료</span>
+          <span class="detail">새 live Run fc249b72… SUCCEEDED</span>
         </article>
       </div>
     </section>
 
     <section id="verification">
       <div class="section-head">
-        <div><p class="section-kicker">Verification</p><h2>검증 결과</h2></div>
-        <p class="section-note">기본 경로에서 외부 GPU를 호출하지 않았습니다.</p>
+        <div><p class="section-kicker">Synthetic Pack</p><h2>오늘 추가한 검증 가능한 구성</h2></div>
+        <p class="section-note">모든 숫자는 fictional HDP-100 합성 팩의 구성 수치입니다.</p>
       </div>
       <div class="metrics">
-        <article class="metric"><strong>554</strong><span>Backend 기본 테스트</span><small>62 deselected</small></article>
-        <article class="metric"><strong>51</strong><span>Integration 통과</span><small>외부 GPU 5 skipped</small></article>
-        <article class="metric"><strong>6</strong><span>Frontend 단위 테스트</span><small>Vitest</small></article>
-        <article class="metric"><strong>5</strong><span>화면 시나리오</span><small>Playwright</small></article>
-        <article class="metric"><strong>7</strong><span>Healthy 서비스</span><small>실행 환경 관측</small></article>
-        <article class="metric"><strong>8</strong><span>업무 Queue 정상</span><small>consumer 1 · depth 0</small></article>
+        <article class="metric"><strong>36</strong><span>합성 Case</span><small>demo 5 · dev 21 · test 10</small></article>
+        <article class="metric"><strong>36</strong><span>1:1 Human Gold</span><small>실제 상담 기록 아님</small></article>
+        <article class="metric"><strong>10</strong><span>합성 정책 Clause</span><small>법률·상업 효력 없음</small></article>
+        <article class="metric"><strong>7</strong><span>결정론적 Rule</span><small>사람 최종 결정 유지</small></article>
+        <article class="metric"><strong>5</strong><span>대표 데모</span><small>안전 경계 포함</small></article>
+        <article class="metric"><strong>9/9</strong><span>Offline Acceptance</span><small>artifact·hash·연결성</small></article>
       </div>
-      <div class="notice">Ruff·Format·Pyright, OpenAPI 동기화와 Production build가 모두 통과했습니다. PostgreSQL은 Head <strong>0014</strong>, schema drift 0입니다.</div>
+      <div class="notice"><strong>2026-08-28 최종 재검증:</strong> Ruff PASS·Format 365·Pyright 0, Backend 603 passed/65 deselected, Integration 54 passed·외부 GPU 5 skipped/609 deselected·임시 DB 0, Web lint·typecheck·OpenAPI·build PASS, Vitest 10·Playwright 5가 통과했습니다. DB Head 0015, 7개 서비스, consumer 1/depth 0인 업무 Queue 8개, API·Web·이 상태 HTML도 HTTP 200입니다.<br><strong>Offline pack hash:</strong> <code>6be7ad00ba4b92bd99fbcb0ab6c7b9163e387aa8ccd734751c479a2352c24ef1</code></div>
+    </section>
+
+    <section id="claims">
+      <div class="section-head">
+        <div><p class="section-kicker">Claim Boundary</p><h2>오늘 보여줄 수 있는 것과 말하면 안 되는 것</h2></div>
+      </div>
+      <div class="two-col">
+        <article class="panel">
+          <h3>오늘 보여줄 수 있음</h3>
+          <ul class="clean-list">
+            <li>가상 HDP-100 문의 36건과 구조화된 Human Gold</li>
+            <li>합성 정책 10개 Clause와 7개 안전 Rule의 연결</li>
+            <li>Mock any-defect 점수와 고정 threshold의 화면 표시</li>
+            <li>사람 검토, 입력 누락 보류, Safety 권한 차단</li>
+            <li>실제 부작용이 없는 Resolution과 DRY-RUN 결과</li>
+            <li>Vision 실패 시 Partial Success와 사람 검토 경로</li>
+          </ul>
+        </article>
+        <article class="panel">
+          <h3>오늘 주장하면 안 됨</h3>
+          <ul class="clean-list excluded">
+            <li>실제 E3 checkpoint로 추론했다는 주장</li>
+            <li>HDP-100 또는 실제 고객 환경에서의 정확도</li>
+            <li>threshold 미만 이미지를 정상으로 판정</li>
+            <li>이진 점수로 결함 유형·위치·원인을 확정</li>
+            <li>실제 기업 정책이나 고객 데이터로 검증했다는 주장</li>
+            <li>자동 승인, 실제 외부 실행, 비용 절감 또는 ROI</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="model">
+      <div class="section-head">
+        <div><p class="section-kicker">Supplied E3 Report</p><h2>보고서에서 받은 E3 수치</h2></div>
+        <p class="section-note">담당자 보고 수치이며 CSight가 best.pt로 재현한 결과가 아닙니다.</p>
+      </div>
+      <div class="status-grid">
+        <article class="status-card accent-blue"><span class="label">ANY-DEFECT AP</span><span class="value">0.884863</span><span class="detail">담당자 제공 held-out report</span></article>
+        <article class="status-card accent-blue"><span class="label">AUROC</span><span class="value">0.931604</span><span class="detail">담당자 제공 held-out report</span></article>
+        <article class="status-card accent-amber"><span class="label">FROZEN THRESHOLD</span><span class="value">0.8984375</span><span class="detail">validation에서 선택됐다고 보고됨</span></article>
+        <article class="status-card accent-dark"><span class="label">CSIGHT REPRODUCTION</span><span class="value">미재현</span><span class="detail">checkpoint·endpoint·독립 prediction 실행 없음</span></article>
+      </div>
+      <div class="notice">E3는 위치나 유형을 찾는 Detection 모델이 아니라 image-level <strong>binary any-defect candidate</strong>입니다. 보고서의 dataset-level 수치를 개별 이미지 결과에 복사하지 않습니다.</div>
+    </section>
+
+    <section id="threshold">
+      <div class="section-head">
+        <div><p class="section-kicker">Safe Interpretation</p><h2>0.8984375를 읽는 법</h2></div>
+      </div>
+      <div class="two-col">
+        <article class="panel">
+          <h3>점수 ≥ 0.8984375</h3>
+          <ul class="clean-list">
+            <li>고신뢰 결함 후보로 우선 표시</li>
+            <li>사람이 사진·고객 설명·정책 근거를 함께 검토</li>
+            <li>결함 유형·위치와 최종 처리는 별도 판단</li>
+          </ul>
+        </article>
+        <article class="panel">
+          <h3>점수 &lt; 0.8984375</h3>
+          <ul class="clean-list excluded">
+            <li>정상이라는 뜻이 아님</li>
+            <li>결함이 없다는 뜻이 아님</li>
+            <li>고신뢰 후보 기준 미만으로 남기고 사람 검토</li>
+          </ul>
+        </article>
+      </div>
+      <div class="notice">점수 어느 쪽도 자동 승인·거절을 만들지 않습니다. 수동 펌프의 작동 이상은 정지 이미지로 확정하지 않고 영상, 수동 시험 또는 사람 검토가 필요합니다.</div>
     </section>
 
     <section id="flow">
       <div class="section-head">
-        <div><p class="section-kicker">Workflow</p><h2>현재 연결된 업무 흐름</h2></div>
-        <p class="section-note">모델은 증거를 정리하고, 정책과 사람이 최종 결정을 소유합니다.</p>
+        <div><p class="section-kicker">Today’s Safe Flow</p><h2>합성 데모 처리 흐름</h2></div>
+        <p class="section-note">Vision은 참고 점수이고 최종 결정은 사람에게 남습니다.</p>
       </div>
-      <div class="flow" aria-label="Case 처리 흐름">
-        <article class="flow-step"><span class="n">01</span><strong>Case·Evidence</strong><span>고객 문의와 사진 접수</span></article>
-        <article class="flow-step"><span class="n">02</span><strong>Text·Vision</strong><span>구조화 분석과 부분 성공</span></article>
-        <article class="flow-step"><span class="n">03</span><strong>RAW + HYBRID</strong><span>Reranker Off · Top-3</span></article>
-        <article class="flow-step"><span class="n">04</span><strong>Policy</strong><span>버전 고정 규칙 평가</span></article>
-        <article class="flow-step human"><span class="n">05</span><strong>Human Review</strong><span>Claim·자료요청·Resolve</span></article>
-        <article class="flow-step action"><span class="n">06</span><strong>Resolution</strong><span>Decision과 별도 상태</span></article>
-        <article class="flow-step action"><span class="n">07</span><strong>DRY-RUN</strong><span>외부 부작용 0</span></article>
+      <div class="flow" aria-label="HDP-100 합성 Case 처리 흐름">
+        <article class="flow-step"><span class="n">01</span><strong>합성 Case</strong><span>fictional HDP-100 문의</span></article>
+        <article class="flow-step"><span class="n">02</span><strong>Text 분석</strong><span>고객 주장 구조화</span></article>
+        <article class="flow-step"><span class="n">03</span><strong>Mock Binary</strong><span>후보 점수만 제공</span></article>
+        <article class="flow-step"><span class="n">04</span><strong>합성 Policy</strong><span>10 Clause · 7 Rule</span></article>
+        <article class="flow-step human"><span class="n">05</span><strong>Human Review</strong><span>자료요청·권한·결정</span></article>
+        <article class="flow-step action"><span class="n">06</span><strong>Resolution</strong><span>명시 입력만 사용</span></article>
+        <article class="flow-step action"><span class="n">07</span><strong>DRY-RUN</strong><span>실제 부작용 0</span></article>
       </div>
-    </section>
-
-    <section id="scope">
-      <div class="section-head">
-        <div><p class="section-kicker">Scope</p><h2>완료된 것과 제외된 것</h2></div>
-      </div>
-      <div class="two-col">
-        <article class="panel">
-          <h3>이번에 완료</h3>
-          <ul class="clean-list">
-            <li>Case 상태와 분리된 versioned Resolution과 append-only Event</li>
-            <li>Human Decision → REFUND·EXCHANGE·RESHIPMENT·REPAIR 매핑 1.0.0</li>
-            <li>명시 입력만 사용하고 누락·오류 시 ACTION_NEEDS_INPUT 처리</li>
-            <li>immutable Action Intent와 durable Resolution·Simulation Outbox</li>
-            <li>결정론적 DRY-RUN과 side_effects_performed=false 보장</li>
-            <li>상담원 콘솔, immutable Review Report, 인쇄 화면과 PoC KPI</li>
-            <li>Tenant 격리, 중복 전달 NOOP, broker 장애 복구</li>
-          </ul>
-        </article>
-        <article class="panel">
-          <h3>의도적으로 제외</h3>
-          <ul class="clean-list excluded">
-            <li>실제 LIVE 환불·교환·재배송·수리 실행</li>
-            <li>결제·CRM·고객 알림 연동</li>
-            <li>Case Closure와 Human Decision amendment</li>
-            <li>Review 단계 입력 보완 API</li>
-            <li>자동 Assignment·SLA·OIDC·RLS</li>
-            <li>실제 성능·비용 절감·ROI 주장</li>
-          </ul>
-        </article>
-      </div>
+      <div class="notice"><strong>Live Mock 확인:</strong> Run <code>fc249b72-92b4-4160-adee-2c9b0b66b092</code>는 <strong>SUCCEEDED</strong>, score 0.961864, threshold 0.8984375였습니다. 위치 Detection은 0개이고 자동 Decision은 만들지 않았습니다.</div>
     </section>
 
     <section id="demo">
       <div class="section-head">
-        <div><p class="section-kicker">Demo Evidence</p><h2>필수 시나리오 5개</h2></div>
-        <p class="section-note">화면 검증과 실제 백엔드 인과 검증의 수준을 구분했습니다.</p>
+        <div><p class="section-kicker">Five Demo Cases</p><h2>HDP-100 대표 시나리오</h2></div>
+        <p class="section-note">합성 Gold와 Fixture로 정의한 오늘의 시연 계약입니다.</p>
       </div>
       <div class="scenario-list">
-        <article class="scenario"><span class="scenario-no">1</span><div><strong>Repair 또는 사전 입력 Refund → DRY-RUN Validated</strong><p>Decision, Resolution, Intent, Attempt, Result, Report 생성과 Case 상태 불변</p></div><div class="evidence"><span class="badge live">LIVE BACKEND</span><small>실제 causal smoke + UI fixture</small></div></article>
-        <article class="scenario"><span class="scenario-no">2</span><div><strong>환불액·통화 누락 → ACTION_NEEDS_INPUT</strong><p>Intent·Attempt·Result가 하나도 생성되지 않음</p></div><div class="evidence"><span class="badge integration">INTEGRATION</span><small>격리 PostgreSQL + UI fixture</small></div></article>
-        <article class="scenario"><span class="scenario-no">3</span><div><strong>이미지 부족 → 추가자료 요청</strong><p>Decision과 Action 자동 생성 없음</p></div><div class="evidence"><span class="badge fixture">FIXTURE-DRIVEN</span><small>UI/component-backed</small></div></article>
-        <article class="scenario"><span class="scenario-no">4</span><div><strong>Safety Case → Reviewer 차단</strong><p>일반 Reviewer는 차단되고 Admin Resolve만 허용</p></div><div class="evidence"><span class="badge fixture">FIXTURE-DRIVEN</span><small>UI + backend 규칙 개별 검증</small></div></article>
-        <article class="scenario"><span class="scenario-no">5</span><div><strong>Vision Timeout → Partial Success·Human Review</strong><p>자동 Decision·Action 없이 사람 검토로 이동</p></div><div class="evidence"><span class="badge fixture">FIXTURE-DRIVEN</span><small>UI와 backend 경로 개별 검증</small></div></article>
+        <article class="scenario"><span class="scenario-no">1</span><div><strong>눈에 보이는 펌프 분리 → 교환 DRY-RUN</strong><p>사람 승인 뒤 Intent·Attempt·Result 1개, 실제 부작용 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>Mock Vision + Human Review</small></div></article>
+        <article class="scenario"><span class="scenario-no">2</span><div><strong>환불액·통화 누락 → ACTION_NEEDS_INPUT</strong><p>문장에서 값을 추론하지 않고 Intent·Attempt·Result 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>명시 입력 경계</small></div></article>
+        <article class="scenario"><span class="scenario-no">3</span><div><strong>펌프 공회전 → 작동 증거 요청</strong><p>정지 이미지로 기능 고장을 확정하지 않고 Decision·Action 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>영상·수동 시험 필요</small></div></article>
+        <article class="scenario"><span class="scenario-no">4</span><div><strong>날카로운 파손·누출 → Safety Review</strong><p>Reviewer는 차단하고 Admin만 결정, 외부 실행은 DRY-RUN</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>권한·안전 경계</small></div></article>
+        <article class="scenario"><span class="scenario-no">5</span><div><strong>Vision Timeout → Partial Success</strong><p>Text 결과는 보존하고 Human Review, 자동 Decision·Action 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>Vision 실패 경계</small></div></article>
       </div>
-      <div class="notice">Playwright 5개 통과를 “다섯 개의 실제 업무 E2E가 모두 통과했다”로 해석하지 않습니다. 시나리오 3~5는 화면과 구성요소 수준의 데모입니다.</div>
+      <div class="notice">다섯 시나리오는 실제 E3 이미지 inference나 실제 고객 업무 E2E가 아니라 합성 Scenario PoC의 기대 계약입니다.</div>
     </section>
 
-    <section id="gate" class="gate-wrap">
+    <section id="pending" class="gate-wrap">
       <div class="gate-head">
-        <div><p class="section-kicker">Promotion Gate</p><h2>Limited PoC 승격은 아직 차단</h2><p>아래 항목이 모두 실제 증거와 연결되어야만 제품 판정을 LIMITED_POC로 변경할 수 있습니다.</p></div>
-        <span class="blocked-badge">BLOCKED · 0 / 10</span>
+        <div><p class="section-kicker">Current Blockers</p><h2>지금 남은 두 가지</h2><p>Mock 기반 Scenario PoC 완료와 실제 E3·Limited PoC를 같은 판정으로 합치지 않습니다.</p></div>
+        <span class="blocked-badge">ACTUAL E3 / LIMITED POC BLOCKED</span>
       </div>
       <div class="gate-grid">
-        <article class="gate-card"><strong>고객·상품·결함 범위</strong><span>후보 고객, 상품군 1개, 결함 유형 2~3개</span></article>
-        <article class="gate-card"><strong>실제 Case와 Gold</strong><span>비식별 30건 이상과 상담원·전문가 정답</span></article>
-        <article class="gate-card"><strong>실제 기업 정책</strong><span>버전과 효력일을 포함한 정책 원장</span></article>
-        <article class="gate-card"><strong>개인정보 승인</strong><span>보관·삭제·EXIF·접근권한 승인</span></article>
-        <article class="gate-card"><strong>Vision 범위</strong><span>실제 qualification 또는 명시적 제외 승인</span></article>
-        <article class="gate-card"><strong>Qwen3.8 재평가</strong><span>Extraction과 Grounding 실제 분포 평가</span></article>
-        <article class="gate-card"><strong>실제 분포 평가</strong><span>Policy·Case·사용자 Query 분포</span></article>
-        <article class="gate-card"><strong>Shadow Mode</strong><span>사람 결정과 비교 가능한 표본</span></article>
-        <article class="gate-card"><strong>안전 위반 0</strong><span>Tenant·권한·중복·LIVE·추론·변조 등</span></article>
-        <article class="gate-card"><strong>Clean Environment</strong><span>Backend·Frontend 전체 회귀와 데모</span></article>
+        <article class="gate-card"><strong>실제 E3 Runtime</strong><span>endpoint·checkpoint package·endpoint reference가 없고 runtime probe도 실행하지 않아 BLOCKED</span></article>
+        <article class="gate-card"><strong>Limited PoC</strong><span>실제 기업 Data·Policy는 오늘 범위에서 의도적으로 제외했고 별도 승격 Gate가 필요</span></article>
       </div>
     </section>
 
     <section id="next">
       <div class="section-head">
-        <div><p class="section-kicker">Next Actions</p><h2>앞으로 해야 할 일</h2></div>
-        <p class="section-note">새 기능 확대보다 실제 증거 확보가 우선입니다.</p>
+        <div><p class="section-kicker">Next Actions</p><h2>실제 모델 연결을 위한 순서</h2></div>
+        <p class="section-note">오늘의 합성 데모는 유지한 채 실제 E3 증거를 별도 추가합니다.</p>
       </div>
       <div class="next-list">
-        <article class="next-item"><div><strong>PoC 대상 범위 확정</strong><span>고객 후보·상품군·결함 2~3종을 한 문서로 고정</span></div><span class="owner">사업·데이터</span></article>
-        <article class="next-item"><div><strong>비식별 실제 Case 30건과 Gold 확보</strong><span>상담원/전문가 Decision과 비교 가능한 형태로 준비</span></div><span class="owner">사업·데이터</span></article>
-        <article class="next-item"><div><strong>정책·개인정보 승인 연결</strong><span>버전·효력일·Retention·삭제·EXIF·접근 증거 기록</span></div><span class="owner">사업·보안</span></article>
-        <article class="next-item"><div><strong>Vision 범위 결정</strong><span>실제 manifest와 결함별 평가 또는 명시적인 제외 승인</span></div><span class="owner">VISION</span></article>
-        <article class="next-item"><div><strong>Qwen·Shadow Mode 재평가</strong><span>실제 분포에서 사람 결정과 비교하고 안전 위반 0 확인</span></div><span class="owner">BACKEND·ML</span></article>
-        <article class="next-item"><div><strong>Clean-environment 데모와 승격 판정</strong><span>모든 증거가 모인 뒤에만 Limited PoC Gate 실행</span></div><span class="owner">전체</span></article>
+        <article class="next-item"><div><strong>E3 실행 자산 확보</strong><span>best.pt package, immutable hash/revision, private endpoint 준비</span></div><span class="owner">VISION</span></article>
+        <article class="next-item"><div><strong>실제 E3 external gate 실행</strong><span>실제 이미지 inference, threshold drift, latency와 failure path 검증</span></div><span class="owner">VISION·BACKEND</span></article>
+        <article class="next-item"><div><strong>실제 기업 PoC는 별도 승인</strong><span>고객 Data·정책·Privacy·Shadow evidence가 생긴 뒤 Limited PoC Gate 평가</span></div><span class="owner">사업·보안</span></article>
       </div>
     </section>
 
     <section id="git">
-      <div class="section-head"><div><p class="section-kicker">Handoff</p><h2>Git 인계 상태</h2></div></div>
+      <div class="section-head"><div><p class="section-kicker">Handoff</p><h2>현재 작업 기준점</h2></div></div>
       <div class="git-strip">
-        <article class="git-item"><span>Sprint 5B</span><code>4aefae6 · feat: add human review workflow</code></article>
         <article class="git-item"><span>Sprint 5C 기능</span><code>0a5f529 · feat: add case resolution and PoC console</code></article>
-        <article class="git-item"><span>Sprint 5C Closeout</span><code>499c188 · docs: record Sprint 5C closeout</code></article>
+        <article class="git-item"><span>HDP-100 기능</span><code>dfd6db2 · feat: add hard-plastic scenario PoC</code></article>
+        <article class="git-item"><span>원격 백업</span><code>origin/feature/scenario-poc-hard-plastic · 기능 SHA 확인</code></article>
       </div>
-      <div class="notice">원격 기능 브랜치 백업은 완료했습니다. PR 생성과 <strong>develop</strong> 병합은 거버넌스 PR #2와 보호 규칙 결정 전까지 보류합니다. 사용자 소유 루트 문서 2개는 Commit에서 제외했습니다.</div>
+      <div class="notice">DB Head는 <strong>0015</strong>입니다. HDP-100 기능 Commit <code>dfd6db2ab2052c4ce9a7f922d682c8e574abb05d</code>가 원격 기능 브랜치에 백업됐습니다. PR과 <code>develop</code> 병합은 실행하지 않았고, 상태 문서는 별도 closeout 원장으로 기록합니다. 사용자 소유 루트 문서 2개는 수정·삭제·Stage하지 않습니다.</div>
     </section>
   </main>
 
   <footer>
     <div class="shell footer-inner">
-      <span>CSight Project Status · 2026-08-27 · Asia/Seoul</span>
-      <span>근거 원장: CURRENT_STATUS.md / SPRINT_5C_CASE_RESOLUTION_CONSOLE.md</span>
+      <span>CSight HDP-100 Synthetic Scenario Status · Reverified 2026-08-28 · Asia/Seoul</span>
+      <span>근거: CURRENT_STATUS.md / SCENARIO_POC_ACCEPTANCE_RUNNER.md / acceptance_report.json</span>
     </div>
   </footer>
 </body>

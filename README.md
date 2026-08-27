@@ -342,7 +342,7 @@ confidence, `normalized_xyxy` bbox, model/taxonomy/threshold/pre/postprocess ver
 `VISION_ASSESSMENT_EXPECTED_THRESHOLD`를 사용합니다. Mock score는 합성 wiring 값이며 실제 E3
 추론 결과로 해석하지 않습니다.
 
-기본 `VISION_PROVIDER=mock`은 네트워크 없이 10개 결정론적 시나리오를 지원한다. Remote
+기본 `VISION_PROVIDER=mock`은 네트워크 없이 12개 결정론적 시나리오를 지원한다. Remote
 Provider는 private `POST /v1/vision/analyze` multipart 계약을 사용하며 Binary, Signed URL,
 MinIO credential과 Raw provider JSON을 Queue/DB에 저장하지 않는다. 실제 Vision 검증은
 설정된 endpoint와 sample image가 있을 때만 `make test-external-vision`으로 실행한다.

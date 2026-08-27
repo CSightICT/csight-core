@@ -229,7 +229,7 @@ Pull Request 완료 전:
 ## 9. Sprint 3 Vision Gate
 
 - Unit: bbox/coordinate/confidence, tri-state quality, taxonomy/unknown, stable Snapshot, join truth table
-- Contract: 10개 deterministic Mock scenario와 Remote multipart/status/timeout/JSON/schema/geometry
+- Contract: 12개 deterministic Mock scenario와 Remote multipart/status/timeout/JSON/schema/geometry
 - PostgreSQL: image별 Result/Detection/Snapshot, append-only duplicate, tenant isolation, partial join
 - MinIO: bounded private read, SHA mismatch, missing object와 unavailable storage
 - RabbitMQ/Application: Text+Vision event 2개, duplicate no-op, retry event와 terminal aggregation

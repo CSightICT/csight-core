@@ -62,7 +62,8 @@ def wilson_interval(successes: int, total: int, confidence: float = 0.95) -> tup
     proportion = successes / total
     denominator = 1 + z**2 / total
     centre = (proportion + z**2 / (2 * total)) / denominator
-    margin = z * math.sqrt(proportion * (1 - proportion) / total + z**2 / (4 * total**2)) / denominator
+    variance = proportion * (1 - proportion) / total + z**2 / (4 * total**2)
+    margin = z * math.sqrt(variance) / denominator
     return max(0.0, centre - margin), min(1.0, centre + margin)
 
 

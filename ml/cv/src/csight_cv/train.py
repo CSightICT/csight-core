@@ -99,9 +99,14 @@ def build_optimizer(
     for component in ("backbone", "classifier"):
         for decay_name, decay_value in (("decay", weight_decay), ("no_decay", 0.0)):
             group_name = f"{component}_{decay_name}"
+            learning_rate = (
+                backbone_learning_rate
+                if component == "backbone"
+                else classifier_learning_rate
+            )
             groups[group_name] = {
                 "params": [],
-                "lr": backbone_learning_rate if component == "backbone" else classifier_learning_rate,
+                "lr": learning_rate,
                 "weight_decay": decay_value,
                 "group_name": group_name,
             }
@@ -142,7 +147,10 @@ def evaluate(
     labels: list[float] = []
     major_labels: list[float] = []
     scores: list[float] = []
-    autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else nullcontext()
+    if use_bf16:
+        autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+    else:
+        autocast = nullcontext()
     for batch in loader:
         pixels = batch["pixel_values"].to(device, non_blocking=True)
         targets = batch["label"].to(device, non_blocking=True)
@@ -288,6 +296,7 @@ def main() -> None:
         tags=[*config["wandb"].get("tags", []), args.mode],
         job_type=args.mode,
     )
+    initialization_path = str(args.init_checkpoint) if args.init_checkpoint else None
     print(
         json.dumps(
             {
@@ -297,7 +306,7 @@ def main() -> None:
                 "train_samples": len(train_dataset),
                 "validation_samples": len(validation_dataset),
                 "wandb_url": run.url,
-                "init_checkpoint": str(args.init_checkpoint) if args.init_checkpoint is not None else None,
+                "init_checkpoint": initialization_path,
             },
             ensure_ascii=False,
         ),
@@ -321,7 +330,10 @@ def main() -> None:
         best_ap = float(checkpoint["best_validation_ap_any"])
 
     no_improvement = 0
-    autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else nullcontext()
+    if use_bf16:
+        autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+    else:
+        autocast = nullcontext()
     for epoch in range(start_epoch, int(config["epochs"])):
         model.train()
         if args.mode == "linear_probe":

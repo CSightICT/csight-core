@@ -21,7 +21,8 @@ def main() -> None:
         frames[split] = frame
         missing_images = None
         if args.check_images:
-            missing_images = sum(not (args.dataset_root / path).is_file() for path in frame["query_image"])
+            image_paths = frame["query_image"]
+            missing_images = sum(not (args.dataset_root / path).is_file() for path in image_paths)
         report["splits"][split] = {
             "rows": len(frame),
             "expected_rows": expected_rows,

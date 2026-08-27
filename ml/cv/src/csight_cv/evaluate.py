@@ -52,7 +52,10 @@ def main() -> None:
     scores: list[float] = []
     rows: list[dict[str, Any]] = []
     use_bf16 = device.type == "cuda" and torch.cuda.is_bf16_supported()
-    autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else nullcontext()
+    if use_bf16:
+        autocast = torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+    else:
+        autocast = nullcontext()
     with torch.inference_mode():
         for batch in loader:
             with autocast:

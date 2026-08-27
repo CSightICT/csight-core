@@ -32,7 +32,10 @@ def binary_metrics(
     p = np.asarray(scores, dtype=np.float64)
     if len(y) == 0 or np.unique(y).size < 2:
         raise ValueError("Both defect classes are required for evaluation")
-    ap_major = float(average_precision_score(y_major, p)) if np.unique(y_major).size == 2 else math.nan
+    if np.unique(y_major).size == 2:
+        ap_major = float(average_precision_score(y_major, p))
+    else:
+        ap_major = math.nan
     return {
         "ap_any": float(average_precision_score(y, p)),
         "ap_major": ap_major,

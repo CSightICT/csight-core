@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import torch
 from csight_cv.data import build_transform
 from csight_cv.train import build_optimizer, cosine_with_warmup
 from torch import nn
@@ -35,6 +36,14 @@ def test_optimizer_separates_learning_rates_and_decay() -> None:
     assert groups["classifier_decay"]["lr"] == pytest.approx(1e-4)
     assert groups["backbone_no_decay"]["weight_decay"] == 0.0
     assert groups["classifier_no_decay"]["weight_decay"] == 0.0
+
+
+def test_optimizer_can_use_fused_cuda_path_when_requested() -> None:
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is required for fused AdamW")
+    model = TinyModel().cuda()
+    optimizer = build_optimizer(model, 2e-6, 3e-5, 0.05, fused=True)
+    assert all(group["fused"] for group in optimizer.param_groups)
 
 
 def test_cosine_scheduler_warms_up_then_decays() -> None:

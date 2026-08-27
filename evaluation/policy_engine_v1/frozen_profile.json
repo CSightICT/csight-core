@@ -1,0 +1,8 @@
+{
+  "aggregation_version": "1.0.0",
+  "dataset_hash": "d7fdbf7ff2fe3932137bd812a11534a50ee66b020f2714b72a31d2498b1a3c22",
+  "dev_metrics_hash": "5287fcf433e441eae2762ee7100f65576b6155471728de49941688d372b083a9",
+  "frozen_after_split": "dev",
+  "profile_version": "1.0.0",
+  "rule_artifact_hash": "2778818fefea90e6aba48c32f8db2a51196578ac2689638467bb33423331b3b2"
+}

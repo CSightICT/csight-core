@@ -388,3 +388,10 @@ copied into the query table.
 Migration `20260827_0009`는 grounding profile, citation pack/item, grounded explanation
 run/result/outbox 6개 table을 추가한다. Pack item은 정책 조항과 retrieval provenance를
 snapshot하고 Result는 validated structure와 version metadata만 저장한다.
+
+## Sprint 5A Tables
+
+Migration `20260827_0010_policy_engine`은 rule set/activation/rule/source link와 evaluation
+run/input snapshot/rule result/condition result/effect/outbox 10개 table을 추가한다. Composite
+tenant FK가 source와 result graph를 격리하고, version unique/hash checks 및 active partial unique
+index가 immutable selection을 보호한다.

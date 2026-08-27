@@ -12,10 +12,12 @@ from typing import Protocol
 from app.adapters.messaging import (
     CeleryAnalysisMessageQueue,
     CeleryGroundedExplanationMessageQueue,
+    CeleryPolicyEvaluationMessageQueue,
     CeleryPolicyRetrievalMessageQueue,
 )
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.grounding_outbox import DispatchGroundedExplanationOutbox
+from app.adapters.persistence.policy_engine_outbox import DispatchPolicyEvaluationOutbox
 from app.adapters.persistence.policy_query_outbox import DispatchPolicyRetrievalOutbox
 from app.adapters.persistence.session import create_session_factory
 from app.application.outbox import DispatchOutboxResult
@@ -138,8 +140,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 session_factory=create_session_factory(get_engine(settings)),
                 queue=CeleryGroundedExplanationMessageQueue(celery),
             )
+            policy_evaluation_dispatcher = DispatchPolicyEvaluationOutbox(
+                session_factory=create_session_factory(get_engine(settings)),
+                queue=CeleryPolicyEvaluationMessageQueue(celery),
+            )
             dispatcher = CompositeOutboxDispatcher(
-                (analysis_dispatcher, policy_dispatcher, grounding_dispatcher)
+                (
+                    analysis_dispatcher,
+                    policy_dispatcher,
+                    grounding_dispatcher,
+                    policy_evaluation_dispatcher,
+                )
             )
     except Exception as error:
         logger.error(

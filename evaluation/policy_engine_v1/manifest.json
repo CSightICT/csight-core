@@ -1,0 +1,11 @@
+{
+  "builder_version": "1.0.0",
+  "content_hash": "d7fdbf7ff2fe3932137bd812a11534a50ee66b020f2714b72a31d2498b1a3c22",
+  "dataset": "policy_engine_v1",
+  "dev_count": 80,
+  "rule_set_artifact_hash": "2778818fefea90e6aba48c32f8db2a51196578ac2689638467bb33423331b3b2",
+  "schema_version": "1.0.0",
+  "test_count": 40,
+  "test_sealed": true,
+  "total_count": 120
+}

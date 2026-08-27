@@ -10,13 +10,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 4C-3A — 구조적 Grounding Qualified, 의미 평가는 SKIPPED |
-| 진행 중 작업 | Sprint 4C-3A 독립 Closeout 완료; 로컬 Commit 및 Sprint 4C-3B 브랜치 생성 |
+| 현재 완료 단계 | Sprint 5A — Versioned Deterministic Policy Engine Core 구현·검증 완료 |
+| 진행 중 작업 | Sprint 5A 미커밋 인계; 사용자 검토와 별도 Commit 승인 대기 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B/4C Push·PR 없음 |
-| 로컬 Git | `feature/sprint-4c3a-citation-grounding-guards`, Base `a282817`, Closeout Commit 준비 |
-| 마지막 런타임 관측 | 2026-08-27, 최신 image, Migration `0009` drift 0, 4 queues consumer 1, Core 6 healthy |
+| 로컬 Git | `feature/sprint-5a-policy-engine-core`, Base `d0950f6`, Sprint 5A 미커밋 |
+| 마지막 런타임 관측 | 2026-08-27, DB `0010` drift 0; Core 6 healthy; Policy async smoke PASS |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -74,6 +74,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 4C-3A Async Runtime | PASS | PostgreSQL/RabbitMQ/Celery Mock, replay 200, tenant 404, provider-down no fallback |
 | Sprint 4C-3A Semantic Grounding | SKIPPED | 실제 Qwen 부재; precision/recall/faithfulness 미주장 |
 | Sprint 4C-3A 독립 Closeout | PASS | P0 0, P1 0, 전체 회귀·Migration·최신 Docker·Live Gate 통과 |
+| Sprint 4C-3B Local MLX PoC | QUALIFIED_WITH_LIMITATIONS | Local extraction/query/grounding, RAW 유지, top-3 context, 실제 timeout fault 미실행 |
+| Sprint 4C-3B 독립 Closeout·Commit | PASS | P0/P1 0, `d0950f6 feat: add local MLX LLM grounding PoC`, Push·PR 없음 |
+| Sprint 5A Typed Policy Engine | PASS | registry/rule/effect/qualification/append-only runtime 및 전체 검증 완료 |
+| Sprint 5A Synthetic Rule Set | PASS | Tenant 2, Rule Set 2, Rule 24, Source link 24, forbidden effect 0 |
+| Sprint 5A Dev/Test Evaluation | PASS | Dev80 freeze, sealed Test40 1회; exact/condition/effect/source/version/replay 100% |
+| Sprint 5A Migration·Live | PASS | 세 lifecycle 경로 drift 0, Core 6 healthy, async smoke와 tenant 격리 통과 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -248,6 +254,24 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 독립 Closeout에서 P0/P1 미해결 0, 최신 Docker Build·Live Runtime 재통과
 - [ ] 실제 Qwen 4C-3B Dev qualification → freeze → sealed Test
 - [ ] Sprint 5 versioned Policy Engine + Human Review 연결
+
+## 5.7. Sprint 5A 진행 체크리스트
+
+- [x] Sprint 4C-3B를 `d0950f6 feat: add local MLX LLM grounding PoC`로 로컬 Commit
+- [x] `feature/sprint-5a-policy-engine-core` 브랜치 생성; Push·PR 없음
+- [x] Typed field/operator registry와 missing/qualification semantics 구현
+- [x] Final decision을 표현할 수 없는 effect allowlist와 human-review gate
+- [x] Synthetic tenant 2, rule set 2, rule/source link 24/24 build·validation·DB ingestion
+- [x] Source clause same-tenant/version/hash/effective interval 검증과 immutable version conflict 차단
+- [x] Migration `20260827_0010_policy_engine`, rule/runtime/outbox 10개 table과 drift 0
+- [x] Frozen typed input/qualification snapshot, 고객 원문·grounding text 비복제
+- [x] POST 202/replay 200/List/Get와 identifier-only outbox/RabbitMQ/Celery route
+- [x] Pure deterministic engine, append-only result, duplicate task `NOOP`
+- [x] Dev80 freeze 후 sealed Test40 단 1회; rerun guard와 artifact verifier
+- [x] ADR-0065~0076, Policy 문서 4개, README/설계/Makefile 동기화
+- [x] 전체 Ruff/Format/Pyright/default/integration/migration lifecycle 최종 실행
+- [x] 최신 Docker image rebuild, 5 queues consumer, API live smoke 및 cross-tenant/duplicate 검증
+- [x] 최종 실제 수치를 Sprint 5A 문서와 아래 session log에 append
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -460,6 +484,17 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-27 | Sprint 4C-3A Docker Queue/E2E | PASS | 4 queues consumer 1·depth 0, 10 citations/statements, replay 200, tenant 404 |
 | 2026-08-27 | Sprint 4C-3A Duplicate Delivery | PASS | terminal event 2회 재전달 뒤 run 1·result 1·queue depth 0 |
 | 2026-08-27 | Sprint 4C-3A Independent Closeout | PASS | P0 0, P1 0; 전체 Gate 통과; semantic model quality는 SKIPPED 유지 |
+| 2026-08-27 | Sprint 5A Static | PASS | Ruff 0, Format 296, Pyright 0 errors/warnings/informations |
+| 2026-08-27 | Sprint 5A Default Regression | PASS | 456 passed, 55 deselected, 31 warnings |
+| 2026-08-27 | Sprint 5A Target Suites | PASS | Architecture 9, Unit 356, Contract 85/2 skipped, E2E 6, Policy API/core 19 |
+| 2026-08-27 | Sprint 5A Integration first run | ENV_CONTENTION | 장기 Dispatcher가 test outbox를 선점해 1 failed, 43 passed, 5 skipped |
+| 2026-08-27 | Sprint 5A Integration isolated | PASS | Worker/Dispatcher 일시 정지 후 44 passed, 5 external-GPU skipped, 462 deselected |
+| 2026-08-27 | Sprint 5A Migration | PASS | empty/previous/round-trip `0010`, drift 0, 임시 DB 0; live DB head/drift 0 |
+| 2026-08-27 | Sprint 5A Rule DB Audit | PASS | active 2, set 2, rule 24, source 24; orphan/mismatch/missing source/final effect 0 |
+| 2026-08-27 | Sprint 5A Frozen Evaluation | PASS | Dev80/Test40 모든 metric 1.0; tenant/future/final-decision 위반 0 |
+| 2026-08-27 | Sprint 5A Docker Runtime | PASS | 최종 image, Core 6 healthy, live/ready 정상, application queue 5개 consumer 1 |
+| 2026-08-27 | Sprint 5A Live Async | PASS | rules 12, replay 200, duplicate NOOP, tenant 404, Mock Vision NOT_EVALUATED |
+| 2026-08-27 | Sprint 5A Git Handoff | PASS | Branch 정확, Sprint 5A Commit·Push·PR 없음, Kaputt 미Stage 보존 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -481,9 +516,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   결정에 사용하지 않고 Policy·Human Review 경계를 유지한다.
 - Sprint 3 Vision Stage는 Mock-qualified지만 실제 Vision server/model/dataset/threshold
   calibration은 검증하지 않았다. 외부 endpoint/model/sample이 없어 실제 검증은 1건 Skip이다.
-- Text/Vision Alignment, Claim↔Detection matching, Policy Engine·Routing·Review·Report는 구현하지
-  않았고 Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다. RAG는 합성 Reference
-  corpus의 retrieval과 구조적 citation grounding까지만 구현됐다.
+- Text/Vision Alignment, Claim↔Detection matching, Routing·Review UI·Final Report는 구현하지
+  않았다. Sprint 5A Policy Engine은 구현됐지만 typed review guidance만 생성하며 최종 업무
+  결정을 소유하지 않는다. Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
 - KAPUT 참고 자료는 image-level 7-class multi-label과 item mask이며 defect bbox ground truth가
   아니다. Native→canonical mapping v1은 실제 모델 qualification 전까지 계약 가설이다.
 - Vision image quality가 Provider에 없으면 `NOT_EVALUATED/null`이며 Mock quality를 실제 성능으로
@@ -505,8 +540,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   이번 작업에서도 수정·삭제·Stage하지 않았으며 후속 소유 작업에서 별도로 다룬다.
 - Sprint 4B Policy Corpus/Gold는 전부 합성 Reference이며 실제 기업 정책 정확성·법률 효력과
   실제 사용자 query 분포는 검증하지 않았다. Baseline corpus는 168 clause 규모다.
-- Retrieval Test 40은 frozen profile로 한 번 실행 완료했다. 실제 LLM Query Builder와
-  Grounded Explanation의 의미 품질은 미평가이며, Policy Engine과 승인·routing은 구현하지 않았다.
+- Retrieval Test 40은 frozen profile로 한 번 실행 완료했다. Local MLX Query Builder와
+  Grounded Explanation은 별도 Local PoC로 평가됐지만 Production Target Qwen3.8 재평가가 남았다.
+  Policy Engine은 구현됐고 승인·routing은 구현하지 않았다.
 - Mac MPS embedding은 qualified지만 서비스 요청은 lock으로 직렬화되며 concurrency 2와 장시간
   swap/thrashing은 측정하지 않았다. Production network/process supervisor는 후속 운영 범위다.
 - Qwen reranker는 Mac MPS에서 실제 qualification했지만 단일 process lock과 concurrency 1로
@@ -518,8 +554,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Sprint 4C-2의 실제 LLM Query Builder 3-way qualification은 계속
   `BLOCKED_EXTERNAL_LLM`이다. 4C-3A는 선택된 RAW 검색 결과와 독립적으로 진행했으며 이를
   LLM Query Builder 품질 증거로 해석하지 않는다.
-- Sprint 4C-3A는 구조적 citation allowlist와 금지 field를 검증했지만 citation이 문장을
-  의미적으로 지지하는지, 정책을 과장하지 않았는지는 실제 Qwen 4C-3B 전까지 미검증이다.
+- Sprint 4C-3A 구조 검증 뒤 Local MLX Grounding 의미 평가를 작은 합성 Test 10건과 사람
+  spot-check 10건에서 통과했지만, 이를 Production faithfulness나 실제 기업 정책 품질로
+  확대 해석하지 않는다.
 - Citation Pack은 합성 Reference corpus의 immutable snapshot이다. 실제 기업 정책 정확성,
   법률 효력, 실제 사용자 분포, 보관·삭제 정책은 검증하지 않았다.
 
@@ -563,14 +600,15 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Citation Pack, strict grounded explanation schema, deterministic citation validation과
   Mock E2E를 Sprint 4C-3A 별도 계약으로 연결한다.
 - [x] Sprint 4C-3A를 독립 감사하고 최신 Docker·Broker Gate까지 재통과한다.
-- [ ] 승인된 4C-3A 범위만 `feat: add citation grounding guardrails`로 로컬 Commit하고 새
+- [x] 승인된 4C-3A 범위만 `feat: add citation grounding guardrails`로 로컬 Commit하고 새
   `feature/sprint-4c3b-local-mlx-grounding` 브랜치를 생성한다.
-- [ ] 승인된 실제 Qwen Endpoint가 생기면 Grounding Dev 40 + Injection Dev 20에서 4C-3B를
+- [x] Local MLX Endpoint로 Grounding Dev 40 + Injection Dev 20에서 4C-3B를
   qualification하고 prompt/profile freeze 뒤 sealed Test 각 10건을 한 번만 실행한다.
-- [ ] 실제 Qwen으로 semantic citation precision/recall, unsupported policy claim rate와
+- [x] Local MLX로 semantic citation precision/recall, unsupported policy claim rate와
   paraphrase faithfulness를 측정하기 전에는 구조 통과를 의미 품질 통과로 승격하지 않는다.
-- [ ] Sprint 5에서 versioned Policy Engine과 Human Review를 연결하고 Grounded Explanation이
-  최종 결정을 소유하지 않게 유지한다.
+- [x] Sprint 5A에서 versioned Policy Engine Core를 구현하고 Grounded Explanation과 최종
+  결정을 분리한다.
+- [ ] Sprint 5B 이후 Human Review decision record/UI/override를 별도 계약으로 설계한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -1012,3 +1050,50 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   `feat: add local MLX LLM grounding PoC`, Push·PR 금지
 - 다음 작업: Closeout Commit 뒤 `feature/sprint-5a-policy-engine-core`를 생성하고, versioned
   deterministic Policy Engine을 LLM/RAG/최종 업무 결정과 분리해 구현
+
+### 2026-08-27 — Sprint 5A Versioned Deterministic Policy Engine Core
+
+- Git: Base `d0950f6`, Branch `feature/sprint-5a-policy-engine-core`; Sprint 5A 변경은 미커밋이며
+  Push·PR 없음. 사용자 소유 `kaputt_best_vision_architecture.md`는 미수정·미삭제·미Stage
+- Core: versioned typed field/operator registry, five condition statuses, four rule statuses,
+  deterministic aggregation과 final decision을 표현할 수 없는 six-effect allowlist 구현
+- Safety: Local MLX action/ambiguity는 hard input에서 제외하고 Mock Vision 조건은
+  `NOT_EVALUATED`; 불확실 조건은 자동 eligibility/exception을 만들지 않고 review/evidence로 수렴
+- Data: synthetic tenant 2, immutable rule set 2, rule/source 24/24. 동일 version content conflict,
+  cross-tenant/source-version/hash/effective mismatch를 fail-closed 처리
+- Persistence: Migration `20260827_0010_policy_engine`의 10개 table, frozen typed input과
+  qualification snapshot, append-only result/effect, identifier-only outbox를 구현
+- Runtime: POST 202/replay 200/List/Get, exact queue identifiers, 전용 `policy-evaluation` route,
+  thin Celery task, duplicate terminal delivery `NOOP`, viewer read-only와 tenant 404 확인
+- Evaluation: Dev80 freeze 뒤 sealed Test40을 단 한 번 실행. selection/rule/condition/effect/
+  summary/source/version/replay 모두 1.0, cross-tenant/future/retired/final-decision 위반 0;
+  sealed Test 재실행 guard가 이후 호출을 거부함
+- Verification: Ruff PASS, Format 296, Pyright 0, Default 456 passed, isolated Integration
+  44 passed/5 external-GPU skipped, migration 세 경로와 live drift 0, rule DB audit PASS
+- Runtime verification: 최종 Docker Core 6/6 healthy, five application queues consumer 1/depth 0,
+  live smoke rules 12/replay 200/duplicate NOOP/tenant 404/Mock Vision `NOT_EVALUATED`
+- Failure record: 첫 Integration 실행은 장기 Dispatcher가 test outbox를 먼저 claim해 1건
+  실패했으며 서비스 격리 후 전체 통과. 첫 host Alembic 확인은 `.env` 미Export로 접속 전
+  중단됐고 환경 적용 후 head `0010`/drift 0 확인
+- 범위 밖: 실제 정책 타당성, 실제 Vision, Evidence Alignment, final decision, routing,
+  Human Review UI/override/final report, rule editor와 LLM rule generation
+- 다음 작업: 사용자 Diff 검토 후 명시적 승인 시 Sprint 5A 로컬 Commit만 생성한다. 이후
+  Sprint 5B에서 Policy Effect를 append-only Human Review로 연결하되 최종 결정은 사람이 소유한다.
+
+### 2026-08-27 — Sprint 5A Independent Closeout Audit
+
+- 판정: P0 0, P1 0, `POLICY_ENGINE_CORE_QUALIFIED_WITH_LIMITATIONS`
+- Integrity: deterministic rebuild hash 동일, ingest 신규 row 0, active/set/rule/source
+  2/2/24/24, source·tenant·version·final-effect 위반 0
+- Evaluation: Dev80만 재계산해 모든 metric 1.0과 위반 0 확인; 봉인 Test40은 verifier로만
+  검증하고 재실행하지 않음
+- Regression: Ruff PASS, Format 296, Pyright 0, Default 456 passed/55 deselected,
+  격리 Integration 44 passed/5 external-GPU skipped/462 deselected
+- Migration: Empty→0010, 0009→0010, 0010→0009→0010과 drift 0, 임시 DB 0. 최초
+  round-trip 명령의 잘못된 설명형 revision은 Alembic이 거부했고 실제 `20260827_0009`로 수정
+- Runtime: Core 6 healthy, application queue 5개 consumer 1/depth 0, live rules12/replay200/
+  duplicate NOOP/tenant404/Vision NOT_EVALUATED
+- Git: `git diff --check` PASS. 지정 메시지 `feat: add versioned policy engine core`로 승인
+  범위만 로컬 Commit 예정이며 Push·PR 없음; Kaputt 사용자 파일 제외
+- 다음 작업: Commit SHA를 확인하고 `feature/sprint-5b-human-review-workflow`에서 immutable
+  Review Packet, CAS Task, append-only Action 및 human-only Decision을 구현

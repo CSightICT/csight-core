@@ -326,3 +326,10 @@ injection evaluation, and grounded RAG evaluation.
 4C-3B 결과는 Local Runtime/Grounding qualified-with-limitations, RAW Query 유지다. 후속은 같은
 pipeline의 Qwen3.8 RTX4090/vLLM 재qualification, 실제 timeout fault injection, Sprint 5A
 versioned Policy Engine과 Human Review Gate다.
+
+## Sprint 5A Status and next boundary
+
+Sprint 5A는 versioned structured rule core, source traceability, frozen input, append-only async
+evaluation과 synthetic exactness evaluation을 구현한다. 다음 단계는 Human Review UI/override/
+routing/final report 전에 reviewer decision model과 감사 계약을 별도 설계하는 것이다. Evidence
+Alignment, real Vision qualification, Qwen3.8 재평가, LLM rule generation은 여전히 미구현이다.

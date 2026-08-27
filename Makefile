@@ -18,7 +18,7 @@ POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
 
 help:
 	@echo "CSight Core commands"
@@ -52,6 +52,10 @@ help:
 	@echo "  make report-reference-data  Generate aggregate JSON and Markdown quality reports"
 	@echo "  make ingest-policy-corpus  Explicitly ingest the validated synthetic corpus"
 	@echo "  make validate-policy-db  Verify corpus, embedding, and active-index invariants"
+	@echo "  make build-policy-rules / validate-policy-rules  Build and validate typed rules"
+	@echo "  make ingest-policy-rules / validate-policy-rule-db  Persist and audit rules"
+	@echo "  make evaluate-policy-engine  Run Dev and sealed Test deterministic evaluation"
+	@echo "  make smoke-policy-evaluation  Run authenticated asynchronous policy smoke"
 	@echo "  make start-embedding  Start the private host-native Qwen embedding service"
 	@echo "  make stop-embedding  Stop the private embedding service started by Make"
 	@echo "  make health-embedding  Probe embedding health and pinned model metadata"
@@ -220,6 +224,25 @@ ingest-policy-corpus:
 
 validate-policy-db:
 	$(UV) run python scripts/validate_policy_db.py --env-file $(ENV_FILE)
+
+build-policy-rules:
+	$(UV) run python scripts/build_policy_rule_sets.py
+
+validate-policy-rules:
+	$(UV) run python scripts/validate_policy_rule_sets.py
+
+ingest-policy-rules:
+	$(UV) run python scripts/ingest_policy_rules.py --env-file $(ENV_FILE)
+
+validate-policy-rule-db:
+	$(UV) run python scripts/validate_policy_rule_db.py --env-file $(ENV_FILE)
+
+evaluate-policy-engine:
+	$(UV) run python scripts/evaluate_policy_engine.py --split dev
+	$(UV) run python scripts/verify_policy_engine_results.py
+
+smoke-policy-evaluation:
+	$(UV) run python scripts/smoke_policy_evaluation.py --env-file $(ENV_FILE)
 
 start-embedding:
 	@test ! -f $(EMBEDDING_PID_FILE) || ! kill -0 $$(cat $(EMBEDDING_PID_FILE)) 2>/dev/null || { echo "Embedding service already running"; exit 1; }

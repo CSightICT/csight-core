@@ -2,7 +2,7 @@
 
 > 이미지·텍스트 기반 상품 불량 CS 의사결정 지원 플랫폼
 
-이 저장소는 CSight의 **Sprint 4C-3A Citation Grounding Guardrails**까지 구현합니다. Python 3.12,
+이 저장소는 CSight의 **Sprint 5A Versioned Deterministic Policy Engine Core**까지 구현합니다. Python 3.12,
 FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며,
 API와 Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
 
@@ -12,8 +12,9 @@ Evidence Snapshot과 append-only image result를 제공합니다. Analysis는 �
 요청으로만 시작하며 Case 상태를 변경하지 않습니다. LLM과 Vision은 Evidence 분석만 수행하고
 Sprint 4B는 immutable policy corpus ingestion과 hybrid retrieval을, 4C-2는 Case 기반 query
 planning을 추가했습니다. 4C-3A는 immutable Citation Pack, strict grounded explanation schema,
-결정론적 citation allowlist와 비동기 Mock E2E를 추가합니다. 검색·설명 결과는 정책 판정이나
-승인이 아니며 Policy Engine과 최종 Human Review는 포함하지 않습니다.
+결정론적 citation allowlist와 비동기 Mock E2E를 추가합니다. Sprint 5A는 검색/설명과 분리된
+immutable typed rule, qualification-aware input snapshot, append-only policy evaluation을 추가합니다.
+정책 효과는 review guidance이며 최종 승인·거절은 포함하지 않습니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -101,6 +102,10 @@ make down
 | 잠긴 Retrieval 결과 검증 | `make evaluate-policy-retrieval` |
 | Policy Search Smoke | `make smoke-policy-search` |
 | Grounding 구조 평가 | `make evaluate-grounding-contract` |
+| Policy Rule 빌드/검증 | `make build-policy-rules`; `make validate-policy-rules` |
+| Policy Rule 적재/DB 검증 | `make ingest-policy-rules`; `make validate-policy-rule-db` |
+| Policy Engine 평가 | `make evaluate-policy-engine` |
+| Policy Evaluation Smoke | `make smoke-policy-evaluation` |
 
 `make test`는 Docker 인프라와 GPU를 요구하지 않습니다. `make test-integration`과
 `make test-all`은 먼저 `make up`과 `make migrate`를 실행한 상태에서 사용합니다.

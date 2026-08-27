@@ -340,3 +340,9 @@ paraphrase faithfulness는 Skip이며 Mock 결과를 모델 성능으로 보고�
 4C-3B Local PoC는 Qwen3.5-9B MLX 4-bit를 Dev→freeze→sealed Test로 평가한다. Local 성능은
 Qwen3.8 Production Target과 분리한다. Query Builder가 RAW를 일관되게 개선하지 못했으므로 RAW를
 유지하고, Local Grounding은 context-budgeted Citation Pack으로만 qualified-with-limitations다.
+
+## Sprint 5A Deterministic Evaluation
+
+Policy Engine v1은 합성 Dev 80/Test 40으로 exact correctness를 평가한다. Dev 뒤 profile과 hash를
+freeze하고 Test는 한 번만 실행한다. Local action/ambiguity는 hard field에서 제외하고 issue/claim
+사용 규칙은 review-required다. 이 평가는 model quality나 실제 기업 정책 유효성을 주장하지 않는다.

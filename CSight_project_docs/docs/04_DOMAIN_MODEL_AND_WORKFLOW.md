@@ -300,3 +300,9 @@ one Query Plan plus a clause-FK hit set; duplicate delivery is a no-op.
 `SUCCEEDED PolicyRetrievalRun → CitationPack → QUEUED/RUNNING/SUCCEEDED|FAILED
 GroundedExplanationRun` 전이를 사용한다. Citation Pack과 성공 Result는 append-only이며
 Grounded Explanation은 정책 적용이나 최종 업무 상태를 변경하지 않는다.
+
+## Sprint 5A Workflow
+
+`POST → QUEUED PolicyEvaluationRun + frozen input + outbox → RUNNING → SUCCEEDED|FAILED`를
+사용한다. 성공 시 Rule/Condition/Effect result를 한 번 append한다. Mock Vision과 unavailable
+Alignment 조건은 `NOT_EVALUATED`; 재평가는 기존 결과 갱신이 아니라 새 Run이다.

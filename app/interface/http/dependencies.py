@@ -13,6 +13,7 @@ from app.interface.http.services import (
     Sprint4BServiceContainer,
     Sprint4C2ServiceContainer,
     Sprint4C3AServiceContainer,
+    Sprint5AServiceContainer,
 )
 from app.platform.errors import AuthenticationRequiredError
 from app.platform.tenant import Principal
@@ -102,6 +103,17 @@ def provide_sprint4c3a_services(request: Request) -> Sprint4C3AServiceContainer:
             headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
         )
     return cast(Sprint4C3AServiceContainer, configured_services)
+
+
+def provide_sprint5a_services(request: Request) -> Sprint5AServiceContainer:
+    configured_services = getattr(request.app.state, "sprint5a_services", None)
+    if configured_services is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Policy evaluation services are unavailable.",
+            headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
+        )
+    return cast(Sprint5AServiceContainer, configured_services)
 
 
 def provide_current_principal(

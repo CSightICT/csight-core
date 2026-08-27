@@ -522,3 +522,10 @@ grounded-run, correlation ID만 포함한다. 응답은 내부 clause row ID와 
 Local MLX도 기존 Analysis/Retrieval/Grounding API와 identifier-only event를 그대로 사용한다.
 Provider metadata는 `mlx`, local served-name, version/revision, prompt hash를 기록하되 host cache
 path와 raw prompt/response/reasoning은 공개하거나 저장하지 않는다.
+
+## Sprint 5A Policy Evaluation API
+
+`POST/GET /api/v1/cases/{case_id}/policy-evaluation-runs`와 `GET .../{run_id}`를 제공한다.
+POST body는 `analysis_run_id`, `as_of_date`만 받으며 tenant/rule-set은 Core가 선택한다. 새 요청은
+202, replay는 200, key 충돌은 409다. Queue에는 event/tenant/case/evaluation-run/correlation ID만
+들어가며 rule JSON, 분석 JSON, 고객 원문, JWT는 들어가지 않는다.

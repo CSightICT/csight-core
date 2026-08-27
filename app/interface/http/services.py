@@ -28,6 +28,11 @@ from app.application.grounding import (
     ListGroundedExplanationRuns,
     StartGroundedExplanation,
 )
+from app.application.policy_engine import (
+    GetPolicyEvaluation,
+    ListPolicyEvaluations,
+    StartPolicyEvaluation,
+)
 from app.application.policy_query_runs import (
     GetPolicyRetrievalRun,
     ListPolicyRetrievalRuns,
@@ -204,3 +209,12 @@ class Sprint4C3AServiceContainer:
     start_grounded_explanation: StartGroundedExplanation
     list_grounded_explanations: ListGroundedExplanationRuns
     get_grounded_explanation: GetGroundedExplanationRun
+
+
+@dataclass(frozen=True, slots=True)
+class Sprint5AServiceContainer:
+    """Versioned deterministic policy evaluation services."""
+
+    start_policy_evaluation: StartPolicyEvaluation
+    list_policy_evaluations: ListPolicyEvaluations
+    get_policy_evaluation: GetPolicyEvaluation

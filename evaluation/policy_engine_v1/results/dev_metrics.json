@@ -1,0 +1,19 @@
+{
+  "condition_status_accuracy": 1.0,
+  "cross_tenant_rule_selection": 0,
+  "dataset_hash": "d7fdbf7ff2fe3932137bd812a11534a50ee66b020f2714b72a31d2498b1a3c22",
+  "deterministic_replay_rate": 1.0,
+  "effect_f1": 1.0,
+  "effect_precision": 1.0,
+  "effect_recall": 1.0,
+  "forbidden_final_decision_count": 0,
+  "future_or_retired_rule_set": 0,
+  "record_count": 80,
+  "rule_artifact_hash": "2778818fefea90e6aba48c32f8db2a51196578ac2689638467bb33423331b3b2",
+  "rule_match_exact_accuracy": 1.0,
+  "rule_set_selection_accuracy": 1.0,
+  "rule_version_accuracy": 1.0,
+  "source_clause_validity": 1.0,
+  "split": "dev",
+  "summary_status_accuracy": 1.0
+}

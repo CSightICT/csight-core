@@ -27,6 +27,15 @@ GROUNDED_EXPLANATION_QUEUE_PAYLOAD_KEYS: Final = frozenset(
         "correlation_id",
     }
 )
+POLICY_EVALUATION_QUEUE_PAYLOAD_KEYS: Final = frozenset(
+    {
+        "event_id",
+        "tenant_id",
+        "case_id",
+        "policy_evaluation_run_id",
+        "correlation_id",
+    }
+)
 
 
 class CeleryAnalysisMessageQueue:
@@ -146,11 +155,47 @@ class CeleryGroundedExplanationMessageQueue:
             return False
 
 
+class CeleryPolicyEvaluationMessageQueue:
+    """Publish exactly five opaque deterministic-policy identifiers."""
+
+    def __init__(self, application: Celery, *, queue: str = "policy-evaluation") -> None:
+        self._application = application
+        self._queue = queue
+
+    def publish(self, *, topic: str, payload: Mapping[str, object], correlation_id: str) -> str:
+        normalized = dict(payload)
+        if frozenset(normalized) != POLICY_EVALUATION_QUEUE_PAYLOAD_KEYS:
+            raise ValueError("policy evaluation queue payload must contain exactly five IDs")
+        if any(not isinstance(value, str) or not value.strip() for value in normalized.values()):
+            raise ValueError("policy evaluation queue values must be non-empty strings")
+        if normalized["correlation_id"] != correlation_id:
+            raise ValueError("correlation_id must match the queue payload")
+        event_id = str(normalized["event_id"])
+        self._application.send_task(
+            topic,
+            args=[normalized],
+            task_id=event_id,
+            queue=self._queue,
+            headers={"correlation_id": correlation_id},
+        )
+        return event_id
+
+    def is_ready(self) -> bool:
+        try:
+            with self._application.connection_for_write() as connection:
+                connection.ensure_connection(max_retries=0)
+                return bool(connection.connected)
+        except Exception:
+            return False
+
+
 __all__ = [
     "ANALYSIS_QUEUE_PAYLOAD_KEYS",
     "GROUNDED_EXPLANATION_QUEUE_PAYLOAD_KEYS",
+    "POLICY_EVALUATION_QUEUE_PAYLOAD_KEYS",
     "POLICY_RETRIEVAL_QUEUE_PAYLOAD_KEYS",
     "CeleryAnalysisMessageQueue",
     "CeleryGroundedExplanationMessageQueue",
+    "CeleryPolicyEvaluationMessageQueue",
     "CeleryPolicyRetrievalMessageQueue",
 ]

@@ -7,15 +7,18 @@ from celery.exceptions import Reject
 
 from app.application.analysis import ExecuteTextExtractionCommand
 from app.application.grounding import ExecuteGroundedExplanationCommand
+from app.application.policy_engine import ExecutePolicyEvaluationCommand
 from app.application.policy_query_runs import ExecutePolicyRetrievalRunCommand
 from app.bootstrap.logging import bind_log_context, get_logger
 from app.bootstrap.settings import get_settings
 from app.bootstrap.sprint2 import build_execute_analysis_stage
 from app.bootstrap.sprint4c2 import build_execute_policy_retrieval_run
 from app.bootstrap.sprint4c3a import build_execute_grounded_explanation
+from app.bootstrap.sprint5a import build_execute_policy_evaluation
 from app.interface.workers.celery_app import (
     ANALYSIS_REQUESTED_TASK_NAME,
     GROUNDED_EXPLANATION_REQUESTED_TASK_NAME,
+    POLICY_EVALUATION_REQUESTED_TASK_NAME,
     POLICY_RETRIEVAL_REQUESTED_TASK_NAME,
     celery_app,
 )
@@ -121,5 +124,27 @@ def execute_grounded_explanation_task(
     except Exception:
         raise Reject(
             "grounded explanation task did not reach a durable application outcome",
+            requeue=True,
+        ) from None
+
+
+@celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]
+    bind=True,
+    name=POLICY_EVALUATION_REQUESTED_TASK_NAME,
+)
+def execute_policy_evaluation_task(
+    task: Task,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    """Validate opaque identifiers and invoke the deterministic use case."""
+
+    del task
+    command = ExecutePolicyEvaluationCommand.model_validate(payload)
+    try:
+        disposition = build_execute_policy_evaluation(get_settings()).execute(command)
+        return {**command.model_dump(), "disposition": disposition}
+    except Exception:
+        raise Reject(
+            "policy evaluation task did not reach a durable application outcome",
             requeue=True,
         ) from None

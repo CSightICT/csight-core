@@ -277,3 +277,10 @@ Migration lifecycle을 검증한다. Semantic faithfulness는 실제 pinned mode
 Local MLX sealed 결과는 Extraction 120/40, Query 80/40, Grounding 40/10, Injection 20/10으로
 관리한다. Test 결과 파일이 존재하면 재실행을 거부한다. 사람 semantic spot-check는 Dev20과
 Test10 전체이며 독립 judge-model 점수로 표현하지 않는다.
+
+## Sprint 5A Gates
+
+Unit은 registry/operator/missing/aggregation/hash/replay를, contract는 unknown/type/final effect/
+source/version/conflict를, API는 create/replay/conflict/role/tenant를 검증한다. PostgreSQL E2E는
+snapshot/outbox/append-only result/duplicate no-op를 확인한다. Dev80/Test40 gate는 selection,
+rule exact, condition, effect F1, summary, source, version, tenant/effective date, determinism이다.

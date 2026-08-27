@@ -136,6 +136,7 @@ POLICY_EXECUTION_PROFILE_STATUSES = ("ACTIVE", "RETIRED")
 POLICY_QUERY_STRATEGIES = ("RAW", "DETERMINISTIC", "LLM")
 POLICY_RETRIEVAL_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 GROUNDED_EXPLANATION_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
+POLICY_EVALUATION_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -2163,6 +2164,359 @@ class GroundedExplanationOutboxEventModel(CreatedAtMixin, Base):
     available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class PolicyRuleSetModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_rule_sets"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id",), ("tenants.id",), name="fk_policy_rule_sets_tenant", ondelete="RESTRICT"
+        ),
+        CheckConstraint(
+            "effective_to IS NULL OR effective_to >= effective_from", name="dates_valid"
+        ),
+        CheckConstraint("source_type = 'SYNTHETIC_REFERENCE'", name="source_type_allowed"),
+        CheckConstraint(
+            "content_hash ~ '^[0-9a-f]{64}$' AND source_corpus_hash ~ '^[0-9a-f]{64}$'",
+            name="hashes_valid",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_rule_sets_tenant_id"),
+        UniqueConstraint(
+            "tenant_id", "rule_set_name", "rule_set_version", name="uq_policy_rule_sets_version"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    effective_from: Mapped[date] = mapped_column(Date, nullable=False)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_corpus_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_corpus_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_corpus_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    field_registry_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    operator_registry_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    aggregation_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyRuleSetActivationModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_rule_set_activations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "rule_set_id"),
+            ("policy_rule_sets.tenant_id", "policy_rule_sets.id"),
+            name="fk_policy_rule_set_activations_rule_set",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "created_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_policy_rule_set_activations_user",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("retired_at IS NULL OR retired_at >= activated_at", name="dates_valid"),
+        Index(
+            "uq_policy_rule_set_activations_one_active",
+            "tenant_id",
+            "rule_set_name",
+            unique=True,
+            postgresql_where=text("retired_at IS NULL"),
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    activation_reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+
+
+class PolicyRuleModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_rules"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "rule_set_id"),
+            ("policy_rule_sets.tenant_id", "policy_rule_sets.id"),
+            name="fk_policy_rules_rule_set",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("priority BETWEEN 0 AND 10000", name="priority"),
+        CheckConstraint("prohibit_final_decision", name="no_final_decision"),
+        CheckConstraint(
+            "jsonb_typeof(conditions) = 'array' AND jsonb_array_length(conditions) > 0",
+            name="conditions_nonempty",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(effects) = 'array' AND jsonb_array_length(effects) > 0",
+            name="effects_nonempty",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_rules_tenant_id"),
+        UniqueConstraint(
+            "tenant_id", "rule_set_id", "rule_id", "rule_version", name="uq_policy_rules_identity"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False)
+    conditions: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    effects: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    requires_human_review: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    prohibit_final_decision: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyRuleSourceClauseModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_rule_source_clauses"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_rule_id"),
+            ("policy_rules.tenant_id", "policy_rules.id"),
+            name="fk_policy_rule_source_clauses_rule",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_clause_row_id"),
+            ("policy_clauses.tenant_id", "policy_clauses.id"),
+            name="fk_policy_rule_source_clauses_clause",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "policy_rule_id",
+            "policy_clause_row_id",
+            name="uq_policy_rule_source_clause",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_rule_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_clause_row_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    document_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    document_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    clause_id: Mapped[str] = mapped_column(String(320), nullable=False)
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyEvaluationRunModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_evaluation_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_policy_evaluation_runs_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id"),
+            ("analysis_runs.tenant_id", "analysis_runs.id"),
+            name="fk_policy_evaluation_runs_analysis",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "rule_set_id"),
+            ("policy_rule_sets.tenant_id", "policy_rule_sets.id"),
+            name="fk_policy_evaluation_runs_rule_set",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "requested_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_policy_evaluation_runs_user",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(POLICY_EVALUATION_RUN_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint(
+            "(status = 'QUEUED' AND started_at IS NULL AND completed_at IS NULL) OR "
+            "(status = 'RUNNING' AND started_at IS NOT NULL AND completed_at IS NULL) OR "
+            "(status IN ('SUCCEEDED','FAILED') AND started_at IS NOT NULL "
+            "AND completed_at IS NOT NULL)",
+            name="timestamps_valid",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_evaluation_runs_tenant_id"),
+        UniqueConstraint("tenant_id", "idempotency_key", name="uq_policy_evaluation_runs_key"),
+        Index("ix_policy_evaluation_runs_case_created", "tenant_id", "case_id", "created_at", "id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_set_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    summary_status: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    requested_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class PolicyEvaluationInputSnapshotModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_evaluation_input_snapshots"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_evaluation_run_id"),
+            ("policy_evaluation_runs.tenant_id", "policy_evaluation_runs.id"),
+            name="fk_policy_evaluation_input_snapshots_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "llm_extraction_result_v2_id"),
+            ("llm_extraction_results_v2.tenant_id", "llm_extraction_results_v2.id"),
+            name="fk_policy_evaluation_input_snapshots_extraction",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "tenant_id", "policy_evaluation_run_id", name="uq_policy_evaluation_snapshot_run"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_evaluation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    llm_extraction_result_v2_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    vision_analysis_run_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    alignment_result_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    input_values: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    source_qualification_metadata: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PolicyRuleEvaluationResultModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_rule_evaluation_results"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_evaluation_run_id"),
+            ("policy_evaluation_runs.tenant_id", "policy_evaluation_runs.id"),
+            name="fk_policy_rule_evaluation_results_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_rule_id"),
+            ("policy_rules.tenant_id", "policy_rules.id"),
+            name="fk_policy_rule_evaluation_results_rule",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "rule_status IN ('MATCHED','NOT_MATCHED','INDETERMINATE','NOT_APPLICABLE')",
+            name="status_allowed",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_rule_evaluation_results_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "policy_evaluation_run_id",
+            "policy_rule_id",
+            name="uq_policy_rule_evaluation_result",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_evaluation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_rule_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_clause_ids: Mapped[list[str]] = mapped_column(ARRAY(String(320)), nullable=False)
+
+
+class PolicyConditionEvaluationResultModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_condition_evaluation_results"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_rule_evaluation_result_id"),
+            ("policy_rule_evaluation_results.tenant_id", "policy_rule_evaluation_results.id"),
+            name="fk_policy_condition_evaluation_results_rule_result",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "condition_status IN "
+            "('SATISFIED','UNSATISFIED','UNKNOWN','NOT_EVALUATED','NOT_APPLICABLE')",
+            name="status_allowed",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "policy_rule_evaluation_result_id",
+            "condition_index",
+            name="uq_policy_condition_evaluation_result",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_rule_evaluation_result_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), nullable=False
+    )
+    condition_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    condition_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    actual_value: Mapped[object | None] = mapped_column(JSONB, nullable=True)
+    reason_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
+class PolicyEvaluationEffectModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_evaluation_effects"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_rule_evaluation_result_id"),
+            ("policy_rule_evaluation_results.tenant_id", "policy_rule_evaluation_results.id"),
+            name="fk_policy_evaluation_effects_rule_result",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "effect_type IN "
+            "('MARK_REVIEW_ELIGIBILITY','REQUIRE_ADDITIONAL_EVIDENCE',"
+            "'REQUIRE_HUMAN_REVIEW','REQUIRE_MANAGER_REVIEW','PROHIBIT_AUTOMATION',"
+            "'FLAG_POLICY_EXCEPTION')",
+            name="type_allowed",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_rule_evaluation_result_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), nullable=False
+    )
+    effect_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    effect_value: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
+class PolicyEvaluationOutboxEventModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_evaluation_outbox_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_evaluation_run_id"),
+            ("policy_evaluation_runs.tenant_id", "policy_evaluation_runs.id"),
+            name="fk_policy_evaluation_outbox_events_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')", name="status_allowed"
+        ),
+        UniqueConstraint(
+            "tenant_id", "policy_evaluation_run_id", name="uq_policy_evaluation_outbox_run"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_evaluation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
@@ -2201,4 +2555,14 @@ PERSISTENCE_MODELS = (
     GroundedExplanationRunModel,
     GroundedExplanationResultModel,
     GroundedExplanationOutboxEventModel,
+    PolicyRuleSetModel,
+    PolicyRuleSetActivationModel,
+    PolicyRuleModel,
+    PolicyRuleSourceClauseModel,
+    PolicyEvaluationRunModel,
+    PolicyEvaluationInputSnapshotModel,
+    PolicyRuleEvaluationResultModel,
+    PolicyConditionEvaluationResultModel,
+    PolicyEvaluationEffectModel,
+    PolicyEvaluationOutboxEventModel,
 )

@@ -268,3 +268,9 @@ Provider 장애는 Grounded Run 실패로 격리하고 Core readiness와 기존 
 Local MLX는 loopback에만 bind하고 별도 virtualenv와 immutable model revision을 사용한다.
 Docker에는 host bridge URL만 제공한다. Optional LLM health는 Core readiness 의존성이 아니며,
 provider failure는 Mock fallback 없이 기존 retry/failure 의미론으로 격리한다.
+
+## Sprint 5A Safety
+
+Typed allowlist 외 field/operator/effect는 ingestion 전에 거부한다. Python expression, eval/exec,
+raw SQL/JSONPath와 자연어 규칙 실행은 없다. Input snapshot은 typed values와 qualification만
+보존하고 고객 원문을 복제하지 않는다. Effects는 최종 승인·거절·fraud·liability를 표현하지 못한다.

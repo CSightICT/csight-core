@@ -8,6 +8,7 @@ from app.bootstrap.settings import Settings, get_settings
 ANALYSIS_REQUESTED_TASK_NAME = "analysis.requested.v1"
 POLICY_RETRIEVAL_REQUESTED_TASK_NAME = "policy_retrieval.requested.v1"
 GROUNDED_EXPLANATION_REQUESTED_TASK_NAME = "grounded_explanation.requested.v1"
+POLICY_EVALUATION_REQUESTED_TASK_NAME = "policy_evaluation.requested.v1"
 
 
 def create_celery_app(settings: Settings | None = None) -> Celery:
@@ -29,6 +30,7 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
             ANALYSIS_REQUESTED_TASK_NAME: {"queue": "analysis"},
             POLICY_RETRIEVAL_REQUESTED_TASK_NAME: {"queue": "policy-retrieval"},
             GROUNDED_EXPLANATION_REQUESTED_TASK_NAME: {"queue": "grounded-explanation"},
+            POLICY_EVALUATION_REQUESTED_TASK_NAME: {"queue": "policy-evaluation"},
         },
         task_track_started=True,
         task_acks_late=True,

@@ -1,0 +1,11 @@
+{
+  "builder_version": "1.0.0",
+  "content_hash": "d1779452c5a9ec166a1a2e15a7cc61d4800d50a6be5a0161ea7d0f623889a918",
+  "dataset": "policy_rule_sets_v1",
+  "rule_count": 24,
+  "rule_set_count": 2,
+  "schema_version": "1.0.0",
+  "source_clause_count": 24,
+  "source_type": "SYNTHETIC_REFERENCE",
+  "tenant_count": 2
+}

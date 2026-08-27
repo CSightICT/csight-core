@@ -8,7 +8,7 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | Sprint 0 — Foundation; CV E1~E3 학습과 held-out 평가 완료 |
-| 진행 중 작업 | PR #4에 E3 결과·PoC 그룹 분석·CI 수정 반영 및 검증 |
+| 진행 중 작업 | Vision 모델 패키징과 Sprint 1 Case/Evidence 구현 준비 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `kimhrin` |
 | 원격 저장소 | Private `CSightICT/csight-core` |
@@ -49,7 +49,7 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - [x] 구조화 로그와 민감정보 Redaction
 - [x] Architecture, Contract, E2E, Integration 테스트
 - [x] ARM64 Docker 및 CI-safe GitHub Actions Workflow
-- [ ] GitHub Actions 원격 실행
+- [x] GitHub Actions 원격 실행: latest push #98 / PR #99 성공
 
 ## 4. GitHub 협업 구축 체크리스트
 
@@ -88,6 +88,7 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 2026-08-26 | 협업 문서 YAML | PASS | Issue Form 4개와 CI Workflow 파싱 |
 | 2026-08-26 | Foundation 초기 커밋 | PASS | `main` commit `6fc20d3` |
 | 2026-08-26 | GitHub 원격 CI | NOT_RUN | 원격 저장소 미생성 |
+| 2026-08-27 | GitHub Actions #98 / #99 | PASS | Ruff lint/format, Pyright, fast tests 성공 |
 
 ## 6. CV 학습 상태 (Kaputt DINOv2)
 
@@ -110,15 +111,14 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - 실제 PoC 상품 1종과 재현 가능한 결함 정의를 확정해야 한다.
 - 현재 CV 모델은 이진 분류기이므로 결함 유형·위치 출력 방식(VLM 또는 별도 head)을 정해야 한다.
 - 정책 표현, 개인정보 보존 기간, 인증·Tenant 범위는 다음 Sprint의 ADR 대상으로 남아 있다.
-- PR #4는 draft이며 새 커밋의 GitHub Actions 통과 여부를 확인해야 한다.
+- PR #4는 draft이며 최종 review와 merge는 별도 승인 후 진행한다.
 
 ## 8. 다음 실행 항목
 
-1. PR #4의 새 GitHub Actions 결과를 확인하고 남은 오류를 수정한다.
-2. E3 모델·전처리·threshold를 버전된 Vision inference package로 묶는다.
-3. Sprint 1 Case/Evidence CRUD, MinIO 업로드, 실제 Alembic migration을 구현한다.
-4. Append-only Analysis Run과 실제 Vision HTTP adapter를 연결한다.
-5. 경질 플라스틱 1종의 deconstruction/actuation Shadow Mode 평가를 준비한다.
+1. E3 모델·전처리·threshold를 버전된 Vision inference package로 묶는다.
+2. Sprint 1 Case/Evidence CRUD, MinIO 업로드, 실제 Alembic migration을 구현한다.
+3. Append-only Analysis Run과 실제 Vision HTTP adapter를 연결한다.
+4. 경질 플라스틱 1종의 deconstruction/actuation Shadow Mode 평가를 준비한다.
 
 ## 9. 세션 종료 체크리스트
 
@@ -202,3 +202,11 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - 코드: 그룹 분석, metadata 보존, 단위 테스트, 기존 Ruff 오류 수정 반영
 - 제한: 이진 분류 모델은 결함 유형·위치를 직접 출력하지 않으며 사람의 최종 결정을 대체하지 않음
 - 다음 작업: CI 통과 확인, 모델 패키징, Case/Evidence와 실제 Vision adapter 구현
+
+
+### 2026-08-27 — PR #4 누락 반영과 CI 복구
+
+- 업로드: E3 최종 보고서, PoC 추천, 구현 공백 점검, 그룹 분석 코드와 테스트
+- 수정: prediction grouping metadata, Python 3.12 UTC, Ruff import/format 호환
+- 검증: GitHub Actions push #98과 pull request #99 모두 success
+- 브랜치: `develop` 대비 ahead, behind 0; PR #4는 draft 유지

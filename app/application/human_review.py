@@ -85,6 +85,7 @@ class EscalateTaskCommand(VersionedTaskCommand):
 
 class ResolveTaskCommand(VersionedTaskCommand):
     decision: HumanDecisionRequest
+    correlation_id: str = Field(default="human-review-resolve", min_length=1, max_length=128)
 
 
 class CreateReviewTaskFromPolicy:
@@ -224,4 +225,5 @@ class HumanReviewActions:
             roles=principal.roles,
             expected_version=command.expected_version,
             request=command.decision,
+            correlation_id=command.correlation_id,
         )

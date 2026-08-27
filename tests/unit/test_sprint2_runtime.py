@@ -313,6 +313,16 @@ def test_all_sql_outboxes_share_resolved_dispatch_settings_and_process_identity(
     monkeypatch.setattr(dispatcher_module, "CeleryHumanReviewMessageQueue", queue_factory("review"))
     monkeypatch.setattr(
         dispatcher_module,
+        "CeleryCaseResolutionMessageQueue",
+        queue_factory("case-resolution"),
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "CeleryExternalActionSimulationMessageQueue",
+        queue_factory("action-simulation"),
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
         "DispatchPolicyRetrievalOutbox",
         reliable_factory("retrieval"),
     )
@@ -331,6 +341,16 @@ def test_all_sql_outboxes_share_resolved_dispatch_settings_and_process_identity(
         "DispatchHumanReviewOutbox",
         reliable_factory("review"),
     )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "DispatchCaseResolutionOutbox",
+        reliable_factory("case-resolution"),
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "DispatchExternalActionSimulationOutbox",
+        reliable_factory("action-simulation"),
+    )
 
     assert dispatcher_module.main(["--once"]) == 0
     assert identity_calls == 1
@@ -348,6 +368,8 @@ def test_all_sql_outboxes_share_resolved_dispatch_settings_and_process_identity(
         ("grounding", "grounding"),
         ("evaluation", "evaluation"),
         ("review", "review"),
+        ("case-resolution", "case-resolution"),
+        ("action-simulation", "action-simulation"),
     ):
         values = captured[name]
         assert values["session_factory"] is session_factory_marker

@@ -799,4 +799,9 @@ def test_migration_0012_round_trip_normalizes_and_fences_integrity(
         revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
         assert revision == REVISION_0012
 
+    # Alembic's drift command intentionally requires the database to be at the
+    # repository head.  Preserve the 0011 -> 0012 round-trip assertions above,
+    # then prove that the populated legacy graph also upgrades cleanly through
+    # the later Sprint 5C revisions before checking final metadata drift.
+    alembic_command.upgrade(config, "head")
     alembic_command.check(config)

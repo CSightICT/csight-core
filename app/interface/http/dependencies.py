@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.bootstrap.dependencies import build_readiness_service
 from app.bootstrap.settings import Settings
+from app.interface.http.poc_reporting_services import PocReportingServiceContainer
 from app.interface.http.services import (
     Sprint1ServiceContainer,
     Sprint2ServiceContainer,
@@ -15,6 +16,7 @@ from app.interface.http.services import (
     Sprint4C3AServiceContainer,
     Sprint5AServiceContainer,
     Sprint5BServiceContainer,
+    Sprint5CServiceContainer,
 )
 from app.platform.errors import AuthenticationRequiredError
 from app.platform.tenant import Principal
@@ -126,6 +128,28 @@ def provide_sprint5b_services(request: Request) -> Sprint5BServiceContainer:
             headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
         )
     return cast(Sprint5BServiceContainer, configured_services)
+
+
+def provide_sprint5c_services(request: Request) -> Sprint5CServiceContainer:
+    configured_services = getattr(request.app.state, "sprint5c_services", None)
+    if configured_services is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Case Resolution services are unavailable.",
+            headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
+        )
+    return cast(Sprint5CServiceContainer, configured_services)
+
+
+def provide_poc_reporting_services(request: Request) -> PocReportingServiceContainer:
+    configured_services = getattr(request.app.state, "poc_reporting_services", None)
+    if configured_services is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Review Report and PoC metric services are unavailable.",
+            headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
+        )
+    return cast(PocReportingServiceContainer, configured_services)
 
 
 def provide_current_principal(

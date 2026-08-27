@@ -142,6 +142,7 @@ class HumanReviewRepository(Protocol):
         roles: frozenset[Role],
         expected_version: int,
         request: HumanDecisionRequest,
+        correlation_id: str = "human-review-resolve",
     ) -> tuple[ReviewTask, HumanDecision]: ...
 
 

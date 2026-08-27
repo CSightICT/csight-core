@@ -335,3 +335,24 @@ The deterministic Policy Engine publishes an identifier-only `human_review.reque
 The Human Review adapter creates a task and immutable packet; authenticated HTTP actions are the
 only final-decision path. Celery never resolves tasks. See `docs/review/HUMAN_REVIEW_ARCHITECTURE.md`
 and ADR-0077 through ADR-0088.
+
+## Sprint 5C Resolution, reporting, and console boundary
+
+An authenticated Human resolve transaction now records the immutable Decision, one versioned
+Case Resolution projection, its first append-only Event, and an identifier-only durable request.
+The Resolution worker maps only versioned Human Decision types and explicitly submitted Case
+action inputs. Complete mappings create one immutable Action Intent and a second durable request;
+missing or invalid inputs stop at `ACTION_NEEDS_INPUT` without an Intent, Attempt, or Result.
+
+The external Action adapter is deterministic and network-free. Intents are fixed to `DRY_RUN`, LIVE
+has no public entry point, and every Result is constrained to `side_effects_performed=false`.
+Simulation work is fenced by a projection lease and token across separate claim and completion
+transactions. Terminal transitions create an immutable `review_report/1.0.0` snapshot in the same
+transaction; integrity failures create a degraded no-source snapshot instead of rolling back the
+durable failure state.
+
+`web/` is a separate React/TypeScript client served by an unprivileged Nginx container. Nginx
+proxies `/api` to Core, so the browser needs no cross-origin API configuration. The console stores
+JWTs only in memory and persists only allowlisted opaque run IDs and idempotency keys for recovery.
+It composes existing idempotent APIs and does not introduce a server-side workflow coordinator.
+See `docs/resolution/` and ADR-0089 through ADR-0095.

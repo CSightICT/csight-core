@@ -311,3 +311,22 @@ Alignment 조건은 `NOT_EVALUATED`; 재평가는 기존 결과 갱신이 아니
 Human Review adds a versioned task-type/priority mapping, five-state typed state machine, exclusive
 assignment, immutable packet, append-only actions, and one append-only human decision with validated
 basis. `RESOLVED` is terminal; correction is deferred.
+
+## Sprint 5C Resolution workflow
+
+Human Review `RESOLVED` and Case Resolution are separate lifecycles. The Decision transaction
+creates `DECISION_RECORDED`; a worker then deterministically maps it to
+`ACTION_NOT_REQUIRED`, `MANUAL_FOLLOW_UP_REQUIRED`, `ACTION_NEEDS_INPUT`, or `ACTION_READY`.
+Only `cases.order_ref`, `cases.product_ref`, and the flat, explicitly supplied
+`cases.attributes.external_action_input` object may become action parameters.
+
+`ACTION_READY` has one immutable typed Intent and a durable simulation request. A fenced worker
+records `ACTION_DRY_RUN_PENDING`, performs a pure local validation, then finishes at
+`ACTION_DRY_RUN_VALIDATED` or `ACTION_DRY_RUN_FAILED`. A different second Human Decision never
+replaces the original; it records a conflict and moves the projection to
+`MANUAL_FOLLOW_UP_REQUIRED`. None of these states mutates `cases.status` or closes the Case.
+
+Terminal Resolution versions own immutable Review Report snapshots. KPI reads aggregate actual
+released assignment intervals and explicit comparable/terminal populations, always returning
+numerator, denominator, and sample count. These aggregates are descriptive internal-demo evidence,
+not a performance or ROI claim.

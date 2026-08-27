@@ -3,6 +3,10 @@
 from fastapi import FastAPI
 
 from app.bootstrap.logging import configure_logging
+from app.bootstrap.poc_reporting import (
+    build_poc_reporting_services,
+    poc_reporting_is_configured,
+)
 from app.bootstrap.settings import Settings, get_settings
 from app.bootstrap.sprint1 import build_sprint1_services, sprint1_is_configured
 from app.bootstrap.sprint2 import build_sprint2_services, sprint2_is_configured
@@ -11,20 +15,24 @@ from app.bootstrap.sprint4c2 import build_sprint4c2_services, sprint4c2_is_confi
 from app.bootstrap.sprint4c3a import build_sprint4c3a_services, sprint4c3a_is_configured
 from app.bootstrap.sprint5a import build_sprint5a_services, sprint5a_is_configured
 from app.bootstrap.sprint5b import build_sprint5b_services, sprint5b_is_configured
+from app.bootstrap.sprint5c import build_sprint5c_services, sprint5c_is_configured
 from app.interface.http import (
     register_correlation_id_middleware,
     register_evidence_upload_body_limit_middleware,
     register_exception_handlers,
 )
+from app.interface.http.poc_reporting_services import PocReportingServiceContainer
 from app.interface.http.routers import (
     analysis_router,
     auth_router,
+    case_resolution_router,
     cases_router,
     evidence_router,
     grounding_router,
     health_router,
     human_review_case_router,
     human_review_router,
+    poc_reporting_router,
     policy_evaluations_router,
     policy_query_runs_router,
     policy_retrieval_router,
@@ -38,6 +46,7 @@ from app.interface.http.services import (
     Sprint4C3AServiceContainer,
     Sprint5AServiceContainer,
     Sprint5BServiceContainer,
+    Sprint5CServiceContainer,
 )
 from app.ports.readiness import ReadinessService
 
@@ -53,6 +62,8 @@ def create_app(
     sprint4c3a_services: Sprint4C3AServiceContainer | None = None,
     sprint5a_services: Sprint5AServiceContainer | None = None,
     sprint5b_services: Sprint5BServiceContainer | None = None,
+    sprint5c_services: Sprint5CServiceContainer | None = None,
+    poc_reporting_services: PocReportingServiceContainer | None = None,
 ) -> FastAPI:
     """Create an independently configurable API instance for deployment or tests."""
 
@@ -79,6 +90,12 @@ def create_app(
     resolved_sprint5b_services = sprint5b_services
     if resolved_sprint5b_services is None and sprint5b_is_configured(resolved_settings):
         resolved_sprint5b_services = build_sprint5b_services(resolved_settings)
+    resolved_sprint5c_services = sprint5c_services
+    if resolved_sprint5c_services is None and sprint5c_is_configured(resolved_settings):
+        resolved_sprint5c_services = build_sprint5c_services(resolved_settings)
+    resolved_poc_reporting_services = poc_reporting_services
+    if resolved_poc_reporting_services is None and poc_reporting_is_configured(resolved_settings):
+        resolved_poc_reporting_services = build_poc_reporting_services(resolved_settings)
 
     application = FastAPI(
         title=resolved_settings.app_name,
@@ -93,6 +110,8 @@ def create_app(
     application.state.sprint4c3a_services = resolved_sprint4c3a_services
     application.state.sprint5a_services = resolved_sprint5a_services
     application.state.sprint5b_services = resolved_sprint5b_services
+    application.state.sprint5c_services = resolved_sprint5c_services
+    application.state.poc_reporting_services = resolved_poc_reporting_services
 
     # Register the body cap first so the correlation middleware remains outermost
     # and every early 413 response carries the same trace identifier contract.
@@ -106,6 +125,8 @@ def create_app(
     application.include_router(system_router)
     application.include_router(auth_router)
     application.include_router(cases_router)
+    application.include_router(case_resolution_router)
+    application.include_router(poc_reporting_router)
     application.include_router(evidence_router)
     application.include_router(analysis_router)
     application.include_router(policy_retrieval_router)

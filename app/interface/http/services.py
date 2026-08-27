@@ -16,6 +16,12 @@ from app.application.analysis import (
     StartTextAnalysisResult,
 )
 from app.application.auth import LoginCommand, LoginResult
+from app.application.case_resolution import (
+    GetCaseResolution,
+    GetExternalActionIntent,
+    ListCaseExternalActionIntents,
+    ListCaseResolutionEvents,
+)
 from app.application.cases import (
     CasePage,
     CreateCaseCommand,
@@ -232,3 +238,13 @@ class Sprint5BServiceContainer:
     list_tasks: ListHumanReviewTasks
     get_task: GetHumanReviewTask
     actions: HumanReviewActions
+
+
+@dataclass(frozen=True, slots=True)
+class Sprint5CServiceContainer:
+    """Read-only Case Resolution and external Action Intent services."""
+
+    get_resolution: GetCaseResolution
+    list_resolution_events: ListCaseResolutionEvents
+    list_external_action_intents: ListCaseExternalActionIntents
+    get_external_action_intent: GetExternalActionIntent

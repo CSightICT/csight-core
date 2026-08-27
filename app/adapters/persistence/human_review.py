@@ -22,6 +22,10 @@ from app.adapters.persistence.grounding import load_verified_citation_pack
 from app.adapters.persistence.models import (
     AnalysisRunEvidenceModel,
     CaseEvidenceModel,
+    CaseModel,
+    CaseResolutionEventModel,
+    CaseResolutionModel,
+    CaseResolutionRequestEventModel,
     GroundedExplanationResultModel,
     GroundedExplanationRunModel,
     HumanReviewActionModel,
@@ -42,6 +46,12 @@ from app.adapters.persistence.models import (
     VisionAnalysisResultModel,
 )
 from app.platform.async_reliability import AsyncEventIntegrityError
+from app.platform.case_resolution import (
+    ACTION_MAPPING_NAME,
+    ACTION_MAPPING_VERSION,
+    RESOLUTION_SCHEMA_VERSION,
+    ResolutionStatus,
+)
 from app.platform.errors import ForbiddenError
 from app.platform.errors import ValidationError as PlatformValidationError
 from app.platform.human_review import (
@@ -882,6 +892,7 @@ class SQLAlchemyHumanReviewRepository:
         roles: frozenset[Role],
         expected_version: int,
         request: HumanDecisionRequest,
+        correlation_id: str = "human-review-resolve",
     ) -> tuple[ReviewTask, HumanDecision]:
         with self._factory.begin() as session:
             task = _lock_task(session, tenant_id, task_id)
@@ -1012,6 +1023,13 @@ class SQLAlchemyHumanReviewRepository:
             task.updated_at = now
             task.resolved_at = now
             task.current_assignee_id = None
+            _record_case_resolution_request(
+                session,
+                task=task,
+                decision=decision_row,
+                correlation_id=correlation_id,
+                now=now,
+            )
             session.flush()
             return _to_task(task), _to_decision(
                 session,
@@ -1024,6 +1042,132 @@ class SQLAlchemyHumanReviewRepository:
                     ).all()
                 ),
             )
+
+
+def verify_human_decision_integrity(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    decision_id: UUID,
+) -> HumanReviewDecisionModel:
+    """Load and verify one immutable Human Decision inside the caller transaction."""
+
+    decision = session.scalar(
+        select(HumanReviewDecisionModel).where(
+            HumanReviewDecisionModel.tenant_id == tenant_id,
+            HumanReviewDecisionModel.id == decision_id,
+        )
+    )
+    if decision is None:
+        raise ReviewPacketIntegrityError("The source Human Decision is missing.")
+    basis = list(
+        session.scalars(
+            select(HumanReviewDecisionBasisModel).where(
+                HumanReviewDecisionBasisModel.tenant_id == tenant_id,
+                HumanReviewDecisionBasisModel.human_review_decision_id == decision_id,
+            )
+        ).all()
+    )
+    _verify_decision_hash(session, decision, basis)
+    return decision
+
+
+def _record_case_resolution_request(
+    session: Session,
+    *,
+    task: HumanReviewTaskModel,
+    decision: HumanReviewDecisionModel,
+    correlation_id: str,
+    now: datetime,
+) -> None:
+    """Atomically create the Case Resolution projection and exact request event."""
+
+    case = session.scalar(
+        select(CaseModel)
+        .where(CaseModel.tenant_id == task.tenant_id, CaseModel.id == task.case_id)
+        .with_for_update()
+    )
+    if case is None:
+        raise ReviewPacketIntegrityError("The review task Case is missing.")
+    resolution = session.scalar(
+        select(CaseResolutionModel)
+        .where(
+            CaseResolutionModel.tenant_id == task.tenant_id,
+            CaseResolutionModel.case_id == task.case_id,
+        )
+        .with_for_update()
+    )
+    if resolution is None:
+        resolution_id = uuid4()
+        resolution = CaseResolutionModel(
+            id=resolution_id,
+            tenant_id=task.tenant_id,
+            case_id=task.case_id,
+            source_review_task_id=task.id,
+            source_human_decision_id=decision.id,
+            status=ResolutionStatus.DECISION_RECORDED.value,
+            version=1,
+            mapping_name=ACTION_MAPPING_NAME,
+            mapping_version=ACTION_MAPPING_VERSION,
+            resolution_schema_version=RESOLUTION_SCHEMA_VERSION,
+            missing_fields=[],
+            invalid_fields=[],
+            failure_code=None,
+            failure_message=None,
+            execution_attempt_count=0,
+            claim_token=None,
+            lease_expires_at=None,
+            correlation_id=correlation_id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(resolution)
+        session.flush()
+        session.add(
+            CaseResolutionEventModel(
+                id=uuid4(),
+                tenant_id=task.tenant_id,
+                case_id=task.case_id,
+                resolution_id=resolution_id,
+                sequence=1,
+                event_type=ResolutionStatus.DECISION_RECORDED.value,
+                from_status=None,
+                to_status=ResolutionStatus.DECISION_RECORDED.value,
+                human_decision_id=decision.id,
+                external_action_intent_id=None,
+                payload={
+                    "review_task_id": str(task.id),
+                    "human_decision_id": str(decision.id),
+                    "mapping_name": ACTION_MAPPING_NAME,
+                    "mapping_version": ACTION_MAPPING_VERSION,
+                },
+                created_at=now,
+            )
+        )
+    session.add(
+        CaseResolutionRequestEventModel(
+            id=uuid4(),
+            tenant_id=task.tenant_id,
+            case_id=task.case_id,
+            resolution_id=resolution.id,
+            human_decision_id=decision.id,
+            correlation_id=correlation_id,
+            status="PENDING",
+            attempt_count=0,
+            available_at=now,
+            claimed_at=None,
+            claim_token=None,
+            claimed_by=None,
+            published_at=None,
+            last_error=None,
+            consumed_at=None,
+            consumer_attempt_count=0,
+            consumer_last_error=None,
+            failure_code=None,
+            failed_at=None,
+            created_at=now,
+        )
+    )
 
 
 def _lock_task(session: Session, tenant_id: str, task_id: str) -> HumanReviewTaskModel:

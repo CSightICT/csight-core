@@ -1,0 +1,69 @@
+{
+  "customer_scope": {
+    "customer_candidate_confirmed": false,
+    "defect_types": [],
+    "evidence_ref": null,
+    "product_category": null
+  },
+  "real_case_dataset": {
+    "case_count": 0,
+    "deidentified": false,
+    "evidence_ref": null,
+    "gold_reviewed_count": 0
+  },
+  "real_policy_corpus": {
+    "actual_company_policy": false,
+    "effective_dates_present": false,
+    "evidence_ref": null,
+    "versioned": false
+  },
+  "privacy_and_access": {
+    "access_control_approved": false,
+    "deletion_approved": false,
+    "evidence_ref": null,
+    "exif_removal_approved": false,
+    "retention_approved": false
+  },
+  "vision_scope": {
+    "evidence_ref": null,
+    "exclusion_scope_documented": false,
+    "manifest_complete": false,
+    "per_defect_evaluation_complete": false,
+    "status": "MOCK_ONLY"
+  },
+  "qwen_re_evaluation": {
+    "evidence_ref": null,
+    "extraction_status": "NOT_RUN",
+    "grounding_status": "NOT_RUN"
+  },
+  "real_distribution_evaluation": {
+    "cases": false,
+    "evidence_ref": null,
+    "policy": false,
+    "user_queries": false
+  },
+  "shadow_mode": {
+    "comparable_decision_count": 0,
+    "completed": false,
+    "evidence_ref": null,
+    "human_gold_present": false
+  },
+  "safety_regression": {
+    "cross_tenant": null,
+    "decision_mutation": null,
+    "duplicate_intent": null,
+    "duplicate_result": null,
+    "evidence_ref": null,
+    "live_execution": null,
+    "parameter_inference": null,
+    "premature_closure": null,
+    "unauthorized_decision": null
+  },
+  "clean_environment_regression": {
+    "backend": "PASS",
+    "clean_environment_demo": "NOT_RUN",
+    "evidence_ref": null,
+    "frontend": "NOT_RUN"
+  },
+  "schema_version": "poc_readiness/1.0.0"
+}

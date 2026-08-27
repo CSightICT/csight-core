@@ -1,0 +1,40 @@
+server {
+    listen 8080;
+    server_name _;
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $csight_api_upstream "api:8000";
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size ${WEB_MAX_UPLOAD_BODY};
+
+    add_header_inherit merge;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data: http: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" always;
+
+    location = /web-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location /api/ {
+        proxy_pass http://$csight_api_upstream;
+        proxy_http_version 1.1;
+        proxy_request_buffering off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-store";
+    }
+}

@@ -289,3 +289,22 @@ rule exact, condition, effect F1, summary, source, version, tenant/effective dat
 Required verification covers pure mapping/state/decision contracts, HTTP role and schema behavior,
 PostgreSQL transaction and concurrent claim behavior, queue envelope and worker boundaries, sealed
 60/30 evaluation artifacts, migration lifecycle/drift, and live Docker event-to-decision smoke.
+
+## Sprint 5C gates
+
+- Pure contract tests cover all seven Decision mappings, strict action-specific inputs, decimal
+  handling, unknown/irrelevant fields, deterministic DRY-RUN, and LIVE fail-closed behavior.
+- PostgreSQL integration covers Decision-to-request atomicity, complete Refund/Repair validation,
+  missing-input zero Intent/Attempt/Result, conflicting second Decision, duplicate delivery,
+  tenant isolation, hash tampering, execution leases, and terminal Report creation.
+- Migration gates cover empty/previous/head paths, downgrade-upgrade cycles, database constraints,
+  final Alembic drift, and disposable database cleanup.
+- Frontend gates include lint, generated OpenAPI drift, TypeScript, unit/component tests, production
+  build, and five Playwright demo scenarios.
+- KPI tests verify numerator, denominator, sample count, value, unit, zero-denominator behavior, and
+  tenant scoping. Review time is the sum of actual released assignment intervals divided by resolved
+  tasks, not Case age.
+- `make verify-poc-readiness` must continue to report
+  `SYNTHETIC_MOCK_SIMULATION_DEMO` until real Case/policy/query distribution, privacy approval,
+  Vision qualification or explicit exclusion, Qwen reevaluation, Shadow Mode, zero safety counts,
+  and clean-environment regression all have evidence references.

@@ -2,10 +2,10 @@
 
 > 이미지·텍스트 기반 상품 불량 CS 의사결정 지원 플랫폼
 
-이 저장소는 CSight의 **Sprint 5B Human Review Workflow와 Async Reliability Closeout**까지
-구현·검증했습니다. Python 3.12,
-FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며 API와
-Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
+이 저장소는 CSight의 **Sprint 5C Case Resolution·External Action DRY-RUN·상담원 콘솔**까지
+구현·검증한 내부 시뮬레이션 데모입니다. Python 3.12, FastAPI, SQLAlchemy 2/Alembic,
+Celery/RabbitMQ, PostgreSQL/pgvector, MinIO와 React/TypeScript/Vite를 사용합니다. API와 Worker는
+같은 Core 이미지의 서로 다른 프로세스로, Web은 별도 비루트 Nginx 이미지로 실행됩니다.
 
 Sprint 1의 JWT, Tenant 격리, Case와 Private Evidence 기능 위에 Analysis Run·Stage·Attempt,
 Transactional Outbox, 얇은 Celery Worker, 버전 고정 Prompt Registry, Text/Vision Provider,
@@ -17,6 +17,12 @@ planning을 추가했습니다. 4C-3A는 immutable Citation Pack, strict grounde
 immutable typed rule, qualification-aware input snapshot, append-only policy evaluation을 추가합니다.
 정책 효과 자체는 review guidance이며 승인·거절을 만들지 않습니다. Sprint 5B에서 인증된 사람이
 Review Packet을 확인하고 Resolve할 때에만 immutable Human Decision을 기록합니다.
+Sprint 5C는 그 Decision을 Case 상태와 분리된 Resolution으로 매핑하고, 명시 입력이 완전할 때만
+immutable Action Intent와 네트워크 없는 `DRY_RUN`을 생성합니다. Terminal Resolution은
+immutable Review Report를 만들며 콘솔은 분자·분모·표본 수가 있는 PoC KPI를 표시합니다.
+실제 기업 정책·Case·Vision qualification·개인정보 승인·Shadow Mode 증거가 없으므로 현재
+판정은 **합성 데이터·Mock Vision 기반 시뮬레이션 데모**이며 실제 PoC 성능이나 ROI를 주장하지
+않습니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -26,6 +32,7 @@ Review Packet을 확인하고 Resolve할 때에만 immutable Human Decision을 �
 
 - Docker Desktop과 Docker Compose
 - [`uv`](https://docs.astral.sh/uv/) (호스트 품질 검사와 테스트용)
+- Node.js 20.19 이상과 npm (호스트 Web 검사와 Playwright용)
 - `curl`; 아래 API 예시의 응답 추출에는 `jq`
 
 프로젝트 루트에서 다음 명령을 실행합니다.
@@ -38,9 +45,9 @@ make migrate
 make seed
 ```
 
-`make up`은 이미지를 빌드하고 PostgreSQL, RabbitMQ, MinIO, Bucket 초기화, API,
-Worker와 Outbox Dispatcher를 시작한 뒤 Health Check를 기다립니다. 모든 외부 포트는 `127.0.0.1`에만
-바인딩됩니다.
+`make up`은 이미지를 빌드하고 PostgreSQL, RabbitMQ, MinIO, Bucket 초기화, API, Worker,
+Outbox Dispatcher와 Web 콘솔을 시작한 뒤 Health Check를 기다립니다. 모든 외부 포트는
+`127.0.0.1`에만 바인딩됩니다.
 
 시작하기 전에 `.env`에서 다음 값을 직접 설정합니다.
 
@@ -61,6 +68,7 @@ Worker와 Outbox Dispatcher를 시작한 뒤 Health Check를 기다립니다. �
 curl -fsS http://127.0.0.1:8000/health/live
 curl -fsS http://127.0.0.1:8000/health/ready
 curl -fsS http://127.0.0.1:8000/api/v1/system/info
+curl -fsS http://127.0.0.1:8080/web-health
 ```
 
 예상 응답은 각각 다음 형태입니다.
@@ -93,6 +101,10 @@ make down
 | CI-safe 테스트 | `make test` |
 | Core 통합 테스트 | `make test-integration` |
 | 전체 로컬 테스트 | `make test-all` |
+| Web Lint·Type·OpenAPI·Unit·Build | `make web-lint web-typecheck web-openapi web-test web-build` |
+| Web 필수 5개 시나리오 | `make web-e2e` |
+| 현재 PoC 승격 판정 | `make verify-poc-readiness` |
+| Limited PoC 승격 Gate | `make require-limited-poc` |
 | Analysis 집중 테스트 | `make test-analysis` |
 | Analysis PostgreSQL 통합 | `make test-analysis-integration` |
 | Mock Analysis HTTP Smoke | `make smoke-analysis` |

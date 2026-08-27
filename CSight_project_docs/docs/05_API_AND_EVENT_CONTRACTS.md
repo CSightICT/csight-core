@@ -535,3 +535,28 @@ POST body는 `analysis_run_id`, `as_of_date`만 받으며 tenant/rule-set은 Cor
 Claim, release, evidence request, resume, escalate, and resolve routes require human-review action
 permission. Resolve is the only final-decision creator. The queue event contains only event, tenant,
 case, policy evaluation, and correlation IDs.
+
+## Sprint 5C Resolution, report, and metric contracts
+
+Authenticated read-only endpoints:
+
+| Method | Path | Contract |
+|---|---|---|
+| `GET` | `/api/v1/cases/{case_id}/resolution` | Current versioned Resolution projection |
+| `GET` | `/api/v1/cases/{case_id}/resolution/events` | Ordered append-only Events |
+| `GET` | `/api/v1/cases/{case_id}/external-action-intents` | Immutable typed Intent summaries |
+| `GET` | `/api/v1/external-action-intents/{intent_id}` | Intent with safe Attempt/Result projections |
+| `GET` | `/api/v1/cases/{case_id}/review-report` | Latest immutable terminal `review_report/1.0.0` |
+| `GET` | `/api/v1/metrics/poc-summary` | Seven tenant-scoped KPI aggregates |
+
+The two queues use exact five-field identifier envelopes:
+
+- `case_resolution.requested.v1`: `event_id`, `tenant_id`, `case_id`, `resolution_id`,
+  `correlation_id`;
+- `external_action.simulation_requested.v1`: `event_id`, `tenant_id`, `case_id`,
+  `external_action_intent_id`, `correlation_id`.
+
+Public responses never expose tenant IDs, dispatcher claims, execution tokens, leases, JWTs, or
+credentials. There is no Resolution write endpoint, input-completion endpoint, Case-close endpoint,
+or LIVE external-action endpoint. Report and KPI responses are `no-store`; KPI fields each include
+`numerator`, `denominator`, `sample_count`, `value`, and `unit`.

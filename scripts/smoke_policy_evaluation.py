@@ -78,6 +78,10 @@ def main() -> int:
                 "product_category": "GENERAL",
                 "days_since_purchase": 3,
                 "order_amount": 500000,
+                "external_action_input": {
+                    "amount": "48000.0000",
+                    "currency": "KRW",
+                },
             },
         },
     )

@@ -5,6 +5,7 @@ for translating them to and from framework-independent domain entities.
 """
 
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pgvector.sqlalchemy import Vector
@@ -18,6 +19,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    Numeric,
     SmallInteger,
     String,
     Text,
@@ -177,6 +179,21 @@ HUMAN_DECISION_TYPES = (
     "PROVIDE_INFORMATION",
     "NO_ACTION",
 )
+CASE_RESOLUTION_STATUSES = (
+    "DECISION_RECORDED",
+    "ACTION_NOT_REQUIRED",
+    "MANUAL_FOLLOW_UP_REQUIRED",
+    "ACTION_NEEDS_INPUT",
+    "ACTION_READY",
+    "ACTION_DRY_RUN_PENDING",
+    "ACTION_DRY_RUN_VALIDATED",
+    "ACTION_DRY_RUN_FAILED",
+)
+CASE_RESOLUTION_EVENT_TYPES = CASE_RESOLUTION_STATUSES
+EXTERNAL_ACTION_TYPES = ("REFUND", "EXCHANGE", "RESHIPMENT", "REPAIR")
+EXTERNAL_ACTION_MODES = ("DRY_RUN", "LIVE")
+EXTERNAL_ACTION_SIMULATION_ATTEMPT_STATUSES = ("RUNNING", "SUCCEEDED", "FAILED")
+EXTERNAL_ACTION_SIMULATION_OUTCOMES = ("VALIDATED", "FAILED")
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -3259,6 +3276,552 @@ class HumanReviewRequestEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Bas
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
 
 
+class CaseResolutionModel(TimestampMixin, Base):
+    __tablename__ = "case_resolutions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_case_resolutions_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "source_review_task_id"),
+            ("human_review_tasks.tenant_id", "human_review_tasks.id"),
+            name="fk_case_resolutions_review_task",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "source_human_decision_id"),
+            ("human_review_decisions.tenant_id", "human_review_decisions.id"),
+            name="fk_case_resolutions_human_decision",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(CASE_RESOLUTION_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint(
+            "mapping_name = 'human_decision_to_external_action' "
+            "AND mapping_version = '1.0.0' AND resolution_schema_version = '1.0.0'",
+            name="versions_supported",
+        ),
+        CheckConstraint("jsonb_typeof(missing_fields) = 'array'", name="missing_fields_array"),
+        CheckConstraint("jsonb_typeof(invalid_fields) = 'array'", name="invalid_fields_array"),
+        CheckConstraint("execution_attempt_count >= 0", name="execution_attempts_nonnegative"),
+        CheckConstraint(
+            "(status = 'ACTION_DRY_RUN_PENDING' AND claim_token IS NOT NULL "
+            "AND lease_expires_at IS NOT NULL AND execution_attempt_count > 0) OR "
+            "(status <> 'ACTION_DRY_RUN_PENDING' AND claim_token IS NULL "
+            "AND lease_expires_at IS NULL)",
+            name="execution_claim_consistent",
+        ),
+        CheckConstraint(
+            "(failure_code IS NULL AND failure_message IS NULL) OR "
+            "(failure_code IS NOT NULL AND failure_message IS NOT NULL)",
+            name="failure_fields_consistent",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_case_resolutions_tenant_id"),
+        UniqueConstraint("tenant_id", "case_id", "id", name="uq_case_resolutions_tenant_case_id"),
+        UniqueConstraint("tenant_id", "case_id", name="uq_case_resolutions_tenant_case"),
+        Index("ix_case_resolutions_tenant_status", "tenant_id", "status", "updated_at", "id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    source_review_task_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    source_human_decision_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    mapping_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    mapping_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    resolution_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    missing_fields: Mapped[list[object]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    invalid_fields: Mapped[list[object]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    execution_attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    claim_token: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class ExternalActionIntentModel(CreatedAtMixin, Base):
+    __tablename__ = "external_action_intents"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "resolution_id"),
+            ("case_resolutions.tenant_id", "case_resolutions.case_id", "case_resolutions.id"),
+            name="fk_external_action_intents_resolution",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "human_decision_id"),
+            ("human_review_decisions.tenant_id", "human_review_decisions.id"),
+            name="fk_external_action_intents_human_decision",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"action_type IN ({_sql_values(EXTERNAL_ACTION_TYPES)})", name="type_allowed"
+        ),
+        CheckConstraint("mode = 'DRY_RUN'", name="dry_run_only"),
+        CheckConstraint("length(btrim(order_ref)) BETWEEN 1 AND 255", name="order_ref_valid"),
+        CheckConstraint(
+            "product_ref IS NULL OR length(btrim(product_ref)) BETWEEN 1 AND 255",
+            name="product_ref_valid",
+        ),
+        CheckConstraint("amount IS NULL OR amount > 0", name="amount_positive"),
+        CheckConstraint("currency IS NULL OR currency ~ '^[A-Z]{3}$'", name="currency_valid"),
+        CheckConstraint("quantity IS NULL OR quantity BETWEEN 1 AND 1000", name="quantity_valid"),
+        CheckConstraint(
+            "shipping_address_ref IS NULL OR length(btrim(shipping_address_ref)) BETWEEN 1 AND 255",
+            name="shipping_address_ref_valid",
+        ),
+        CheckConstraint(
+            "(action_type = 'REFUND' AND product_ref IS NULL AND amount IS NOT NULL "
+            "AND currency IS NOT NULL AND quantity IS NULL AND shipping_address_ref IS NULL) OR "
+            "(action_type IN ('EXCHANGE','RESHIPMENT') AND product_ref IS NOT NULL "
+            "AND amount IS NULL AND currency IS NULL AND quantity IS NOT NULL "
+            "AND shipping_address_ref IS NOT NULL) OR "
+            "(action_type = 'REPAIR' AND product_ref IS NOT NULL AND amount IS NULL "
+            "AND currency IS NULL AND quantity IS NOT NULL AND shipping_address_ref IS NULL)",
+            name="typed_input_consistent",
+        ),
+        CheckConstraint(
+            "mapping_name = 'human_decision_to_external_action' "
+            "AND mapping_version = '1.0.0' AND intent_schema_version = '1.0.0'",
+            name="versions_supported",
+        ),
+        CheckConstraint("content_hash ~ '^[0-9a-f]{64}$'", name="content_hash_valid"),
+        UniqueConstraint("tenant_id", "id", name="uq_external_action_intents_tenant_id"),
+        UniqueConstraint(
+            "tenant_id", "case_id", "id", name="uq_external_action_intents_tenant_case_id"
+        ),
+        UniqueConstraint(
+            "tenant_id", "resolution_id", name="uq_external_action_intents_resolution"
+        ),
+        Index(
+            "ix_external_action_intents_case_created",
+            "tenant_id",
+            "case_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    resolution_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    human_decision_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    action_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    order_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    product_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(19, 4), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shipping_address_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mapping_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    mapping_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    intent_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class CaseResolutionEventModel(CreatedAtMixin, Base):
+    __tablename__ = "case_resolution_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "resolution_id"),
+            ("case_resolutions.tenant_id", "case_resolutions.case_id", "case_resolutions.id"),
+            name="fk_case_resolution_events_resolution",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "human_decision_id"),
+            ("human_review_decisions.tenant_id", "human_review_decisions.id"),
+            name="fk_case_resolution_events_human_decision",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "external_action_intent_id"),
+            ("external_action_intents.tenant_id", "external_action_intents.id"),
+            name="fk_case_resolution_events_intent",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("sequence >= 1", name="sequence_positive"),
+        CheckConstraint(
+            f"event_type IN ({_sql_values(CASE_RESOLUTION_EVENT_TYPES)})",
+            name="type_allowed",
+        ),
+        CheckConstraint(
+            f"from_status IS NULL OR from_status IN ({_sql_values(CASE_RESOLUTION_STATUSES)})",
+            name="from_status_allowed",
+        ),
+        CheckConstraint(
+            f"to_status IN ({_sql_values(CASE_RESOLUTION_STATUSES)})",
+            name="to_status_allowed",
+        ),
+        CheckConstraint("event_type = to_status", name="event_matches_status"),
+        CheckConstraint("jsonb_typeof(payload) = 'object'", name="payload_object"),
+        UniqueConstraint("tenant_id", "id", name="uq_case_resolution_events_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "resolution_id",
+            "id",
+            name="uq_case_resolution_events_tenant_case_resolution_id",
+        ),
+        UniqueConstraint(
+            "tenant_id", "resolution_id", "sequence", name="uq_case_resolution_events_sequence"
+        ),
+        Index("ix_case_resolution_events_case_sequence", "tenant_id", "case_id", "sequence", "id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    resolution_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_status: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    human_decision_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    external_action_intent_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), nullable=True
+    )
+    payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+
+
+class CaseResolutionRequestEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Base):
+    __tablename__ = "case_resolution_request_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "resolution_id"),
+            ("case_resolutions.tenant_id", "case_resolutions.case_id", "case_resolutions.id"),
+            name="fk_case_resolution_request_events_resolution",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "human_decision_id"),
+            ("human_review_decisions.tenant_id", "human_review_decisions.id"),
+            name="fk_case_resolution_request_events_human_decision",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(RELIABLE_ASYNC_OUTBOX_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempt_count_nonnegative"),
+        CheckConstraint("consumer_attempt_count >= 0", name="consumer_attempts_valid"),
+        CheckConstraint(RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY, name="state_consistent"),
+        UniqueConstraint(
+            "tenant_id", "human_decision_id", name="uq_case_resolution_request_events_decision"
+        ),
+        Index(
+            "ix_case_resolution_request_events_pending_dispatch",
+            "available_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_case_resolution_request_events_processing_claimed",
+            "claimed_at",
+            "id",
+            postgresql_where=text("status = 'PROCESSING'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    resolution_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    human_decision_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class ExternalActionSimulationRequestEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Base):
+    __tablename__ = "external_action_simulation_request_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "external_action_intent_id"),
+            (
+                "external_action_intents.tenant_id",
+                "external_action_intents.case_id",
+                "external_action_intents.id",
+            ),
+            name="fk_external_action_simulation_requests_intent",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(RELIABLE_ASYNC_OUTBOX_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempts_valid"),
+        CheckConstraint("consumer_attempt_count >= 0", name="consumer_valid"),
+        CheckConstraint(RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY, name="state_consistent"),
+        UniqueConstraint(
+            "tenant_id",
+            "external_action_intent_id",
+            name="uq_external_action_simulation_requests_intent",
+        ),
+        Index(
+            "ix_external_action_simulation_requests_pending_dispatch",
+            "available_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_external_action_simulation_requests_processing_claimed",
+            "claimed_at",
+            "id",
+            postgresql_where=text("status = 'PROCESSING'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    external_action_intent_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class ExternalActionSimulationAttemptModel(CreatedAtMixin, Base):
+    __tablename__ = "external_action_simulation_attempts"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "resolution_id"),
+            ("case_resolutions.tenant_id", "case_resolutions.case_id", "case_resolutions.id"),
+            name="fk_external_action_simulation_attempts_resolution",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "external_action_intent_id"),
+            (
+                "external_action_intents.tenant_id",
+                "external_action_intents.case_id",
+                "external_action_intents.id",
+            ),
+            name="fk_external_action_simulation_attempts_intent",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("attempt_number >= 1", name="attempt_number_positive"),
+        CheckConstraint(
+            f"status IN ({_sql_values(EXTERNAL_ACTION_SIMULATION_ATTEMPT_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint(f"mode IN ({_sql_values(EXTERNAL_ACTION_MODES)})", name="mode_allowed"),
+        CheckConstraint(
+            "(status = 'RUNNING' AND completed_at IS NULL) OR "
+            "(status <> 'RUNNING' AND completed_at IS NOT NULL)",
+            name="completion_consistent",
+        ),
+        CheckConstraint(
+            "(failure_code IS NULL AND failure_message IS NULL) OR "
+            "(failure_code IS NOT NULL AND failure_message IS NOT NULL)",
+            name="failure_consistent",
+        ),
+        UniqueConstraint(
+            "tenant_id", "id", name="uq_external_action_simulation_attempts_tenant_id"
+        ),
+        UniqueConstraint("execution_token", name="uq_external_action_simulation_attempts_token"),
+        UniqueConstraint(
+            "tenant_id",
+            "external_action_intent_id",
+            "attempt_number",
+            name="uq_external_action_simulation_attempts_number",
+        ),
+        Index(
+            "ix_external_action_simulation_attempts_intent",
+            "tenant_id",
+            "external_action_intent_id",
+            "attempt_number",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    resolution_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    external_action_intent_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    execution_token: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class ExternalActionSimulationResultModel(CreatedAtMixin, Base):
+    __tablename__ = "external_action_simulation_results"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "resolution_id"),
+            ("case_resolutions.tenant_id", "case_resolutions.case_id", "case_resolutions.id"),
+            name="fk_external_action_simulation_results_resolution",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "external_action_intent_id"),
+            (
+                "external_action_intents.tenant_id",
+                "external_action_intents.case_id",
+                "external_action_intents.id",
+            ),
+            name="fk_external_action_simulation_results_intent",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "simulation_attempt_id"),
+            (
+                "external_action_simulation_attempts.tenant_id",
+                "external_action_simulation_attempts.id",
+            ),
+            name="fk_external_action_simulation_results_attempt",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"outcome IN ({_sql_values(EXTERNAL_ACTION_SIMULATION_OUTCOMES)})",
+            name="outcome_allowed",
+        ),
+        CheckConstraint(f"mode IN ({_sql_values(EXTERNAL_ACTION_MODES)})", name="mode_allowed"),
+        CheckConstraint("side_effects_performed = false", name="no_side_effects"),
+        CheckConstraint(
+            "(outcome = 'VALIDATED' AND failure_code IS NULL AND failure_message IS NULL) OR "
+            "(outcome = 'FAILED' AND failure_code IS NOT NULL AND failure_message IS NOT NULL)",
+            name="outcome_consistent",
+        ),
+        CheckConstraint("jsonb_typeof(simulated_request) = 'object'", name="request_object"),
+        CheckConstraint("jsonb_typeof(simulated_response) = 'object'", name="response_object"),
+        CheckConstraint(
+            "result_schema_version = '1.0.0' AND content_hash ~ '^[0-9a-f]{64}$'",
+            name="version_hash_valid",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_external_action_simulation_results_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "external_action_intent_id",
+            name="uq_external_action_simulation_results_intent",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "simulation_attempt_id",
+            name="uq_external_action_simulation_results_attempt",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    resolution_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    external_action_intent_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    simulation_attempt_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    side_effects_performed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    simulated_request: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    simulated_response: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    result_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ReviewReportModel(Base):
+    __tablename__ = "review_reports"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "resolution_id"),
+            ("case_resolutions.tenant_id", "case_resolutions.case_id", "case_resolutions.id"),
+            name="fk_review_reports_resolution",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "resolution_id", "terminal_event_id"),
+            (
+                "case_resolution_events.tenant_id",
+                "case_resolution_events.case_id",
+                "case_resolution_events.resolution_id",
+                "case_resolution_events.id",
+            ),
+            name="fk_review_reports_terminal_event",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("resolution_version >= 1", name="resolution_version_positive"),
+        CheckConstraint(
+            "schema_version = 'review_report/1.0.0'",
+            name="schema_version_supported",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(case_snapshot) = 'object' "
+            "AND jsonb_typeof(analysis_snapshot) = 'object' "
+            "AND jsonb_typeof(policy_snapshot) = 'object' "
+            "AND jsonb_typeof(review_snapshot) = 'object' "
+            "AND jsonb_typeof(resolution_snapshot) = 'object' "
+            "AND jsonb_typeof(dry_run_snapshot) = 'object' "
+            "AND jsonb_typeof(qualification_snapshot) = 'object' "
+            "AND jsonb_typeof(data_scope) = 'object'",
+            name="snapshots_object",
+        ),
+        CheckConstraint(
+            "content_hash ~ '^[0-9a-f]{64}$'",
+            name="content_hash_valid",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_review_reports_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "resolution_id",
+            "resolution_version",
+            name="uq_review_reports_resolution_version",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "terminal_event_id",
+            name="uq_review_reports_terminal_event",
+        ),
+        Index(
+            "ix_review_reports_case_latest",
+            "tenant_id",
+            "case_id",
+            "resolution_version",
+            "generated_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    resolution_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    resolution_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    terminal_event_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    case_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    analysis_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    policy_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    review_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    resolution_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    dry_run_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    qualification_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    data_scope: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
@@ -3314,4 +3877,12 @@ PERSISTENCE_MODELS = (
     HumanReviewDecisionModel,
     HumanReviewDecisionBasisModel,
     HumanReviewRequestEventModel,
+    CaseResolutionModel,
+    ExternalActionIntentModel,
+    CaseResolutionEventModel,
+    CaseResolutionRequestEventModel,
+    ExternalActionSimulationRequestEventModel,
+    ExternalActionSimulationAttemptModel,
+    ExternalActionSimulationResultModel,
+    ReviewReportModel,
 )

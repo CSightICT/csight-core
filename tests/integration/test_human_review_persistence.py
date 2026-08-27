@@ -12,17 +12,27 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic.config import Config
+from pydantic import ValidationError
 from sqlalchemy import Engine, create_engine, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from alembic import command as alembic_command
+from app.adapters.external_action import DeterministicDryRunExternalActionAdapter
+from app.adapters.persistence import case_resolution as case_resolution_persistence
+from app.adapters.persistence.case_resolution import SQLAlchemyCaseResolutionRepository
 from app.adapters.persistence.human_review import SQLAlchemyHumanReviewRepository
 from app.adapters.persistence.models import (
     AnalysisRunModel,
     AnalysisStageRunModel,
     CaseModel,
+    CaseResolutionModel,
+    CaseResolutionRequestEventModel,
+    ExternalActionIntentModel,
+    ExternalActionSimulationAttemptModel,
+    ExternalActionSimulationRequestEventModel,
+    ExternalActionSimulationResultModel,
     HumanReviewActionModel,
     HumanReviewAssignmentModel,
     HumanReviewDecisionModel,
@@ -33,17 +43,26 @@ from app.adapters.persistence.models import (
     PolicyEvaluationInputSnapshotModel,
     PolicyEvaluationOutboxEventModel,
     PolicyEvaluationRunModel,
+    ReviewReportModel,
     RoleModel,
     TenantModel,
     UserModel,
     UserRoleModel,
 )
+from app.adapters.persistence.poc_reporting import SQLAlchemyPocReportingRepository
 from app.adapters.persistence.policy_engine import SQLAlchemyPolicyEngineRepository
 from app.adapters.persistence.policy_ingestion import ingest_validated_policy_corpus
 from app.adapters.persistence.session import create_session_factory, session_scope
+from app.application.case_resolution import (
+    CaseResolutionRequestedCommand,
+    ExecuteExternalActionSimulation,
+    ExternalActionSimulationRequestedCommand,
+    ProcessCaseResolution,
+)
 from app.application.policy_engine import ExecutePolicyEvaluation, ExecutePolicyEvaluationCommand
 from app.bootstrap.settings import Settings
 from app.platform.async_reliability import AsyncEventIntegrityError
+from app.platform.case_resolution import ResolutionStatus
 from app.platform.errors import ForbiddenError
 from app.platform.human_review import (
     AdditionalEvidenceReason,
@@ -205,6 +224,10 @@ def _seed_human_review_prerequisites(*, factory: sessionmaker[Session], project_
                     "days_since_purchase": 3,
                     "order_amount": 500_000,
                     "product_category": "GENERAL",
+                    "external_action_input": {
+                        "amount": "500000.0000",
+                        "currency": "KRW",
+                    },
                 },
                 created_by=admin.id,
                 created_at=now,
@@ -343,6 +366,32 @@ def _mark_review_event_processing(
         event.claim_token = uuid4()
         event.claimed_by = "integration-dispatcher"
         event.published_at = None
+        session.flush()
+        return event
+
+
+def _mark_resolution_event_published(
+    factory: sessionmaker[Session], event_id: UUID
+) -> CaseResolutionRequestEventModel:
+    with factory.begin() as session:
+        event = session.get(CaseResolutionRequestEventModel, event_id)
+        assert event is not None
+        event.status = "PUBLISHED"
+        event.attempt_count = 1
+        event.published_at = datetime.now(UTC)
+        session.flush()
+        return event
+
+
+def _mark_simulation_event_published(
+    factory: sessionmaker[Session], event_id: UUID
+) -> ExternalActionSimulationRequestEventModel:
+    with factory.begin() as session:
+        event = session.get(ExternalActionSimulationRequestEventModel, event_id)
+        assert event is not None
+        event.status = "PUBLISHED"
+        event.attempt_count = 1
+        event.published_at = datetime.now(UTC)
         session.flush()
         return event
 
@@ -539,6 +588,149 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
         )
     }
 
+    # Decision + initial Resolution/Event/request are committed atomically by Resolve.
+    with factory() as session:
+        resolution = session.scalar(
+            select(CaseResolutionModel).where(CaseResolutionModel.case_id == UUID(case_id))
+        )
+        resolution_event = session.scalar(
+            select(CaseResolutionRequestEventModel).where(
+                CaseResolutionRequestEventModel.human_decision_id == UUID(decision.id)
+            )
+        )
+        case_status = session.scalar(select(CaseModel.status).where(CaseModel.id == UUID(case_id)))
+    assert resolution is not None and resolution.status == "DECISION_RECORDED"
+    assert resolution_event is not None and resolution_event.status == "PENDING"
+    assert case_status == "RECEIVED"
+
+    resolution_event = _mark_resolution_event_published(factory, resolution_event.id)
+    resolution_repository = SQLAlchemyCaseResolutionRepository(factory)
+    assert (
+        ProcessCaseResolution(resolution_repository).execute(
+            CaseResolutionRequestedCommand(
+                event_id=str(resolution_event.id),
+                tenant_id=tenant_id,
+                case_id=case_id,
+                resolution_id=str(resolution.id),
+                correlation_id=resolution_event.correlation_id,
+            )
+        )
+        == "ACTION_READY"
+    )
+    with factory() as session:
+        simulation_event = session.scalar(
+            select(ExternalActionSimulationRequestEventModel)
+            .join(
+                ExternalActionIntentModel,
+                ExternalActionIntentModel.id
+                == ExternalActionSimulationRequestEventModel.external_action_intent_id,
+            )
+            .where(ExternalActionIntentModel.resolution_id == resolution.id)
+        )
+    assert simulation_event is not None
+    simulation_event = _mark_simulation_event_published(factory, simulation_event.id)
+    simulation_command = ExternalActionSimulationRequestedCommand(
+        event_id=str(simulation_event.id),
+        tenant_id=tenant_id,
+        case_id=case_id,
+        external_action_intent_id=str(simulation_event.external_action_intent_id),
+        correlation_id=simulation_event.correlation_id,
+    )
+    simulation_use_case = ExecuteExternalActionSimulation(
+        resolution_repository,
+        DeterministicDryRunExternalActionAdapter(),
+    )
+    assert simulation_use_case.execute(simulation_command) == "ACTION_DRY_RUN_VALIDATED"
+    assert simulation_use_case.execute(simulation_command) == "NOOP"
+    resolution_id = resolution.id
+    with factory() as session:
+        persisted_resolution = session.get(CaseResolutionModel, resolution_id)
+        intent_count = session.scalar(
+            select(func.count(ExternalActionIntentModel.id)).where(
+                ExternalActionIntentModel.resolution_id == resolution_id
+            )
+        )
+        attempt_count = session.scalar(
+            select(func.count(ExternalActionSimulationAttemptModel.id)).where(
+                ExternalActionSimulationAttemptModel.resolution_id == resolution_id
+            )
+        )
+        result = session.scalar(
+            select(ExternalActionSimulationResultModel).where(
+                ExternalActionSimulationResultModel.resolution_id == resolution_id
+            )
+        )
+        case_status = session.scalar(select(CaseModel.status).where(CaseModel.id == UUID(case_id)))
+        assert persisted_resolution is not None
+        assert persisted_resolution.status == "ACTION_DRY_RUN_VALIDATED"
+        assert persisted_resolution.version == 4
+        assert intent_count == 1 and attempt_count == 1
+        assert result is not None and result.side_effects_performed is False
+        assert case_status == "RECEIVED"
+
+    reporting_repository = SQLAlchemyPocReportingRepository(factory)
+    report = reporting_repository.get_review_report(tenant_id=tenant_id, case_id=case_id)
+    assert report is not None
+    assert report.resolution_version == 4
+    assert report.resolution_snapshot["status"] == "ACTION_DRY_RUN_VALIDATED"
+    report_result = report.dry_run_snapshot["result"]
+    assert isinstance(report_result, dict)
+    assert report_result["side_effects_performed"] is False
+    assert (
+        reporting_repository.get_review_report(tenant_id=str(other_tenant), case_id=case_id) is None
+    )
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count(ReviewReportModel.id)).where(
+                    ReviewReportModel.resolution_id == resolution_id
+                )
+            )
+            == 1
+        )
+
+    summary = reporting_repository.get_poc_summary(tenant_id=tenant_id)
+    assert summary.review_time.denominator == 1
+    assert summary.review_time.sample_count == 1
+    assert summary.review_time.numerator >= 0
+    comparable = decision.outcome_relation.value in {
+        "CONSISTENT_WITH_RECOMMENDATION",
+        "DIFFERS_FROM_RECOMMENDATION",
+    }
+    differs = decision.outcome_relation.value == "DIFFERS_FROM_RECOMMENDATION"
+    assert summary.recommendation_difference_rate.denominator == int(comparable)
+    assert summary.recommendation_difference_rate.sample_count == int(comparable)
+    assert summary.recommendation_difference_rate.numerator == int(differs)
+    assert summary.additional_evidence_request_rate.denominator == 1
+    assert summary.additional_evidence_request_rate.numerator == 0
+    assert summary.action_input_missing_rate.denominator == 1
+    assert summary.action_input_missing_rate.numerator == 0
+    assert summary.dry_run_success_rate.denominator == 1
+    assert summary.dry_run_success_rate.numerator == 1
+    assert summary.analysis_failure_rate.denominator == 1
+    assert summary.analysis_failure_rate.numerator == 0
+    assert summary.analysis_partial_success_rate.denominator == 1
+    assert summary.analysis_partial_success_rate.numerator == 0
+    empty_summary = reporting_repository.get_poc_summary(tenant_id=str(other_tenant))
+    assert empty_summary.review_time.denominator == 0
+    assert empty_summary.review_time.value is None
+
+    with factory.begin() as session:
+        report_row = session.scalar(
+            select(ReviewReportModel).where(ReviewReportModel.resolution_id == resolution_id)
+        )
+        assert report_row is not None
+        original_report_snapshot = dict(report_row.case_snapshot)
+        report_row.case_snapshot = {**original_report_snapshot, "tampered": True}
+    with pytest.raises(ValidationError, match="content hash mismatch"):
+        reporting_repository.get_review_report(tenant_id=tenant_id, case_id=case_id)
+    with factory.begin() as session:
+        report_row = session.scalar(
+            select(ReviewReportModel).where(ReviewReportModel.resolution_id == resolution_id)
+        )
+        assert report_row is not None
+        report_row.case_snapshot = original_report_snapshot
+
     with factory.begin() as session:
         decision_row = session.scalar(
             select(HumanReviewDecisionModel).where(
@@ -566,7 +758,41 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
             )
         )
         assert decision_row is not None
+        persisted_resolution = session.scalar(
+            select(CaseResolutionModel)
+            .where(CaseResolutionModel.id == resolution_id)
+            .with_for_update()
+        )
+        assert persisted_resolution is not None
+        transition = case_resolution_persistence._transition_resolution  # pyright: ignore[reportPrivateUsage]
+        transition(
+            session,
+            resolution=persisted_resolution,
+            to_status=ResolutionStatus.MANUAL_FOLLOW_UP_REQUIRED,
+            now=datetime.now(UTC),
+            human_decision_id=decision_row.id,
+            payload={"failure_code": "CASE_RESOLUTION_INTEGRITY_FAILED"},
+            failure_code="CASE_RESOLUTION_INTEGRITY_FAILED",
+            failure_message="Source integrity failed while recording terminal failure.",
+        )
         decision_row.rationale = original_rationale
+
+    degraded = reporting_repository.get_review_report(tenant_id=tenant_id, case_id=case_id)
+    assert degraded is not None
+    assert degraded.resolution_version == 5
+    assert degraded.resolution_snapshot["status"] == "MANUAL_FOLLOW_UP_REQUIRED"
+    assert degraded.data_scope["report_generation"] == ("DEGRADED_INTEGRITY_FAILURE_SNAPSHOT")
+    assert degraded.data_scope["source_content_included"] is False
+    with factory() as session:
+        persisted_resolution = session.get(CaseResolutionModel, resolution_id)
+        report_count = session.scalar(
+            select(func.count(ReviewReportModel.id)).where(
+                ReviewReportModel.resolution_id == resolution_id
+            )
+        )
+        assert persisted_resolution is not None
+        assert persisted_resolution.status == "MANUAL_FOLLOW_UP_REQUIRED"
+        assert report_count == 2
 
     with pytest.raises(DuplicateHumanDecisionError):
         review_repository.resolve(
@@ -1018,6 +1244,397 @@ def test_policy_worker_integrity_failure_and_stale_terminal_fencing(
         assert persisted_event is not None and persisted_event.status == "FAILED"
         assert persisted_event.failure_code == "HUMAN_REVIEW_SOURCE_INTEGRITY_FAILED"
         assert task_count == 0
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolutionSource:
+    tenant_id: str
+    case_id: str
+    analysis_id: str
+    actor_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedDecision:
+    resolution_id: UUID
+    decision_id: str
+    request_event_id: UUID
+    correlation_id: str
+
+
+def _create_resolution_source(
+    factory: sessionmaker[Session],
+    *,
+    label: str,
+    external_action_input: dict[str, object],
+) -> _ResolutionSource:
+    now = datetime.now(UTC)
+    with factory.begin() as session:
+        tenant_id = session.scalar(
+            select(TenantModel.id).where(TenantModel.slug == "csight-demo-brand")
+        )
+        admin = session.scalar(
+            select(UserModel)
+            .join(
+                UserRoleModel,
+                (UserRoleModel.tenant_id == UserModel.tenant_id)
+                & (UserRoleModel.user_id == UserModel.id),
+            )
+            .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+            .where(
+                UserModel.tenant_id == tenant_id,
+                RoleModel.name == Role.ADMIN.value,
+            )
+            .limit(1)
+        )
+        assert tenant_id is not None and admin is not None
+        case_id, analysis_id, stage_id = uuid4(), uuid4(), uuid4()
+        session.add(
+            CaseModel(
+                id=case_id,
+                tenant_id=tenant_id,
+                domain_type="product_defect_cs",
+                status="RECEIVED",
+                order_ref=f"RESOLUTION-{label}-ORDER",
+                product_ref=f"RESOLUTION-{label}-PRODUCT",
+                customer_message="합성 테스트: 제품 파손으로 환불 검토를 요청합니다.",
+                requested_action="REFUND",
+                attributes={
+                    "days_since_purchase": 3,
+                    "order_amount": 500_000,
+                    "product_category": "GENERAL",
+                    "external_action_input": external_action_input,
+                },
+                created_by=admin.id,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.flush()
+        session.add(
+            AnalysisRunModel(
+                id=analysis_id,
+                tenant_id=tenant_id,
+                case_id=case_id,
+                pipeline_name="product_defect_text_extraction",
+                pipeline_version="2.0.0",
+                trigger_type="USER_REQUEST",
+                status="SUCCEEDED",
+                requested_by=admin.id,
+                correlation_id=f"resolution-{label}-{uuid4()}",
+                idempotency_key=f"resolution-{label}-{uuid4()}",
+                request_hash="c" * 64,
+                requested_at=now,
+                started_at=now,
+                completed_at=now,
+                failure_code=None,
+                failure_message=None,
+                failure_retryable=None,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.flush()
+        session.add(
+            AnalysisStageRunModel(
+                id=stage_id,
+                tenant_id=tenant_id,
+                analysis_run_id=analysis_id,
+                stage_type="TEXT_EXTRACTION",
+                status="SUCCEEDED",
+                attempt_count=1,
+                provider_name="mock",
+                model_name="csight-mock-llm",
+                model_version="0.1.0",
+                model_revision="integration",
+                prompt_name="product-defect-text-extraction",
+                prompt_version="2.0.0",
+                prompt_content_hash="b" * 64,
+                input_schema_version="2.0",
+                output_schema_version="2.0",
+                execution_provider_name="mock",
+                execution_model_name="csight-mock-llm",
+                execution_model_version="0.1.0",
+                execution_model_revision="integration",
+                provider_request_id=f"resolution-{label}",
+                input_token_count=1,
+                output_token_count=1,
+                latency_ms=1,
+                claim_token=None,
+                lease_expires_at=None,
+                next_attempt_at=None,
+                last_attempt_started_at=now,
+                last_attempt_completed_at=now,
+                started_at=now,
+                completed_at=now,
+                failure_code=None,
+                failure_message=None,
+                failure_retryable=None,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.flush()
+        session.add(
+            LLMExtractionResultV2Model(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                analysis_run_id=analysis_id,
+                stage_run_id=stage_id,
+                stage_type="TEXT_EXTRACTION",
+                schema_version="2.0",
+                language="ko",
+                issue_types=["BREAKAGE"],
+                claims=[
+                    {
+                        "type": "BREAKAGE",
+                        "location": "UNKNOWN",
+                        "description": "제품이 파손됨",
+                        "source_quote": "제품 파손으로",
+                    }
+                ],
+                requested_actions=[{"action": "REFUND", "source_quote": "환불 검토를 요청합니다"}],
+                text_ambiguities=[],
+                summary="제품 파손에 대한 환불 요청",
+                system_missing_information=["IMAGE_EVIDENCE"],
+                action_consistency="MATCH",
+                completeness_rule_version="1.0.0",
+                created_at=now,
+            )
+        )
+    return _ResolutionSource(
+        tenant_id=str(tenant_id),
+        case_id=str(case_id),
+        analysis_id=str(analysis_id),
+        actor_id=str(admin.id),
+    )
+
+
+def _create_resolved_decision(
+    factory: sessionmaker[Session],
+    *,
+    source: _ResolutionSource,
+    decision_type: HumanDecisionType,
+    label: str,
+) -> _ResolvedDecision:
+    policy_repository = SQLAlchemyPolicyEngineRepository(factory)
+    policy_run, _ = policy_repository.create(
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        analysis_run_id=source.analysis_id,
+        as_of_date=date(2026, 2, 1),
+        requested_by=source.actor_id,
+        correlation_id=f"resolution-policy-{label}-{uuid4()}",
+        idempotency_key=f"resolution-policy-{label}-{uuid4()}",
+        request_hash="d" * 64,
+    )
+    with factory() as session:
+        policy_event = session.scalar(
+            select(PolicyEvaluationOutboxEventModel).where(
+                PolicyEvaluationOutboxEventModel.policy_evaluation_run_id == UUID(policy_run.id)
+            )
+        )
+    assert policy_event is not None
+    policy_event = _mark_policy_event_published(factory, policy_event.id)
+    assert (
+        ExecutePolicyEvaluation(policy_repository).execute(
+            ExecutePolicyEvaluationCommand(
+                event_id=str(policy_event.id),
+                tenant_id=source.tenant_id,
+                case_id=source.case_id,
+                policy_evaluation_run_id=policy_run.id,
+                correlation_id=policy_run.correlation_id,
+            )
+        )
+        == "SUCCEEDED"
+    )
+
+    review_repository = SQLAlchemyHumanReviewRepository(factory)
+    with factory() as session:
+        review_event = session.scalar(
+            select(HumanReviewRequestEventModel).where(
+                HumanReviewRequestEventModel.policy_evaluation_run_id == UUID(policy_run.id)
+            )
+        )
+    assert review_event is not None
+    review_event = _mark_review_event_published(factory, review_event.id)
+    task, _ = review_repository.create_from_policy_evaluation(
+        event_id=str(review_event.id),
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        policy_evaluation_run_id=policy_run.id,
+        correlation_id=policy_run.correlation_id,
+    )
+    claimed = review_repository.claim(
+        tenant_id=source.tenant_id,
+        task_id=task.id,
+        actor_id=source.actor_id,
+        roles=frozenset({Role.ADMIN}),
+        expected_version=1,
+    )
+    detail = review_repository.get(tenant_id=source.tenant_id, task_id=task.id)
+    assert detail is not None
+    correlation_id = f"resolution-resolve-{label}-{uuid4()}"
+    _, decision = review_repository.resolve(
+        tenant_id=source.tenant_id,
+        task_id=task.id,
+        actor_id=source.actor_id,
+        roles=frozenset({Role.ADMIN}),
+        expected_version=claimed.version,
+        correlation_id=correlation_id,
+        request=HumanDecisionRequest(
+            decision=decision_type,
+            reason_codes=(DecisionReason.POLICY_CONDITION_MET,),
+            rationale="정책 평가와 동결된 근거를 검토하여 이 처리 결정을 기록합니다.",
+            basis=(
+                DecisionBasisReference(
+                    type=DecisionBasisType.POLICY_RULE_RESULT,
+                    reference_id=str(detail.rule_results[0]["id"]),
+                ),
+            ),
+        ),
+    )
+    with factory() as session:
+        resolution = session.scalar(
+            select(CaseResolutionModel).where(
+                CaseResolutionModel.tenant_id == UUID(source.tenant_id),
+                CaseResolutionModel.case_id == UUID(source.case_id),
+            )
+        )
+        request_event = session.scalar(
+            select(CaseResolutionRequestEventModel).where(
+                CaseResolutionRequestEventModel.tenant_id == UUID(source.tenant_id),
+                CaseResolutionRequestEventModel.human_decision_id == UUID(decision.id),
+            )
+        )
+    assert resolution is not None and request_event is not None
+    return _ResolvedDecision(
+        resolution_id=resolution.id,
+        decision_id=decision.id,
+        request_event_id=request_event.id,
+        correlation_id=correlation_id,
+    )
+
+
+def _process_resolution_request(
+    factory: sessionmaker[Session],
+    *,
+    source: _ResolutionSource,
+    resolved: _ResolvedDecision,
+) -> str:
+    event = _mark_resolution_event_published(factory, resolved.request_event_id)
+    return ProcessCaseResolution(SQLAlchemyCaseResolutionRepository(factory)).execute(
+        CaseResolutionRequestedCommand(
+            event_id=str(event.id),
+            tenant_id=source.tenant_id,
+            case_id=source.case_id,
+            resolution_id=str(resolved.resolution_id),
+            correlation_id=event.correlation_id,
+        )
+    )
+
+
+def test_resolution_missing_input_and_conflicting_decision_fail_closed_without_duplicates(
+    human_review_database: HumanReviewIntegrationContext,
+) -> None:
+    factory = human_review_database.factory
+    missing_source = _create_resolution_source(
+        factory,
+        label="missing-input",
+        external_action_input={"currency": "KRW"},
+    )
+    missing_decision = _create_resolved_decision(
+        factory,
+        source=missing_source,
+        decision_type=HumanDecisionType.APPROVE_REFUND,
+        label="missing-input",
+    )
+    assert (
+        _process_resolution_request(
+            factory,
+            source=missing_source,
+            resolved=missing_decision,
+        )
+        == "ACTION_NEEDS_INPUT"
+    )
+    with factory() as session:
+        missing_resolution = session.get(CaseResolutionModel, missing_decision.resolution_id)
+        intent_count = session.scalar(
+            select(func.count(ExternalActionIntentModel.id)).where(
+                ExternalActionIntentModel.resolution_id == missing_decision.resolution_id
+            )
+        )
+        command_count = session.scalar(
+            select(func.count(ExternalActionSimulationRequestEventModel.id)).where(
+                ExternalActionSimulationRequestEventModel.case_id == UUID(missing_source.case_id)
+            )
+        )
+        attempt_count = session.scalar(
+            select(func.count(ExternalActionSimulationAttemptModel.id)).where(
+                ExternalActionSimulationAttemptModel.resolution_id == missing_decision.resolution_id
+            )
+        )
+        result_count = session.scalar(
+            select(func.count(ExternalActionSimulationResultModel.id)).where(
+                ExternalActionSimulationResultModel.resolution_id == missing_decision.resolution_id
+            )
+        )
+    assert missing_resolution is not None
+    assert missing_resolution.status == "ACTION_NEEDS_INPUT"
+    assert missing_resolution.missing_fields == ["amount"]
+    assert (intent_count, command_count, attempt_count, result_count) == (0, 0, 0, 0)
+
+    conflict_source = _create_resolution_source(
+        factory,
+        label="conflict",
+        external_action_input={"amount": "15000.0000", "currency": "KRW"},
+    )
+    original = _create_resolved_decision(
+        factory,
+        source=conflict_source,
+        decision_type=HumanDecisionType.APPROVE_REFUND,
+        label="conflict-original",
+    )
+    assert (
+        _process_resolution_request(factory, source=conflict_source, resolved=original)
+        == "ACTION_READY"
+    )
+    conflicting = _create_resolved_decision(
+        factory,
+        source=conflict_source,
+        decision_type=HumanDecisionType.APPROVE_REPAIR,
+        label="conflict-second",
+    )
+    assert (
+        _process_resolution_request(
+            factory,
+            source=conflict_source,
+            resolved=conflicting,
+        )
+        == "MANUAL_FOLLOW_UP_REQUIRED"
+    )
+    with factory() as session:
+        conflict_resolution = session.get(CaseResolutionModel, original.resolution_id)
+        intents = session.scalars(
+            select(ExternalActionIntentModel).where(
+                ExternalActionIntentModel.resolution_id == original.resolution_id
+            )
+        ).all()
+        attempts = session.scalars(
+            select(ExternalActionSimulationAttemptModel).where(
+                ExternalActionSimulationAttemptModel.resolution_id == original.resolution_id
+            )
+        ).all()
+        results = session.scalars(
+            select(ExternalActionSimulationResultModel).where(
+                ExternalActionSimulationResultModel.resolution_id == original.resolution_id
+            )
+        ).all()
+    assert conflict_resolution is not None
+    assert conflict_resolution.status == "MANUAL_FOLLOW_UP_REQUIRED"
+    assert str(conflict_resolution.source_human_decision_id) == original.decision_id
+    assert [str(item.human_decision_id) for item in intents] == [original.decision_id]
+    assert attempts == [] and results == []
 
 
 def _decision(rule_result_id: str) -> HumanDecisionRequest:

@@ -6,6 +6,8 @@ from datetime import datetime
 from uuid import UUID
 
 from app.adapters.persistence.models import (
+    CaseResolutionRequestEventModel,
+    ExternalActionSimulationRequestEventModel,
     GroundedExplanationOutboxEventModel,
     HumanReviewRequestEventModel,
     PolicyEvaluationOutboxEventModel,
@@ -18,6 +20,8 @@ type AsyncRequestEvent = (
     | GroundedExplanationOutboxEventModel
     | PolicyEvaluationOutboxEventModel
     | HumanReviewRequestEventModel
+    | CaseResolutionRequestEventModel
+    | ExternalActionSimulationRequestEventModel
 )
 
 

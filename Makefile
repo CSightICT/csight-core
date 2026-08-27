@@ -18,7 +18,7 @@ POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
 
 help:
 	@echo "CSight Core commands"
@@ -34,6 +34,7 @@ help:
 	@echo "  make test          Run CI-safe tests (no local infra or external GPU)"
 	@echo "  make test-integration  Run integration tests against the core environment"
 	@echo "  make test-all      Run CI-safe and core integration tests"
+	@echo "  make web-lint web-typecheck web-openapi web-test web-build web-e2e  Verify the consultant console"
 	@echo "  make test-analysis Run CI-safe analysis-focused tests"
 	@echo "  make test-analysis-integration  Run analysis integration tests"
 	@echo "  make test-external-llm  Opt in to the configured external vLLM test"
@@ -59,6 +60,8 @@ help:
 	@echo "  make build-human-review-evaluation / validate-human-review-evaluation"
 	@echo "  make evaluate-human-review-workflow  Re-evaluate Dev and verify sealed artifacts"
 	@echo "  make smoke-human-review / inspect-human-review-queue  Verify local review runtime"
+	@echo "  make verify-poc-readiness  Report the evidence-backed PoC promotion verdict"
+	@echo "  make require-limited-poc  Fail unless every Limited PoC gate is evidenced"
 	@echo "  make start-embedding  Start the private host-native Qwen embedding service"
 	@echo "  make stop-embedding  Stop the private embedding service started by Make"
 	@echo "  make health-embedding  Probe embedding health and pinned model metadata"
@@ -113,6 +116,24 @@ test-integration:
 	$(UV) run python scripts/run_integration_tests.py
 
 test-all: test test-integration
+
+web-lint:
+	npm --prefix web run lint
+
+web-typecheck:
+	npm --prefix web run typecheck
+
+web-openapi:
+	npm --prefix web run check:api
+
+web-test:
+	npm --prefix web test
+
+web-build:
+	npm --prefix web run build
+
+web-e2e:
+	npm --prefix web run test:e2e
 
 test-analysis:
 	$(UV) run pytest -q -m "not integration and not external_gpu" -k "analysis or outbox or vllm or text_extraction"
@@ -170,6 +191,12 @@ evaluate-local-llm-all:
 smoke-local-llm-e2e:
 	./infra/local_llm/run_backend_with_local_llm.sh \
 		$(UV) run python scripts/smoke_local_mlx_e2e.py --env-file $(ENV_FILE)
+
+verify-poc-readiness:
+	$(UV) run python scripts/verify_poc_readiness.py
+
+require-limited-poc:
+	$(UV) run python scripts/verify_poc_readiness.py --require-limited-poc
 
 smoke-analysis:
 	$(UV) run python scripts/smoke_analysis.py --env-file $(ENV_FILE)

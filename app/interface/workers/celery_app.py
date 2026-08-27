@@ -10,6 +10,8 @@ POLICY_RETRIEVAL_REQUESTED_TASK_NAME = "policy_retrieval.requested.v1"
 GROUNDED_EXPLANATION_REQUESTED_TASK_NAME = "grounded_explanation.requested.v1"
 POLICY_EVALUATION_REQUESTED_TASK_NAME = "policy_evaluation.requested.v1"
 HUMAN_REVIEW_REQUESTED_TASK_NAME = "human_review.requested.v1"
+CASE_RESOLUTION_REQUESTED_TASK_NAME = "case_resolution.requested.v1"
+EXTERNAL_ACTION_SIMULATION_REQUESTED_TASK_NAME = "external_action.simulation_requested.v1"
 
 
 def create_celery_app(settings: Settings | None = None) -> Celery:
@@ -33,6 +35,8 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
             GROUNDED_EXPLANATION_REQUESTED_TASK_NAME: {"queue": "grounded-explanation"},
             POLICY_EVALUATION_REQUESTED_TASK_NAME: {"queue": "policy-evaluation"},
             HUMAN_REVIEW_REQUESTED_TASK_NAME: {"queue": "human-review"},
+            CASE_RESOLUTION_REQUESTED_TASK_NAME: {"queue": "case-resolution"},
+            EXTERNAL_ACTION_SIMULATION_REQUESTED_TASK_NAME: {"queue": "external-action-simulation"},
         },
         task_track_started=True,
         task_acks_late=True,

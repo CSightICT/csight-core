@@ -45,6 +45,18 @@ HUMAN_REVIEW_QUEUE_PAYLOAD_KEYS: Final = frozenset(
         "correlation_id",
     }
 )
+CASE_RESOLUTION_QUEUE_PAYLOAD_KEYS: Final = frozenset(
+    {"event_id", "tenant_id", "case_id", "resolution_id", "correlation_id"}
+)
+EXTERNAL_ACTION_SIMULATION_QUEUE_PAYLOAD_KEYS: Final = frozenset(
+    {
+        "event_id",
+        "tenant_id",
+        "case_id",
+        "external_action_intent_id",
+        "correlation_id",
+    }
+)
 
 
 class CeleryAnalysisMessageQueue:
@@ -232,13 +244,85 @@ class CeleryHumanReviewMessageQueue:
             return False
 
 
+class CeleryCaseResolutionMessageQueue:
+    """Publish exactly five opaque Case Resolution identifiers."""
+
+    def __init__(self, application: Celery, *, queue: str = "case-resolution") -> None:
+        self._application = application
+        self._queue = queue
+
+    def publish(self, *, topic: str, payload: Mapping[str, object], correlation_id: str) -> str:
+        normalized = dict(payload)
+        if frozenset(normalized) != CASE_RESOLUTION_QUEUE_PAYLOAD_KEYS:
+            raise ValueError("Case Resolution queue payload must contain exactly five IDs")
+        if any(not isinstance(value, str) or not value.strip() for value in normalized.values()):
+            raise ValueError("Case Resolution queue values must be non-empty strings")
+        if normalized["correlation_id"] != correlation_id:
+            raise ValueError("correlation_id must match the queue payload")
+        event_id = str(normalized["event_id"])
+        self._application.send_task(
+            topic,
+            args=[normalized],
+            task_id=event_id,
+            queue=self._queue,
+            headers={"correlation_id": correlation_id},
+        )
+        return event_id
+
+    def is_ready(self) -> bool:
+        try:
+            with self._application.connection_for_write() as connection:
+                connection.ensure_connection(max_retries=0)
+                return bool(connection.connected)
+        except Exception:
+            return False
+
+
+class CeleryExternalActionSimulationMessageQueue:
+    """Publish exactly five opaque Action Intent simulation identifiers."""
+
+    def __init__(self, application: Celery, *, queue: str = "external-action-simulation") -> None:
+        self._application = application
+        self._queue = queue
+
+    def publish(self, *, topic: str, payload: Mapping[str, object], correlation_id: str) -> str:
+        normalized = dict(payload)
+        if frozenset(normalized) != EXTERNAL_ACTION_SIMULATION_QUEUE_PAYLOAD_KEYS:
+            raise ValueError("Action simulation queue payload must contain exactly five IDs")
+        if any(not isinstance(value, str) or not value.strip() for value in normalized.values()):
+            raise ValueError("Action simulation queue values must be non-empty strings")
+        if normalized["correlation_id"] != correlation_id:
+            raise ValueError("correlation_id must match the queue payload")
+        event_id = str(normalized["event_id"])
+        self._application.send_task(
+            topic,
+            args=[normalized],
+            task_id=event_id,
+            queue=self._queue,
+            headers={"correlation_id": correlation_id},
+        )
+        return event_id
+
+    def is_ready(self) -> bool:
+        try:
+            with self._application.connection_for_write() as connection:
+                connection.ensure_connection(max_retries=0)
+                return bool(connection.connected)
+        except Exception:
+            return False
+
+
 __all__ = [
     "ANALYSIS_QUEUE_PAYLOAD_KEYS",
+    "CASE_RESOLUTION_QUEUE_PAYLOAD_KEYS",
+    "EXTERNAL_ACTION_SIMULATION_QUEUE_PAYLOAD_KEYS",
     "GROUNDED_EXPLANATION_QUEUE_PAYLOAD_KEYS",
     "HUMAN_REVIEW_QUEUE_PAYLOAD_KEYS",
     "POLICY_EVALUATION_QUEUE_PAYLOAD_KEYS",
     "POLICY_RETRIEVAL_QUEUE_PAYLOAD_KEYS",
     "CeleryAnalysisMessageQueue",
+    "CeleryCaseResolutionMessageQueue",
+    "CeleryExternalActionSimulationMessageQueue",
     "CeleryGroundedExplanationMessageQueue",
     "CeleryHumanReviewMessageQueue",
     "CeleryPolicyEvaluationMessageQueue",

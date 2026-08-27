@@ -401,3 +401,26 @@ Seven tenant-scoped tables persist task projections, immutable packets, append-o
 assignment history, immutable decisions, decision basis, and durable request events. Composite
 foreign keys and unique constraints prevent cross-tenant links, duplicate packets, duplicate task
 types per policy run, duplicate action versions, and duplicate decisions.
+
+## Migrations 20260827_0012 through 0014
+
+`20260827_0012_async_reliability` adds claim tokens, leases, publish backoff, terminal
+`CONSUMED/FAILED` state, durable failure codes, and execution fencing to the four pre-5C async
+pipelines. It also normalizes resolved Human Review assignments and strengthens Decision basis
+integrity.
+
+`20260827_0013_case_resolution_external_action` adds:
+
+- one versioned `case_resolutions` projection per tenant/Case;
+- append-only `case_resolution_events`;
+- immutable typed `external_action_intents` with DRY-RUN-only and action-specific checks;
+- append-only simulation Attempt rows and immutable Result rows;
+- separate reliable request tables for resolution and simulation.
+
+Composite tenant/Case foreign keys, unique Intent/Result identities, hash formats, lease-state
+checks, typed parameter matrices, and `side_effects_performed=false` are enforced in PostgreSQL.
+
+`20260827_0014_review_report_poc_metrics` adds immutable `review_reports`, uniquely keyed by
+Resolution version and terminal Event. The report stores structured snapshots and a canonical
+content hash. KPI values are computed from existing event/workflow rows rather than persisted as a
+second mutable source of truth.

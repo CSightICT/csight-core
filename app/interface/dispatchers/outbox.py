@@ -12,10 +12,16 @@ from typing import Protocol
 
 from app.adapters.messaging import (
     CeleryAnalysisMessageQueue,
+    CeleryCaseResolutionMessageQueue,
+    CeleryExternalActionSimulationMessageQueue,
     CeleryGroundedExplanationMessageQueue,
     CeleryHumanReviewMessageQueue,
     CeleryPolicyEvaluationMessageQueue,
     CeleryPolicyRetrievalMessageQueue,
+)
+from app.adapters.persistence.case_resolution_outbox import (
+    DispatchCaseResolutionOutbox,
+    DispatchExternalActionSimulationOutbox,
 )
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.grounding_outbox import DispatchGroundedExplanationOutbox
@@ -180,6 +186,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                 retry_base=retry_base,
                 retry_max=retry_max,
             )
+            case_resolution_dispatcher = DispatchCaseResolutionOutbox(
+                session_factory=session_factory,
+                queue=CeleryCaseResolutionMessageQueue(celery),
+                claimed_by=dispatcher_identity,
+                batch_size=settings.analysis_outbox_batch_size,
+                claim_ttl=claim_ttl,
+                max_attempts=settings.analysis_outbox_max_attempts,
+                retry_base=retry_base,
+                retry_max=retry_max,
+            )
+            action_simulation_dispatcher = DispatchExternalActionSimulationOutbox(
+                session_factory=session_factory,
+                queue=CeleryExternalActionSimulationMessageQueue(celery),
+                claimed_by=dispatcher_identity,
+                batch_size=settings.analysis_outbox_batch_size,
+                claim_ttl=claim_ttl,
+                max_attempts=settings.analysis_outbox_max_attempts,
+                retry_base=retry_base,
+                retry_max=retry_max,
+            )
             dispatcher = CompositeOutboxDispatcher(
                 (
                     analysis_dispatcher,
@@ -187,6 +213,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     grounding_dispatcher,
                     policy_evaluation_dispatcher,
                     human_review_dispatcher,
+                    case_resolution_dispatcher,
+                    action_simulation_dispatcher,
                 )
             )
     except Exception as error:

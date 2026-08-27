@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.application.human_review import (
     EscalateTaskCommand,
@@ -204,15 +204,20 @@ def escalate_task(
 def resolve_task(
     task_id: str,
     body: ResolveRequest,
+    request: Request,
     principal: Annotated[Principal, Depends(provide_current_principal)],
     services: Annotated[Sprint5BServiceContainer, Depends(provide_sprint5b_services)],
 ) -> ReviewActionResponse:
+    correlation_id = getattr(request.state, "correlation_id", None)
+    if not isinstance(correlation_id, str) or not correlation_id:
+        raise RuntimeError("correlation middleware did not establish a request identifier")
     task, decision = services.actions.resolve(
         principal=principal,
         task_id=task_id,
         command=ResolveTaskCommand(
             expected_version=body.expected_version,
             decision=body.to_domain(),
+            correlation_id=correlation_id,
         ),
     )
     return ReviewActionResponse(task=ReviewTaskResponse.from_task(task), decision=decision)

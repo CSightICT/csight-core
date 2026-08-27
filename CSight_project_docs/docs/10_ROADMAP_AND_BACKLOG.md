@@ -116,7 +116,7 @@ QUALIFIED 판정 전에는 Sprint 2 Mock/Contract 결과를 실제 모델 검증
 Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision qualification과 Alignment는 아직
 완료되지 않았으며 Sprint 2 Text Extraction Run을 덮어쓰지 않는 별도 Stage/Result 경계를 유지한다.
 
-### Sprint 4~5B — Retrieval, Grounding, Policy, Human Review
+### Sprint 4~5C — Retrieval, Grounding, Policy, Human Review, Resolution
 
 - [ ] Alignment v1
 - [x] Versioned Policy Corpus와 RAW/HYBRID Retrieval·Top-3 Citation
@@ -124,8 +124,8 @@ Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision quali
 - [x] Versioned deterministic Policy Evaluator
 - [x] Human Review Task·Packet·Claim·자료요청·이관·Resolve
 - [x] Append-only Review Action·Assignment·Decision 감사 기록
-- [ ] Case Resolution과 External Action `DRY_RUN`
-- [ ] 상담원 Web UI, Review Report와 KPI 집계
+- [x] Case Resolution과 External Action `DRY_RUN`
+- [x] 상담원 Web UI, Review Report와 KPI 집계
 
 완료 기준:
 
@@ -135,11 +135,11 @@ Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision quali
 
 ### Sprint 5C — Resolution and External Action Simulation
 
-- Case 상태와 분리된 CAS Resolution Projection과 append-only Event
-- immutable typed External Action Intent
-- 입력 완전성 검증; 누락·오류는 `ACTION_NEEDS_INPUT`
-- 네트워크를 사용하지 않는 결정론적 `DRY_RUN`; `LIVE` fail-closed
-- Review Report snapshot, React 상담원 콘솔과 PoC KPI
+- [x] Case 상태와 분리된 versioned Resolution Projection과 append-only Event
+- [x] immutable typed External Action Intent
+- [x] 입력 완전성 검증; 누락·오류는 `ACTION_NEEDS_INPUT`
+- [x] 네트워크를 사용하지 않는 결정론적 `DRY_RUN`; `LIVE` fail-closed
+- [x] Review Report snapshot, React 상담원 콘솔과 PoC KPI
 
 완료 기준:
 
@@ -180,6 +180,8 @@ Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision quali
 - [ ] Routing Decision
 - [x] Human Review
 - [x] Human Review Audit Log
+- [x] Case Resolution과 External Action `DRY_RUN`
+- [x] React 상담원 콘솔과 immutable Review Report
 - [x] Case / Evidence E2E Test
 
 ## 4. P1 Backlog
@@ -187,7 +189,7 @@ Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision quali
 - [x] 정책 문서 RAG
 - [ ] Report Export
 - [ ] SSE 상태 알림
-- [ ] Dashboard용 집계 API
+- [x] Dashboard용 PoC KPI 집계 API
 - [ ] 재촬영 가이드
 - [ ] Prompt 관리 UI
 - [ ] 모델 비교 재분석
@@ -201,11 +203,13 @@ Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision quali
 
 - [ ] 실제 Vision qualification과 결함별 평가
 - [ ] LLM·Vision Evidence Alignment
-- [ ] Case Resolution과 External Action `DRY_RUN`
+- [x] Case Resolution과 External Action `DRY_RUN`
 - [ ] 실제 외부 환불·교환·재배송·수리 실행
-- [ ] React 상담원 콘솔
-- [ ] Report 생성·Export
-- [ ] KPI 집계와 Shadow Mode 비교
+- [x] React 상담원 콘솔
+- [x] immutable Report 생성과 인쇄용 HTML
+- [ ] Report 파일 Export
+- [x] KPI 집계
+- [ ] Shadow Mode 비교
 - [ ] SSE 진행 Event
 - [ ] Terminal Run 수동 Retry/DLQ 운영 API
 
@@ -311,8 +315,8 @@ Sprint 4A는 검색·결정 runtime을 미리 구현하지 않고 Sprint 4B가 �
 - [x] Policy Query Builder 실행과 immutable Citation Pack
 - [x] Grounded explanation/citation validation/unsupported claim 구조 평가
 
-실제 Qwen semantic grounding 성능, Case Resolution, 외부 Action, UI와 Report는 별도 후속
-Gate로 남는다.
+당시 후속 Gate였던 Case Resolution, External Action `DRY_RUN`, UI와 Report는 Sprint 5C에서
+완료했다. 실제 Qwen semantic grounding 성능과 실제 외부 Action은 계속 별도 승격 Gate다.
 
 Sprint 4C-2는 raw/deterministic/LLM query를 동일 frozen retrieval/reranker 경계에서 비교한다.
 Sprint 4C-3는 그 뒤 citation pack과 grounded generation을 독립 평가한다.
@@ -347,7 +351,9 @@ Sprint 5B의 정상 Human Review 경로와 durable outbox crash recovery, publis
 lease와 late-result fencing, permanent/retry-exhausted 실패 기록, Packet/Decision hash 재검증,
 격리 Integration DB와 전체 회귀를 모두 검증해 Closeout을 확정했다.
 
-그 다음 Sprint 5C는 Case 상태와 분리된 Resolution Projection, immutable Action Intent와
-External Action `DRY_RUN`을 구현한다. 필수 입력을 LLM/rationale에서 추론하지 않으며 누락 시
-`ACTION_NEEDS_INPUT`으로 끝낸다. 실제 외부 실행, Case Closure, Decision amendment, 알림과
-Review 단계 입력 보완은 Sprint 5C 범위 밖이다.
+Sprint 5C는 Case 상태와 분리된 Resolution Projection, immutable Action Intent, External Action
+`DRY_RUN`, React 상담원 콘솔, immutable Review Report와 PoC KPI를 구현했다. 필수 입력을
+LLM/rationale에서 추론하지 않으며 누락 시 `ACTION_NEEDS_INPUT`으로 끝낸다. 실제 외부 실행,
+Case Closure, Decision amendment, 알림과 Review 단계 입력 보완은 계속 범위 밖이다. 실제
+고객·정책·Vision·개인정보 승인·Shadow Mode 증거가 모두 갖춰지기 전 판정은 합성 데이터와
+Mock Vision 기반 시뮬레이션 데모다.

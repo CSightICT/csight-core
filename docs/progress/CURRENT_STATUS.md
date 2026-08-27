@@ -4,19 +4,20 @@
 append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 `SPRINT_1_CASE_EVIDENCE.md`, 독립 감사 증거는 `SPRINT_1_CLOSEOUT.md`, 현재 분석 경로는
 `SPRINT_2_ANALYSIS_LLM.md`, 독립 감사 원장 `SPRINT_2_CLOSEOUT.md`, 실제 모델 기록
-`SPRINT_2_5_QWEN38_SERVING.md`와 현재 `SPRINT_3_VISION_ANALYSIS.md`를 참조한다.
+`SPRINT_2_5_QWEN38_SERVING.md`, `SPRINT_3_VISION_ANALYSIS.md`, 최신 구현 원장
+`SPRINT_5C_CASE_RESOLUTION_CONSOLE.md`를 참조한다.
 
 ## 0. 문서 메타데이터
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 5B — Human Review Workflow·Async Reliability Closeout PASS |
-| 진행 중 작업 | Sprint 5B 승인 범위 Commit·원격 기능 브랜치 백업 후 Sprint 5C 시작 |
+| 현재 완료 단계 | Sprint 5C — Resolution·DRY-RUN·React 상담원 콘솔 내부 데모 PASS |
+| 진행 중 작업 | 외부 증거를 확보해 Limited PoC 승격 Gate를 평가 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B/4C Push·PR 없음 |
-| 로컬 Git | `feature/sprint-5b-human-review-workflow`, Base `67eafdd`, Closeout 변경 Commit 직전 |
-| 마지막 런타임 관측 | 2026-08-27, DB `0012` drift 0; Core 6 healthy; broker recovery·Human Review smoke PASS |
+| 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 5B `4aefae6` 기능 브랜치 Push·PR 없음 |
+| 로컬 Git | `feature/sprint-5c-case-resolution-external-action`, 기능 기준점 `0a5f529`, 원격 기능 브랜치 백업 완료 |
+| 마지막 런타임 관측 | 2026-08-27, DB `0014` drift 0; 7 services healthy; 8 queues 정상; Resolution broker recovery·live `DRY_RUN` PASS |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -87,6 +88,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 5B Dev/Test Evaluation | PASS | Dev60/Test30 sealed; workflow metrics 1.0, safety violation 0 |
 | Sprint 5B Async Reliability | PASS | 4 outbox claim/lease/backoff/terminal state, 3 worker lease/fencing, hash fail-closed |
 | Sprint 5B Migration·Live | PASS | `0012` 세 lifecycle/drift 0, Core 6 healthy, broker outage recovery·live smoke |
+| Sprint 5B Git Handoff | PASS | `4aefae6 feat: add human review workflow`, 원격 5B 기능 브랜치 백업 완료; PR 없음 |
+| Sprint 5C Resolution·Action Contract | PASS | Case와 분리된 projection/event, mapping 1.0.0, explicit input only, immutable Intent |
+| Sprint 5C DRY-RUN Reliability | PASS | 두 durable outbox, worker fencing, deterministic network-free simulation, `LIVE` fail-closed |
+| Sprint 5C Report·KPI | PASS | content-hashed `review_report/1.0.0`, tenant KPI numerator/denominator/sample count |
+| Sprint 5C React Console | PASS | OpenAPI 기반 상담원 화면과 5개 fixture-driven Playwright 시나리오; 3–5는 live causal E2E 아님 |
+| Sprint 5C Migration·Live | PASS | Head `0014`, drift 0, 7 services healthy, 8 queues 정상, live validated·broker recovery |
+| Sprint 5C Git Handoff | PASS | `0a5f529 feat: add case resolution and PoC console`, 원격 5C 기능 브랜치 백업 완료; PR 없음 |
+| Limited PoC 승격 | BLOCKED | 실제 Data/Policy/Vision·Privacy 승인·Shadow 비교·Qwen 재평가 증거 미확보 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -283,7 +292,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 ## 5.8. Sprint 5B 완료 체크리스트
 
 - [x] Sprint 5A 독립 감사 후 `67eafdd feat: add versioned policy engine core` 로컬 Commit
-- [x] `feature/sprint-5b-human-review-workflow` 생성; Push·PR·Sprint 5B Commit 없음
+- [x] `feature/sprint-5b-human-review-workflow` 생성; `4aefae6` Commit과 동일 원격 기능 브랜치 백업, PR 없음
 - [x] Policy effect 집계와 `review_task_mapping/1.0.0` task type/priority 결정
 - [x] 성공 Policy Evaluation과 `human_review.requested.v1` durable event 원자 저장
 - [x] identifier-only `human-review` queue, bounded retry, thin task-creation worker
@@ -306,9 +315,34 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Packet·Decision hash 조회/Resolve 직전 재검증과 변조 fail-closed
 - [x] Integration 임시 DB 격리·실행 후 삭제·잔존 0 검증
 - [x] 실제 RabbitMQ 중단→backoff→복구와 duplicate delivery `NOOP` 검증
-- [x] 외부 환불·교환·결제·CRM·알림·보고서·UI·Decision revision 미구현 유지
+- [x] 외부 환불·교환·결제·CRM·알림·Decision revision 미구현 유지
 - [x] 사용자 `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage
 - [x] 사용자 `CSight_MASTER_HANDOFF_2026-08-27.md` 미수정·미삭제·미Stage
+
+## 5.9. Sprint 5C 완료 체크리스트
+
+- [x] `4aefae6`에서 `feature/sprint-5c-case-resolution-external-action` 생성
+- [x] ADR-0089~0095와 Resolution architecture/state/input/demo boundary 계약 고정
+- [x] Case 상태와 분리된 CAS Resolution Projection과 append-only Resolution Event 구현
+- [x] `human_decision_to_external_action/1.0.0`의 네 승인 Action과 두 terminal mapping 구현
+- [x] Case reference와 명시적 flat `external_action_input`만 허용하고 추론·기본값·coercion 차단
+- [x] 누락·잘못된 입력을 `ACTION_NEEDS_INPUT`으로 종결하고 Intent/Attempt/Result 0 보장
+- [x] 서로 다른 두 번째 Decision을 자동 대체하지 않고 `MANUAL_FOLLOW_UP_REQUIRED`로 종결
+- [x] Decision·Resolution request 원자 저장, immutable typed Action Intent와 두 durable outbox 구현
+- [x] Resolution/Simulation exact-event 검증, claim/lease/backoff/fencing, duplicate `NOOP` 구현
+- [x] network-free deterministic `DRY_RUN`, `side_effects_performed=false`, `LIVE` fail-closed 구현
+- [x] Resolution/Event/Intent read-only API와 tenant scope, cross-tenant `404`, `no-store` 구현
+- [x] terminal Resolution별 immutable `review_report/1.0.0`과 printable 화면 구현
+- [x] numerator/denominator/sample count와 zero-denominator null을 제공하는 PoC KPI API·화면 구현
+- [x] React·TypeScript·Vite console, memory-only JWT, opaque checkpoint, `/api` proxy 구현
+- [x] Backend default 554, Integration 51/5 skipped, DB head `0014` drift 0 검증
+- [x] Frontend lint/type/OpenAPI/build, Vitest 6, Playwright 5 검증
+- [x] 7 services healthy, 8 queues consumer 1/depth 0, live Decision→validated `DRY_RUN` 검증
+- [x] 실제 RabbitMQ outage의 PENDING attempt 3→CONSUMED attempt 5와 final validated 검증
+- [x] 5개 demo의 증거 수준을 구분하고 Scenario 3–5를 fixture-driven UI/component-backed로 기록
+- [x] 현재 판정을 `SYNTHETIC_MOCK_SIMULATION_DEMO`로 유지하고 Limited PoC 외부 증거를 미해결로 기록
+- [x] `0a5f529 feat: add case resolution and PoC console` Commit과 동일 원격 기능 브랜치 백업, PR 없음
+- [x] 사용자 소유 루트 문서 두 개 미수정·미삭제·미Stage
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -546,16 +580,32 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-27 | Sprint 5B Reliability Migration | PASS | Empty→0012, 0011→0012, 0012→0011→0012, drift 0, 임시 DB 잔존 0 |
 | 2026-08-27 | Sprint 5B Broker Recovery | PASS | RabbitMQ 중단 시 pending/backoff, 재기동 후 CONSUMED; duplicate 두 번 `NOOP`, Result 불변 |
 | 2026-08-27 | Sprint 5B Reliability Runtime | PASS | DB head 0012, Core 6 healthy, application queue 6개 consumer 1/depth 0, live smoke PASS |
+| 2026-08-27 | Sprint 5B Commit·Remote Backup | PASS | `4aefae6 feat: add human review workflow`; `origin/feature/sprint-5b-human-review-workflow` Push, PR 없음 |
+| 2026-08-27 | Sprint 5C Backend Static | PASS | Ruff, Format, Pyright 최종 통과 |
+| 2026-08-27 | Sprint 5C Default Regression | PASS | 554 passed, 62 deselected |
+| 2026-08-27 | Sprint 5C Integration | PASS | 51 passed, 5 external-GPU skipped, 560 deselected |
+| 2026-08-27 | Sprint 5C Frontend Static·Contract | PASS | ESLint, TypeScript, generated OpenAPI check, production build 통과 |
+| 2026-08-27 | Sprint 5C Frontend Tests | PASS | Vitest 6, Playwright 5; Playwright는 intercepted API fixture, Scenario 3–5 live causal E2E 아님 |
+| 2026-08-27 | Sprint 5C Migration | PASS | PostgreSQL head `0014`, schema drift 0 |
+| 2026-08-27 | Sprint 5C Docker Runtime | PASS | 7 services healthy, 8 application queues 각각 consumer 1/depth 0 |
+| 2026-08-27 | Sprint 5C Live Resolution | PASS | Decision→Resolution→`DRY_RUN` validated, duplicate `NOOP`, `cases.status` 불변, cross-tenant `404` |
+| 2026-08-27 | Sprint 5C Broker Recovery | PASS | 실제 Rabbit outage에서 request `PENDING` attempts 3→복구 뒤 `CONSUMED` attempts 5, final validated |
+| 2026-08-27 | Sprint 5C Commit·Remote Backup | PASS | `0a5f529 feat: add case resolution and PoC console`; `origin/feature/sprint-5c-case-resolution-external-action` Push, PR 없음 |
+| 2026-08-27 | Sprint 5C Limited PoC Gate | BLOCKED | 구현 Gate는 통과했으나 실제 Data/Policy/Vision·Privacy·Shadow·Qwen 외부 증거 미확보 |
 
 ## 8. 미해결 사항과 사용자 결정
 
-- Sprint 5B Closeout의 P0/P1 미해결은 0이다. 다만 합성 Rule/Workflow 검증이며 실제 기업 정책,
-  법률 판단, 실제 Vision, 운영 Review
-  UI 품질을 검증하지 않았다. Local LLM은 `LOCAL_POC`, Vision은 `MOCK_QUALIFIED`로 표시한다.
-- 외부 환불·교환·재배송·결제·CRM·고객 알림·최종 보고서 실행은 없다. Decision amendment,
-  자동 assignment, SLA escalation, packet revision도 Sprint 5C 이후로 미룬다.
-- 다음 구현은 Human Decision→Case Resolution projection과 별도 External Action port다.
-  현재 immutable Decision을 수정하거나 외부 액션을 암묵적으로 실행해서는 안 된다.
+- Sprint 5C 구현과 내부 데모 Gate는 통과했지만 현재 판정은
+  `SYNTHETIC_MOCK_SIMULATION_DEMO`다. 실제 기업 정책·Case·사용자 Query 분포와 ROI를 검증하지
+  않았으며 Local LLM은 `LOCAL_POC`, Vision은 `MOCK_QUALIFIED`로 표시한다.
+- Limited PoC 승격에는 고객/상품/결함 범위, 비식별 실제 Case 30건 이상과 Human Gold,
+  버전·효력일이 있는 실제 정책, 개인정보 Retention·삭제·EXIF·접근 승인, 실제 Vision qualification
+  또는 명시적 제외, 실제 Qwen Extraction·Grounding 재평가와 Shadow 비교가 모두 필요하다.
+- 실제 `LIVE` 외부 실행, 환불·교환·재배송·수리·결제·CRM·고객 알림, Case Closure, Decision
+  amendment, Review 단계 입력 보완, 자동 assignment/SLA, OIDC/RLS는 구현하지 않았다.
+- 5개 Playwright demo는 intercepted API fixture를 사용한다. Scenario 1은 별도 live backend causal
+  경로가 있고 Scenario 2는 PostgreSQL integration 경로가 있지만, Scenario 3–5는
+  fixture-driven UI/component-backed이며 다섯 건 모두를 live causal E2E로 해석하면 안 된다.
 
 - 저장소를 Private로 유지하는 현재 플랜에서는 `main`·`develop` Branch protection API가
   HTTP 403을 반환한다. 저장소 공개 전환 없이 지원 플랜을 적용할지 Issue #1에서 결정한다.
@@ -575,9 +625,10 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   결정에 사용하지 않고 Policy·Human Review 경계를 유지한다.
 - Sprint 3 Vision Stage는 Mock-qualified지만 실제 Vision server/model/dataset/threshold
   calibration은 검증하지 않았다. 외부 endpoint/model/sample이 없어 실제 검증은 1건 Skip이다.
-- Text/Vision Alignment, Claim↔Detection matching, Routing·Review UI·Final Report는 구현하지
-  않았다. Sprint 5A Policy Engine은 구현됐지만 typed review guidance만 생성하며 최종 업무
-  결정을 소유하지 않는다. Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
+- Text/Vision Alignment와 Claim↔Detection matching은 구현하지 않았다. Review UI와 immutable
+  Review Report는 Sprint 5C 내부 데모로 구현됐지만 실제 운영 사용자/정책/데이터 품질 증거는
+  없다. Policy Engine은 typed guidance만 생성하고 최종 업무 결정은 계속 Human Review가
+  소유한다. Case/Evidence 접수만으로 Analysis가 자동 시작되지 않는다.
 - KAPUT 참고 자료는 image-level 7-class multi-label과 item mask이며 defect bbox ground truth가
   아니다. Native→canonical mapping v1은 실제 모델 qualification 전까지 계약 가설이다.
 - Vision image quality가 Provider에 없으면 `NOT_EVALUATED/null`이며 Mock quality를 실제 성능으로
@@ -601,7 +652,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   실제 사용자 query 분포는 검증하지 않았다. Baseline corpus는 168 clause 규모다.
 - Retrieval Test 40은 frozen profile로 한 번 실행 완료했다. Local MLX Query Builder와
   Grounded Explanation은 별도 Local PoC로 평가됐지만 Production Target Qwen3.8 재평가가 남았다.
-  Policy Engine은 구현됐고 승인·routing은 구현하지 않았다.
+  Policy Engine→Human Review→Resolution은 구현됐지만 실제 외부 실행과 운영 routing은 없다.
 - Mac MPS embedding은 qualified지만 서비스 요청은 lock으로 직렬화되며 concurrency 2와 장시간
   swap/thrashing은 측정하지 않았다. Production network/process supervisor는 후속 운영 범위다.
 - Qwen reranker는 Mac MPS에서 실제 qualification했지만 단일 process lock과 concurrency 1로
@@ -668,7 +719,17 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] Sprint 5A에서 versioned Policy Engine Core를 구현하고 Grounded Explanation과 최종
   결정을 분리한다.
 - [x] Sprint 5B Human Review decision record와 Admin override 계약을 구현한다.
-- [ ] Sprint 5C Resolution·External Action DRY-RUN과 React 상담원 UI를 구현한다.
+- [x] Sprint 5B를 `4aefae6 feat: add human review workflow`로 Commit하고 원격 기능 브랜치에 백업한다.
+- [x] Sprint 5C Resolution·External Action DRY-RUN, Review Report·KPI와 React 상담원 UI를 구현한다.
+- [x] Sprint 5C 최종 Diff를 검토하고 `0a5f529` 기능 Commit·closeout 원장을 원격 기능 브랜치에 백업한다. PR과
+  `develop` 병합은 거버넌스 결정 전까지 보류한다.
+- [ ] 고객 후보, 상품군 1개, 결함 유형 2~3개와 비식별 실제 Case/Human Gold 30건 이상을 확보한다.
+- [ ] 버전·효력일이 있는 실제 기업 정책과 실제 Policy/Case/User Query 분포 평가를 확보한다.
+- [ ] Retention·삭제·EXIF 제거·접근권한 승인을 받고 증거 artifact ID/hash를 Gate에 연결한다.
+- [ ] 실제 Vision manifest·결함별 평가를 완료하거나 Vision 제외 범위를 명시 승인한다.
+- [ ] 실제 목표 분포에서 Qwen3.8 Extraction·Grounding을 재평가하고 Shadow Mode Human 비교를 완료한다.
+- [ ] 모든 외부 증거와 zero-safety/clean-environment artifact가 갖춰진 뒤에만
+  `make require-limited-poc`으로 `LIMITED_POC` 승격을 판정한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -1209,3 +1270,39 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   `CSight_MASTER_HANDOFF_2026-08-27.md`와 `kaputt_best_vision_architecture.md`는 Commit 제외
 - 다음 작업: `feature/sprint-5c-case-resolution-external-action`에서 Resolution Projection,
   immutable Action Intent, 입력 완전성 검증과 네트워크 없는 External Action DRY-RUN 구현
+
+### 2026-08-27 — Sprint 5C Case Resolution, DRY-RUN, and Consultant Console Closeout
+
+- 판정: 내부 시뮬레이션 데모 구현·검증 완료. 현재 제품 판정은
+  `SYNTHETIC_MOCK_SIMULATION_DEMO`; Limited PoC는 외부 증거 미확보로 `BLOCKED`
+- Git: Sprint 5B를 `4aefae6 feat: add human review workflow`로 Commit·Push했다. Sprint 5C 기능은
+  `0a5f529 feat: add case resolution and PoC console`로 Commit하고
+  `origin/feature/sprint-5c-case-resolution-external-action`에 백업했으며 PR은 만들지 않았다. 본
+  closeout 원장도 동일 기능 브랜치의 후속 문서 Commit에 포함한다.
+- Resolution: Case와 별도인 versioned projection/event, exact Decision mapping 1.0.0,
+  immutable Action Intent, explicit input only, missing/invalid input과 conflicting Decision
+  fail-closed 경로 구현. `cases.status`와 기존 Decision/Packet은 불변
+- Reliability: Decision과 Resolution request 원자 저장, Resolution/Simulation별 durable outbox,
+  claim/lease/backoff/exact-event validation, execution fencing과 duplicate `NOOP` 구현
+- Action: network-free deterministic `DRY_RUN`만 생성하고 모든 Result가
+  `side_effects_performed=false`; `LIVE`는 `LIVE_EXTERNAL_ACTION_DISABLED`
+- Reporting: terminal Resolution version마다 content-hashed `review_report/1.0.0` snapshot,
+  tenant-scoped latest read, tamper rejection, degraded integrity-failure snapshot과 printable UI 구현.
+  PoC KPI는 모두 numerator/denominator/sample count와 zero-denominator null을 반환
+- Console: React 19·TypeScript·Vite, OpenAPI type/check, memory-only JWT, opaque workflow checkpoint,
+  Case/Evidence/analysis/retrieval/citation/policy/review/resolution/report/metrics 화면 구현
+- Verification: Backend static PASS, default 554 passed/62 deselected, Integration 51 passed/
+  5 external-GPU skipped/560 deselected. Frontend lint/type/OpenAPI/build PASS, Vitest 6,
+  Playwright 5. PostgreSQL head `0014`, drift 0
+- Runtime: 7 services healthy, 8 queues consumer 1/depth 0. Live Human Decision→Resolution→
+  `ACTION_DRY_RUN_VALIDATED`, duplicate `NOOP`, Case status 불변, cross-tenant `404`
+- Broker recovery: 실제 RabbitMQ 중단 중 Resolution request가 `PENDING` attempts 3까지 보존되고
+  재기동 뒤 `CONSUMED` attempts 5, 최종 Resolution validated
+- Demo evidence: Scenario 1은 별도 live backend causal 경로, Scenario 2는 disposable PostgreSQL
+  integration을 보유한다. Playwright 5개는 intercepted API fixture이며 특히 Scenario 3–5는
+  fixture-driven UI/component-backed로서 live causal E2E라고 주장하지 않는다.
+- Remaining promotion evidence: actual `LIVE`, 실제 Data/Policy/Vision qualification, 개인정보
+  승인, Shadow Human comparison, 실제 Qwen Extraction/Grounding reevaluation. 하나라도 없으면
+  성능·ROI를 실제 PoC 결과로 주장하지 않는다.
+- Handoff: 상세 원장은 `docs/progress/SPRINT_5C_CASE_RESOLUTION_CONSOLE.md`, 승격 계약은
+  `docs/resolution/SPRINT_5C_DEMO_BOUNDARY.md`. 사용자 소유 루트 문서 두 개는 수정·삭제·Stage하지 않음

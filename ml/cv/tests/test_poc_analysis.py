@@ -1,6 +1,5 @@
 import pandas as pd
 import pytest
-
 from csight_cv.analyze_poc_groups import choose_threshold, material_metrics
 
 

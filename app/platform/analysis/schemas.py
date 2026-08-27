@@ -16,7 +16,10 @@ from app.platform.analysis.enums import (
     ImageQualityRejectionReason,
     ImageUsability,
     MissingInformation,
+    VisionImageAssessmentOutcome,
+    VisionImageAssessmentType,
     VisionTask,
+    VisionThresholdOperator,
 )
 from app.platform.analysis.errors import LLMSourceQuoteMismatchError
 from app.platform.analysis.models import ProviderExecutionMetadata
@@ -313,6 +316,37 @@ class DetectionFinding(AnalysisContract):
     geometry: BoundingBox
 
 
+class VisionImageAssessment(AnalysisContract):
+    """One non-localizing any-defect score and its frozen operating threshold.
+
+    This is an image-level routing signal.  It cannot identify a defect type or
+    location, and a score below the threshold is not evidence that the image is
+    normal.
+    """
+
+    assessment_type: Literal[VisionImageAssessmentType.ANY_DEFECT] = (
+        VisionImageAssessmentType.ANY_DEFECT
+    )
+    model_output_name: Literal["defect"] = "defect"
+    score: float = Field(ge=0.0, le=1.0)
+    threshold: float = Field(ge=0.0, le=1.0)
+    threshold_operator: Literal[VisionThresholdOperator.GREATER_THAN_OR_EQUAL] = (
+        VisionThresholdOperator.GREATER_THAN_OR_EQUAL
+    )
+    outcome: VisionImageAssessmentOutcome
+
+    @model_validator(mode="after")
+    def require_outcome_to_match_frozen_threshold(self) -> "VisionImageAssessment":
+        expected = (
+            VisionImageAssessmentOutcome.HIGH_CONFIDENCE_DEFECT_CANDIDATE
+            if self.score >= self.threshold
+            else VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD
+        )
+        if self.outcome is not expected:
+            raise ValueError("outcome must match score >= threshold")
+        return self
+
+
 class VisionAnalysisResult(AnalysisContract):
     schema_version: Literal["1.0"] = SCHEMA_VERSION
     provider_name: str = Field(min_length=1, max_length=100)
@@ -332,7 +366,14 @@ class VisionAnalysisResult(AnalysisContract):
     image_reference: str | None = Field(default=None, min_length=1, deprecated=True)
     image_quality: ImageQualityResult
     detections: tuple[DetectionFinding, ...] = ()
+    image_assessment: VisionImageAssessment | None = None
     latency_ms: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def separate_detection_from_image_level_assessment(self) -> "VisionAnalysisResult":
+        if self.image_assessment is not None and self.detections:
+            raise ValueError("image-level assessment and localized detections are separate modes")
+        return self
 
     @property
     def model(self) -> ProviderMetadata:

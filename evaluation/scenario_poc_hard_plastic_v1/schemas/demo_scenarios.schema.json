@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://csight.invalid/schemas/scenario-poc-demo-set-1.0.0.json",
+  "title": "Five synthetic demonstration scenarios",
+  "type": "object",
+  "required": ["schema_version", "source_type", "scenario_count", "scenarios"],
+  "properties": {
+    "source_type": {"const": "SYNTHETIC_REFERENCE"},
+    "scenario_count": {"const": 5},
+    "scenarios": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["scenario_id", "case_record_id", "title", "boundary", "operator_steps", "expected_assertions"]
+      }
+    }
+  }
+}

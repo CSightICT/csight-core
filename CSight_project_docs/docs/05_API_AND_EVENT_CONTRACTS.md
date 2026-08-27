@@ -485,6 +485,55 @@ Remote Vision 계약은 private `POST /v1/vision/analyze`, multipart `file`과
 canonical label, confidence, `normalized_xyxy` bbox와 version metadata로 검증한다. 429/5xx와
 transport timeout은 retryable, 400/401/403/schema/geometry 오류는 permanent다.
 
+Image-level binary mode uses the same private endpoint with
+`task=product_defect_any_defect_classification`. The provider response retains its own score and
+frozen threshold:
+
+```json
+{
+  "schema_version": "1.0",
+  "provider": {
+    "model_name": "dinov2-any-defect",
+    "model_version": "e3-epoch-10",
+    "model_revision": "<packaged-checkpoint-revision>",
+    "dataset_version": "<dataset-manifest-version>",
+    "taxonomy_version": "kaputt-any-defect-binary-v1",
+    "threshold_version": "<frozen-threshold-version>",
+    "preprocess_version": "<preprocess-version>",
+    "postprocess_version": "<postprocess-version>"
+  },
+  "image_quality": {"usable": "NOT_EVALUATED"},
+  "image_assessment": {
+    "label": "defect",
+    "score": 0.95,
+    "threshold": 0.8984375
+  },
+  "detections": []
+}
+```
+
+Core verifies that the returned threshold matches `VISION_ASSESSMENT_EXPECTED_THRESHOLD`, derives
+the comparison outcome, and exposes the following additive field inside each `vision_results[].result`:
+
+```json
+{
+  "image_assessment": {
+    "assessment_type": "ANY_DEFECT",
+    "model_output_name": "defect",
+    "score": 0.95,
+    "threshold": 0.8984375,
+    "threshold_operator": "GREATER_THAN_OR_EQUAL",
+    "outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE"
+  },
+  "detections": []
+}
+```
+
+The only other outcome is `BELOW_HIGH_CONFIDENCE_THRESHOLD`; it does not mean `NORMAL`. Binary
+responses containing a Detection, missing an assessment, or returning a different threshold are
+permanent structured-output failures. Existing `product_defect_detection` request and response
+shapes remain compatible.
+
 Queue payload는 Sprint 2와 같은 event/tenant/case/run/stage/correlation ID 6개뿐이다. Evidence
 ID 목록, object key, Binary, Base64, Signed URL과 credential은 포함하지 않는다.
 

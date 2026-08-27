@@ -10,6 +10,7 @@ from app.adapters.storage import MinioReadinessProbe
 from app.adapters.vision import MockVisionProvider, RemoteVisionProvider
 from app.application.analyze_case import AnalyzeCase
 from app.bootstrap.settings import Settings
+from app.platform.analysis import VisionTask
 from app.ports.llm import LLMProvider
 from app.ports.readiness import DependencyProbe, ReadinessService
 from app.ports.vision import VisionProvider
@@ -123,6 +124,8 @@ def build_vision_provider(settings: Settings) -> VisionProvider:
             mode=settings.vision_mock_mode,
             model_name=settings.vision_model_id,
             model_version=settings.vision_model_version,
+            analysis_task=VisionTask(settings.vision_task),
+            assessment_threshold=settings.vision_assessment_expected_threshold,
         )
     if settings.vision_provider == "remote":
         base_url = settings.vision_base_url_value
@@ -139,6 +142,8 @@ def build_vision_provider(settings: Settings) -> VisionProvider:
             connect_timeout_seconds=settings.vision_connect_timeout_seconds,
             read_timeout_seconds=settings.vision_read_timeout_seconds,
             max_image_bytes=settings.vision_max_image_bytes,
+            analysis_task=VisionTask(settings.vision_task),
+            expected_assessment_threshold=settings.vision_assessment_expected_threshold,
             tls_verify=settings.vision_tls_verify,
         )
     raise ProviderConfigurationError(

@@ -363,7 +363,7 @@ def test_revision_0012_is_linear_and_models_expose_reliability_columns() -> None
     revision = scripts.get_revision("20260827_0012_async_reliability")
     assert revision is not None
     assert revision.down_revision == "20260827_0011_human_review"
-    assert scripts.get_heads() == ["20260827_0014_review_report_poc_metrics"]
+    assert scripts.get_heads() == ["20260827_0015_vision_image_assessment"]
 
     run_columns = {"execution_attempt_count", "claim_token", "lease_expires_at"}
     for model in (

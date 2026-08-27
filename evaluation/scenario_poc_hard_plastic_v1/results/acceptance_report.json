@@ -1,0 +1,101 @@
+{
+  "assessment": {
+    "claim_boundary": {
+      "allowed": "SYNTHETIC_SCENARIO_TECH_POC",
+      "forbidden": [
+        "LIMITED_POC",
+        "REAL_CUSTOMER_PERFORMANCE",
+        "REAL_COMPANY_POLICY_VALIDATION",
+        "ROI_OR_COST_REDUCTION",
+        "NORMAL_CLASSIFICATION_BELOW_THRESHOLD"
+      ]
+    },
+    "offline_scenario_pack": {
+      "checks": [
+        {
+          "detail": "all required artifacts exist",
+          "name": "required_artifacts_exist",
+          "passed": true
+        },
+        {
+          "detail": "manifest parsed",
+          "name": "manifest_is_valid_json_object",
+          "passed": true
+        },
+        {
+          "detail": "source_type=SYNTHETIC_REFERENCE and exact safe claims_boundary",
+          "name": "synthetic_claim_boundary",
+          "passed": true
+        },
+        {
+          "detail": "five artifacts sealed by pack_hash=6be7ad00ba4b92bd99fbcb0ab6c7b9163e387aa8ccd734751c479a2352c24ef1",
+          "name": "artifact_and_pack_hashes",
+          "passed": true
+        },
+        {
+          "detail": "records=36 unique_ids=36 splits={'demo': 5, 'dev': 21, 'test': 10}",
+          "name": "minimum_30_unique_cases",
+          "passed": true
+        },
+        {
+          "detail": "version=1.0.0 clauses=10",
+          "name": "versioned_effective_synthetic_policy",
+          "passed": true
+        },
+        {
+          "detail": "gold=36 linked_cases=36 missing_policy_clauses=0",
+          "name": "gold_complete_and_case_linked",
+          "passed": true
+        },
+        {
+          "detail": "scenarios=5 boundaries=['COMPLETE_VISIBLE_BREAKAGE_DRY_RUN_VALIDATED', 'FUNCTIONAL_FAILURE_STILL_UNCONFIRMED_REQUEST_EVIDENCE', 'REFUND_INPUT_MISSING_NO_ATTEMPT', 'SAFETY_REVIEWER_BLOCKED_ADMIN_RESOLVE', 'VISION_TIMEOUT_PARTIAL_SUCCESS_NO_ACTION']",
+          "name": "five_demo_safety_boundaries",
+          "passed": true
+        },
+        {
+          "detail": "task=BINARY_ANY_DEFECT_CLASSIFICATION threshold=0.8984375 candidate=E3",
+          "name": "report_based_binary_model_manifest",
+          "passed": true
+        }
+      ],
+      "failures": [],
+      "status": "OFFLINE_SCENARIO_PACK_READY"
+    },
+    "pack_dir": "evaluation/scenario_poc_hard_plastic_v1",
+    "passed": true,
+    "runtime_vision_integration": {
+      "blockers": [
+        "VISION_ENDPOINT_NOT_AVAILABLE",
+        "VISION_CHECKPOINT_PACKAGE_NOT_AVAILABLE",
+        "VISION_ENDPOINT_REFERENCE_MISSING",
+        "VISION_RUNTIME_PROBE_NOT_EXECUTED"
+      ],
+      "status": "RUNTIME_VISION_INTEGRATION_BLOCKED"
+    },
+    "verdict": "SCENARIO_TECH_POC_READY"
+  },
+  "evaluated_at": "2026-08-27T15:05:33.495466+00:00",
+  "evidence_summary": {
+    "artifact_hashes": {
+      "cases.jsonl": "7c86524c41aab6bdb4d5a8939f780e6a5756892cfbf7e91cc5a14f584ae20138",
+      "demo_scenarios.json": "6d8deba8ae2bfa7758acb5efbb464bfad74cdea091dcf5876bf593d587d27346",
+      "gold.jsonl": "ca6eb47a87d5450ff31eb3800672ac3d879268ee10801e7f29ce791a08d72438",
+      "model_manifest.json": "65ad50aca4b757b7ab4a99b32423c71bde0eb65a232fed6ac9f143010b93efb7",
+      "policy.json": "f3786af6240dc8d016bf3fc0e8c5e2b2e03b39a79655a1f60ada698b9c885b71"
+    },
+    "declared_record_count": 36,
+    "observed_demo_scenario_count": 5,
+    "observed_record_count": 36,
+    "pack_hash": "6be7ad00ba4b92bd99fbcb0ab6c7b9163e387aa8ccd734751c479a2352c24ef1",
+    "runtime_artifact_discovery": {
+      "checkpoint_package_status": "NOT_AVAILABLE",
+      "runtime_integration_status": "NOT_AVAILABLE",
+      "serving_endpoint_status": "NOT_AVAILABLE"
+    }
+  },
+  "offline_status": "OFFLINE_SCENARIO_PACK_READY",
+  "report_hash": "0d5f1d88ee19fe9bec865e2d6ba33182cfd099b1ab3f8963c68f6a551fa8d05a",
+  "runtime_status": "RUNTIME_VISION_INTEGRATION_BLOCKED",
+  "schema_version": "scenario_poc_acceptance_report/1.0.0",
+  "verdict": "SCENARIO_TECH_POC_READY"
+}

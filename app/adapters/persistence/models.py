@@ -1278,6 +1278,50 @@ class VisionDetectionModel(CreatedAtMixin, Base):
     y2: Mapped[float] = mapped_column(nullable=False)
 
 
+class VisionImageAssessmentModel(CreatedAtMixin, Base):
+    __tablename__ = "vision_image_assessments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "vision_result_id"),
+            ("vision_analysis_results.tenant_id", "vision_analysis_results.id"),
+            name="fk_vision_image_assessments_tenant_result_vision_results",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("assessment_type = 'ANY_DEFECT'", name="type_any_defect"),
+        CheckConstraint("model_output_name = 'defect'", name="output_name_defect"),
+        CheckConstraint("score BETWEEN 0 AND 1", name="score_range"),
+        CheckConstraint("threshold BETWEEN 0 AND 1", name="threshold_range"),
+        CheckConstraint(
+            "threshold_operator = 'GREATER_THAN_OR_EQUAL'",
+            name="threshold_operator_supported",
+        ),
+        CheckConstraint(
+            "outcome IN ('HIGH_CONFIDENCE_DEFECT_CANDIDATE','BELOW_HIGH_CONFIDENCE_THRESHOLD')",
+            name="outcome_allowed",
+        ),
+        CheckConstraint(
+            "(score >= threshold AND outcome = 'HIGH_CONFIDENCE_DEFECT_CANDIDATE') OR "
+            "(score < threshold AND outcome = 'BELOW_HIGH_CONFIDENCE_THRESHOLD')",
+            name="outcome_matches_threshold",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "vision_result_id",
+            name="uq_vision_image_assessments_tenant_result",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    vision_result_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    assessment_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    model_output_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    threshold_operator: Mapped[str] = mapped_column(String(32), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class AnalysisRequestIdempotencyRecordModel(CreatedAtMixin, Base):
     __tablename__ = "analysis_request_idempotency_records"
     __table_args__ = (
@@ -3839,6 +3883,7 @@ PERSISTENCE_MODELS = (
     AnalysisRunEvidenceModel,
     VisionAnalysisResultModel,
     VisionDetectionModel,
+    VisionImageAssessmentModel,
     AnalysisRequestIdempotencyRecordModel,
     OutboxEventModel,
     PolicyIngestionRunModel,

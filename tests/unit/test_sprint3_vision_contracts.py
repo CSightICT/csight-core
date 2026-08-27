@@ -39,11 +39,15 @@ from app.platform.analysis import (
     ImageQualityResult,
     ImageUsability,
     VisionAnalysisRequest,
+    VisionAnalysisResult,
+    VisionImageAssessment,
+    VisionImageAssessmentOutcome,
     VisionInvalidStructuredOutputError,
     VisionProviderAuthenticationError,
     VisionProviderRequestRejectedError,
     VisionProviderTimeoutError,
     VisionProviderUnavailableError,
+    VisionTask,
 )
 from app.platform.case import Case, RequestedAction
 from app.platform.evidence import EvidenceMetadata, EvidenceUploadStatus
@@ -143,6 +147,46 @@ def test_bbox_and_quality_distinguish_normalized_geometry_from_not_evaluated() -
         BoundingBox(x1=0.8, y1=0.2, x2=0.1, y2=0.9)
     with pytest.raises(ValueError, match="remain null"):
         ImageQualityResult(usable=ImageUsability.NOT_EVALUATED, blurred=False)
+
+
+def test_image_assessment_is_non_localizing_and_below_threshold_is_not_normal() -> None:
+    below = VisionImageAssessment(
+        score=0.4,
+        threshold=0.8,
+        outcome=VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD,
+    )
+
+    assert "NORMAL" not in {item.value for item in VisionImageAssessmentOutcome}
+    assert below.outcome is VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD
+    with pytest.raises(ValueError, match="outcome"):
+        VisionImageAssessment(
+            score=0.9,
+            threshold=0.8,
+            outcome=VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD,
+        )
+
+
+def test_image_assessment_cannot_claim_a_localized_detection() -> None:
+    detection_result = MockVisionProvider().analyze_image(
+        VisionAnalysisRequest(
+            evidence_id="evidence-1",
+            content_type="image/png",
+            image_width=100,
+            image_height=100,
+        ),
+        image=b"synthetic-image",
+    )
+    with pytest.raises(ValueError, match="separate modes"):
+        VisionAnalysisResult.model_validate(
+            {
+                **detection_result.model_dump(mode="json"),
+                "image_assessment": {
+                    "score": 0.95,
+                    "threshold": 0.9,
+                    "outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+                },
+            }
+        )
 
 
 def test_kaputt_native_taxonomy_is_mapped_without_exposing_class_ids() -> None:
@@ -355,7 +399,54 @@ def _remote_payload(
     ).encode()
 
 
-def _remote(client: _HTTP) -> RemoteVisionProvider:
+def _binary_remote_payload(
+    *,
+    score: float,
+    threshold: float = 0.8984375,
+    detections: list[object] | None = None,
+) -> bytes:
+    return json.dumps(
+        {
+            "schema_version": "1.0",
+            "provider": {
+                "name": "vision-service",
+                "model_name": "dinov2-any-defect",
+                "model_version": "e3-epoch-10",
+                "model_revision": "checkpoint-package-revision",
+                "dataset_version": "kaputt-heldout-report-2026-08-27",
+                "taxonomy_version": "kaputt-any-defect-binary-v1",
+                "threshold_version": "e3-validation-frozen-v1",
+                "preprocess_version": "full-frame-1024-v1",
+                "postprocess_version": "sigmoid-any-defect-v1",
+            },
+            "image_quality": {
+                "usable": "NOT_EVALUATED",
+                "score": None,
+                "blurred": None,
+                "dark": None,
+                "overexposed": None,
+                "product_visible": None,
+                "defect_area_visible": None,
+                "rejection_reasons": [],
+            },
+            "image_assessment": {
+                "label": "defect",
+                "score": score,
+                "threshold": threshold,
+            },
+            "detections": detections or [],
+            "latency_ms": 37,
+        },
+        separators=(",", ":"),
+    ).encode()
+
+
+def _remote(
+    client: _HTTP,
+    *,
+    analysis_task: VisionTask = VisionTask.QUALITY_AND_DEFECT_DETECTION,
+    expected_assessment_threshold: float | None = None,
+) -> RemoteVisionProvider:
     return RemoteVisionProvider(
         base_url="https://vision.internal",
         api_key="private-key",
@@ -365,6 +456,8 @@ def _remote(client: _HTTP) -> RemoteVisionProvider:
         connect_timeout_seconds=2,
         read_timeout_seconds=10,
         max_image_bytes=1024,
+        analysis_task=analysis_task,
+        expected_assessment_threshold=expected_assessment_threshold,
         http_client=client,
     )
 
@@ -390,6 +483,160 @@ def test_remote_vision_multipart_normalizes_pixel_geometry_and_taxonomy() -> Non
     assert result.detections[0].geometry.x1 == 0.1
     assert result.detections[0].geometry.x2 == 0.9
     assert result.detections[0].geometry.coordinate_system is CoordinateSystem.NORMALIZED_XYXY
+
+
+@pytest.mark.parametrize(
+    ("score", "expected"),
+    [
+        (0.95, VisionImageAssessmentOutcome.HIGH_CONFIDENCE_DEFECT_CANDIDATE),
+        (0.5, VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD),
+    ],
+)
+def test_remote_any_defect_returns_score_and_frozen_threshold_without_detection(
+    score: float,
+    expected: VisionImageAssessmentOutcome,
+) -> None:
+    client = _HTTP(_binary_remote_payload(score=score))
+    provider = _remote(
+        client,
+        analysis_task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+        expected_assessment_threshold=0.8984375,
+    )
+    result = provider.analyze_image(
+        VisionAnalysisRequest(
+            evidence_id="evidence-1",
+            content_type="image/png",
+            image_width=100,
+            image_height=100,
+            task=provider.analysis_task,
+        ),
+        image=b"synthetic-image",
+    )
+
+    fields = client.calls[0]["fields"]
+    assert isinstance(fields, dict)
+    assert fields["task"] == "product_defect_any_defect_classification"
+    assert result.detections == ()
+    assert result.image_assessment is not None
+    assert result.image_assessment.score == score
+    assert result.image_assessment.threshold == 0.8984375
+    assert result.image_assessment.outcome is expected
+    assert result.taxonomy_version == "csight-any-defect-assessment-v1"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        _binary_remote_payload(score=0.95, threshold=0.8),
+        _binary_remote_payload(score=0.95, detections=[{"fabricated": True}]),
+    ],
+)
+def test_remote_any_defect_fails_closed_on_threshold_drift_or_fabricated_detection(
+    payload: bytes,
+) -> None:
+    provider = _remote(
+        _HTTP(payload),
+        analysis_task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+        expected_assessment_threshold=0.8984375,
+    )
+    with pytest.raises(VisionInvalidStructuredOutputError):
+        provider.analyze_image(
+            VisionAnalysisRequest(
+                evidence_id="evidence-1",
+                content_type="image/png",
+                image_width=100,
+                image_height=100,
+                task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+            ),
+            image=b"synthetic-image",
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("model_name", None),
+        ("model_version", "  "),
+        ("threshold_version", None),
+        ("preprocess_version", 7),
+        ("postprocess_version", []),
+    ],
+)
+def test_remote_any_defect_rejects_missing_or_invalid_required_version_metadata(
+    field: str,
+    invalid_value: object,
+) -> None:
+    payload = json.loads(_binary_remote_payload(score=0.95))
+    payload["provider"][field] = invalid_value
+    provider = _remote(
+        _HTTP(json.dumps(payload).encode()),
+        analysis_task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+        expected_assessment_threshold=0.8984375,
+    )
+
+    with pytest.raises(VisionInvalidStructuredOutputError):
+        provider.analyze_image(
+            VisionAnalysisRequest(
+                evidence_id="evidence-1",
+                content_type="image/png",
+                image_width=100,
+                image_height=100,
+                task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+            ),
+            image=b"synthetic-image",
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("name", None),
+        ("model_revision", 7),
+        ("dataset_version", {}),
+        ("framework", []),
+        ("runtime", False),
+        ("precision", "  "),
+    ],
+)
+def test_remote_any_defect_rejects_invalid_optional_metadata_when_present(
+    field: str,
+    invalid_value: object,
+) -> None:
+    payload = json.loads(_binary_remote_payload(score=0.95))
+    payload["provider"][field] = invalid_value
+    provider = _remote(
+        _HTTP(json.dumps(payload).encode()),
+        analysis_task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+        expected_assessment_threshold=0.8984375,
+    )
+
+    with pytest.raises(VisionInvalidStructuredOutputError):
+        provider.analyze_image(
+            VisionAnalysisRequest(
+                evidence_id="evidence-1",
+                content_type="image/png",
+                image_width=100,
+                image_height=100,
+                task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+            ),
+            image=b"synthetic-image",
+        )
+
+
+def test_remote_vision_rejects_request_task_that_bypasses_deployment_mode() -> None:
+    provider = _remote(_HTTP(_remote_payload()))
+
+    with pytest.raises(VisionProviderRequestRejectedError, match="configured deployment"):
+        provider.analyze_image(
+            VisionAnalysisRequest(
+                evidence_id="evidence-1",
+                content_type="image/png",
+                image_width=100,
+                image_height=100,
+                task=VisionTask.ANY_DEFECT_CLASSIFICATION,
+            ),
+            image=b"synthetic-image",
+        )
 
 
 @pytest.mark.parametrize(
@@ -485,6 +732,64 @@ def test_mock_vision_success_scenarios_are_deterministic(
     assert first == second
     assert len(first.detections) == detection_count
     assert first.image_quality.usable is usable
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected"),
+    [
+        (
+            VisionMockMode.BINARY_CANDIDATE,
+            VisionImageAssessmentOutcome.HIGH_CONFIDENCE_DEFECT_CANDIDATE,
+        ),
+        (
+            VisionMockMode.BINARY_BELOW_THRESHOLD,
+            VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD,
+        ),
+    ],
+)
+def test_binary_mock_modes_are_explicit_synthetic_non_localizing_assessments(
+    mode: VisionMockMode,
+    expected: VisionImageAssessmentOutcome,
+) -> None:
+    provider = MockVisionProvider(mode=mode, assessment_threshold=0.8984375)
+    request = VisionAnalysisRequest(
+        evidence_id="evidence-1",
+        content_type="image/png",
+        image_width=100,
+        image_height=100,
+        task=provider.analysis_task,
+    )
+
+    first = provider.analyze_image(request, image=b"same-synthetic-image")
+    second = provider.analyze_image(request, image=b"same-synthetic-image")
+
+    assert first == second
+    assert first.provider_name == "mock"
+    assert first.dataset_version == "synthetic-any-defect-v1"
+    assert first.image_quality.usable is ImageUsability.NOT_EVALUATED
+    assert first.detections == ()
+    assert first.image_assessment is not None
+    assert first.image_assessment.threshold == 0.8984375
+    assert first.image_assessment.outcome is expected
+
+
+@pytest.mark.parametrize(
+    ("mode", "task"),
+    [
+        (VisionMockMode.SUCCESS_SINGLE_DEFECT, VisionTask.ANY_DEFECT_CLASSIFICATION),
+        (VisionMockMode.BINARY_CANDIDATE, VisionTask.QUALITY_AND_DEFECT_DETECTION),
+    ],
+)
+def test_mock_vision_rejects_mode_and_task_contract_mismatch(
+    mode: VisionMockMode,
+    task: VisionTask,
+) -> None:
+    with pytest.raises(ValueError, match="same contract"):
+        MockVisionProvider(
+            mode=mode,
+            analysis_task=task,
+            assessment_threshold=(0.8984375 if mode is VisionMockMode.BINARY_CANDIDATE else None),
+        )
 
 
 @pytest.mark.parametrize(

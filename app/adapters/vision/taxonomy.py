@@ -6,6 +6,8 @@ from app.platform.analysis import DefectType
 
 KAPUT_TAXONOMY_VERSION = "kaputt-7-v1"
 CSIGHT_VISION_TAXONOMY_VERSION = "csight-defect-v1"
+KAPUT_ANY_DEFECT_TAXONOMY_VERSION = "kaputt-any-defect-binary-v1"
+CSIGHT_ANY_DEFECT_ASSESSMENT_VERSION = "csight-any-defect-assessment-v1"
 
 _KAPUT_TO_CSIGHT = MappingProxyType(
     {
@@ -27,7 +29,9 @@ def map_model_class(class_name: str) -> DefectType:
 
 
 __all__ = [
+    "CSIGHT_ANY_DEFECT_ASSESSMENT_VERSION",
     "CSIGHT_VISION_TAXONOMY_VERSION",
+    "KAPUT_ANY_DEFECT_TAXONOMY_VERSION",
     "KAPUT_TAXONOMY_VERSION",
     "map_model_class",
 ]

@@ -445,15 +445,41 @@ class MockLLMProvider:
             ),
             (ExtractionIssueType.DENT, ("찌그러", "dent")),
             (ExtractionIssueType.CRACK, ("균열", "금이", "crack")),
-            (ExtractionIssueType.BREAKAGE, ("깨졌", "파손", "breakage")),
-            (ExtractionIssueType.LEAKAGE, ("누액", "누출", "샜", "leak")),
+            (
+                ExtractionIssueType.BREAKAGE,
+                (
+                    "깨졌",
+                    "깨져",
+                    "파손",
+                    "부러",
+                    "분리",
+                    "빠져",
+                    "갈라",
+                    "breakage",
+                ),
+            ),
+            (
+                ExtractionIssueType.LEAKAGE,
+                ("누액", "누출", "샜", "샙", "새어", "leak"),
+            ),
             (
                 ExtractionIssueType.MISSING_COMPONENT,
                 ("구성품 누락", "부품 누락", "missing component"),
             ),
             (ExtractionIssueType.WRONG_ITEM, ("다른 상품", "오배송", "wrong item")),
             (ExtractionIssueType.CONTAMINATION, ("오염", "이물질", "contamination")),
-            (ExtractionIssueType.FUNCTIONAL_FAILURE, ("작동하지", "고장", "functional failure")),
+            (
+                ExtractionIssueType.FUNCTIONAL_FAILURE,
+                (
+                    "작동하지",
+                    "작동 안",
+                    "고장",
+                    "헛돌",
+                    "안 나",
+                    "올라오지",
+                    "functional failure",
+                ),
+            ),
         )
         findings: list[tuple[ExtractionIssueType, str]] = []
         claimed_spans: set[str] = set()

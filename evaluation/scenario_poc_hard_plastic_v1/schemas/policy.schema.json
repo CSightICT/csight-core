@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://csight.invalid/schemas/scenario-poc-policy-1.0.0.json",
+  "title": "Synthetic policy bundle",
+  "type": "object",
+  "required": ["schema_version", "source_type", "tenant_id", "document", "clauses", "rules", "action_input_requirements", "global_guardrails"],
+  "properties": {
+    "schema_version": {"const": "synthetic_policy_bundle/1.0.0"},
+    "source_type": {"const": "SYNTHETIC_REFERENCE"},
+    "document": {
+      "type": "object",
+      "required": ["id", "title", "version", "effective_from", "effective_to", "status", "fictional", "legal_or_commercial_effect"]
+    },
+    "clauses": {"type": "array", "minItems": 8},
+    "rules": {"type": "array", "minItems": 5},
+    "action_input_requirements": {"type": "object"},
+    "global_guardrails": {
+      "type": "object",
+      "required": ["final_decision_owner", "automatic_approval_allowed", "parameter_inference_allowed", "external_action_mode", "live_external_action_allowed", "side_effects_performed", "actual_performance_or_roi_claim_allowed"]
+    }
+  }
+}

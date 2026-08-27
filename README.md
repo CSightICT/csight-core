@@ -335,6 +335,13 @@ Text와 Vision Stage/Event는 같은 트랜잭션에 생성되지만 독립 실�
 Vision 결과는 이미지별 `vision_results`에 나타나며 model-native class와 canonical defect,
 confidence, `normalized_xyxy` bbox, model/taxonomy/threshold/pre/postprocess version을 포함한다.
 
+위치·유형을 출력하지 않는 이진 any-defect 모델은 별도 `image_assessment`로 나타납니다. 이
+필드는 provider score와 동결 threshold, Core가 계산한 고신뢰 후보/기준 미만 결과만 가지며
+`detections`는 비어 있습니다. 기준 미만은 정상 판정이 아닙니다. 오늘의 네트워크 없는 계약
+데모는 `VISION_MOCK_MODE=binary_candidate` 또는 `binary_below_threshold`와 명시적인
+`VISION_ASSESSMENT_EXPECTED_THRESHOLD`를 사용합니다. Mock score는 합성 wiring 값이며 실제 E3
+추론 결과로 해석하지 않습니다.
+
 기본 `VISION_PROVIDER=mock`은 네트워크 없이 10개 결정론적 시나리오를 지원한다. Remote
 Provider는 private `POST /v1/vision/analyze` multipart 계약을 사용하며 Binary, Signed URL,
 MinIO credential과 Raw provider JSON을 Queue/DB에 저장하지 않는다. 실제 Vision 검증은

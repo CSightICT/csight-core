@@ -1,0 +1,105 @@
+{
+  "schema_version": "scenario_demo_set/1.0.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "scenario_count": 5,
+  "scenarios": [
+    {
+      "scenario_id": "DEMO-01",
+      "case_record_id": "DEMO-01",
+      "title": "시각적으로 분리된 펌프의 교환 DRY-RUN",
+      "boundary": "COMPLETE_VISIBLE_BREAKAGE_DRY_RUN_VALIDATED",
+      "operator_steps": [
+        "합성 Case와 사진 Fixture를 접수한다.",
+        "Vision의 고신뢰 결함 후보 점수를 보되 BREAKAGE 유형은 고객 텍스트와 사람이 확인한다.",
+        "정책 Citation을 확인한 Reviewer가 APPROVE_EXCHANGE를 기록한다.",
+        "명시된 quantity와 shipping_address_ref로 DRY-RUN을 실행한다."
+      ],
+      "expected_assertions": {
+        "human_decision_required": true,
+        "resolution_status": "ACTION_DRY_RUN_VALIDATED",
+        "intent_count": 1,
+        "attempt_count": 1,
+        "result_count": 1,
+        "side_effects_performed": false
+      }
+    },
+    {
+      "scenario_id": "DEMO-02",
+      "case_record_id": "DEMO-02",
+      "title": "환불액·통화 누락 시 Action 보류",
+      "boundary": "REFUND_INPUT_MISSING_NO_ATTEMPT",
+      "operator_steps": [
+        "파손 근거를 확인한 Reviewer가 APPROVE_REFUND를 기록한다.",
+        "고객 문장이나 주문 금액에서 환불액과 통화를 추론하지 않는다.",
+        "ACTION_NEEDS_INPUT과 zero Attempt/Result를 확인한다."
+      ],
+      "expected_assertions": {
+        "human_decision_required": true,
+        "resolution_status": "ACTION_NEEDS_INPUT",
+        "intent_count": 0,
+        "attempt_count": 0,
+        "result_count": 0,
+        "parameter_inference": false
+      }
+    },
+    {
+      "scenario_id": "DEMO-03",
+      "case_record_id": "DEMO-03",
+      "title": "작동 이상은 정지 이미지로 확정하지 않고 자료 요청",
+      "boundary": "FUNCTIONAL_FAILURE_STILL_UNCONFIRMED_REQUEST_EVIDENCE",
+      "operator_steps": [
+        "고객 텍스트에서 FUNCTIONAL_FAILURE 주장을 추출한다.",
+        "정지 이미지와 이진 점수로 actuation 또는 기능 고장을 확정하지 않는다.",
+        "작동 영상 또는 수동 시험을 추가 요청하고 Decision과 Action을 만들지 않는다."
+      ],
+      "expected_assertions": {
+        "functional_failure_source": "TEXT_CLAIM",
+        "still_image_confirms_function": false,
+        "review_task_type": "EVIDENCE_REVIEW",
+        "human_decision_count": 0,
+        "intent_count": 0,
+        "attempt_count": 0,
+        "result_count": 0
+      }
+    },
+    {
+      "scenario_id": "DEMO-04",
+      "case_record_id": "DEMO-04",
+      "title": "날카로운 파손·누출 Safety Case의 Admin 처리",
+      "boundary": "SAFETY_REVIEWER_BLOCKED_ADMIN_RESOLVE",
+      "operator_steps": [
+        "사용 중지 안내와 Safety Review를 표시한다.",
+        "일반 Reviewer의 Claim/Resolve가 차단되는지 확인한다.",
+        "Admin이 근거를 확인하고 APPROVE_EXCHANGE를 기록한다.",
+        "DRY-RUN만 수행되고 실제 외부 실행은 없음을 확인한다."
+      ],
+      "expected_assertions": {
+        "required_role": "ADMIN",
+        "reviewer_claim_allowed": false,
+        "resolution_status": "ACTION_DRY_RUN_VALIDATED",
+        "side_effects_performed": false,
+        "live_external_action": false
+      }
+    },
+    {
+      "scenario_id": "DEMO-05",
+      "case_record_id": "DEMO-05",
+      "title": "Vision Timeout의 Partial Success와 사람 검토",
+      "boundary": "VISION_TIMEOUT_PARTIAL_SUCCESS_NO_ACTION",
+      "operator_steps": [
+        "텍스트 분석은 보존하고 Vision Timeout을 실패 Stage로 표시한다.",
+        "기존 이미지 점수나 고객 텍스트만으로 자동 결정을 만들지 않는다.",
+        "EVIDENCE_REVIEW에서 추가 자료를 기다리고 Decision과 Action 0을 확인한다."
+      ],
+      "expected_assertions": {
+        "analysis_outcome": "PARTIAL_SUCCESS",
+        "vision_status": "TIMEOUT",
+        "human_review_required": true,
+        "human_decision_count": 0,
+        "intent_count": 0,
+        "attempt_count": 0,
+        "result_count": 0
+      }
+    }
+  ]
+}

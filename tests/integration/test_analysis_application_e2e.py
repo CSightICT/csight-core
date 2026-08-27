@@ -2,15 +2,17 @@
 
 import os
 from collections.abc import Generator, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from threading import Barrier, Lock
 from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import Engine, delete, func, select
+from sqlalchemy import Engine, delete, event, func, select, update
 from sqlalchemy.orm import Session
 
 from alembic import command as alembic_command
@@ -30,6 +32,7 @@ from app.adapters.persistence.models import (
     UserModel,
     VisionAnalysisResultModel,
     VisionDetectionModel,
+    VisionImageAssessmentModel,
 )
 from app.adapters.persistence.unit_of_work import (
     SQLAlchemyAnalysisUnitOfWork,
@@ -62,6 +65,7 @@ from app.platform.analysis import (
     AnalysisRunStatus,
     AnalysisStageAttempt,
     AnalysisStageStatus,
+    AnalysisStageType,
     LLMTextExtractionRequest,
     LLMTextExtractionResponse,
     MockProviderMode,
@@ -203,6 +207,31 @@ class FaultingAnalysisUnitOfWorkFactory:
         unit_of_work = self._delegate()
         unit_of_work.outbox = cast(OutboxEventRepository, FailingOutboxRepository())
         return unit_of_work
+
+
+class AnalysisRunLockBarrier:
+    """Synchronize concurrent parent-row lock statements before DB execution."""
+
+    def __init__(self) -> None:
+        self._barrier = Barrier(2)
+        self._lock = Lock()
+        self.hit_count = 0
+
+    def before_cursor_execute(
+        self,
+        connection: object,
+        cursor: object,
+        statement: str,
+        parameters: object,
+        context: object,
+        executemany: bool,
+    ) -> None:
+        del connection, cursor, parameters, context, executemany
+        if "FROM analysis_runs" not in statement or "FOR UPDATE" not in statement:
+            return
+        with self._lock:
+            self.hit_count += 1
+        self._barrier.wait(timeout=10)
 
 
 @pytest.fixture(scope="module")
@@ -353,6 +382,11 @@ def application_context(
         tenant_ids = [UUID(tenant_a), UUID(tenant_b)]
         with application_engine.begin() as connection:
             connection.execute(
+                delete(VisionImageAssessmentModel).where(
+                    VisionImageAssessmentModel.tenant_id.in_(tenant_ids)
+                )
+            )
+            connection.execute(
                 delete(VisionDetectionModel).where(VisionDetectionModel.tenant_id.in_(tenant_ids))
             )
             connection.execute(
@@ -499,6 +533,7 @@ def _multimodal_executor(
     clock: MutableClock,
     llm_mode: MockProviderMode = MockProviderMode.SUCCESS,
     vision_mode: VisionMockMode = VisionMockMode.SUCCESS_SINGLE_DEFECT,
+    assessment_threshold: float | None = None,
 ) -> ExecuteRequestedAnalysisStage:
     return ExecuteRequestedAnalysisStage(
         uow_factory=context.factory,
@@ -514,7 +549,10 @@ def _multimodal_executor(
         ),
         vision=ExecuteVisionAnalysis(
             uow_factory=context.factory,
-            provider=MockVisionProvider(mode=vision_mode),
+            provider=MockVisionProvider(
+                mode=vision_mode,
+                assessment_threshold=assessment_threshold,
+            ),
             storage=cast(
                 ReadableObjectStorage,
                 PrivateBytesStorage({context.evidence_a.object_key: context.image_bytes}),
@@ -1404,6 +1442,184 @@ def test_multimodal_mock_e2e_persists_snapshot_text_vision_and_safe_duplicate(
                 analysis_run_id=started.run.id,
             )
             == ()
+        )
+
+
+def test_concurrent_multimodal_stage_completion_closes_parent_run(
+    application_context: ApplicationContext,
+) -> None:
+    clock = MutableClock(NOW)
+    started = _start_multimodal(
+        application_context,
+        clock=clock,
+        key=f"multimodal-concurrent-completion-{uuid4()}",
+    )
+    queue = RecordingQueue()
+    assert _dispatch(application_context, queue=queue, clock=clock).published == 2
+
+    commands = tuple(
+        ExecuteTextExtractionCommand.model_validate(message.payload) for message in queue.messages
+    )
+    with application_context.factory() as unit_of_work:
+        stages = unit_of_work.stage_runs.list(
+            tenant_id=application_context.principal_a.tenant_id,
+            analysis_run_id=started.run.id,
+        )
+    text_stage = next(
+        stage for stage in stages if stage.stage_type is AnalysisStageType.TEXT_EXTRACTION
+    )
+    vision_stage = next(
+        stage for stage in stages if stage.stage_type is AnalysisStageType.VISION_ANALYSIS
+    )
+    text_command = next(command for command in commands if command.stage_run_id == text_stage.id)
+    vision_command = next(
+        command for command in commands if command.stage_run_id == vision_stage.id
+    )
+
+    text_executor = ExecuteTextExtraction(
+        uow_factory=application_context.factory,
+        provider=MockLLMProvider(),
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        clock=clock,
+        id_generator=Uuid4Generator(),
+        retry_base=timedelta(seconds=1),
+        retry_max=timedelta(seconds=1),
+        retry_jitter_ratio=0,
+    )
+    vision_executor = ExecuteVisionAnalysis(
+        uow_factory=application_context.factory,
+        provider=MockVisionProvider(),
+        storage=cast(
+            ReadableObjectStorage,
+            PrivateBytesStorage(
+                {application_context.evidence_a.object_key: application_context.image_bytes}
+            ),
+        ),
+        clock=clock,
+        id_generator=Uuid4Generator(),
+        max_image_bytes=1024,
+        retry_base=timedelta(seconds=1),
+        retry_max=timedelta(seconds=1),
+        retry_jitter_ratio=0,
+    )
+
+    run_lock_barrier = AnalysisRunLockBarrier()
+    listener = run_lock_barrier.before_cursor_execute
+    event.listen(application_context.engine, "before_cursor_execute", listener)
+    try:
+        # The reusable barrier aligns both initial claims, then both terminal joins.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            text_future = pool.submit(text_executor.execute, command=text_command)
+            vision_future = pool.submit(vision_executor.execute, command=vision_command)
+            results = (text_future.result(timeout=20), vision_future.result(timeout=20))
+    finally:
+        event.remove(application_context.engine, "before_cursor_execute", listener)
+
+    assert run_lock_barrier.hit_count == 4
+    assert all(result.disposition is ExecutionDisposition.SUCCEEDED for result in results)
+
+    run_uuid = UUID(started.run.id)
+    with Session(application_context.engine) as session:
+        run = session.get(AnalysisRunModel, run_uuid)
+        stage_statuses = session.scalars(
+            select(AnalysisStageRunModel.status).where(
+                AnalysisStageRunModel.analysis_run_id == run_uuid
+            )
+        ).all()
+    assert run is not None
+    assert run.status == AnalysisRunStatus.SUCCEEDED.value
+    assert run.completed_at is not None
+    assert len(stage_statuses) == 2
+    assert all(status == AnalysisStageStatus.SUCCEEDED.value for status in stage_statuses)
+
+    # Model the already-observed crash artifact and prove that the same stage
+    # delivery is an idempotent, fenced reconciliation trigger.
+    with application_context.engine.begin() as connection:
+        orphaned = connection.execute(
+            update(AnalysisRunModel)
+            .where(AnalysisRunModel.id == run_uuid)
+            .values(
+                status=AnalysisRunStatus.RUNNING.value,
+                completed_at=None,
+                updated_at=NOW,
+            )
+        )
+        assert orphaned.rowcount == 1
+
+    replay = text_executor.execute(command=text_command)
+    assert replay.disposition is ExecutionDisposition.NOOP
+    assert replay.status is AnalysisStageStatus.SUCCEEDED
+    with Session(application_context.engine) as session:
+        reconciled = session.get(AnalysisRunModel, run_uuid)
+    assert reconciled is not None
+    assert reconciled.status == AnalysisRunStatus.SUCCEEDED.value
+    assert reconciled.completed_at is not None
+
+
+def test_multimodal_binary_mock_persists_assessment_without_detection(
+    application_context: ApplicationContext,
+) -> None:
+    clock = MutableClock(NOW)
+    started = _start_multimodal(
+        application_context,
+        clock=clock,
+        key=f"multimodal-binary-{uuid4()}",
+    )
+    queue = RecordingQueue()
+    assert _dispatch(application_context, queue=queue, clock=clock).published == 2
+    executor = _multimodal_executor(
+        application_context,
+        clock=clock,
+        vision_mode=VisionMockMode.BINARY_CANDIDATE,
+        assessment_threshold=0.8984375,
+    )
+    for message in queue.messages:
+        executor.execute(command=ExecuteTextExtractionCommand.model_validate(message.payload))
+
+    detail = GetAnalysisRun(uow_factory=application_context.factory).execute(
+        principal=application_context.principal_a,
+        case_id=application_context.case_a.id,
+        analysis_run_id=started.run.id,
+    )
+    assert detail.run.status is AnalysisRunStatus.SUCCEEDED
+    assert len(detail.vision_results) == 1
+    vision = detail.vision_results[0].result
+    assert vision.detections == ()
+    assert vision.image_assessment is not None
+    assert vision.image_assessment.threshold == 0.8984375
+    assert vision.image_assessment.outcome.value == "HIGH_CONFIDENCE_DEFECT_CANDIDATE"
+
+    tenant_uuid = UUID(application_context.principal_a.tenant_id)
+    run_uuid = UUID(started.run.id)
+    with Session(application_context.engine) as session:
+        result_id = session.scalar(
+            select(VisionAnalysisResultModel.id).where(
+                VisionAnalysisResultModel.tenant_id == tenant_uuid,
+                VisionAnalysisResultModel.analysis_run_id == run_uuid,
+            )
+        )
+        assert result_id is not None
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(VisionImageAssessmentModel)
+                .where(
+                    VisionImageAssessmentModel.tenant_id == tenant_uuid,
+                    VisionImageAssessmentModel.vision_result_id == result_id,
+                )
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(VisionDetectionModel)
+                .where(
+                    VisionDetectionModel.tenant_id == tenant_uuid,
+                    VisionDetectionModel.vision_result_id == result_id,
+                )
+            )
+            == 0
         )
 
 

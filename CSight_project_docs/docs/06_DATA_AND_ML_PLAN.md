@@ -303,6 +303,14 @@ Dataset-native class ID/name과 CSight canonical label은 별도 field/version�
 Vision qualification 전에는 Mock detection을 모델 성능으로 보고하지 않는다. Model revision,
 dataset/taxonomy/threshold/preprocess/postprocess version 변경은 재평가 대상이다.
 
+The DINOv2 E3 candidate is a separate image-level binary classifier. It produces an any-defect
+score, not one of the seven native defect labels and not a location. Its validation-frozen threshold
+is versioned and returned with every inference; Core rejects deployment-threshold drift. A score at
+or above the threshold is only a high-confidence candidate. A lower score is unresolved rather than
+normal because the reported operating point trades recall for precision. Offline report metrics are
+dataset-level evidence and are never copied into an individual runtime prediction. Mock binary
+scores remain synthetic and do not qualify E3.
+
 Sprint 3의 Qwen 평가 감사 결과 taxonomy/PRF 공식 오류는 없었다. 다만 100개 입력 action이 모두
 UNSPECIFIED인데 Gold는 message action 추출을 요구해 prompt 의미가 모호하다. Missing metric에는
 micro PRF 외 exact set, macro-case F1, label support와 empty-set diagnostics를 함께 사용한다.

@@ -1,0 +1,90 @@
+{
+  "schema_version": "scenario_vision_model/1.0.0",
+  "source_type": "SUPPLIED_OFFLINE_REPORT",
+  "candidate": {
+    "model_family": "facebook/dinov2-small",
+    "experiment": "E3",
+    "selected_epoch": 10,
+    "checkpoint_label": "best.pt",
+    "artifact_included_in_pack": false,
+    "serving_endpoint_included_in_pack": false
+  },
+  "task": "BINARY_ANY_DEFECT_CLASSIFICATION",
+  "label_definition": "defect",
+  "decision_boundary": {
+    "threshold": 0.8984375,
+    "threshold_selection_split": "validation",
+    "threshold_selection_goal": "precision_at_least_0.90",
+    "at_or_above_threshold": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+    "below_threshold": "NOT_NORMAL",
+    "advisory_only": true,
+    "automatic_decision_allowed": false,
+    "human_review_required": true
+  },
+  "capabilities": {
+    "any_defect_score": true,
+    "defect_type": false,
+    "defect_location": false,
+    "bounding_box": false,
+    "segmentation_mask": false,
+    "functional_operation_confirmation_from_still_image": false
+  },
+  "held_out_test": {
+    "image_count": 10067,
+    "ap_any_defect": 0.884863,
+    "ap_major_defect": 0.571935,
+    "auroc": 0.931604,
+    "threshold_metrics": {
+      "tp": 1630,
+      "fp": 78,
+      "tn": 6783,
+      "fn": 1576,
+      "precision": 0.954333,
+      "recall": 0.508422,
+      "specificity": 0.988631,
+      "f1": 0.663411
+    },
+    "prediction_sha256": "ad638035c31cab6df519083294fd4d7e94c1301a20b965f2e401251da86e4d48"
+  },
+  "recommended_slice": {
+    "material": "plastic_hard",
+    "sample_count": 1032,
+    "positive_count": 148,
+    "negative_count": 884,
+    "ap": 0.8865,
+    "recall_at_threshold": 0.6554,
+    "precision_at_threshold": 0.9604,
+    "false_positive_rate": 0.0045,
+    "defect_slices": [
+      {
+        "kaputt_label": "deconstruction",
+        "positive_count": 108,
+        "detected_count": 87,
+        "recall_at_threshold": 0.8056
+      },
+      {
+        "kaputt_label": "actuation",
+        "positive_count": 87,
+        "detected_count": 69,
+        "recall_at_threshold": 0.7931
+      }
+    ]
+  },
+  "product_domain_status": "NOT_EVALUATED",
+  "report_metrics_reproduced_by_csight": false,
+  "qualification_status": "SUPPLIED_OFFLINE_REPORT_WITH_LIMITATIONS",
+  "required_ui_disclosures": [
+    "이 점수는 결함 후보 우선순위이며 정상 판정이 아닙니다.",
+    "모델은 결함 유형이나 위치를 출력하지 않습니다.",
+    "수동 펌프 작동 여부는 정지 이미지로 확인하지 못할 수 있습니다.",
+    "HDP-100 상품 분포에서의 성능은 아직 측정하지 않았습니다."
+  ],
+  "forbidden_claims": [
+    "PRODUCT_SPECIFIC_ACCURACY",
+    "ACTUAL_CUSTOMER_PERFORMANCE",
+    "AUTOMATED_NORMAL_DECISION",
+    "AUTOMATED_REFUND_OR_EXCHANGE",
+    "ROI_OR_COST_SAVINGS",
+    "DEFECT_TYPE_OR_LOCATION_FROM_BINARY_SCORE"
+  ]
+}

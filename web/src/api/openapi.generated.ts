@@ -2425,6 +2425,7 @@ export interface components {
              * @default []
              */
             detections: components["schemas"]["DetectionFinding"][];
+            image_assessment?: components["schemas"]["VisionImageAssessment"] | null;
             /** Latency Ms */
             latency_ms: number;
         };
@@ -2447,6 +2448,45 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * VisionImageAssessment
+         * @description One non-localizing any-defect score and its frozen operating threshold.
+         *
+         *     This is an image-level routing signal.  It cannot identify a defect type or
+         *     location, and a score below the threshold is not evidence that the image is
+         *     normal.
+         */
+        VisionImageAssessment: {
+            /**
+             * Assessment Type
+             * @default ANY_DEFECT
+             * @constant
+             */
+            assessment_type: "ANY_DEFECT";
+            /**
+             * Model Output Name
+             * @default defect
+             * @constant
+             */
+            model_output_name: "defect";
+            /** Score */
+            score: number;
+            /** Threshold */
+            threshold: number;
+            /**
+             * Threshold Operator
+             * @default GREATER_THAN_OR_EQUAL
+             * @constant
+             */
+            threshold_operator: "GREATER_THAN_OR_EQUAL";
+            outcome: components["schemas"]["VisionImageAssessmentOutcome"];
+        };
+        /**
+         * VisionImageAssessmentOutcome
+         * @description Decision-support outcomes that deliberately contain no NORMAL state.
+         * @enum {string}
+         */
+        VisionImageAssessmentOutcome: "HIGH_CONFIDENCE_DEFECT_CANDIDATE" | "BELOW_HIGH_CONFIDENCE_THRESHOLD";
     };
     responses: never;
     parameters: never;

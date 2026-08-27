@@ -253,6 +253,26 @@ class VisionTask(StrEnum):
     QUALITY_CHECK = "QUALITY_CHECK"
     DEFECT_DETECTION = "DEFECT_DETECTION"
     QUALITY_AND_DEFECT_DETECTION = "QUALITY_AND_DEFECT_DETECTION"
+    ANY_DEFECT_CLASSIFICATION = "ANY_DEFECT_CLASSIFICATION"
+
+
+class VisionImageAssessmentType(StrEnum):
+    """Image-level classification tasks that do not localize or type a defect."""
+
+    ANY_DEFECT = "ANY_DEFECT"
+
+
+class VisionThresholdOperator(StrEnum):
+    """Frozen comparison semantics retained beside a provider score."""
+
+    GREATER_THAN_OR_EQUAL = "GREATER_THAN_OR_EQUAL"
+
+
+class VisionImageAssessmentOutcome(StrEnum):
+    """Decision-support outcomes that deliberately contain no NORMAL state."""
+
+    HIGH_CONFIDENCE_DEFECT_CANDIDATE = "HIGH_CONFIDENCE_DEFECT_CANDIDATE"
+    BELOW_HIGH_CONFIDENCE_THRESHOLD = "BELOW_HIGH_CONFIDENCE_THRESHOLD"
 
 
 class MockProviderMode(StrEnum):

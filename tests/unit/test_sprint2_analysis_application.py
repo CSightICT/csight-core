@@ -185,7 +185,7 @@ def _command() -> ExecuteTextExtractionCommand:
 
 
 def _configure_claim_uow(uow: MagicMock, *, stage: AnalysisStageRun) -> None:
-    uow.analysis_runs.get.return_value = _run()
+    uow.analysis_runs.get_for_update.return_value = _run()
     uow.stage_runs.get.return_value = stage
     uow.extraction_results.get_by_run.return_value = None
     uow.cases.get.return_value = _case()
@@ -193,7 +193,7 @@ def _configure_claim_uow(uow: MagicMock, *, stage: AnalysisStageRun) -> None:
 
 
 def _configure_completion_uow(uow: MagicMock, *, stage: AnalysisStageRun) -> None:
-    uow.analysis_runs.get.return_value = _run()
+    uow.analysis_runs.get_for_update.return_value = _run()
     uow.stage_runs.get.return_value = stage
     uow.extraction_results.get_by_run.return_value = None
     uow.stage_runs.transition_if_claimed.return_value = stage
@@ -341,7 +341,7 @@ def test_execute_text_extraction_persists_success_with_fenced_completion() -> No
 
 def test_execute_text_extraction_is_noop_after_terminal_completion() -> None:
     uow = _uow()
-    uow.analysis_runs.get.return_value = _run(AnalysisRunStatus.SUCCEEDED)
+    uow.analysis_runs.get_for_update.return_value = _run(AnalysisRunStatus.SUCCEEDED)
     uow.stage_runs.get.return_value = _stage(
         AnalysisStageStatus.SUCCEEDED,
         claim_token=None,
@@ -358,6 +358,39 @@ def test_execute_text_extraction_is_noop_after_terminal_completion() -> None:
     assert result.disposition is ExecutionDisposition.NOOP
     assert result.status is AnalysisStageStatus.SUCCEEDED
     uow.stage_runs.claim_for_execution.assert_not_called()
+
+
+def test_terminal_stage_redelivery_reconciles_orphaned_running_parent() -> None:
+    terminal_stage = _stage(
+        AnalysisStageStatus.SUCCEEDED,
+        claim_token=None,
+    )
+    uow = _uow()
+    uow.analysis_runs.get_for_update.return_value = _run()
+    uow.stage_runs.get.return_value = terminal_stage
+    uow.stage_runs.list.return_value = (terminal_stage,)
+    uow.analysis_runs.transition.return_value = _run(AnalysisRunStatus.SUCCEEDED)
+    provider = MockLLMProvider()
+    service = _analysis_service(
+        uow_factory=_factory(uow),
+        provider=provider,
+        ids=("unused-claim",),
+    )
+
+    result = service.execute(command=_command())
+
+    assert result.disposition is ExecutionDisposition.NOOP
+    assert result.status is AnalysisStageStatus.SUCCEEDED
+    uow.analysis_runs.transition.assert_called_once_with(
+        tenant_id="tenant-1",
+        analysis_run_id="run-1",
+        expected_status=AnalysisRunStatus.RUNNING,
+        target_status=AnalysisRunStatus.SUCCEEDED,
+        now=NOW,
+        failure=None,
+    )
+    uow.stage_runs.claim_for_execution.assert_not_called()
+    uow.commit.assert_called_once()
 
 
 def test_active_claim_duplicate_schedules_durable_lease_expiry_wakeup() -> None:
@@ -394,7 +427,7 @@ def test_expired_final_worker_lease_fails_without_starting_an_unbounded_attempt(
         update={"claim_expires_at": NOW - timedelta(seconds=1)}
     )
     uow = _uow()
-    uow.analysis_runs.get.return_value = _run()
+    uow.analysis_runs.get_for_update.return_value = _run()
     uow.stage_runs.get.return_value = expired_stage
     uow.extraction_results.get_by_run.return_value = None
     uow.stage_attempts.finalize_if_claimed.return_value = object()
@@ -603,7 +636,7 @@ def test_dispatch_outbox_exhaustion_fails_event_and_queued_run_and_stage() -> No
             "last_error": "Message publication failed permanently.",
         }
     )
-    failure_uow.analysis_runs.get.return_value = _run(AnalysisRunStatus.QUEUED)
+    failure_uow.analysis_runs.get_for_update.return_value = _run(AnalysisRunStatus.QUEUED)
     failure_uow.stage_runs.get.return_value = _stage(
         AnalysisStageStatus.QUEUED,
         attempt_count=0,

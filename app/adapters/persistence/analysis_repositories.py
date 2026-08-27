@@ -19,6 +19,7 @@ from app.adapters.persistence.models import (
     OutboxEventModel,
     VisionAnalysisResultModel,
     VisionDetectionModel,
+    VisionImageAssessmentModel,
 )
 from app.platform.analysis.enums import (
     AnalysisAttemptStatus,
@@ -53,6 +54,7 @@ from app.platform.analysis.schemas import (
     LLMTextExtractionResult,
     VisionAnalysisResult,
     VisionAnalysisResultRecord,
+    VisionImageAssessment,
 )
 from app.platform.errors import InconsistentPersistenceStateError
 from app.ports.analysis_repository import (
@@ -463,9 +465,32 @@ def detection_model_from_finding(
     )
 
 
+def image_assessment_model_from_entity(
+    *,
+    tenant_id: str,
+    vision_result_id: str,
+    assessment_id: str,
+    assessment: VisionImageAssessment,
+    created_at: datetime,
+) -> VisionImageAssessmentModel:
+    return VisionImageAssessmentModel(
+        id=_required_uuid(assessment_id),
+        tenant_id=_required_uuid(tenant_id),
+        vision_result_id=_required_uuid(vision_result_id),
+        assessment_type=assessment.assessment_type.value,
+        model_output_name=assessment.model_output_name,
+        score=assessment.score,
+        threshold=assessment.threshold,
+        threshold_operator=assessment.threshold_operator.value,
+        outcome=assessment.outcome.value,
+        created_at=created_at,
+    )
+
+
 def vision_result_entity_from_models(
     model: VisionAnalysisResultModel,
     detections: tuple[VisionDetectionModel, ...],
+    image_assessment: VisionImageAssessmentModel | None = None,
 ) -> VisionAnalysisResultRecord:
     return VisionAnalysisResultRecord(
         id=str(model.id),
@@ -506,6 +531,20 @@ def vision_result_entity_from_models(
                     ),
                 )
                 for detection in detections
+            ),
+            image_assessment=(
+                VisionImageAssessment.model_validate(
+                    {
+                        "assessment_type": image_assessment.assessment_type,
+                        "model_output_name": image_assessment.model_output_name,
+                        "score": image_assessment.score,
+                        "threshold": image_assessment.threshold,
+                        "threshold_operator": image_assessment.threshold_operator,
+                        "outcome": image_assessment.outcome,
+                    }
+                )
+                if image_assessment is not None
+                else None
             ),
             latency_ms=model.latency_ms,
         ),
@@ -634,6 +673,29 @@ class SQLAlchemyAnalysisRunRepository:
                 AnalysisRunModel.case_id == case_uuid,
                 AnalysisRunModel.id == run_uuid,
             )
+        ).one_or_none()
+        return analysis_run_entity_from_model(model) if model is not None else None
+
+    def get_for_update(
+        self,
+        *,
+        tenant_id: str,
+        case_id: str,
+        analysis_run_id: str,
+    ) -> AnalysisRun | None:
+        tenant_uuid = _optional_uuid(tenant_id)
+        case_uuid = _optional_uuid(case_id)
+        run_uuid = _optional_uuid(analysis_run_id)
+        if tenant_uuid is None or case_uuid is None or run_uuid is None:
+            return None
+        model = self._session.scalars(
+            select(AnalysisRunModel)
+            .where(
+                AnalysisRunModel.tenant_id == tenant_uuid,
+                AnalysisRunModel.case_id == case_uuid,
+                AnalysisRunModel.id == run_uuid,
+            )
+            .with_for_update()
         ).one_or_none()
         return analysis_run_entity_from_model(model) if model is not None else None
 
@@ -1301,6 +1363,19 @@ class SQLAlchemyVisionAnalysisResultRepository:
                     created_at=result.created_at,
                 )
             )
+        if result.result.image_assessment is not None:
+            assessment_uuid = str(
+                uuid5(NAMESPACE_URL, f"csight:{result.id}:vision-image-assessment")
+            )
+            self._session.add(
+                image_assessment_model_from_entity(
+                    tenant_id=tenant_id,
+                    vision_result_id=result.id,
+                    assessment_id=assessment_uuid,
+                    assessment=result.result.image_assessment,
+                    created_at=result.created_at,
+                )
+            )
 
     def list_by_run(
         self,
@@ -1334,7 +1409,13 @@ class SQLAlchemyVisionAnalysisResultRepository:
                     .order_by(VisionDetectionModel.detection_index.asc())
                 )
             )
-            records.append(vision_result_entity_from_models(model, detections))
+            image_assessment = self._session.scalar(
+                select(VisionImageAssessmentModel).where(
+                    VisionImageAssessmentModel.tenant_id == tenant_uuid,
+                    VisionImageAssessmentModel.vision_result_id == model.id,
+                )
+            )
+            records.append(vision_result_entity_from_models(model, detections, image_assessment))
         return tuple(records)
 
 

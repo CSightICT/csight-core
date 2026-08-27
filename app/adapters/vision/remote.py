@@ -14,7 +14,9 @@ from urllib3.exceptions import HTTPError, TimeoutError
 from urllib3.response import BaseHTTPResponse
 
 from app.adapters.vision.taxonomy import (
+    CSIGHT_ANY_DEFECT_ASSESSMENT_VERSION,
     CSIGHT_VISION_TAXONOMY_VERSION,
+    KAPUT_ANY_DEFECT_TAXONOMY_VERSION,
     KAPUT_TAXONOMY_VERSION,
     map_model_class,
 )
@@ -26,15 +28,24 @@ from app.platform.analysis import (
     ProviderMetadata,
     VisionAnalysisRequest,
     VisionAnalysisResult,
+    VisionImageAssessment,
+    VisionImageAssessmentOutcome,
     VisionInvalidStructuredOutputError,
     VisionProviderAuthenticationError,
     VisionProviderRequestRejectedError,
     VisionProviderTimeoutError,
     VisionProviderUnavailableError,
+    VisionTask,
 )
 
 _PROVIDER = "remote_vision"
 _MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+_REMOTE_TASKS = {
+    VisionTask.QUALITY_CHECK: "image_quality",
+    VisionTask.DEFECT_DETECTION: "product_defect_detection",
+    VisionTask.QUALITY_AND_DEFECT_DETECTION: "product_defect_detection",
+    VisionTask.ANY_DEFECT_CLASSIFICATION: "product_defect_any_defect_classification",
+}
 
 
 class _HTTPClient(Protocol):
@@ -63,6 +74,8 @@ class RemoteVisionProvider:
         connect_timeout_seconds: float,
         read_timeout_seconds: float,
         max_image_bytes: int,
+        analysis_task: VisionTask | str = VisionTask.QUALITY_AND_DEFECT_DETECTION,
+        expected_assessment_threshold: float | None = None,
         tls_verify: bool = True,
         http_client: _HTTPClient | None = None,
         clock: Callable[[], float] = monotonic,
@@ -72,6 +85,18 @@ class RemoteVisionProvider:
         self._model_id = _required(model_id)
         self._model_version = _required(model_version)
         self._model_revision = model_revision.strip() if model_revision else None
+        self._analysis_task = VisionTask(analysis_task)
+        if expected_assessment_threshold is not None and (
+            isinstance(expected_assessment_threshold, bool)
+            or not 0.0 <= expected_assessment_threshold <= 1.0
+        ):
+            raise ValueError("expected assessment threshold must be between zero and one")
+        if (
+            self._analysis_task is VisionTask.ANY_DEFECT_CLASSIFICATION
+            and expected_assessment_threshold is None
+        ):
+            raise ValueError("expected assessment threshold is required for any-defect mode")
+        self._expected_assessment_threshold = expected_assessment_threshold
         if connect_timeout_seconds <= 0 or read_timeout_seconds <= 0 or max_image_bytes <= 0:
             raise ValueError("Vision timeout and image limits must be positive")
         self._timeout = Timeout(connect=connect_timeout_seconds, read=read_timeout_seconds)
@@ -91,6 +116,10 @@ class RemoteVisionProvider:
             revision=self._model_revision,
         )
 
+    @property
+    def analysis_task(self) -> VisionTask:
+        return self._analysis_task
+
     def analyze_image(
         self,
         request: VisionAnalysisRequest,
@@ -101,6 +130,11 @@ class RemoteVisionProvider:
             raise VisionProviderRequestRejectedError(
                 provider=_PROVIDER,
                 message="the image is empty or exceeds the configured provider limit",
+            )
+        if request.task is not self._analysis_task:
+            raise VisionProviderRequestRejectedError(
+                provider=_PROVIDER,
+                message="the Vision request task does not match the configured deployment",
             )
         headers = {"Accept": "application/json", "Accept-Encoding": "identity"}
         if self._api_key:
@@ -117,7 +151,7 @@ class RemoteVisionProvider:
                         image,
                         request.content_type,
                     ),
-                    "task": "product_defect_detection",
+                    "task": _REMOTE_TASKS[request.task],
                 },
                 headers=headers,
                 timeout=self._timeout,
@@ -163,32 +197,50 @@ class RemoteVisionProvider:
             detections_value = value.get("detections", [])
             if not isinstance(detections_value, list):
                 raise ValueError
-            detections = tuple(
-                self._normalize_detection(item, request=request, index=index)
-                for index, item in enumerate(detections_value)
-            )
             if value.get("schema_version") != "1.0":
                 raise ValueError
-            if provider.get("taxonomy_version") != KAPUT_TAXONOMY_VERSION:
-                raise ValueError
+            is_binary = request.task is VisionTask.ANY_DEFECT_CLASSIFICATION
+            image_assessment_value = value.get("image_assessment")
+            if is_binary:
+                if (
+                    provider.get("taxonomy_version") != KAPUT_ANY_DEFECT_TAXONOMY_VERSION
+                    or detections_value
+                ):
+                    raise ValueError
+                image_assessment = self._normalize_image_assessment(image_assessment_value)
+                detections: tuple[DetectionFinding, ...] = ()
+                taxonomy_version = CSIGHT_ANY_DEFECT_ASSESSMENT_VERSION
+            else:
+                if (
+                    provider.get("taxonomy_version") != KAPUT_TAXONOMY_VERSION
+                    or image_assessment_value is not None
+                ):
+                    raise ValueError
+                image_assessment = None
+                detections = tuple(
+                    self._normalize_detection(item, request=request, index=index)
+                    for index, item in enumerate(detections_value)
+                )
+                taxonomy_version = CSIGHT_VISION_TAXONOMY_VERSION
             return VisionAnalysisResult(
                 schema_version="1.0",
-                provider_name=str(provider.get("name", _PROVIDER)),
-                model_name=str(provider["model_name"]),
-                model_version=str(provider["model_version"]),
-                model_revision=provider.get("model_revision"),
-                dataset_version=provider.get("dataset_version"),
-                taxonomy_version=CSIGHT_VISION_TAXONOMY_VERSION,
-                threshold_version=str(provider["threshold_version"]),
-                preprocess_version=str(provider["preprocess_version"]),
-                postprocess_version=str(provider["postprocess_version"]),
-                framework=provider.get("framework"),
-                runtime=provider.get("runtime"),
-                precision=provider.get("precision"),
+                provider_name=_required_provider_text(provider.get("name", _PROVIDER)),
+                model_name=_required_provider_text(provider["model_name"]),
+                model_version=_required_provider_text(provider["model_version"]),
+                model_revision=_optional_provider_text(provider.get("model_revision")),
+                dataset_version=_optional_provider_text(provider.get("dataset_version")),
+                taxonomy_version=taxonomy_version,
+                threshold_version=_required_provider_text(provider["threshold_version"]),
+                preprocess_version=_required_provider_text(provider["preprocess_version"]),
+                postprocess_version=_required_provider_text(provider["postprocess_version"]),
+                framework=_optional_provider_text(provider.get("framework")),
+                runtime=_optional_provider_text(provider.get("runtime")),
+                precision=_optional_provider_text(provider.get("precision")),
                 image_width=request.image_width,
                 image_height=request.image_height,
                 image_quality=ImageQualityResult.model_validate(value["image_quality"]),
                 detections=detections,
+                image_assessment=image_assessment,
                 latency_ms=int(value.get("latency_ms", measured_latency_ms)),
             )
         except (KeyError, TypeError, ValueError, ValidationError):
@@ -196,6 +248,27 @@ class RemoteVisionProvider:
                 provider=_PROVIDER,
                 message="the Vision response did not match the canonical schema",
             ) from None
+
+    def _normalize_image_assessment(self, value: object) -> VisionImageAssessment:
+        if not isinstance(value, dict) or value.get("label") != "defect":
+            raise ValueError
+        score = _probability(value.get("score"))
+        threshold = _probability(value.get("threshold"))
+        if (
+            self._expected_assessment_threshold is None
+            or abs(threshold - self._expected_assessment_threshold) > 1e-12
+        ):
+            raise ValueError
+        outcome = (
+            VisionImageAssessmentOutcome.HIGH_CONFIDENCE_DEFECT_CANDIDATE
+            if score >= threshold
+            else VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD
+        )
+        return VisionImageAssessment(
+            score=score,
+            threshold=threshold,
+            outcome=outcome,
+        )
 
     @staticmethod
     def _normalize_detection(
@@ -273,3 +346,27 @@ def _required(value: str) -> str:
     if not normalized:
         raise ValueError("Vision model identity must not be blank")
     return normalized
+
+
+def _required_provider_text(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError
+    return normalized
+
+
+def _optional_provider_text(value: object) -> str | None:
+    if value is None:
+        return None
+    return _required_provider_text(value)
+
+
+def _probability(value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError
+    probability = float(value)
+    if not 0.0 <= probability <= 1.0:
+        raise ValueError
+    return probability

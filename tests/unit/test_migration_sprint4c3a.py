@@ -13,7 +13,7 @@ def test_migration_0009_is_single_head_and_follows_0008() -> None:
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision("20260827_0009")
 
-    assert scripts.get_heads() == ["20260827_0014_review_report_poc_metrics"]
+    assert scripts.get_heads() == ["20260827_0015_vision_image_assessment"]
     assert revision is not None
     assert revision.down_revision == "20260826_0008"
 

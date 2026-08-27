@@ -55,6 +55,14 @@ class AnalysisRunRepository(Protocol):
         analysis_run_id: str,
     ) -> AnalysisRun | None: ...
 
+    def get_for_update(
+        self,
+        *,
+        tenant_id: str,
+        case_id: str,
+        analysis_run_id: str,
+    ) -> AnalysisRun | None: ...
+
     def list(
         self,
         *,

@@ -30,7 +30,10 @@ from app.platform.analysis.enums import (
     MissingInformation,
     MockProviderMode,
     OutboxStatus,
+    VisionImageAssessmentOutcome,
+    VisionImageAssessmentType,
     VisionTask,
+    VisionThresholdOperator,
     require_run_transition,
     require_stage_transition,
 )
@@ -123,6 +126,7 @@ from app.platform.analysis.schemas import (
     VisionAnalysisRequest,
     VisionAnalysisResult,
     VisionAnalysisResultRecord,
+    VisionImageAssessment,
 )
 
 __all__ = [
@@ -227,12 +231,16 @@ __all__ = [
     "VisionAnalysisRequest",
     "VisionAnalysisResult",
     "VisionAnalysisResultRecord",
+    "VisionImageAssessment",
+    "VisionImageAssessmentOutcome",
+    "VisionImageAssessmentType",
     "VisionInvalidStructuredOutputError",
     "VisionProviderAuthenticationError",
     "VisionProviderRequestRejectedError",
     "VisionProviderTimeoutError",
     "VisionProviderUnavailableError",
     "VisionTask",
+    "VisionThresholdOperator",
     "canonical_prompt_hash",
     "evaluate_action_consistency",
     "evaluate_completeness",

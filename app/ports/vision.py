@@ -6,6 +6,7 @@ from app.platform.analysis import (
     ProviderMetadata,
     VisionAnalysisRequest,
     VisionAnalysisResult,
+    VisionTask,
 )
 
 
@@ -16,6 +17,11 @@ class VisionProvider(Protocol):
     @property
     def provider_metadata(self) -> ProviderMetadata:
         """Return the configured provider and model deployment identity."""
+        ...
+
+    @property
+    def analysis_task(self) -> VisionTask:
+        """Return the image task this deployment is configured to execute."""
         ...
 
     def analyze_image(

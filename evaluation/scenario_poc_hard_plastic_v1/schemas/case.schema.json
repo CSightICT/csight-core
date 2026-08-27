@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://csight.invalid/schemas/scenario-poc-case-1.0.0.json",
+  "title": "Synthetic hard-plastic PoC case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_id", "split", "scenario_tags", "case_input"],
+  "properties": {
+    "record_id": {"type": "string", "pattern": "^(DEMO|HDP)-[0-9]{2,3}$"},
+    "split": {"enum": ["dev", "test", "demo"]},
+    "scenario_tags": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "case_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["customer_message", "order_ref", "product_ref", "days_since_purchase", "declared_requested_action", "image_evidence", "functional_evidence", "vision_fixture", "declared_safety_risk", "attributes"],
+      "properties": {
+        "customer_message": {"type": "string", "minLength": 5},
+        "order_ref": {"type": ["string", "null"]},
+        "product_ref": {"type": ["string", "null"]},
+        "days_since_purchase": {"type": ["integer", "null"], "minimum": 0},
+        "declared_requested_action": {"enum": ["UNSPECIFIED", "REFUND", "EXCHANGE", "REPAIR"]},
+        "image_evidence": {
+          "type": "object",
+          "required": ["count", "quality", "visual_condition", "synthetic_asset_ref"],
+          "properties": {
+            "count": {"type": "integer", "minimum": 0},
+            "quality": {"enum": ["ADEQUATE", "POOR", "OCCLUDED", "NONE"]},
+            "visual_condition": {"enum": ["VISIBLE_DECONSTRUCTION", "NO_VISIBLE_DECONSTRUCTION", "FUNCTION_NOT_OBSERVABLE", "UNCLEAR", "NOT_AVAILABLE"]},
+            "synthetic_asset_ref": {"type": ["string", "null"]}
+          }
+        },
+        "functional_evidence": {"enum": ["NOT_REQUIRED", "NOT_PROVIDED", "VIDEO_PROVIDED", "MANUAL_TEST_CONFIRMED", "MANUAL_TEST_CONFIRMED_NORMAL"]},
+        "vision_fixture": {
+          "type": "object",
+          "required": ["status", "score_band", "score"],
+          "properties": {
+            "status": {"enum": ["SUCCEEDED", "TIMEOUT", "NOT_RUN", "PROVIDER_UNAVAILABLE"]},
+            "score_band": {"enum": ["HIGH_CANDIDATE", "BELOW_THRESHOLD", "UNAVAILABLE"]},
+            "score": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+          }
+        },
+        "declared_safety_risk": {"type": "boolean"},
+        "attributes": {"type": "object"}
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://csight.invalid/schemas/scenario-poc-model-manifest-1.0.0.json",
+  "title": "Advisory binary Vision model manifest",
+  "type": "object",
+  "required": ["schema_version", "source_type", "candidate", "task", "decision_boundary", "capabilities", "held_out_test", "recommended_slice", "product_domain_status", "report_metrics_reproduced_by_csight", "qualification_status", "required_ui_disclosures", "forbidden_claims"],
+  "properties": {
+    "schema_version": {"const": "scenario_vision_model/1.0.0"},
+    "source_type": {"const": "SUPPLIED_OFFLINE_REPORT"},
+    "candidate": {
+      "type": "object",
+      "required": ["artifact_included_in_pack", "serving_endpoint_included_in_pack"],
+      "properties": {
+        "artifact_included_in_pack": {"const": false},
+        "serving_endpoint_included_in_pack": {"const": false}
+      }
+    },
+    "task": {"const": "BINARY_ANY_DEFECT_CLASSIFICATION"},
+    "decision_boundary": {
+      "type": "object",
+      "required": ["threshold", "below_threshold", "advisory_only", "automatic_decision_allowed", "human_review_required"],
+      "properties": {
+        "threshold": {"const": 0.8984375},
+        "below_threshold": {"const": "NOT_NORMAL"},
+        "advisory_only": {"const": true},
+        "automatic_decision_allowed": {"const": false},
+        "human_review_required": {"const": true}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "defect_type": {"const": false},
+        "defect_location": {"const": false},
+        "bounding_box": {"const": false},
+        "segmentation_mask": {"const": false},
+        "functional_operation_confirmation_from_still_image": {"const": false}
+      }
+    },
+    "product_domain_status": {"const": "NOT_EVALUATED"},
+    "report_metrics_reproduced_by_csight": {"const": false},
+    "qualification_status": {"const": "SUPPLIED_OFFLINE_REPORT_WITH_LIMITATIONS"}
+  }
+}

@@ -241,6 +241,12 @@ Pull Request 완료 전:
 timeout/invalid image를 별도로 기록한다. 현재 endpoint가 없으면 Mock 결과를 실제 모델 통과로
 표현하지 않는다.
 
+The any-defect extension adds contract cases for candidate and below-threshold scores, exact frozen
+threshold matching, empty detections, no `NORMAL` outcome, deterministic synthetic Mock modes,
+append-only persistence, OpenAPI shape, and `0014→0015→0014→0015` migration drift. Default tests do
+not load a checkpoint or call a GPU. Live E3 qualification remains `external_vision` and must record
+checkpoint package identity separately from the offline report.
+
 ## 10. Sprint 4A Data Gate
 
 v2 strict schema/source quote/completeness/prompt hash, corpus stable build/version/parent/duplicate,

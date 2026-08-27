@@ -356,3 +356,12 @@ proxies `/api` to Core, so the browser needs no cross-origin API configuration. 
 JWTs only in memory and persists only allowlisted opaque run IDs and idempotency keys for recovery.
 It composes existing idempotent APIs and does not introduce a server-side workflow coordinator.
 See `docs/resolution/` and ADR-0089 through ADR-0095.
+
+## Image-level any-defect Vision boundary
+
+The DINOv2 E3 integration is an additive Vision mode, not a Detection implementation. The private
+provider returns one image-level `defect` score and its frozen threshold. The Vision adapter checks
+that threshold against deployment configuration and Core derives either a high-confidence defect
+candidate or a below-threshold review signal. It never synthesizes a canonical defect type, mask,
+or bounding box. Existing localized Detection results remain unchanged and cannot coexist with the
+binary assessment in the same image result. See ADR-0096.

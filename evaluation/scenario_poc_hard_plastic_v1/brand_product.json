@@ -1,0 +1,46 @@
+{
+  "schema_version": "synthetic_brand_product/1.0.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "brand": {
+    "brand_id": "CSIGHT-DEMO-WORKS",
+    "display_name": "CSight 데모웍스",
+    "fictional": true,
+    "customer_or_company_affiliation": false
+  },
+  "product": {
+    "product_id": "HDP-100",
+    "display_name": "HDP-100 수동 펌프형 디스펜서",
+    "product_type": "MANUAL_PUMP_DISPENSER",
+    "material_category": "plastic_hard",
+    "sku": "SYN-HDP-100",
+    "repeatable_capture": true,
+    "safe_state_reproduction": [
+      "NORMAL_ASSEMBLED",
+      "PUMP_HEAD_SEPARATED",
+      "COLLAR_LOOSENED",
+      "FUNCTIONAL_FAILURE_CLAIM_ONLY"
+    ],
+    "prohibited_reproduction": [
+      "SHARP_FRACTURE_CREATION",
+      "HAZARDOUS_CHEMICAL_FILL",
+      "PRESSURIZED_FAILURE"
+    ]
+  },
+  "label_mapping": [
+    {
+      "kaputt_label": "deconstruction",
+      "csight_issue_type": "BREAKAGE",
+      "scenario_condition": "VISIBLE_COMPONENT_SEPARATION",
+      "still_image_confirmation": "POSSIBLE_WITH_HUMAN_REVIEW",
+      "vision_model_directly_outputs_issue_type": false
+    },
+    {
+      "kaputt_label": "actuation",
+      "csight_issue_type": "FUNCTIONAL_FAILURE",
+      "scenario_condition": "CUSTOMER_REPORTS_PUMP_NOT_DISPENSING",
+      "still_image_confirmation": "NOT_RELIABLE",
+      "vision_model_directly_outputs_issue_type": false
+    }
+  ],
+  "disclaimer": "This is a fictional product scope for a synthetic technical demonstration."
+}

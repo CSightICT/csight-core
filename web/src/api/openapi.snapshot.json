@@ -232,16 +232,6 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateCaseResponse"
-                }
-              }
-            }
-          },
           "200": {
             "description": "An idempotent replay of the original Case creation result.",
             "content": {
@@ -252,25 +242,15 @@
               }
             }
           },
-          "409": {
+          "201": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/CreateCaseResponse"
                 }
               }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
+            }
           },
           "401": {
             "content": {
@@ -291,6 +271,26 @@
               }
             },
             "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
           },
           "503": {
             "content": {
@@ -437,16 +437,6 @@
               }
             }
           },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
-          },
           "401": {
             "content": {
               "application/json": {
@@ -466,6 +456,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
           },
           "503": {
             "content": {
@@ -538,16 +538,6 @@
             },
             "description": "Forbidden"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -567,6 +557,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -629,16 +629,6 @@
             },
             "description": "Forbidden"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -658,6 +648,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -976,6 +976,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1015,26 +1035,6 @@
               }
             },
             "description": "Internal Server Error"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
           },
           "503": {
             "content": {
@@ -1105,16 +1105,6 @@
             },
             "description": "Forbidden"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -1134,6 +1124,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1209,16 +1209,6 @@
             },
             "description": "Forbidden"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -1238,6 +1228,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1313,16 +1313,6 @@
             },
             "description": "Forbidden"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -1332,6 +1322,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           },
           "500": {
             "content": {
@@ -1343,15 +1343,15 @@
             },
             "description": "Internal Server Error"
           },
-          "422": {
-            "description": "Validation Error",
+          "503": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1408,6 +1408,31 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "An idempotent replay of the original analysis run.",
+            "headers": {
+              "Location": {
+                "description": "Relative URL of the created or replayed analysis run.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Analysis responses must not be stored.",
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRunResponse"
+                }
+              }
+            }
+          },
           "202": {
             "description": "A new append-only analysis run was accepted.",
             "content": {
@@ -1433,30 +1458,25 @@
               }
             }
           },
-          "200": {
-            "description": "An idempotent replay of the original analysis run.",
-            "headers": {
-              "Location": {
-                "description": "Relative URL of the created or replayed analysis run.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "description": "Analysis responses must not be stored.",
-                "schema": {
-                  "type": "string",
-                  "example": "no-store"
-                }
-              }
-            },
+          "401": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AnalysisRunResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "404": {
             "content": {
@@ -1487,26 +1507,6 @@
               }
             },
             "description": "Unprocessable Entity"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
           },
           "503": {
             "content": {
@@ -1632,16 +1632,6 @@
             },
             "description": "Forbidden"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -1661,6 +1651,16 @@
               }
             },
             "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1736,16 +1736,6 @@
             },
             "description": "Forbidden"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -1765,6 +1755,16 @@
               }
             },
             "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1890,16 +1890,6 @@
           }
         },
         "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PolicyRetrievalRunResponse"
-                }
-              }
-            }
-          },
           "200": {
             "content": {
               "application/json": {
@@ -1909,6 +1899,16 @@
               }
             },
             "description": "OK"
+          },
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyRetrievalRunResponse"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -2109,16 +2109,6 @@
           }
         },
         "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GroundedExplanationRunResponse"
-                }
-              }
-            }
-          },
           "200": {
             "content": {
               "application/json": {
@@ -2128,6 +2118,16 @@
               }
             },
             "description": "OK"
+          },
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroundedExplanationRunResponse"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -2328,16 +2328,6 @@
           }
         },
         "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PolicyEvaluationRunResponse"
-                }
-              }
-            }
-          },
           "200": {
             "content": {
               "application/json": {
@@ -2347,6 +2337,16 @@
               }
             },
             "description": "OK"
+          },
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyEvaluationRunResponse"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3600,26 +3600,26 @@
           },
           "x1": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "X1"
           },
           "y1": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Y1"
           },
           "x2": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "X2"
           },
           "y2": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Y2"
           }
         },
@@ -4293,8 +4293,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence"
           },
           "geometry": {
@@ -4370,7 +4370,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Expected Version"
           },
           "reason_codes": {
@@ -4470,7 +4470,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Expected Version"
           },
           "reason_codes": {
@@ -5322,8 +5322,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
+                "maximum": 1,
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -6597,8 +6597,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Top K",
             "default": 10
           },
@@ -6768,7 +6768,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Expected Version"
           },
           "reason_code": {
@@ -6870,7 +6870,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Expected Version"
           },
           "decision": {
@@ -6916,7 +6916,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Expected Version"
           },
           "rationale": {
@@ -7662,8 +7662,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Top K",
             "default": 10
           }
@@ -7826,7 +7826,7 @@
           },
           "expires_in": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Expires In"
           }
         },
@@ -7882,7 +7882,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Expected Version"
           }
         },
@@ -8010,12 +8010,12 @@
           },
           "image_width": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Image Width"
           },
           "image_height": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Image Height"
           },
           "image_reference": {
@@ -8042,9 +8042,19 @@
             "title": "Detections",
             "default": []
           },
+          "image_assessment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VisionImageAssessment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "latency_ms": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Latency Ms"
           }
         },
@@ -8113,6 +8123,61 @@
           "created_at"
         ],
         "title": "VisionAnalysisResultRecord"
+      },
+      "VisionImageAssessment": {
+        "properties": {
+          "assessment_type": {
+            "type": "string",
+            "const": "ANY_DEFECT",
+            "title": "Assessment Type",
+            "default": "ANY_DEFECT"
+          },
+          "model_output_name": {
+            "type": "string",
+            "const": "defect",
+            "title": "Model Output Name",
+            "default": "defect"
+          },
+          "score": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Score"
+          },
+          "threshold": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Threshold"
+          },
+          "threshold_operator": {
+            "type": "string",
+            "const": "GREATER_THAN_OR_EQUAL",
+            "title": "Threshold Operator",
+            "default": "GREATER_THAN_OR_EQUAL"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/VisionImageAssessmentOutcome"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "score",
+          "threshold",
+          "outcome"
+        ],
+        "title": "VisionImageAssessment",
+        "description": "One non-localizing any-defect score and its frozen operating threshold.\n\nThis is an image-level routing signal.  It cannot identify a defect type or\nlocation, and a score below the threshold is not evidence that the image is\nnormal."
+      },
+      "VisionImageAssessmentOutcome": {
+        "type": "string",
+        "enum": [
+          "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+          "BELOW_HIGH_CONFIDENCE_THRESHOLD"
+        ],
+        "title": "VisionImageAssessmentOutcome",
+        "description": "Decision-support outcomes that deliberately contain no NORMAL state."
       }
     },
     "securitySchemes": {

@@ -548,7 +548,7 @@ class ExecuteTextExtraction:
         now = self._clock.now().astimezone(UTC)
 
         with self._uow_factory() as uow:
-            run = uow.analysis_runs.get(
+            run = uow.analysis_runs.get_for_update(
                 tenant_id=command.tenant_id,
                 case_id=command.case_id,
                 analysis_run_id=command.analysis_run_id,
@@ -560,7 +560,17 @@ class ExecuteTextExtraction:
             )
             if run is None or stage is None:
                 return _execution_result(command=command, status=None)
-            if run.status.is_terminal or stage.status.is_terminal:
+            if run.status.is_terminal:
+                return _execution_result(command=command, status=stage.status)
+            if stage.status.is_terminal:
+                if _reconcile_terminal_parent(
+                    uow=uow,
+                    tenant_id=command.tenant_id,
+                    run=run,
+                    now=now,
+                ):
+                    uow.flush()
+                    uow.commit()
                 return _execution_result(command=command, status=stage.status)
             if stage.stage_type is not AnalysisStageType.TEXT_EXTRACTION:
                 return _execution_result(command=command, status=stage.status)
@@ -793,7 +803,7 @@ class ExecuteTextExtraction:
             )
             if existing_result is not None:
                 return _execution_result(command=command, status=AnalysisStageStatus.SUCCEEDED)
-            current_run = uow.analysis_runs.get(
+            current_run = uow.analysis_runs.get_for_update(
                 tenant_id=command.tenant_id,
                 case_id=command.case_id,
                 analysis_run_id=command.analysis_run_id,
@@ -1033,7 +1043,7 @@ class ExecuteTextExtraction:
         )
 
         with self._uow_factory() as uow:
-            current_run = uow.analysis_runs.get(
+            current_run = uow.analysis_runs.get_for_update(
                 tenant_id=command.tenant_id,
                 case_id=command.case_id,
                 analysis_run_id=command.analysis_run_id,
@@ -1161,7 +1171,7 @@ class ExecuteVisionAnalysis:
         now = self._clock.now().astimezone(UTC)
         claim_token = self._id_generator.new_id()
         with self._uow_factory() as uow:
-            run = uow.analysis_runs.get(
+            run = uow.analysis_runs.get_for_update(
                 tenant_id=command.tenant_id,
                 case_id=command.case_id,
                 analysis_run_id=command.analysis_run_id,
@@ -1173,7 +1183,17 @@ class ExecuteVisionAnalysis:
             )
             if run is None or stage is None:
                 return _execution_result(command=command, status=None)
-            if run.status.is_terminal or stage.status.is_terminal:
+            if run.status.is_terminal:
+                return _execution_result(command=command, status=stage.status)
+            if stage.status.is_terminal:
+                if _reconcile_terminal_parent(
+                    uow=uow,
+                    tenant_id=command.tenant_id,
+                    run=run,
+                    now=now,
+                ):
+                    uow.flush()
+                    uow.commit()
                 return _execution_result(command=command, status=stage.status)
             if stage.stage_type is not AnalysisStageType.VISION_ANALYSIS:
                 return _execution_result(command=command, status=stage.status)
@@ -1322,6 +1342,7 @@ class ExecuteVisionAnalysis:
                         content_type=evidence.content_type,
                         image_width=evidence.width or 1,
                         image_height=evidence.height or 1,
+                        task=self._provider.analysis_task,
                     ),
                     image=image,
                 )
@@ -1370,7 +1391,7 @@ class ExecuteVisionAnalysis:
             latency_ms=total_latency,
         )
         with self._uow_factory() as uow:
-            current_run = uow.analysis_runs.get(
+            current_run = uow.analysis_runs.get_for_update(
                 tenant_id=command.tenant_id,
                 case_id=command.case_id,
                 analysis_run_id=command.analysis_run_id,
@@ -1502,7 +1523,7 @@ class ExecuteVisionAnalysis:
             AnalysisAttemptStatus.RETRY_WAITING if retryable else AnalysisAttemptStatus.FAILED
         )
         with self._uow_factory() as uow:
-            run = uow.analysis_runs.get(
+            run = uow.analysis_runs.get_for_update(
                 tenant_id=command.tenant_id,
                 case_id=command.case_id,
                 analysis_run_id=command.analysis_run_id,
@@ -1716,6 +1737,42 @@ def aggregate_run_status(stages: tuple[AnalysisStageRun, ...]) -> AnalysisRunSta
     if failed == len(stages):
         return AnalysisRunStatus.FAILED
     return AnalysisRunStatus.PARTIAL_SUCCESS
+
+
+def _reconcile_terminal_parent(
+    *,
+    uow: AnalysisUnitOfWork,
+    tenant_id: str,
+    run: AnalysisRun,
+    now: datetime,
+) -> bool:
+    """Repair a RUNNING parent after all fenced stage writes are terminal."""
+
+    if run.status is not AnalysisRunStatus.RUNNING:
+        return False
+    stages = uow.stage_runs.list(tenant_id=tenant_id, analysis_run_id=run.id)
+    target = aggregate_run_status(stages)
+    if not target.is_terminal:
+        return False
+    failure = None
+    if target is AnalysisRunStatus.FAILED:
+        failure = next(
+            (stage.failure for stage in stages if stage.failure is not None),
+            None,
+        )
+        if failure is None:
+            raise InconsistentPersistenceStateError()
+    transitioned = uow.analysis_runs.transition(
+        tenant_id=tenant_id,
+        analysis_run_id=run.id,
+        expected_status=run.status,
+        target_status=target,
+        now=now,
+        failure=failure,
+    )
+    if transitioned is None:
+        raise InconsistentPersistenceStateError()
+    return True
 
 
 def _detail(

@@ -30,9 +30,15 @@ from app.platform.analysis import (
     AnalysisTrigger,
     ExtractedRequestedAction,
     ExtractionIssueType,
+    ImageQualityResult,
+    ImageUsability,
     LLMExtractionResultRecord,
     LLMTextExtractionResult,
     ProviderExecutionMetadata,
+    VisionAnalysisResult,
+    VisionAnalysisResultRecord,
+    VisionImageAssessment,
+    VisionImageAssessmentOutcome,
 )
 from app.platform.analysis.errors import (
     AnalysisAlreadyTerminalError,
@@ -182,6 +188,37 @@ def _extraction_record() -> LLMExtractionResultRecord:
     )
 
 
+def _binary_vision_record() -> VisionAnalysisResultRecord:
+    return VisionAnalysisResultRecord(
+        id="vision-result-1",
+        tenant_id="tenant-a",
+        analysis_run_id="binary-run",
+        stage_run_id="vision-stage-1",
+        evidence_id="evidence-1",
+        result=VisionAnalysisResult(
+            provider_name="mock",
+            model_name="csight-mock-vision",
+            model_version="synthetic-contract-v1",
+            dataset_version="synthetic-any-defect-v1",
+            taxonomy_version="csight-any-defect-assessment-v1",
+            threshold_version="synthetic-mock-any-defect-threshold-v1",
+            preprocess_version="synthetic-v1",
+            postprocess_version="synthetic-v1",
+            image_width=100,
+            image_height=100,
+            image_quality=ImageQualityResult(usable=ImageUsability.NOT_EVALUATED),
+            detections=(),
+            image_assessment=VisionImageAssessment(
+                score=0.95,
+                threshold=0.8984375,
+                outcome=VisionImageAssessmentOutcome.HIGH_CONFIDENCE_DEFECT_CANDIDATE,
+            ),
+            latency_ms=20,
+        ),
+        created_at=NOW,
+    )
+
+
 class _ResolvePrincipal:
     def execute(self, token: str) -> Principal:
         principals = {
@@ -300,6 +337,7 @@ class _GetAnalysisRun:
             ),
             stages=(_stage(failed=failed),),
             extraction_result=_extraction_record() if failed else None,
+            vision_results=((_binary_vision_record(),) if analysis_run_id == "binary-run" else ()),
         )
 
 
@@ -550,6 +588,29 @@ def test_analysis_detail_exposes_only_normalized_results_and_safe_audit_metadata
         assert forbidden_name not in response.text
 
 
+def test_analysis_detail_exposes_binary_assessment_without_bbox_or_defect_type(
+    context: _HTTPContext,
+) -> None:
+    response = context.client.get(
+        "/api/v1/cases/case-1/analysis-runs/binary-run",
+        headers=_authorization(Role.QUALITY_VIEWER),
+    )
+
+    assert response.status_code == 200
+    result = response.json()["vision_results"][0]["result"]
+    assert result["detections"] == []
+    assert result["image_assessment"] == {
+        "assessment_type": "ANY_DEFECT",
+        "model_output_name": "defect",
+        "score": 0.95,
+        "threshold": 0.8984375,
+        "threshold_operator": "GREATER_THAN_OR_EQUAL",
+        "outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+    }
+    assert "canonical_label" not in response.text
+    assert "geometry" not in response.text
+
+
 @pytest.mark.parametrize(
     ("method", "path", "headers", "json_body", "status_code", "error_code"),
     [
@@ -685,6 +746,17 @@ def test_openapi_declares_required_key_tenant_free_inputs_and_safe_outputs(
         "get"
     ]["responses"]["200"]["content"]["application/json"]["schema"]
     response_names.update(_schema_property_names(detail_schema, document))
+    assessment_schema = document["components"]["schemas"]["VisionImageAssessment"]
+    assert set(assessment_schema["properties"]) == {
+        "assessment_type",
+        "model_output_name",
+        "score",
+        "threshold",
+        "threshold_operator",
+        "outcome",
+    }
+    outcome_schema = document["components"]["schemas"]["VisionImageAssessmentOutcome"]
+    assert "NORMAL" not in outcome_schema["enum"]
     assert (
         not {
             "idempotency_key",

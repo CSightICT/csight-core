@@ -19,10 +19,13 @@ from app.platform.analysis import (
     ProviderSchemaError,
     VisionAnalysisRequest,
     VisionAnalysisResult,
+    VisionImageAssessment,
+    VisionImageAssessmentOutcome,
     VisionInvalidStructuredOutputError,
     VisionProviderRequestRejectedError,
     VisionProviderTimeoutError,
     VisionProviderUnavailableError,
+    VisionTask,
 )
 
 
@@ -39,6 +42,8 @@ class VisionMockMode(StrEnum):
     PERMANENT_ERROR = "permanent_error"
     INVALID_SCHEMA = "invalid_schema"
     INVALID_GEOMETRY = "invalid_geometry"
+    BINARY_CANDIDATE = "binary_candidate"
+    BINARY_BELOW_THRESHOLD = "binary_below_threshold"
 
 
 class MockVisionProvider:
@@ -50,6 +55,8 @@ class MockVisionProvider:
         mode: MockProviderMode | VisionMockMode | str = VisionMockMode.SUCCESS_SINGLE_DEFECT,
         model_name: str = "csight-mock-vision",
         model_version: str = "0.1.0",
+        analysis_task: VisionTask | str | None = None,
+        assessment_threshold: float | None = None,
     ) -> None:
         normalized_mode = mode.replace("-", "_")
         if normalized_mode == MockProviderMode.SUCCESS.value:
@@ -61,6 +68,31 @@ class MockVisionProvider:
             self._mode = MockProviderMode(normalized_mode)
         else:
             self._mode = VisionMockMode(normalized_mode)
+        binary_mode = self._mode in {
+            VisionMockMode.BINARY_CANDIDATE,
+            VisionMockMode.BINARY_BELOW_THRESHOLD,
+        }
+        if binary_mode and assessment_threshold is None:
+            raise ValueError("assessment_threshold is required for a binary mock mode")
+        if assessment_threshold is not None and (
+            isinstance(assessment_threshold, bool) or not 0.0 <= assessment_threshold <= 1.0
+        ):
+            raise ValueError("assessment_threshold must be between zero and one")
+        if self._mode is VisionMockMode.BINARY_BELOW_THRESHOLD and assessment_threshold == 0.0:
+            raise ValueError("binary_below_threshold requires a positive threshold")
+        configured_task = (
+            VisionTask(analysis_task)
+            if analysis_task is not None
+            else (
+                VisionTask.ANY_DEFECT_CLASSIFICATION
+                if binary_mode
+                else VisionTask.QUALITY_AND_DEFECT_DETECTION
+            )
+        )
+        if binary_mode is not (configured_task is VisionTask.ANY_DEFECT_CLASSIFICATION):
+            raise ValueError("mock Vision mode and analysis task must describe the same contract")
+        self._assessment_threshold = assessment_threshold
+        self._analysis_task = configured_task
         self._metadata = ProviderMetadata(
             provider="mock",
             name=model_name,
@@ -72,6 +104,10 @@ class MockVisionProvider:
     def provider_metadata(self) -> ProviderMetadata:
         return self._metadata
 
+    @property
+    def analysis_task(self) -> VisionTask:
+        return self._analysis_task
+
     def analyze_image(
         self,
         request: VisionAnalysisRequest,
@@ -82,6 +118,11 @@ class MockVisionProvider:
             raise ProviderSchemaError(
                 provider=self._metadata.provider,
                 message="mock Vision received an empty image",
+            )
+        if request.task is not self._analysis_task:
+            raise VisionProviderRequestRejectedError(
+                provider=self._metadata.provider,
+                message="mock Vision request task does not match its configured assessment mode",
             )
         self._raise_configured_failure()
         if self._mode in {MockProviderMode.SCHEMA_ERROR, VisionMockMode.INVALID_SCHEMA}:
@@ -164,14 +205,45 @@ class MockVisionProvider:
         }:
             detections = ()
 
+        image_assessment = None
+        is_binary = self._mode in {
+            VisionMockMode.BINARY_CANDIDATE,
+            VisionMockMode.BINARY_BELOW_THRESHOLD,
+        }
+        if is_binary:
+            detections = ()
+            quality = ImageQualityResult(usable=ImageUsability.NOT_EVALUATED)
+            threshold = self._assessment_threshold
+            if threshold is None:
+                raise AssertionError("binary mock threshold was not configured")
+            if self._mode is VisionMockMode.BINARY_CANDIDATE:
+                score = threshold + ((1.0 - threshold) * (0.25 + fingerprint[1] / 510))
+            else:
+                score = threshold * (0.25 + fingerprint[1] / 510)
+            score = round(min(1.0, max(0.0, score)), 6)
+            outcome = (
+                VisionImageAssessmentOutcome.HIGH_CONFIDENCE_DEFECT_CANDIDATE
+                if score >= threshold
+                else VisionImageAssessmentOutcome.BELOW_HIGH_CONFIDENCE_THRESHOLD
+            )
+            image_assessment = VisionImageAssessment(
+                score=score,
+                threshold=threshold,
+                outcome=outcome,
+            )
+
         return VisionAnalysisResult(
             provider_name=self._metadata.provider,
             model_name=self._metadata.name,
             model_version=self._metadata.version,
             model_revision=self._metadata.revision,
-            dataset_version="synthetic-v1",
-            taxonomy_version="csight-defect-v1",
-            threshold_version="mock-threshold-v1",
+            dataset_version="synthetic-any-defect-v1" if is_binary else "synthetic-v1",
+            taxonomy_version=(
+                "csight-any-defect-assessment-v1" if is_binary else "csight-defect-v1"
+            ),
+            threshold_version=(
+                "synthetic-mock-any-defect-threshold-v1" if is_binary else "mock-threshold-v1"
+            ),
             preprocess_version=self._metadata.preprocess_version or "mock-preprocess-v1",
             postprocess_version="mock-postprocess-v1",
             runtime="python",
@@ -181,6 +253,7 @@ class MockVisionProvider:
             image_reference=request.image_reference,
             image_quality=quality,
             detections=detections,
+            image_assessment=image_assessment,
             latency_ms=20 + fingerprint[3] % 31,
         )
 

@@ -1,0 +1,286 @@
+{
+  "schema_version": "synthetic_policy_bundle/1.0.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "tenant_id": "csight-demo-hard-plastic",
+  "document": {
+    "id": "SYN-HDP-POLICY-001",
+    "title": "CSight 데모웍스 HDP-100 품질 문의 처리 정책",
+    "version": "1.0.0",
+    "effective_from": "2026-08-27",
+    "effective_to": null,
+    "status": "ACTIVE",
+    "fictional": true,
+    "legal_or_commercial_effect": false
+  },
+  "clauses": [
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C1",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "SCOPE",
+      "text": "본 합성 정책은 가상 HDP-100 수동 펌프형 디스펜서의 기술 데모에만 적용하며 실제 기업의 보상 약속이 아니다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C2",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "BREAKAGE",
+      "text": "펌프 헤드·칼라·튜브의 분리 또는 파손이 고객 설명과 식별 가능한 사진에서 확인되면 교환·수리 검토 대상으로 표시하되 상담원이 최종 결정한다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C3",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "FUNCTIONAL_FAILURE",
+      "text": "펌프가 눌리지만 내용물이 나오지 않는다는 주장은 정지 이미지로 작동 이상을 확정하지 않는다. 짧은 작동 영상이나 상담원의 수동 확인이 없으면 추가 증거를 요청한다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C4",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "VISION_LIMITATION",
+      "text": "이진 Vision 점수는 결함 후보 우선순위에만 사용한다. 고정 threshold 미만은 정상 판정이 아니며 점수만으로 결함 유형·위치 또는 고객 요청을 확정하지 않는다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C5",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "EVIDENCE_REQUIREMENT",
+      "text": "이미지가 없거나 흐리거나 대상이 가려졌거나 Vision 호출이 실패하면 자동 판단하지 않고 추가 자료 또는 사람 검토로 보낸다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C6",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "SAFETY_EXCEPTION",
+      "text": "날카로운 파단면, 피부·눈 노출 우려, 위험 물질 누출 주장에는 사용 중지를 안내하고 일반 Reviewer의 Resolve를 차단하며 Admin 안전 검토를 요구한다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C7",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "HUMAN_DECISION",
+      "text": "Vision, LLM, 검색 또는 정책 효과는 최종 승인·거절을 만들 수 없다. 인증된 사람이 근거를 확인하고 최종 결정을 기록한다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C8",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "ACTION_INPUT",
+      "text": "외부 Action 값은 Case의 주문·상품 참조와 명시적으로 제출된 입력만 사용한다. 누락·형식 오류 시 Action Intent, Attempt, Result를 만들지 않는다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C9",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "DRY_RUN_ONLY",
+      "text": "기술 데모의 Action은 네트워크와 실제 부작용이 없는 DRY-RUN만 허용한다. LIVE 실행은 항상 비활성화한다."
+    },
+    {
+      "clause_id": "SYN-HDP-POLICY-001:1.0.0:C10",
+      "version": "1.0.0",
+      "effective_from": "2026-08-27",
+      "policy_type": "DEMO_LIMITATION",
+      "text": "합성 시나리오와 Kaputt offline 결과를 실제 고객 환경 성능, 자동화율, 비용 절감 또는 ROI로 해석하지 않는다."
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "SYN-HDP-RULE-001",
+      "version": "1.0.0",
+      "category": "AUTOMATION_GUARD",
+      "source_clause_ids": [
+        "SYN-HDP-POLICY-001:1.0.0:C7"
+      ],
+      "conditions": [
+        {
+          "field": "case.product_ref",
+          "operator": "EQUALS",
+          "value": "SYN-HDP-100",
+          "missing_behavior": "UNKNOWN"
+        }
+      ],
+      "effects": [
+        "REQUIRE_HUMAN_REVIEW",
+        "PROHIBIT_AUTOMATION"
+      ]
+    },
+    {
+      "rule_id": "SYN-HDP-RULE-002",
+      "version": "1.0.0",
+      "category": "ELIGIBILITY",
+      "source_clause_ids": [
+        "SYN-HDP-POLICY-001:1.0.0:C2",
+        "SYN-HDP-POLICY-001:1.0.0:C4"
+      ],
+      "conditions": [
+        {
+          "field": "extraction.issue_types",
+          "operator": "CONTAINS",
+          "value": "BREAKAGE",
+          "missing_behavior": "UNKNOWN"
+        },
+        {
+          "field": "evidence.visual_condition",
+          "operator": "EQUALS",
+          "value": "VISIBLE_DECONSTRUCTION",
+          "missing_behavior": "UNKNOWN"
+        }
+      ],
+      "effects": [
+        "MARK_REVIEW_ELIGIBILITY",
+        "REQUIRE_HUMAN_REVIEW"
+      ]
+    },
+    {
+      "rule_id": "SYN-HDP-RULE-003",
+      "version": "1.0.0",
+      "category": "EVIDENCE_REQUIREMENT",
+      "source_clause_ids": [
+        "SYN-HDP-POLICY-001:1.0.0:C3"
+      ],
+      "conditions": [
+        {
+          "field": "extraction.issue_types",
+          "operator": "CONTAINS",
+          "value": "FUNCTIONAL_FAILURE",
+          "missing_behavior": "UNKNOWN"
+        },
+        {
+          "field": "evidence.functional_confirmation",
+          "operator": "EQUALS",
+          "value": "NOT_PROVIDED",
+          "missing_behavior": "UNKNOWN"
+        }
+      ],
+      "effects": [
+        "REQUIRE_ADDITIONAL_EVIDENCE",
+        "REQUIRE_HUMAN_REVIEW",
+        "PROHIBIT_AUTOMATION"
+      ]
+    },
+    {
+      "rule_id": "SYN-HDP-RULE-004",
+      "version": "1.0.0",
+      "category": "EVIDENCE_REQUIREMENT",
+      "source_clause_ids": [
+        "SYN-HDP-POLICY-001:1.0.0:C4",
+        "SYN-HDP-POLICY-001:1.0.0:C5"
+      ],
+      "conditions": [
+        {
+          "field": "vision.interpretation",
+          "operator": "IN",
+          "value": [
+            "NOT_NORMAL",
+            "UNAVAILABLE",
+            "TIMEOUT"
+          ],
+          "missing_behavior": "NOT_EVALUATED"
+        }
+      ],
+      "effects": [
+        "REQUIRE_HUMAN_REVIEW",
+        "PROHIBIT_AUTOMATION"
+      ]
+    },
+    {
+      "rule_id": "SYN-HDP-RULE-005",
+      "version": "1.0.0",
+      "category": "ESCALATION",
+      "source_clause_ids": [
+        "SYN-HDP-POLICY-001:1.0.0:C6"
+      ],
+      "conditions": [
+        {
+          "field": "case.declared_safety_risk",
+          "operator": "EQUALS",
+          "value": true,
+          "missing_behavior": "UNKNOWN"
+        }
+      ],
+      "effects": [
+        "REQUIRE_MANAGER_REVIEW",
+        "REQUIRE_HUMAN_REVIEW",
+        "PROHIBIT_AUTOMATION"
+      ]
+    },
+    {
+      "rule_id": "SYN-HDP-RULE-006",
+      "version": "1.0.0",
+      "category": "EVIDENCE_REQUIREMENT",
+      "source_clause_ids": [
+        "SYN-HDP-POLICY-001:1.0.0:C5"
+      ],
+      "conditions": [
+        {
+          "field": "evidence.quality",
+          "operator": "IN",
+          "value": [
+            "NONE",
+            "POOR",
+            "OCCLUDED"
+          ],
+          "missing_behavior": "UNKNOWN"
+        }
+      ],
+      "effects": [
+        "REQUIRE_ADDITIONAL_EVIDENCE",
+        "REQUIRE_HUMAN_REVIEW"
+      ]
+    },
+    {
+      "rule_id": "SYN-HDP-RULE-007",
+      "version": "1.0.0",
+      "category": "AUTOMATION_GUARD",
+      "source_clause_ids": [
+        "SYN-HDP-POLICY-001:1.0.0:C8",
+        "SYN-HDP-POLICY-001:1.0.0:C9"
+      ],
+      "conditions": [
+        {
+          "field": "resolution.action_input_complete",
+          "operator": "EQUALS",
+          "value": false,
+          "missing_behavior": "UNKNOWN"
+        }
+      ],
+      "effects": [
+        "PROHIBIT_AUTOMATION"
+      ]
+    }
+  ],
+  "action_input_requirements": {
+    "REFUND": [
+      "order_ref",
+      "external_action_input.amount",
+      "external_action_input.currency"
+    ],
+    "EXCHANGE": [
+      "order_ref",
+      "product_ref",
+      "external_action_input.quantity",
+      "external_action_input.shipping_address_ref"
+    ],
+    "RESHIPMENT": [
+      "order_ref",
+      "product_ref",
+      "external_action_input.quantity",
+      "external_action_input.shipping_address_ref"
+    ],
+    "REPAIR": [
+      "order_ref",
+      "product_ref",
+      "external_action_input.quantity"
+    ]
+  },
+  "global_guardrails": {
+    "final_decision_owner": "AUTHENTICATED_HUMAN",
+    "automatic_approval_allowed": false,
+    "parameter_inference_allowed": false,
+    "external_action_mode": "DRY_RUN",
+    "live_external_action_allowed": false,
+    "side_effects_performed": false,
+    "actual_performance_or_roi_claim_allowed": false
+  }
+}

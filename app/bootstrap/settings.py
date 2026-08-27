@@ -133,7 +133,24 @@ class Settings(BaseSettings):
         "permanent_error",
         "invalid_schema",
         "invalid_geometry",
+        "binary_candidate",
+        "binary_below_threshold",
     ] = Field(default="success_single_defect", validation_alias="VISION_MOCK_MODE")
+    vision_task: Literal[
+        "QUALITY_CHECK",
+        "DEFECT_DETECTION",
+        "QUALITY_AND_DEFECT_DETECTION",
+        "ANY_DEFECT_CLASSIFICATION",
+    ] = Field(
+        default="QUALITY_AND_DEFECT_DETECTION",
+        validation_alias="VISION_TASK",
+    )
+    vision_assessment_expected_threshold: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        validation_alias="VISION_ASSESSMENT_EXPECTED_THRESHOLD",
+    )
     llm_base_url: AnyHttpUrl | None = Field(default=None, validation_alias="LLM_BASE_URL")
     llm_api_key: SecretStr | None = Field(default=None, validation_alias="LLM_API_KEY")
     llm_model_id: str = Field(
@@ -332,6 +349,20 @@ class Settings(BaseSettings):
             return value.strip().lower()
         return value
 
+    @field_validator("vision_task", mode="before")
+    @classmethod
+    def normalize_vision_task(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().upper()
+        return value
+
+    @field_validator("vision_assessment_expected_threshold", mode="before")
+    @classmethod
+    def normalize_optional_threshold(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @field_validator(
         "llm_model_id",
         "llm_model_version",
@@ -442,6 +473,20 @@ class Settings(BaseSettings):
             raise ValueError("LLM_BASE_URL is required for a remote HTTP LLM provider")
         if self.vision_provider != "mock" and self.vision_base_url is None:
             raise ValueError("VISION_BASE_URL is required for a non-mock Vision provider")
+        binary_mock = self.vision_provider == "mock" and self.vision_mock_mode in {
+            "binary_candidate",
+            "binary_below_threshold",
+        }
+        any_defect_task = self.vision_task == "ANY_DEFECT_CLASSIFICATION"
+        if self.vision_provider == "mock" and binary_mock is not any_defect_task:
+            raise ValueError(
+                "VISION_MOCK_MODE and VISION_TASK must describe the same Vision contract"
+            )
+        binary_remote = self.vision_provider == "remote" and any_defect_task
+        if (binary_mock or binary_remote) and self.vision_assessment_expected_threshold is None:
+            raise ValueError(
+                "VISION_ASSESSMENT_EXPECTED_THRESHOLD is required for any-defect assessment"
+            )
         if not (
             self.analysis_stage_lease_seconds
             > self.analysis_task_hard_time_limit_seconds

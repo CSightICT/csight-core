@@ -14,6 +14,8 @@ def test_defaults_use_mock_providers_without_infrastructure_secrets() -> None:
     assert settings.llm_provider == "mock"
     assert settings.vision_provider == "mock"
     assert settings.vision_mock_mode == "success_single_defect"
+    assert settings.vision_task == "QUALITY_AND_DEFECT_DETECTION"
+    assert settings.vision_assessment_expected_threshold is None
     assert settings.database_url is None
     assert settings.rabbitmq_url is None
     assert settings.jwt_secret_key is None
@@ -260,6 +262,59 @@ def test_vision_optional_identity_accepts_empty_compose_values() -> None:
     assert settings.vision_model_id == "configured-vision"
     assert settings.vision_model_version == "revision-1"
     assert settings.vision_mock_mode == "permanent_error"
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {
+            "vision_mock_mode": "binary_candidate",
+            "vision_task": "ANY_DEFECT_CLASSIFICATION",
+        },
+        {
+            "vision_provider": "remote",
+            "vision_base_url": "https://vision.internal",
+            "vision_task": "ANY_DEFECT_CLASSIFICATION",
+        },
+    ],
+)
+def test_binary_vision_requires_an_explicit_expected_threshold(
+    values: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError, match="VISION_ASSESSMENT_EXPECTED_THRESHOLD"):
+        Settings(_env_file=None, **values)  # pyright: ignore[reportCallIssue]
+
+
+def test_binary_vision_accepts_report_frozen_threshold_only_when_explicit() -> None:
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        vision_mock_mode="binary_below_threshold",
+        vision_task="ANY_DEFECT_CLASSIFICATION",
+        vision_assessment_expected_threshold="0.8984375",
+    )
+
+    assert settings.vision_assessment_expected_threshold == 0.8984375
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {
+            "vision_mock_mode": "success_single_defect",
+            "vision_task": "ANY_DEFECT_CLASSIFICATION",
+        },
+        {
+            "vision_mock_mode": "binary_candidate",
+            "vision_task": "QUALITY_AND_DEFECT_DETECTION",
+            "vision_assessment_expected_threshold": 0.8984375,
+        },
+    ],
+)
+def test_mock_vision_mode_and_task_must_describe_the_same_contract(
+    values: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError, match="VISION_MOCK_MODE and VISION_TASK"):
+        Settings(_env_file=None, **values)  # pyright: ignore[reportCallIssue]
 
 
 @pytest.mark.parametrize(

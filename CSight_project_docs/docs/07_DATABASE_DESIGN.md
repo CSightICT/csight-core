@@ -357,6 +357,15 @@ Run pipeline constraint에 multimodal `1.0.0`을, status에 `PARTIAL_SUCCESS`를
 Downgrade는 Detection→Result→Snapshot 역순으로 새 테이블만 제거한 뒤 Sprint 2 constraint를
 복원한다.
 
+### Image-level any-defect assessment extension
+
+`20260827_0015_vision_image_assessment` adds `vision_image_assessments` without modifying the
+existing Detection table. It is an append-only, tenant-scoped one-to-one child of
+`vision_analysis_results` and stores assessment type, model output name, score, frozen threshold,
+comparison operator, derived outcome, and creation time. Checks enforce probability ranges, the two
+non-normal outcomes, and exact outcome/threshold agreement. No canonical defect label or geometry
+column exists in this table. Downgrade removes only the new child table.
+
 ## 11. Sprint 4A LLM v2 Persistence
 
 `20260826_0005`는 기존 `llm_extraction_results`를 변경하지 않고

@@ -18,7 +18,7 @@ POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision demo-scenario-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
 
 help:
 	@echo "CSight Core commands"
@@ -62,6 +62,8 @@ help:
 	@echo "  make smoke-human-review / inspect-human-review-queue  Verify local review runtime"
 	@echo "  make verify-poc-readiness  Report the evidence-backed PoC promotion verdict"
 	@echo "  make require-limited-poc  Fail unless every Limited PoC gate is evidenced"
+	@echo "  make verify-scenario-poc  Verify the sealed synthetic scenario PoC pack"
+	@echo "  make demo-scenario-poc  Build, seed, and smoke the local binary-Vision scenario demo"
 	@echo "  make start-embedding  Start the private host-native Qwen embedding service"
 	@echo "  make stop-embedding  Stop the private embedding service started by Make"
 	@echo "  make health-embedding  Probe embedding health and pinned model metadata"
@@ -197,6 +199,28 @@ verify-poc-readiness:
 
 require-limited-poc:
 	$(UV) run python scripts/verify_poc_readiness.py --require-limited-poc
+
+verify-scenario-poc:
+	$(UV) run python evaluation/scenario_poc_hard_plastic_v1/validate.py
+	$(UV) run python scripts/verify_scenario_poc.py
+
+up-scenario-poc:
+	VISION_PROVIDER=mock \
+	VISION_MOCK_MODE=binary_candidate \
+	VISION_TASK=ANY_DEFECT_CLASSIFICATION \
+	VISION_ASSESSMENT_EXPECTED_THRESHOLD=0.8984375 \
+	VISION_MODEL_ID=csight-e3-contract-mock \
+	VISION_MODEL_VERSION=e3-epoch10-contract-v1 \
+	$(COMPOSE_CMD) up --build --detach --wait
+	$(COMPOSE_CMD) run --rm api uv run alembic upgrade head
+
+seed-scenario-poc-demo:
+	$(UV) run python scripts/seed_scenario_poc_demo.py --env-file $(ENV_FILE)
+
+smoke-scenario-vision:
+	$(UV) run python scripts/smoke_scenario_vision.py --env-file $(ENV_FILE)
+
+demo-scenario-poc: verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision
 
 smoke-analysis:
 	$(UV) run python scripts/smoke_analysis.py --env-file $(ENV_FILE)

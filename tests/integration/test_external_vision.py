@@ -8,7 +8,7 @@ import pytest
 import urllib3
 
 from app.adapters.vision import RemoteVisionProvider
-from app.platform.analysis import VisionAnalysisRequest
+from app.platform.analysis import VisionAnalysisRequest, VisionTask
 
 pytestmark = pytest.mark.external_vision
 
@@ -40,6 +40,11 @@ def test_external_vision_health_and_canonical_result() -> None:
     assert health.status == 200
 
     image = Path(image_path).read_bytes()
+    analysis_task = VisionTask(
+        os.getenv("VISION_TASK", VisionTask.QUALITY_AND_DEFECT_DETECTION.value)
+    )
+    expected_threshold_value = os.getenv("VISION_ASSESSMENT_EXPECTED_THRESHOLD", "").strip()
+    expected_threshold = float(expected_threshold_value) if expected_threshold_value else None
     provider = RemoteVisionProvider(
         base_url=base_url,
         api_key=os.environ.get("VISION_API_KEY"),
@@ -49,6 +54,8 @@ def test_external_vision_health_and_canonical_result() -> None:
         connect_timeout_seconds=float(os.getenv("VISION_CONNECT_TIMEOUT_SECONDS", "5")),
         read_timeout_seconds=float(os.getenv("VISION_READ_TIMEOUT_SECONDS", "120")),
         max_image_bytes=int(os.getenv("VISION_MAX_IMAGE_BYTES", "10485760")),
+        analysis_task=analysis_task,
+        expected_assessment_threshold=expected_threshold,
         tls_verify=tls_verify,
     )
     result = provider.analyze_image(
@@ -57,6 +64,7 @@ def test_external_vision_health_and_canonical_result() -> None:
             content_type="image/jpeg",
             image_width=int(os.getenv("VISION_QUALIFICATION_IMAGE_WIDTH", "1")),
             image_height=int(os.getenv("VISION_QUALIFICATION_IMAGE_HEIGHT", "1")),
+            task=analysis_task,
         ),
         image=image,
     )
@@ -64,7 +72,13 @@ def test_external_vision_health_and_canonical_result() -> None:
     assert result.model_name == model_id
     assert result.model_version == model_version
     assert result.latency_ms >= 0
-    assert all(
-        detection.geometry.coordinate_system.value == "normalized_xyxy"
-        for detection in result.detections
-    )
+    if analysis_task is VisionTask.ANY_DEFECT_CLASSIFICATION:
+        assert result.detections == ()
+        assert result.image_assessment is not None
+        assert result.image_assessment.threshold == expected_threshold
+    else:
+        assert result.image_assessment is None
+        assert all(
+            detection.geometry.coordinate_system.value == "normalized_xyxy"
+            for detection in result.detections
+        )

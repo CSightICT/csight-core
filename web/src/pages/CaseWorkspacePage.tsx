@@ -12,6 +12,7 @@ import { runPolicyWorkflow } from "../workflow/runPolicyWorkflow";
 import { Card, DefinitionList, EmptyState, Loading, Notice, PageHeader, StepRow, formatDate, friendlyError, shortId, textValue } from "../components/Ui";
 import { StatusBadge } from "../components/StatusBadge";
 import { checkpointStore, newOpaqueKey } from "../recovery/workflowCheckpoint";
+import { formatVisionProbability, readBinaryVisionAssessments } from "../vision/imageAssessment";
 
 const terminal = new Set(["SUCCEEDED", "PARTIAL_SUCCESS", "FAILED"]);
 
@@ -207,10 +208,27 @@ function PolicyEvidence({ retrieval, grounding, policy }: {
 }
 
 function VisionResult({ detail }: { detail: Awaited<ReturnType<typeof api.getAnalysis>> }) {
+  const assessments = readBinaryVisionAssessments(detail.vision_results);
   return <div className="vision-result" data-testid="vision-result"><div className="result-heading"><Activity size={18} /><strong>별도 실행</strong><StatusBadge status={detail.run.status} /></div>
     <DefinitionList items={[
       { label: "파이프라인", value: "Multimodal v1" }, { label: "실행 ID", value: shortId(detail.run.analysis_run_id) }, { label: "Vision 결과", value: detail.vision_results.length },
     ]} />
+    {assessments.map((assessment, index) => <div className="result-stack" data-testid="binary-vision-assessment" key={assessment.evidenceId ?? `assessment-${index}`}>
+      <Notice tone={assessment.isCandidate ? "warning" : "info"} title={assessment.isCandidate ? "결함 고신뢰 후보" : "고신뢰 기준 미달 · 정상 판정 아님"}>
+        <span>이미지 전체의 결함 유무 점수만 제공하는 상담원 참고 신호입니다. 결함 종류와 위치는 생성하지 않습니다.</span>
+      </Notice>
+      <DefinitionList items={[
+        { label: "이상 후보 점수", value: formatVisionProbability(assessment.score) },
+        { label: "동결 기준", value: `${formatVisionProbability(assessment.threshold)} 이상` },
+        { label: "결함 종류·위치", value: "제공하지 않음" },
+        { label: "자동 결정", value: "허용 안 함" },
+      ]} />
+      <p className="muted-copy">{assessment.qualification === "SYNTHETIC_MOCK"
+        ? "현재 결과는 이진 계약을 검증하는 합성 Mock 실행이며 실제 E3 checkpoint 추론이 아닙니다."
+        : assessment.qualification === "REMOTE_UNQUALIFIED"
+          ? `원격 Provider ${assessment.modelName ?? "identity 미상"} 결과입니다. 실제 E3 qualification은 별도 external gate 증거로 확인해야 합니다.`
+          : "Provider qualification을 확인할 수 없어 이 결과를 실제 E3 추론으로 해석할 수 없습니다."}</p>
+    </div>)}
     {detail.run.status === "PARTIAL_SUCCESS" && <Notice tone="warning" title="부분 완료"><span>Vision 실패 또는 시간 초과가 기록되었습니다. 자동 결정·외부 조치는 생성하지 않으며 사람 검토가 필요합니다.</span></Notice>}
   </div>;
 }

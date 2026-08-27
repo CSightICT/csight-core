@@ -196,7 +196,7 @@ class DispatchOutbox:
                 return False
 
             if requested_event is not None:
-                run = uow.analysis_runs.get(
+                run = uow.analysis_runs.get_for_update(
                     tenant_id=requested_event.tenant_id,
                     case_id=requested_event.case_id,
                     analysis_run_id=requested_event.analysis_run_id,

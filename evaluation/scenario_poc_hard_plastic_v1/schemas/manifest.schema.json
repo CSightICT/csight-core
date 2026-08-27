@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://csight.invalid/schemas/scenario-poc-manifest-1.0.0.json",
+  "title": "Synthetic scenario PoC pack manifest",
+  "type": "object",
+  "required": ["schema_version", "dataset_name", "dataset_version", "source_type", "language", "record_count", "split_counts", "demo_scenario_ids", "product_scope", "source_reports", "claims_boundary", "artifact_hashes", "pack_hash"],
+  "properties": {
+    "schema_version": {"const": "scenario_poc_pack/1.0.0"},
+    "source_type": {"const": "SYNTHETIC_REFERENCE"},
+    "claims_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actual_company_data_used", "actual_customer_data_used", "actual_company_policy_used", "checkpoint_included", "vision_endpoint_included", "report_metrics_reproduced_by_csight", "automatic_final_decision_allowed", "live_external_action_allowed", "actual_performance_or_roi_claim_allowed", "verdict"],
+      "properties": {
+        "actual_company_data_used": {"const": false},
+        "actual_customer_data_used": {"const": false},
+        "actual_company_policy_used": {"const": false},
+        "checkpoint_included": {"const": false},
+        "vision_endpoint_included": {"const": false},
+        "report_metrics_reproduced_by_csight": {"const": false},
+        "automatic_final_decision_allowed": {"const": false},
+        "live_external_action_allowed": {"const": false},
+        "actual_performance_or_roi_claim_allowed": {"const": false},
+        "verdict": {"const": "SYNTHETIC_SCENARIO_TECHNICAL_POC"}
+      }
+    },
+    "record_count": {"type": "integer", "minimum": 30},
+    "demo_scenario_ids": {"type": "array", "minItems": 5, "maxItems": 5},
+    "artifact_hashes": {"type": "object", "minProperties": 5},
+    "pack_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

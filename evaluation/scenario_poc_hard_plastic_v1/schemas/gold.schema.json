@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://csight.invalid/schemas/scenario-poc-gold-1.0.0.json",
+  "title": "Synthetic hard-plastic PoC Gold",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_id", "expected", "forbidden_outcomes"],
+  "properties": {
+    "record_id": {"type": "string"},
+    "expected": {
+      "type": "object",
+      "required": ["issue_types", "issue_evidence_basis", "vision", "policy_clause_ids", "policy_effects", "review", "resolution"],
+      "properties": {
+        "issue_types": {"type": "array", "items": {"enum": ["BREAKAGE", "FUNCTIONAL_FAILURE", "LEAKAGE"]}},
+        "issue_evidence_basis": {"type": "string"},
+        "vision": {
+          "type": "object",
+          "required": ["score_band", "business_interpretation", "type_or_location_claim_allowed"],
+          "properties": {
+            "score_band": {"enum": ["HIGH_CANDIDATE", "BELOW_THRESHOLD", "UNAVAILABLE"]},
+            "business_interpretation": {"enum": ["HIGH_CONFIDENCE_DEFECT_CANDIDATE", "NOT_NORMAL", "VISION_TIMEOUT", "NO_VISION_EVIDENCE"]},
+            "type_or_location_claim_allowed": {"const": false}
+          }
+        },
+        "policy_clause_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "policy_effects": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "review": {
+          "type": "object",
+          "required": ["task_type", "required_role", "reviewer_claim_allowed", "decision_owner", "human_decision"],
+          "properties": {
+            "task_type": {"enum": ["STANDARD_REVIEW", "EVIDENCE_REVIEW", "SAFETY_REVIEW", "POLICY_EXCEPTION_REVIEW"]},
+            "required_role": {"enum": ["REVIEWER", "ADMIN"]},
+            "reviewer_claim_allowed": {"type": "boolean"},
+            "decision_owner": {"const": "AUTHENTICATED_HUMAN"},
+            "human_decision": {"type": ["string", "null"]}
+          }
+        },
+        "resolution": {
+          "type": "object",
+          "required": ["status", "action_type", "intent_count", "attempt_count", "result_count", "side_effects_performed"],
+          "properties": {
+            "status": {"enum": ["NOT_CREATED", "ACTION_NOT_REQUIRED", "MANUAL_FOLLOW_UP_REQUIRED", "ACTION_NEEDS_INPUT", "ACTION_DRY_RUN_VALIDATED"]},
+            "action_type": {"type": ["string", "null"]},
+            "intent_count": {"type": "integer", "minimum": 0, "maximum": 1},
+            "attempt_count": {"type": "integer", "minimum": 0, "maximum": 1},
+            "result_count": {"type": "integer", "minimum": 0, "maximum": 1},
+            "side_effects_performed": {"const": false}
+          }
+        }
+      }
+    },
+    "forbidden_outcomes": {"type": "array", "minItems": 6, "items": {"type": "string"}}
+  }
+}

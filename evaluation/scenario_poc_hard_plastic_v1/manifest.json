@@ -1,0 +1,88 @@
+{
+  "schema_version": "scenario_poc_pack/1.0.0",
+  "dataset_name": "scenario_poc_hard_plastic_v1",
+  "dataset_version": "1.0.0",
+  "source_type": "SYNTHETIC_REFERENCE",
+  "generated_on": "2026-08-27",
+  "language": "ko-KR",
+  "purpose": "가상 경질 플라스틱 수동 펌프 디스펜서의 시나리오 기반 기술 데모",
+  "record_count": 36,
+  "split_counts": {
+    "demo": 5,
+    "dev": 21,
+    "test": 10
+  },
+  "test_sealed": false,
+  "demo_scenario_ids": [
+    "DEMO-01",
+    "DEMO-02",
+    "DEMO-03",
+    "DEMO-04",
+    "DEMO-05"
+  ],
+  "product_scope": {
+    "brand_id": "CSIGHT-DEMO-WORKS",
+    "product_id": "HDP-100",
+    "product_type": "MANUAL_PUMP_DISPENSER",
+    "material": "plastic_hard",
+    "product_is_synthetic": true,
+    "product_specific_model_performance": "NOT_EVALUATED",
+    "defect_scope": [
+      {
+        "kaputt_label": "deconstruction",
+        "csight_issue_type": "BREAKAGE",
+        "vision_role": "BINARY_ADVISORY_PLUS_HUMAN_VISUAL_REVIEW"
+      },
+      {
+        "kaputt_label": "actuation",
+        "csight_issue_type": "FUNCTIONAL_FAILURE",
+        "vision_role": "TEXT_CLAIM_AND_HUMAN_REVIEW_STILL_IMAGE_NOT_CONFIRMATORY"
+      }
+    ]
+  },
+  "source_reports": [
+    {
+      "filename": "2026-08-27_E1-E3_model_report.md",
+      "sha256": "3697b757f36477da49b6558867e934c9bbba0bb196a0ef6764d56c10b56317db",
+      "source_type": "SUPPLIED_REPORT",
+      "metrics_reproduced_by_csight": false,
+      "used_for": [
+        "candidate_identity",
+        "binary_task_boundary",
+        "threshold_and_offline_metrics"
+      ]
+    },
+    {
+      "filename": "2026-08-27_PoC_item_defect_recommendation.md",
+      "sha256": "0be6d61b45944dcd461eb89a095c9f115a8e67bc22ebeceabded2c551035c94c",
+      "source_type": "SUPPLIED_REPORT",
+      "metrics_reproduced_by_csight": false,
+      "used_for": [
+        "material_scope",
+        "deconstruction_and_actuation_slices",
+        "product_selection_constraints"
+      ]
+    }
+  ],
+  "claims_boundary": {
+    "actual_company_data_used": false,
+    "actual_customer_data_used": false,
+    "actual_company_policy_used": false,
+    "checkpoint_included": false,
+    "vision_endpoint_included": false,
+    "report_metrics_reproduced_by_csight": false,
+    "automatic_final_decision_allowed": false,
+    "live_external_action_allowed": false,
+    "actual_performance_or_roi_claim_allowed": false,
+    "verdict": "SYNTHETIC_SCENARIO_TECHNICAL_POC"
+  },
+  "artifact_count": 5,
+  "artifact_hashes": {
+    "cases.jsonl": "7c86524c41aab6bdb4d5a8939f780e6a5756892cfbf7e91cc5a14f584ae20138",
+    "demo_scenarios.json": "6d8deba8ae2bfa7758acb5efbb464bfad74cdea091dcf5876bf593d587d27346",
+    "gold.jsonl": "ca6eb47a87d5450ff31eb3800672ac3d879268ee10801e7f29ce791a08d72438",
+    "model_manifest.json": "65ad50aca4b757b7ab4a99b32423c71bde0eb65a232fed6ac9f143010b93efb7",
+    "policy.json": "f3786af6240dc8d016bf3fc0e8c5e2b2e03b39a79655a1f60ada698b9c885b71"
+  },
+  "pack_hash": "6be7ad00ba4b92bd99fbcb0ab6c7b9163e387aa8ccd734751c479a2352c24ef1"
+}

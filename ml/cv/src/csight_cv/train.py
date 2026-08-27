@@ -5,19 +5,19 @@ import json
 import math
 import random
 from contextlib import nullcontext
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
+import wandb
 import yaml
 from torch import nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 
-import wandb
 from csight_cv.data import KaputtQueryDataset
 from csight_cv.metrics import binary_metrics
 from csight_cv.model import Dinov2BinaryClassifier
@@ -291,7 +291,7 @@ def main() -> None:
     )
     criterion = nn.BCEWithLogitsLoss()
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     run_directory = Path(config["output_root"]) / f"{config['run_name']}-{timestamp}"
     run_directory.mkdir(parents=True, exist_ok=False)
     with (run_directory / "resolved-config.json").open("w", encoding="utf-8") as handle:
@@ -303,7 +303,7 @@ def main() -> None:
         name=f"{config['run_name']}-{timestamp}",
         config=config,
         mode=args.wandb_mode,
-        tags=list(config["wandb"].get("tags", [])) + [args.mode],
+        tags=[*config["wandb"].get("tags", []), args.mode],
         job_type=args.mode,
     )
     print(

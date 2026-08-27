@@ -227,3 +227,66 @@ resize와 optimizer v2를 적용한 E2는 validation AP 0.839467과 AUROC 0.9176
 4. 오류 사례를 결함 유형·재질별로 분석하고, 불확실하거나 고위험인 경우 사람에게
    이관하는 규칙을 문서화한다.
 
+## 6. 실험 E3 — E2 best checkpoint stage-2 연속 학습
+
+### 6.1 목적과 근거
+
+공식 Kaputt ViT-S 기준선은 1024px, batch 8, 초기 LR `5e-6`으로 30 epochs를
+학습한다. E2는 8 epochs만 수행했으며 AP(any defect)와 validation loss가 마지막
+epoch까지 개선됐다. 따라서 E2가 완전히 수렴했다고 보기보다 추가 학습 여지가 남은
+것으로 판단한다.
+
+E3는 E2 `best.pt`의 모델 가중치만 불러오고, E2에서 0까지 감소한 optimizer와 cosine
+scheduler 상태는 불러오지 않는다. 새 LR과 scheduler로 12 epochs를 추가 학습한다.
+
+### 6.2 VRAM 측정과 batch 선택
+
+RTX 4090에서 1024px full-frame, BF16, gradient checkpointing 미사용 조건으로 실제
+forward/backward/optimizer step을 측정했다.
+
+| Batch | CUDA peak allocation | 처리량 | 판단 |
+|---:|---:|---:|---|
+| 8 | 약 8,902MiB | 기준 | E2 설정 |
+| 16 | 약 17,464MiB | 27.2 images/s | E3 채택 |
+| 20 | 약 21,793MiB | 28.9 images/s | 처리량 이득 대비 장시간 실행 여유 부족 |
+
+Batch 20은 batch 16보다 처리량이 약 6% 높지만 VRAM 여유가 3GiB 미만이다. 장시간
+학습의 allocator fragmentation과 일시 peak를 고려해 batch 16을 선택한다.
+
+### 6.3 E3 설정
+
+| 항목 | 값 |
+|---|---|
+| 초기 가중치 | E2 `best.pt`, 모델 가중치만 로드 |
+| 입력 | Full-frame 1024×1024 |
+| Batch size | 16 |
+| 추가 epochs | 12 |
+| Backbone LR | `2e-6` |
+| Classifier LR | `3e-5` |
+| Optimizer | Fused AdamW |
+| Warmup | 총 update의 2% |
+| Scheduler | Warmup 이후 cosine decay |
+| Early stopping patience | 4 |
+| Gradient checkpointing | 미사용 |
+| Matrix weight decay | 0.05 |
+| Bias·LayerNorm weight decay | 0 |
+| Seed | 42 |
+
+E3는 validation AP(any defect)를 모델 선택 기준으로 유지한다. E3까지 모델 선택이
+끝나기 전에는 test split을 평가하지 않는다.
+
+### 6.4 실행 상태
+
+- 시작 시각: 2026-08-27 10:33 KST
+- W&B run: `e33m1xdx`
+- 원격 PID: `2148859`
+- 초기 실측 GPU 상태: utilization 100%, VRAM 19,051/24,564MiB
+- step 500 확인값: loss 0.253391, backbone LR `7.834e-7`, classifier LR
+  `1.175e-5`
+- 오류 점검: OOM, NaN, traceback 없음
+
+step 500은 2% warmup 구간의 중간값이므로 학습률이 목표값보다 낮은 것이 정상이다.
+초기 처리량 기준 12 epochs의 단순 예상 소요 시간은 약 9시간이며, early stopping이
+발동하면 더 일찍 종료될 수 있다. 이 값은 실행 초기 추정치로 최종 소요 시간을 보장하지
+않는다.
+

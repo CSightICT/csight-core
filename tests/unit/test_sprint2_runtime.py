@@ -3,6 +3,7 @@
 import signal
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import timedelta
 from threading import Event
 from types import FrameType
 from typing import Any, cast
@@ -221,6 +222,137 @@ def test_dispatcher_cli_builds_celery_queue_and_dispatcher_for_once(
         "claimed_by": "dispatcher:test:1",
     }
     assert dispatcher.calls == 1
+
+
+def test_all_sql_outboxes_share_resolved_dispatch_settings_and_process_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        database_url=SecretStr("postgresql+psycopg://user:password@db/csight"),
+        analysis_outbox_batch_size=7,
+        analysis_outbox_claim_seconds=11,
+        analysis_outbox_max_attempts=13,
+        analysis_outbox_retry_base_seconds=2.5,
+        analysis_outbox_retry_max_seconds=45,
+    )
+    celery_marker = object()
+    engine_marker = object()
+    session_factory_marker = object()
+    captured: dict[str, dict[str, object]] = {}
+    identity_calls = 0
+
+    def identity() -> str:
+        nonlocal identity_calls
+        identity_calls += 1
+        return "dispatcher:test:shared"
+
+    def build_analysis(
+        configured_settings: Settings,
+        *,
+        queue: object,
+        claimed_by: str,
+    ) -> _SequenceDispatcher:
+        captured["analysis"] = {
+            "settings": configured_settings,
+            "queue": queue,
+            "claimed_by": claimed_by,
+        }
+        return _SequenceDispatcher(
+            outcomes=[DispatchOutboxResult(claimed=0, published=0, retried=0, failed=0)]
+        )
+
+    def reliable_factory(name: str) -> Callable[..., _SequenceDispatcher]:
+        def build(**values: object) -> _SequenceDispatcher:
+            captured[name] = values
+            return _SequenceDispatcher(
+                outcomes=[DispatchOutboxResult(claimed=0, published=0, retried=0, failed=0)]
+            )
+
+        return build
+
+    def ignore_log_level(_level: str) -> None:
+        return None
+
+    def ignore_signal_handlers(_event: Event) -> None:
+        return None
+
+    def create_application(_settings: Settings) -> object:
+        return celery_marker
+
+    def resolve_engine(_settings: Settings) -> object:
+        return engine_marker
+
+    def resolve_session_factory(engine: object) -> object | None:
+        return session_factory_marker if engine is engine_marker else None
+
+    def queue_factory(name: str) -> Callable[[object], str]:
+        def build(_application: object) -> str:
+            return name
+
+        return build
+
+    monkeypatch.setattr(dispatcher_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(dispatcher_module, "configure_logging", ignore_log_level)
+    monkeypatch.setattr(dispatcher_module, "install_signal_handlers", ignore_signal_handlers)
+    monkeypatch.setattr(dispatcher_module, "_dispatcher_identity", identity)
+    monkeypatch.setattr(dispatcher_module, "create_celery_app", create_application)
+    monkeypatch.setattr(dispatcher_module, "get_engine", resolve_engine)
+    monkeypatch.setattr(dispatcher_module, "create_session_factory", resolve_session_factory)
+    monkeypatch.setattr(dispatcher_module, "build_outbox_dispatcher", build_analysis)
+    monkeypatch.setattr(dispatcher_module, "CeleryAnalysisMessageQueue", queue_factory("analysis"))
+    monkeypatch.setattr(
+        dispatcher_module, "CeleryPolicyRetrievalMessageQueue", queue_factory("retrieval")
+    )
+    monkeypatch.setattr(
+        dispatcher_module, "CeleryGroundedExplanationMessageQueue", queue_factory("grounding")
+    )
+    monkeypatch.setattr(
+        dispatcher_module, "CeleryPolicyEvaluationMessageQueue", queue_factory("evaluation")
+    )
+    monkeypatch.setattr(dispatcher_module, "CeleryHumanReviewMessageQueue", queue_factory("review"))
+    monkeypatch.setattr(
+        dispatcher_module,
+        "DispatchPolicyRetrievalOutbox",
+        reliable_factory("retrieval"),
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "DispatchGroundedExplanationOutbox",
+        reliable_factory("grounding"),
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "DispatchPolicyEvaluationOutbox",
+        reliable_factory("evaluation"),
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "DispatchHumanReviewOutbox",
+        reliable_factory("review"),
+    )
+
+    assert dispatcher_module.main(["--once"]) == 0
+    assert identity_calls == 1
+    assert captured["analysis"]["claimed_by"] == "dispatcher:test:shared"
+    expected = {
+        "claimed_by": "dispatcher:test:shared",
+        "batch_size": 7,
+        "claim_ttl": timedelta(seconds=11),
+        "max_attempts": 13,
+        "retry_base": timedelta(seconds=2.5),
+        "retry_max": timedelta(seconds=45),
+    }
+    for name, queue in (
+        ("retrieval", "retrieval"),
+        ("grounding", "grounding"),
+        ("evaluation", "evaluation"),
+        ("review", "review"),
+    ):
+        values = captured[name]
+        assert values["session_factory"] is session_factory_marker
+        assert values["queue"] == queue
+        assert {key: values[key] for key in expected} == expected
 
 
 def test_dispatcher_registers_sigterm_and_sigint_as_graceful_stop(

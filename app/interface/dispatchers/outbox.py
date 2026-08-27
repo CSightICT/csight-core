@@ -5,6 +5,7 @@ import os
 import signal
 import socket
 from collections.abc import Sequence
+from datetime import timedelta
 from threading import Event
 from types import FrameType
 from typing import Protocol
@@ -12,11 +13,13 @@ from typing import Protocol
 from app.adapters.messaging import (
     CeleryAnalysisMessageQueue,
     CeleryGroundedExplanationMessageQueue,
+    CeleryHumanReviewMessageQueue,
     CeleryPolicyEvaluationMessageQueue,
     CeleryPolicyRetrievalMessageQueue,
 )
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.grounding_outbox import DispatchGroundedExplanationOutbox
+from app.adapters.persistence.human_review_outbox import DispatchHumanReviewOutbox
 from app.adapters.persistence.policy_engine_outbox import DispatchPolicyEvaluationOutbox
 from app.adapters.persistence.policy_query_outbox import DispatchPolicyRetrievalOutbox
 from app.adapters.persistence.session import create_session_factory
@@ -124,25 +127,58 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         celery = create_celery_app(settings)
+        dispatcher_identity = _dispatcher_identity()
         analysis_dispatcher = build_outbox_dispatcher(
             settings,
             queue=CeleryAnalysisMessageQueue(celery),
-            claimed_by=_dispatcher_identity(),
+            claimed_by=dispatcher_identity,
         )
         if settings.database_url_value is None:
             dispatcher = analysis_dispatcher
         else:
+            session_factory = create_session_factory(get_engine(settings))
+            claim_ttl = timedelta(seconds=settings.analysis_outbox_claim_seconds)
+            retry_base = timedelta(seconds=settings.analysis_outbox_retry_base_seconds)
+            retry_max = timedelta(seconds=settings.analysis_outbox_retry_max_seconds)
             policy_dispatcher = DispatchPolicyRetrievalOutbox(
-                session_factory=create_session_factory(get_engine(settings)),
+                session_factory=session_factory,
                 queue=CeleryPolicyRetrievalMessageQueue(celery),
+                claimed_by=dispatcher_identity,
+                batch_size=settings.analysis_outbox_batch_size,
+                claim_ttl=claim_ttl,
+                max_attempts=settings.analysis_outbox_max_attempts,
+                retry_base=retry_base,
+                retry_max=retry_max,
             )
             grounding_dispatcher = DispatchGroundedExplanationOutbox(
-                session_factory=create_session_factory(get_engine(settings)),
+                session_factory=session_factory,
                 queue=CeleryGroundedExplanationMessageQueue(celery),
+                claimed_by=dispatcher_identity,
+                batch_size=settings.analysis_outbox_batch_size,
+                claim_ttl=claim_ttl,
+                max_attempts=settings.analysis_outbox_max_attempts,
+                retry_base=retry_base,
+                retry_max=retry_max,
             )
             policy_evaluation_dispatcher = DispatchPolicyEvaluationOutbox(
-                session_factory=create_session_factory(get_engine(settings)),
+                session_factory=session_factory,
                 queue=CeleryPolicyEvaluationMessageQueue(celery),
+                claimed_by=dispatcher_identity,
+                batch_size=settings.analysis_outbox_batch_size,
+                claim_ttl=claim_ttl,
+                max_attempts=settings.analysis_outbox_max_attempts,
+                retry_base=retry_base,
+                retry_max=retry_max,
+            )
+            human_review_dispatcher = DispatchHumanReviewOutbox(
+                session_factory=session_factory,
+                queue=CeleryHumanReviewMessageQueue(celery),
+                claimed_by=dispatcher_identity,
+                batch_size=settings.analysis_outbox_batch_size,
+                claim_ttl=claim_ttl,
+                max_attempts=settings.analysis_outbox_max_attempts,
+                retry_base=retry_base,
+                retry_max=retry_max,
             )
             dispatcher = CompositeOutboxDispatcher(
                 (
@@ -150,6 +186,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     policy_dispatcher,
                     grounding_dispatcher,
                     policy_evaluation_dispatcher,
+                    human_review_dispatcher,
                 )
             )
     except Exception as error:

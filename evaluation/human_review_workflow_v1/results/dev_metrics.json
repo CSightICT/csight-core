@@ -1,0 +1,23 @@
+{
+  "assignment_accuracy": 1.0,
+  "audit_completeness_rate": 1.0,
+  "authorization_accuracy": 1.0,
+  "cross_tenant_violation_count": 0,
+  "dataset_hash": "6ee66be1330c99e1beb75db43857ac365d5061a45da43aacd60365df363d5a5f",
+  "decision_basis_validity": 1.0,
+  "decision_overwrite_count": 0,
+  "deterministic_replay_rate": 1.0,
+  "duplicate_decision_count": 0,
+  "duplicate_task_count": 0,
+  "outcome_relation_accuracy": 1.0,
+  "policy_created_final_decision_count": 0,
+  "record_count": 60,
+  "split": "dev",
+  "state_transition_accuracy": 1.0,
+  "task_mapping_accuracy": 1.0,
+  "task_priority_accuracy": 1.0,
+  "unauthorized_final_decision_count": 0,
+  "unknown_citation_basis_count": 0,
+  "worker_created_final_decision_count": 0,
+  "wrong_run_basis_count": 0
+}

@@ -13,7 +13,7 @@ def test_migration_0008_is_single_head_and_follows_0007() -> None:
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision("20260826_0008")
 
-    assert scripts.get_heads() == ["20260827_0010_policy_engine"]
+    assert scripts.get_heads() == ["20260827_0012_async_reliability"]
     assert revision is not None
     assert revision.down_revision == "20260826_0007"
 

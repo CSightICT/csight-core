@@ -20,6 +20,8 @@ class Permission(StrEnum):
     ANALYSIS_CREATE = "ANALYSIS_CREATE"
     ANALYSIS_READ = "ANALYSIS_READ"
     POLICY_READ = "POLICY_READ"
+    HUMAN_REVIEW_READ = "HUMAN_REVIEW_READ"
+    HUMAN_REVIEW_ACTION = "HUMAN_REVIEW_ACTION"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
@@ -32,10 +34,17 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.ANALYSIS_CREATE,
             Permission.ANALYSIS_READ,
             Permission.POLICY_READ,
+            Permission.HUMAN_REVIEW_READ,
+            Permission.HUMAN_REVIEW_ACTION,
         }
     ),
     Role.QUALITY_VIEWER: frozenset(
-        {Permission.CASE_READ, Permission.ANALYSIS_READ, Permission.POLICY_READ}
+        {
+            Permission.CASE_READ,
+            Permission.ANALYSIS_READ,
+            Permission.POLICY_READ,
+            Permission.HUMAN_REVIEW_READ,
+        }
     ),
 }
 

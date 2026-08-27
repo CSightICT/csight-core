@@ -1,12 +1,17 @@
-"""Thin Celery entrypoint for one reference-only text-extraction event."""
+"""Thin Celery entrypoints for reference-only durable request events."""
 
+import math
+from datetime import UTC, datetime
 from typing import cast
+from uuid import UUID
 
 from celery import Task
 from celery.exceptions import Reject
+from pydantic import ValidationError as PydanticValidationError
 
 from app.application.analysis import ExecuteTextExtractionCommand
 from app.application.grounding import ExecuteGroundedExplanationCommand
+from app.application.human_review import HumanReviewRequestedCommand
 from app.application.policy_engine import ExecutePolicyEvaluationCommand
 from app.application.policy_query_runs import ExecutePolicyRetrievalRunCommand
 from app.bootstrap.logging import bind_log_context, get_logger
@@ -15,13 +20,21 @@ from app.bootstrap.sprint2 import build_execute_analysis_stage
 from app.bootstrap.sprint4c2 import build_execute_policy_retrieval_run
 from app.bootstrap.sprint4c3a import build_execute_grounded_explanation
 from app.bootstrap.sprint5a import build_execute_policy_evaluation
+from app.bootstrap.sprint5b import build_create_review_task
 from app.interface.workers.celery_app import (
     ANALYSIS_REQUESTED_TASK_NAME,
     GROUNDED_EXPLANATION_REQUESTED_TASK_NAME,
+    HUMAN_REVIEW_REQUESTED_TASK_NAME,
     POLICY_EVALUATION_REQUESTED_TASK_NAME,
     POLICY_RETRIEVAL_REQUESTED_TASK_NAME,
     celery_app,
 )
+from app.platform.async_reliability import (
+    AsyncEventIntegrityError,
+    ExecutionAttemptsExhaustedError,
+    ExecutionLeaseActiveError,
+)
+from app.platform.human_review import ReviewPacketIntegrityError, ReviewTaskNotFoundError
 
 logger = get_logger(__name__)
 
@@ -94,15 +107,52 @@ def execute_policy_retrieval_task(
 ) -> dict[str, object]:
     """Validate five opaque identifiers and delegate all rules to the use case."""
 
-    del task
-    command = ExecutePolicyRetrievalRunCommand.model_validate(payload)
     try:
-        disposition = build_execute_policy_retrieval_run(get_settings()).execute(command)
+        command = ExecutePolicyRetrievalRunCommand.model_validate(payload)
+    except PydanticValidationError:
+        event_id = _valid_event_id(payload)
+        if event_id is not None:
+            try:
+                build_execute_policy_retrieval_run(get_settings()).record_poison_event(
+                    event_id=event_id
+                )
+            except Exception:
+                raise Reject(
+                    "invalid policy retrieval payload could not be durably failed",
+                    requeue=True,
+                ) from None
+        raise Reject("policy retrieval queue payload is invalid", requeue=False) from None
+    service = build_execute_policy_retrieval_run(get_settings())
+    try:
+        disposition = service.execute(command)
         return {**command.model_dump(), "disposition": disposition}
-    except Exception:
-        raise Reject(
-            "policy retrieval task did not reach a durable application outcome",
-            requeue=True,
+    except ExecutionLeaseActiveError as error:
+        settings = get_settings()
+        raise task.retry(
+            exc=error,
+            countdown=_lease_retry_countdown(error),
+            max_retries=settings.celery_task_max_retries + 2,
+        ) from None
+    except (AsyncEventIntegrityError, ExecutionAttemptsExhaustedError) as error:
+        return {**command.model_dump(), "disposition": "FAILED", "failure_code": error.code}
+    except Exception as error:
+        settings = get_settings()
+        retries = int(getattr(task.request, "retries", 0))
+        if retries >= settings.celery_task_max_retries:
+            service.record_failure(
+                command,
+                code="POLICY_RETRIEVAL_WORKER_RETRIES_EXHAUSTED",
+                message="Policy retrieval worker exhausted bounded infrastructure retries.",
+            )
+            return {
+                **command.model_dump(),
+                "disposition": "FAILED",
+                "failure_code": "POLICY_RETRIEVAL_WORKER_RETRIES_EXHAUSTED",
+            }
+        raise task.retry(
+            exc=error,
+            countdown=min(2**retries, settings.celery_retry_backoff_max_seconds),
+            max_retries=settings.celery_task_max_retries,
         ) from None
 
 
@@ -116,15 +166,52 @@ def execute_grounded_explanation_task(
 ) -> dict[str, object]:
     """Validate five opaque identifiers and delegate grounding to the use case."""
 
-    del task
-    command = ExecuteGroundedExplanationCommand.model_validate(payload)
     try:
-        disposition = build_execute_grounded_explanation(get_settings()).execute(command)
+        command = ExecuteGroundedExplanationCommand.model_validate(payload)
+    except PydanticValidationError:
+        event_id = _valid_event_id(payload)
+        if event_id is not None:
+            try:
+                build_execute_grounded_explanation(get_settings()).record_poison_event(
+                    event_id=event_id
+                )
+            except Exception:
+                raise Reject(
+                    "invalid grounded explanation payload could not be durably failed",
+                    requeue=True,
+                ) from None
+        raise Reject("grounded explanation queue payload is invalid", requeue=False) from None
+    service = build_execute_grounded_explanation(get_settings())
+    try:
+        disposition = service.execute(command)
         return {**command.model_dump(), "disposition": disposition}
-    except Exception:
-        raise Reject(
-            "grounded explanation task did not reach a durable application outcome",
-            requeue=True,
+    except ExecutionLeaseActiveError as error:
+        settings = get_settings()
+        raise task.retry(
+            exc=error,
+            countdown=_lease_retry_countdown(error),
+            max_retries=settings.celery_task_max_retries + 2,
+        ) from None
+    except (AsyncEventIntegrityError, ExecutionAttemptsExhaustedError) as error:
+        return {**command.model_dump(), "disposition": "FAILED", "failure_code": error.code}
+    except Exception as error:
+        settings = get_settings()
+        retries = int(getattr(task.request, "retries", 0))
+        if retries >= settings.celery_task_max_retries:
+            service.record_failure(
+                command,
+                code="GROUNDED_EXPLANATION_WORKER_RETRIES_EXHAUSTED",
+                message="Grounded explanation worker exhausted bounded infrastructure retries.",
+            )
+            return {
+                **command.model_dump(),
+                "disposition": "FAILED",
+                "failure_code": "GROUNDED_EXPLANATION_WORKER_RETRIES_EXHAUSTED",
+            }
+        raise task.retry(
+            exc=error,
+            countdown=min(2**retries, settings.celery_retry_backoff_max_seconds),
+            max_retries=settings.celery_task_max_retries,
         ) from None
 
 
@@ -138,13 +225,122 @@ def execute_policy_evaluation_task(
 ) -> dict[str, object]:
     """Validate opaque identifiers and invoke the deterministic use case."""
 
-    del task
-    command = ExecutePolicyEvaluationCommand.model_validate(payload)
     try:
-        disposition = build_execute_policy_evaluation(get_settings()).execute(command)
+        command = ExecutePolicyEvaluationCommand.model_validate(payload)
+    except PydanticValidationError:
+        event_id = _valid_event_id(payload)
+        if event_id is not None:
+            try:
+                build_execute_policy_evaluation(get_settings()).record_poison_event(
+                    event_id=event_id
+                )
+            except Exception:
+                raise Reject(
+                    "invalid policy evaluation payload could not be durably failed",
+                    requeue=True,
+                ) from None
+        raise Reject("policy evaluation queue payload is invalid", requeue=False) from None
+    service = build_execute_policy_evaluation(get_settings())
+    try:
+        disposition = service.execute(command)
         return {**command.model_dump(), "disposition": disposition}
-    except Exception:
-        raise Reject(
-            "policy evaluation task did not reach a durable application outcome",
-            requeue=True,
+    except ExecutionLeaseActiveError as error:
+        settings = get_settings()
+        raise task.retry(
+            exc=error,
+            countdown=_lease_retry_countdown(error),
+            max_retries=settings.celery_task_max_retries + 2,
         ) from None
+    except (AsyncEventIntegrityError, ExecutionAttemptsExhaustedError) as error:
+        return {**command.model_dump(), "disposition": "FAILED", "failure_code": error.code}
+    except Exception as error:
+        settings = get_settings()
+        retries = int(getattr(task.request, "retries", 0))
+        if retries >= settings.celery_task_max_retries:
+            service.record_failure(
+                command,
+                code="POLICY_EVALUATION_WORKER_RETRIES_EXHAUSTED",
+                message="Policy evaluation worker exhausted bounded infrastructure retries.",
+            )
+            return {
+                **command.model_dump(),
+                "disposition": "FAILED",
+                "failure_code": "POLICY_EVALUATION_WORKER_RETRIES_EXHAUSTED",
+            }
+        raise task.retry(
+            exc=error,
+            countdown=min(2**retries, settings.celery_retry_backoff_max_seconds),
+            max_retries=settings.celery_task_max_retries,
+        ) from None
+
+
+@celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]
+    bind=True,
+    name=HUMAN_REVIEW_REQUESTED_TASK_NAME,
+)
+def create_human_review_task(
+    task: Task,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    """Create only Task/Packet/CREATED audit rows; never a final decision."""
+
+    try:
+        command = HumanReviewRequestedCommand.model_validate(payload)
+    except PydanticValidationError:
+        event_id = _valid_event_id(payload)
+        if event_id is not None:
+            try:
+                build_create_review_task(get_settings()).record_poison_event(event_id=event_id)
+            except Exception:
+                raise Reject(
+                    "invalid human review payload could not be durably failed",
+                    requeue=True,
+                ) from None
+        raise Reject("human review queue payload is invalid", requeue=False) from None
+    service = build_create_review_task(get_settings())
+    try:
+        disposition = service.execute(command)
+        return {**command.model_dump(), "disposition": disposition}
+    except (AsyncEventIntegrityError, ReviewPacketIntegrityError, ReviewTaskNotFoundError) as error:
+        service.record_failure(
+            command,
+            code=str(getattr(error, "code", "HUMAN_REVIEW_INTEGRITY_FAILED")),
+            message="Human review request failed permanent integrity validation.",
+        )
+        raise Reject(
+            "human review request failed permanent integrity validation",
+            requeue=False,
+        ) from None
+    except Exception:
+        settings = get_settings()
+        retries = int(getattr(task.request, "retries", 0))
+        if retries >= settings.celery_task_max_retries:
+            service.record_failure(
+                command,
+                code="HUMAN_REVIEW_WORKER_RETRIES_EXHAUSTED",
+                message="Human review worker exhausted bounded infrastructure retries.",
+            )
+            raise Reject(
+                "human review task exhausted bounded infrastructure retries",
+                requeue=False,
+            ) from None
+        raise task.retry(
+            exc=RuntimeError("human review task hit a transient infrastructure failure"),
+            countdown=min(2**retries, settings.celery_retry_backoff_max_seconds),
+            max_retries=settings.celery_task_max_retries,
+        ) from None
+
+
+def _lease_retry_countdown(error: ExecutionLeaseActiveError) -> int:
+    return max(1, math.ceil((error.retry_at - datetime.now(UTC)).total_seconds()))
+
+
+def _valid_event_id(payload: dict[str, object]) -> str | None:
+    value = payload.get("event_id")
+    if not isinstance(value, str):
+        return None
+    try:
+        UUID(value)
+    except ValueError:
+        return None
+    return value

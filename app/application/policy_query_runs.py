@@ -5,8 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import date
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.application.policy_retrieval import SearchPolicyClauses
 from app.domains.product_defect_cs.query_builder import build_deterministic_query_plan
@@ -55,6 +56,15 @@ class ExecutePolicyRetrievalRunCommand(_DTO):
     case_id: str
     retrieval_run_id: str
     correlation_id: str
+
+    @field_validator("event_id", "tenant_id", "case_id", "retrieval_run_id")
+    @classmethod
+    def validate_uuid_identifiers(cls, value: str) -> str:
+        try:
+            UUID(value)
+        except ValueError as error:
+            raise ValueError("worker identifiers must be UUIDs") from error
+        return value
 
 
 def canonical_request_hash(case_id: str, command: StartPolicyRetrievalRunCommand) -> str:
@@ -138,7 +148,11 @@ class ExecutePolicyRetrievalRun:
 
     def execute(self, command: ExecutePolicyRetrievalRunCommand) -> str:
         source = self._repository.claim(
-            tenant_id=command.tenant_id, run_id=command.retrieval_run_id
+            event_id=command.event_id,
+            tenant_id=command.tenant_id,
+            case_id=command.case_id,
+            run_id=command.retrieval_run_id,
+            correlation_id=command.correlation_id,
         )
         if source is None:
             return "NOOP"
@@ -192,14 +206,6 @@ class ExecutePolicyRetrievalRun:
                 profile=MultiQueryFusionProfile(),
                 top_k=source.run.top_k,
             )
-            self._repository.succeed(
-                tenant_id=source.run.tenant_id,
-                run_id=source.run.id,
-                plan=plan,
-                hits=hits,
-                raw_query_hash=raw_hash,
-            )
-            return "SUCCEEDED"
         except Exception as error:
             code = getattr(error, "code", "POLICY_RETRIEVAL_FAILED")
             if code.startswith("LLM_"):
@@ -210,13 +216,45 @@ class ExecutePolicyRetrievalRun:
                 }.get(code, code)
             if isinstance(error, PolicyQueryBuilderInvalidOutputError):
                 code = error.code
-            self._repository.fail(
+            persisted = self._repository.fail(
                 tenant_id=source.run.tenant_id,
                 run_id=source.run.id,
+                event_id=command.event_id,
+                claim_token=source.claim_token,
                 code=str(code),
                 message="Policy retrieval execution failed.",
             )
-            return "FAILED"
+            return "FAILED" if persisted else "FENCED"
+        persisted = self._repository.succeed(
+            tenant_id=source.run.tenant_id,
+            run_id=source.run.id,
+            event_id=command.event_id,
+            claim_token=source.claim_token,
+            plan=plan,
+            hits=hits,
+            raw_query_hash=raw_hash,
+        )
+        return "SUCCEEDED" if persisted else "FENCED"
+
+    def record_failure(
+        self,
+        command: ExecutePolicyRetrievalRunCommand,
+        *,
+        code: str,
+        message: str,
+    ) -> None:
+        self._repository.record_consumer_failure(
+            event_id=command.event_id,
+            code=code,
+            message=message,
+        )
+
+    def record_poison_event(self, *, event_id: str) -> None:
+        self._repository.record_consumer_failure(
+            event_id=event_id,
+            code="POLICY_RETRIEVAL_QUEUE_PAYLOAD_INVALID",
+            message="Policy retrieval queue payload failed UUID validation.",
+        )
 
 
 __all__ = [

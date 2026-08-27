@@ -329,3 +329,9 @@ Policy Engine은 RAG 및 Grounded Explanation과 분리된 pure platform module�
 rule만 실행하며 FastAPI, SQLAlchemy, Celery, HTTPX, MinIO, LLM SDK를 import하지 않는다. API는
 Run+Input Snapshot+Outbox를 원자적으로 만들고 thin worker가 DB에서 rule/snapshot을 다시 읽는다.
 최종 결정은 계속 Human Review 책임이다.
+# Sprint 5B human-review boundary
+
+The deterministic Policy Engine publishes an identifier-only `human_review.requested.v1` event.
+The Human Review adapter creates a task and immutable packet; authenticated HTTP actions are the
+only final-decision path. Celery never resolves tasks. See `docs/review/HUMAN_REVIEW_ARCHITECTURE.md`
+and ADR-0077 through ADR-0088.

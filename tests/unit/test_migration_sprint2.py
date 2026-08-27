@@ -38,7 +38,7 @@ def test_sprint_2_revision_is_followed_by_the_sprint_3_revision() -> None:
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision(SPRINT_2_REVISION)
 
-    assert scripts.get_current_head() == "20260827_0010_policy_engine"
+    assert scripts.get_current_head() == "20260827_0012_async_reliability"
     assert revision is not None
     assert revision.down_revision == SPRINT_1_REVISION
 

@@ -73,8 +73,11 @@
 - [x] Qwen3.8-27B AWQ INT4 Artifact와 immutable revision 고정
 - [x] vLLM image digest, text-only/non-thinking/private authenticated 배포 자산
 - [x] 100건 합성 qualification Dataset과 평가기
-- [ ] 단일 RTX 4090 Cold Start 2회와 20분 Stability
-- [ ] 안전·품질·성능 Gate, 실제 external GPU 계약과 Backend E2E
+- [x] 단일 RTX 4090 Cold Start 2회와 20분 이상 Stability
+- [x] 안전 Gate와 실제 external GPU 계약·Backend E2E
+
+실제 모델 판정은 `QUALIFIED_WITH_LIMITATIONS`다. 구조·안전 Gate는 통과했지만 Action Accuracy와
+Missing Information 품질 한계가 있어 Human Review 없이 업무 결정을 만들 수 없다.
 
 세부 실행 상태와 실제 측정값은 `docs/progress/SPRINT_2_5_QWEN38_SERVING.md`에서 관리한다.
 QUALIFIED 판정 전에는 Sprint 2 Mock/Contract 결과를 실제 모델 검증으로 해석하지 않는다.
@@ -94,53 +97,56 @@ QUALIFIED 판정 전에는 Sprint 2 Mock/Contract 결과를 실제 모델 검증
 - [ADR-0011: Case와 Analysis Run 수명주기 분리](adr/0011-separate-case-and-analysis-lifecycles.md)
 - [ADR-0012: Qwen3.8 고정 Artifact의 Private Text-only 서빙](adr/0012-qwen38-private-text-serving.md)
 
-### Sprint 3 — Vision Integration
+### Sprint 3 — Vision Contract and Mock Integration
 
-- Vision Contract 확정
-- Mock → 실제 Vision API 전환
-- 이미지 품질 결과
-- Detection 정규화
-- Model Version 저장
-- LLM·Vision 병렬 실행
-- Evidence Reference Allowlist와 Private Object 접근 경계
-- Vision Stage/Attempt/Result의 Append-only Schema와 Migration
-- Text/Vision 부분 실패와 재개 상태 계약
+- [x] Canonical Vision Contract와 결정론적 Mock·Remote Adapter
+- [ ] 실제 Vision model/dataset/taxonomy/threshold qualification
+- [x] 이미지 품질 결과와 Detection 정규화
+- [x] Model·taxonomy·threshold·pre/postprocess Version 저장
+- [x] LLM·Vision 병렬 실행
+- [x] Evidence Reference Allowlist와 Private Object 접근 경계
+- [x] Vision Stage/Attempt/Result의 Append-only Schema와 Migration
+- [x] Text/Vision 부분 실패와 재개 상태 계약
 
 완료 기준:
 
 - Vision 모델 교체가 Domain 코드 수정 없이 가능
 - 부분 실패 상태가 정상 저장
 
-Sprint 3 시작 시점에 Vision 실행, LLM·Vision 병렬화, Alignment는 아직 구현되지 않은 것으로
-취급한다. Sprint 2 Text Extraction Run을 덮어쓰지 않고 별도 Stage/Result로 확장한다.
+Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision qualification과 Alignment는 아직
+완료되지 않았으며 Sprint 2 Text Extraction Run을 덮어쓰지 않는 별도 Stage/Result 경계를 유지한다.
 
-### Sprint 4 — Alignment, Policy, Review
+### Sprint 4~5B — Retrieval, Grounding, Policy, Human Review
 
-- Alignment v1
-- Policy Version과 Rule Evaluator
-- Routing Decision
-- 상담원 승인·수정·이관
-- Audit Log
-
-완료 기준:
-
-- 명확·모호·자료부족·고위험 Case가 다른 경로로 분기
-- AI 권고와 최종 판단 모두 보존
-
-### Sprint 5 — RAG, Report, Evaluation
-
-- 정책 문서 수집·Chunking
-- pgvector 검색
-- 근거 조항 연결
-- 검토 보고서
-- KPI 수집
-- Offline Evaluation Dataset
+- [ ] Alignment v1
+- [x] Versioned Policy Corpus와 RAW/HYBRID Retrieval·Top-3 Citation
+- [x] Citation-grounded Explanation 구조·allowlist
+- [x] Versioned deterministic Policy Evaluator
+- [x] Human Review Task·Packet·Claim·자료요청·이관·Resolve
+- [x] Append-only Review Action·Assignment·Decision 감사 기록
+- [ ] Case Resolution과 External Action `DRY_RUN`
+- [ ] 상담원 Web UI, Review Report와 KPI 집계
 
 완료 기준:
 
-- Case 단위 보고서 생성
-- 모델·정책·프롬프트 버전으로 결과 재현 가능
-- 핵심 KPI 산출 가능
+- 자료부족·고위험 Case가 서로 다른 Human Review Task로 분기
+- 정책 권고와 인증된 사람의 최종 판단을 별도로 보존
+- Closeout 전 async crash recovery·fencing·integrity Gate 통과
+
+### Sprint 5C — Resolution and External Action Simulation
+
+- Case 상태와 분리된 CAS Resolution Projection과 append-only Event
+- immutable typed External Action Intent
+- 입력 완전성 검증; 누락·오류는 `ACTION_NEEDS_INPUT`
+- 네트워크를 사용하지 않는 결정론적 `DRY_RUN`; `LIVE` fail-closed
+- Review Report snapshot, React 상담원 콘솔과 PoC KPI
+
+완료 기준:
+
+- Case 단위 결정·Resolution·Simulation 이력 조회
+- 필수 입력 누락 시 Attempt/Result 0
+- `LIVE` side effect 0, 중복 Intent/Result 0
+- Case 단위 immutable 보고서와 분자·분모·표본 수가 있는 KPI 조회
 
 ### Sprint 6 — Shadow Mode and Mentoring PoC
 
@@ -165,20 +171,20 @@ Sprint 3 시작 시점에 Vision 실행, LLM·Vision 병렬화, Alignment는 아
 - [x] Case Create Idempotency
 - [x] Celery / RabbitMQ Foundation
 - [x] LLM Structured Output
-- [ ] Vision Contract와 Adapter
+- [x] Vision Contract와 Mock/Remote Adapter
 - [x] Analysis Run / Versioning
 - [x] Transactional Outbox / Fenced Worker
 - [x] Analysis HTTP API / Idempotency
 - [ ] Alignment v1
-- [ ] Policy Evaluator
+- [x] Policy Evaluator
 - [ ] Routing Decision
-- [ ] Human Review
-- [ ] Audit Log
+- [x] Human Review
+- [x] Human Review Audit Log
 - [x] Case / Evidence E2E Test
 
 ## 4. P1 Backlog
 
-- [ ] 정책 문서 RAG
+- [x] 정책 문서 RAG
 - [ ] Report Export
 - [ ] SSE 상태 알림
 - [ ] Dashboard용 집계 API
@@ -190,17 +196,16 @@ Sprint 3 시작 시점에 Vision 실행, LLM·Vision 병렬화, Alignment는 아
 
 ## 5. 명시적 미구현 경계
 
-다음 기능은 Sprint 2 완료 항목이 아니며 후속 Sprint에서 별도 계약, Migration, 테스트와
+다음 기능은 현재 구현 완료 범위가 아니며 후속 단계에서 별도 계약, Migration, 테스트와
 운영 Guardrail을 갖춰야 한다.
 
-- [ ] 실제 Vision 분석과 Vision Result
+- [ ] 실제 Vision qualification과 결함별 평가
 - [ ] LLM·Vision Evidence Alignment
-- [ ] Policy Version/Rule Evaluation
-- [ ] Routing Decision
-- [ ] Human Review와 최종 업무 결정
-- [ ] Audit Log와 Review 이력
+- [ ] Case Resolution과 External Action `DRY_RUN`
+- [ ] 실제 외부 환불·교환·재배송·수리 실행
+- [ ] React 상담원 콘솔
 - [ ] Report 생성·Export
-- [ ] Policy Document RAG와 Retrieval Index
+- [ ] KPI 집계와 Shadow Mode 비교
 - [ ] SSE 진행 Event
 - [ ] Terminal Run 수동 Retry/DLQ 운영 API
 
@@ -276,7 +281,8 @@ Sprint 3 시작 시점에 Vision 실행, LLM·Vision 병렬화, Alignment는 아
 - [ ] 실제 Vision model/dataset/threshold calibration qualification
 - [ ] Evidence Alignment와 Claim↔Detection matching
 - [ ] Confidence calibration과 evidence sufficiency
-- [ ] Policy Engine과 Human Review
+- [x] Policy Engine과 Human Review 정상 업무 경로
+- [x] Sprint 5B async reliability Closeout Gate
 
 Alignment는 Sprint 3 결과 계약을 입력으로 하는 다음 단계이며 이번 Sprint에서 점수나 match를
 계산하지 않는다. Policy/Approval은 LLM·Vision 모델이 아니라 versioned rule과 Human Review가
@@ -288,9 +294,9 @@ Alignment는 Sprint 3 결과 계약을 입력으로 하는 다음 단계이며 �
 - [x] deterministic completeness/action consistency
 - [x] 합성 clause-based Policy Corpus와 version/tenant metadata
 - [x] Extraction/Retrieval/Grounding/Injection/Demo Gold와 report
-- [ ] Policy Document/Clause DB ingestion
-- [ ] BM25/dense/pgvector/hybrid retrieval와 evaluation
-- [ ] Grounded RAG 실행과 Policy Engine/Human Review
+- [x] Policy Document/Clause DB ingestion
+- [x] BM25/dense/pgvector/hybrid retrieval와 evaluation
+- [x] Grounded RAG 구조 실행과 Policy Engine/Human Review 정상 경로
 
 Sprint 4A는 검색·결정 runtime을 미리 구현하지 않고 Sprint 4B가 측정할 Reference와 Gold를 먼저
 고정한다.
@@ -302,10 +308,11 @@ Sprint 4A는 검색·결정 runtime을 미리 구현하지 않고 Sprint 4B가 �
 - [x] Versioned RRF와 principal-scoped read-only API
 - [x] Locked Dev 80/Test 40 retrieval baseline
 - [x] Qwen3-Reranker-0.6B와 candidate reranking — qualified, no measurable gain
-- [ ] Policy Query Builder 실행과 citation pack
-- [ ] Grounded explanation/citation validation/unsupported claim evaluation
+- [x] Policy Query Builder 실행과 immutable Citation Pack
+- [x] Grounded explanation/citation validation/unsupported claim 구조 평가
 
-Policy Engine, 승인·거절, routing, human review와 report는 별도 후속 단계다.
+실제 Qwen semantic grounding 성능, Case Resolution, 외부 Action, UI와 Report는 별도 후속
+Gate로 남는다.
 
 Sprint 4C-2는 raw/deterministic/LLM query를 동일 frozen retrieval/reranker 경계에서 비교한다.
 Sprint 4C-3는 그 뒤 citation pack과 grounded generation을 독립 평가한다.
@@ -320,8 +327,8 @@ injection evaluation, and grounded RAG evaluation.
 ## Sprint 4C-3A / 4C-3B Split
 
 4C-3A는 Citation Pack, strict grounding schema, deterministic validators, Mock E2E와 구조 평가를
-완료한다. 4C-3B는 실제 Qwen Dev/freeze/Test, semantic faithfulness, unsupported claim과 injection
-모델 평가를 수행한다. Sprint 5에서 versioned Policy Engine과 Human Review를 연결한다.
+완료했다. 4C-3B는 Local MLX PoC까지 완료했지만 실제 Qwen semantic faithfulness의 승격 Gate는
+남아 있다. Sprint 5A/5B에서 versioned Policy Engine과 Human Review 정상 경로를 연결했다.
 
 4C-3B 결과는 Local Runtime/Grounding qualified-with-limitations, RAW Query 유지다. 후속은 같은
 pipeline의 Qwen3.8 RTX4090/vLLM 재qualification, 실제 timeout fault injection, Sprint 5A
@@ -330,6 +337,17 @@ versioned Policy Engine과 Human Review Gate다.
 ## Sprint 5A Status and next boundary
 
 Sprint 5A는 versioned structured rule core, source traceability, frozen input, append-only async
-evaluation과 synthetic exactness evaluation을 구현한다. 다음 단계는 Human Review UI/override/
-routing/final report 전에 reviewer decision model과 감사 계약을 별도 설계하는 것이다. Evidence
-Alignment, real Vision qualification, Qwen3.8 재평가, LLM rule generation은 여전히 미구현이다.
+evaluation과 synthetic exactness evaluation을 구현했다. Sprint 5B에서 reviewer decision model과
+감사 계약을 구현했고, 비동기 reliability Closeout Gate도 통과했다. Evidence Alignment, real
+Vision qualification, Qwen3.8 재평가와 LLM rule generation은 여전히 미구현이다.
+
+## Sprint 5B Closeout Gate와 Sprint 5C
+
+Sprint 5B의 정상 Human Review 경로와 durable outbox crash recovery, publish backoff, worker
+lease와 late-result fencing, permanent/retry-exhausted 실패 기록, Packet/Decision hash 재검증,
+격리 Integration DB와 전체 회귀를 모두 검증해 Closeout을 확정했다.
+
+그 다음 Sprint 5C는 Case 상태와 분리된 Resolution Projection, immutable Action Intent와
+External Action `DRY_RUN`을 구현한다. 필수 입력을 LLM/rationale에서 추론하지 않으며 누락 시
+`ACTION_NEEDS_INPUT`으로 끝낸다. 실제 외부 실행, Case Closure, Decision amendment, 알림과
+Review 단계 입력 보완은 Sprint 5C 범위 밖이다.

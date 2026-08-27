@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.platform.policy_engine import (
     PolicyEvaluation,
@@ -21,6 +21,7 @@ class _DTO(BaseModel):
 
 class PolicyEvaluationExecutionSource(_DTO):
     run: PolicyEvaluationRun
+    claim_token: str = Field(min_length=1)
     rule_set: PolicyRuleSet
     input_snapshot: PolicyEvaluationInput
 
@@ -51,11 +52,44 @@ class PolicyEngineRepository(Protocol):
         self, *, tenant_id: str, case_id: str, run_id: str
     ) -> PolicyEvaluationRunDetail | None: ...
 
-    def claim(self, *, tenant_id: str, run_id: str) -> PolicyEvaluationExecutionSource | None: ...
+    def claim(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicyEvaluationExecutionSource | None: ...
 
-    def succeed(self, *, tenant_id: str, run_id: str, result: PolicyEvaluation) -> None: ...
+    def succeed(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        result: PolicyEvaluation,
+    ) -> bool: ...
 
-    def fail(self, *, tenant_id: str, run_id: str, code: str, message: str) -> None: ...
+    def fail(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        code: str,
+        message: str,
+    ) -> bool: ...
+
+    def record_consumer_failure(
+        self,
+        *,
+        event_id: str,
+        code: str,
+        message: str,
+    ) -> None: ...
 
 
 __all__ = [

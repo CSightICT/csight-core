@@ -346,3 +346,8 @@ Qwen3.8 Production Target과 분리한다. Query Builder가 RAW를 일관되게 
 Policy Engine v1은 합성 Dev 80/Test 40으로 exact correctness를 평가한다. Dev 뒤 profile과 hash를
 freeze하고 Test는 한 번만 실행한다. Local action/ambiguity는 hard field에서 제외하고 issue/claim
 사용 규칙은 review-required다. 이 평가는 model quality나 실제 기업 정책 유효성을 주장하지 않는다.
+# Sprint 5B evaluation scope
+
+`human_review_workflow_v1` is a deterministic synthetic 60-Dev/30-sealed-Test workflow dataset.
+It measures state, authorization, assignment, basis, outcome relation, audit coverage, and replay;
+it does not measure model quality or real company-policy correctness.

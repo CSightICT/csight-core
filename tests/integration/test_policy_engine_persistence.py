@@ -1,7 +1,7 @@
 """Opt-in PostgreSQL append-only policy evaluation integration flow."""
 
 import os
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,6 +14,7 @@ from app.adapters.persistence.models import (
     LLMExtractionResultV2Model,
     PolicyConditionEvaluationResultModel,
     PolicyEvaluationEffectModel,
+    PolicyEvaluationOutboxEventModel,
     PolicyEvaluationRunModel,
     PolicyRuleEvaluationResultModel,
     TenantModel,
@@ -125,8 +126,19 @@ def test_append_only_policy_execution_replay_duplicate_and_tenant_scope() -> Non
             request_hash="e" * 64,
         )
 
+    with factory.begin() as session:
+        event = session.scalar(
+            select(PolicyEvaluationOutboxEventModel)
+            .where(PolicyEvaluationOutboxEventModel.policy_evaluation_run_id == run.id)
+            .with_for_update()
+        )
+        assert event is not None
+        event.status = "PUBLISHED"
+        event.attempt_count = 1
+        event.published_at = datetime.now(UTC)
+
     command = ExecutePolicyEvaluationCommand(
-        event_id=str(uuid4()),
+        event_id=str(event.id),
         tenant_id=tenant_id,
         case_id=case_id,
         policy_evaluation_run_id=run.id,

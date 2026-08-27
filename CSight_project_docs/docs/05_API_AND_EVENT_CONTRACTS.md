@@ -529,3 +529,9 @@ path와 raw prompt/response/reasoning은 공개하거나 저장하지 않는다.
 POST body는 `analysis_run_id`, `as_of_date`만 받으며 tenant/rule-set은 Core가 선택한다. 새 요청은
 202, replay는 200, key 충돌은 409다. Queue에는 event/tenant/case/evaluation-run/correlation ID만
 들어가며 rule JSON, 분석 JSON, 고객 원문, JWT는 들어가지 않는다.
+# Sprint 5B API and event contracts
+
+`GET /api/v1/human-review-tasks` and task/case detail routes are readable by all current roles.
+Claim, release, evidence request, resume, escalate, and resolve routes require human-review action
+permission. Resolve is the only final-decision creator. The queue event contains only event, tenant,
+case, policy evaluation, and correlation IDs.

@@ -395,3 +395,9 @@ Migration `20260827_0010_policy_engine`은 rule set/activation/rule/source link�
 run/input snapshot/rule result/condition result/effect/outbox 10개 table을 추가한다. Composite
 tenant FK가 source와 result graph를 격리하고, version unique/hash checks 및 active partial unique
 index가 immutable selection을 보호한다.
+# Migration 20260827_0011_human_review
+
+Seven tenant-scoped tables persist task projections, immutable packets, append-only actions,
+assignment history, immutable decisions, decision basis, and durable request events. Composite
+foreign keys and unique constraints prevent cross-tenant links, duplicate packets, duplicate task
+types per policy run, duplicate action versions, and duplicate decisions.

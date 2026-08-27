@@ -21,6 +21,7 @@ class _DTO(BaseModel):
 
 class GroundedExplanationExecutionSource(_DTO):
     run: GroundedExplanationRun
+    claim_token: str = Field(min_length=1)
     case_summary: str = Field(min_length=1, repr=False)
     citation_pack: CitationPack
 
@@ -56,7 +57,13 @@ class GroundedExplanationRunRepository(Protocol):
     ) -> GroundedExplanationRunDetail | None: ...
 
     def claim(
-        self, *, tenant_id: str, run_id: str
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
     ) -> GroundedExplanationExecutionSource | None: ...
 
     def succeed(
@@ -64,15 +71,34 @@ class GroundedExplanationRunRepository(Protocol):
         *,
         tenant_id: str,
         run_id: str,
+        event_id: str,
+        claim_token: str,
         explanation: GroundedPolicyExplanation,
         metrics: GroundingValidationMetrics,
         provider: ProviderExecutionMetadata,
         prompt_name: str,
         prompt_version: str,
         prompt_hash: str,
-    ) -> None: ...
+    ) -> bool: ...
 
-    def fail(self, *, tenant_id: str, run_id: str, code: str, message: str) -> None: ...
+    def fail(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        code: str,
+        message: str,
+    ) -> bool: ...
+
+    def record_consumer_failure(
+        self,
+        *,
+        event_id: str,
+        code: str,
+        message: str,
+    ) -> None: ...
 
 
 __all__ = [

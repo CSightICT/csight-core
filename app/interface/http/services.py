@@ -28,6 +28,11 @@ from app.application.grounding import (
     ListGroundedExplanationRuns,
     StartGroundedExplanation,
 )
+from app.application.human_review import (
+    GetHumanReviewTask,
+    HumanReviewActions,
+    ListHumanReviewTasks,
+)
 from app.application.policy_engine import (
     GetPolicyEvaluation,
     ListPolicyEvaluations,
@@ -218,3 +223,12 @@ class Sprint5AServiceContainer:
     start_policy_evaluation: StartPolicyEvaluation
     list_policy_evaluations: ListPolicyEvaluations
     get_policy_evaluation: GetPolicyEvaluation
+
+
+@dataclass(frozen=True, slots=True)
+class Sprint5BServiceContainer:
+    """Human-only review queue and action services."""
+
+    list_tasks: ListHumanReviewTasks
+    get_task: GetHumanReviewTask
+    actions: HumanReviewActions

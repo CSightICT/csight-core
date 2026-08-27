@@ -274,3 +274,9 @@ provider failure는 Mock fallback 없이 기존 retry/failure 의미론으로 �
 Typed allowlist 외 field/operator/effect는 ingestion 전에 거부한다. Python expression, eval/exec,
 raw SQL/JSONPath와 자연어 규칙 실행은 없다. Input snapshot은 typed values와 qualification만
 보존하고 고객 원문을 복제하지 않는다. Effects는 최종 승인·거절·fraud·liability를 표현하지 못한다.
+# Sprint 5B authorization and operations
+
+Viewer access is read-only. Reviewer actions are assignee-scoped; manager/safety and escalated claim
+require Admin. Admin overrides are included in action payload audit. Review records exclude prompts,
+model responses, reasoning, customer text, vectors, JWTs, and secrets. The worker consumes the
+dedicated durable `human-review` queue.

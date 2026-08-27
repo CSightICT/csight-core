@@ -2,9 +2,10 @@
 
 > 이미지·텍스트 기반 상품 불량 CS 의사결정 지원 플랫폼
 
-이 저장소는 CSight의 **Sprint 5A Versioned Deterministic Policy Engine Core**까지 구현합니다. Python 3.12,
-FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며,
-API와 Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
+이 저장소는 CSight의 **Sprint 5B Human Review Workflow와 Async Reliability Closeout**까지
+구현·검증했습니다. Python 3.12,
+FastAPI, SQLAlchemy 2/Alembic, Celery/RabbitMQ, PostgreSQL/pgvector, MinIO를 사용하며 API와
+Worker는 같은 이미지에서 서로 다른 프로세스로 실행됩니다.
 
 Sprint 1의 JWT, Tenant 격리, Case와 Private Evidence 기능 위에 Analysis Run·Stage·Attempt,
 Transactional Outbox, 얇은 Celery Worker, 버전 고정 Prompt Registry, Text/Vision Provider,
@@ -14,7 +15,8 @@ Sprint 4B는 immutable policy corpus ingestion과 hybrid retrieval을, 4C-2는 C
 planning을 추가했습니다. 4C-3A는 immutable Citation Pack, strict grounded explanation schema,
 결정론적 citation allowlist와 비동기 Mock E2E를 추가합니다. Sprint 5A는 검색/설명과 분리된
 immutable typed rule, qualification-aware input snapshot, append-only policy evaluation을 추가합니다.
-정책 효과는 review guidance이며 최종 승인·거절은 포함하지 않습니다.
+정책 효과 자체는 review guidance이며 승인·거절을 만들지 않습니다. Sprint 5B에서 인증된 사람이
+Review Packet을 확인하고 Resolve할 때에만 immutable Human Decision을 기록합니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -553,3 +555,28 @@ make smoke-local-llm-e2e
 
 자세한 실행·평가 규칙은 [`docs/llm/LOCAL_MLX_RUNTIME_GUIDE.md`](docs/llm/LOCAL_MLX_RUNTIME_GUIDE.md)와
 [`docs/progress/SPRINT_4C3B_LOCAL_MLX_POC.md`](docs/progress/SPRINT_4C3B_LOCAL_MLX_POC.md)를 봅니다.
+
+## Sprint 5B human review workflow
+
+성공한 Policy Evaluation의 review effect는 `human_review.requested.v1`을 통해 하나의 Task와
+immutable Packet으로 연결됩니다. Queue/Detail은 세 역할 모두 읽을 수 있지만 Claim과 Action은
+Admin/Reviewer만 가능하고, Final Decision은 인증된 사람의 명시적 Resolve 요청에서만 생성됩니다.
+Worker와 Policy/LLM/Vision/RAG는 Decision을 만들 수 없습니다.
+
+```bash
+make build-human-review-evaluation
+make validate-human-review-evaluation
+make evaluate-human-review-workflow
+make smoke-human-review
+make inspect-human-review-queue
+```
+
+Review Packet은 qualification scope와 정책/분석/citation 식별자를 고정하고 고객 원문·prompt·raw
+model response·reasoning은 복제하지 않습니다. Sprint 5B는 실제 환불/교환, 결제, CRM, 알림,
+보고서, UI, Decision amendment를 수행하지 않습니다. 자세한 계약은
+[`docs/review/HUMAN_REVIEW_ARCHITECTURE.md`](docs/review/HUMAN_REVIEW_ARCHITECTURE.md)를 참조합니다.
+
+Sprint 5B Closeout은 비동기 outbox의 crash recovery·backoff·terminal failure 기록, 실행 lease와
+late-result fencing, Packet/Decision hash 재검증, 격리 Integration DB를 포함한 Reliability Gate와
+전체 회귀를 통과했습니다. 다음 구현 단계는 Case 상태와 분리된 Resolution Projection과 네트워크
+부작용이 없는 External Action `DRY_RUN`입니다.

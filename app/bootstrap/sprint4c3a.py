@@ -1,5 +1,7 @@
 """Sprint 4C-3A citation-grounding composition root."""
 
+from datetime import timedelta
+
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.grounding import SQLAlchemyGroundedExplanationRunRepository
 from app.adapters.persistence.session import create_session_factory
@@ -52,7 +54,9 @@ def build_sprint4c3a_services(settings: Settings) -> Sprint4C3AServiceContainer:
 def build_execute_grounded_explanation(settings: Settings) -> ExecuteGroundedExplanation:
     return ExecuteGroundedExplanation(
         repository=SQLAlchemyGroundedExplanationRunRepository(
-            create_session_factory(get_engine(settings))
+            create_session_factory(get_engine(settings)),
+            lease_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),
+            max_execution_attempts=settings.celery_task_max_retries + 1,
         ),
         llm=build_llm_provider(settings),
         prompt=_grounding_prompt(settings),

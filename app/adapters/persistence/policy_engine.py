@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.adapters.persistence.async_events import (
+    begin_consumer_attempt,
+    consumer_failure_may_terminalize_run,
+    event_allows_completion,
+    mark_event_consumed,
+    mark_event_failed,
+    record_rejected_dispatch_recovery,
+    recover_dispatch_failure,
+    validate_request_event,
+)
 from app.adapters.persistence.models import (
     AnalysisRunModel,
     AnalysisStageRunModel,
     CaseEvidenceModel,
     CaseModel,
+    HumanReviewRequestEventModel,
     LLMExtractionResultV2Model,
     PolicyClauseModel,
     PolicyConditionEvaluationResultModel,
@@ -27,6 +38,11 @@ from app.adapters.persistence.models import (
     PolicyRuleSourceClauseModel,
     TenantModel,
     UserModel,
+)
+from app.platform.async_reliability import (
+    AsyncEventIntegrityError,
+    ExecutionAttemptsExhaustedError,
+    ExecutionLeaseActiveError,
 )
 from app.platform.errors import CaseNotFoundError, IdempotencyKeyReusedError, ValidationError
 from app.platform.policy_engine import (
@@ -53,8 +69,20 @@ from app.ports.policy_engine import PolicyEvaluationExecutionSource, PolicyEvalu
 
 
 class SQLAlchemyPolicyEngineRepository:
-    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        *,
+        lease_ttl: timedelta = timedelta(minutes=5),
+        max_execution_attempts: int = 4,
+    ) -> None:
         self._factory = session_factory
+        if lease_ttl.total_seconds() <= 0:
+            raise ValueError("lease_ttl must be positive")
+        self._lease_ttl = lease_ttl
+        if max_execution_attempts <= 0:
+            raise ValueError("max_execution_attempts must be positive")
+        self._max_execution_attempts = max_execution_attempts
 
     def ingest(self, rule_sets: tuple[PolicyRuleSet, ...]) -> tuple[int, int]:
         inserted_sets = inserted_rules = 0
@@ -383,60 +411,260 @@ class SQLAlchemyPolicyEngineRepository:
                 evaluation=_load_evaluation(session, row) if row.status == "SUCCEEDED" else None,
             )
 
-    def claim(self, *, tenant_id: str, run_id: str) -> PolicyEvaluationExecutionSource | None:
-        tenant_uuid, run_uuid = UUID(tenant_id), UUID(run_id)
+    def claim(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicyEvaluationExecutionSource | None:
+        event_uuid, tenant_uuid, case_uuid, run_uuid = map(
+            UUID, (event_id, tenant_id, case_id, run_id)
+        )
+        now = datetime.now(UTC)
+        claim_token = uuid4()
+        deferred_error: RuntimeError | None = None
+        source: PolicyEvaluationExecutionSource | None = None
         with self._factory.begin() as session:
-            claimed = session.execute(
-                update(PolicyEvaluationRunModel)
-                .where(
-                    PolicyEvaluationRunModel.tenant_id == tenant_uuid,
-                    PolicyEvaluationRunModel.id == run_uuid,
-                    PolicyEvaluationRunModel.status == "QUEUED",
-                )
-                .values(status="RUNNING", started_at=datetime.now(UTC))
-                .returning(PolicyEvaluationRunModel.id)
-            ).scalar_one_or_none()
-            if claimed is None:
-                return None
-            row = session.get(PolicyEvaluationRunModel, run_uuid)
-            assert row is not None
-            snapshot = session.scalar(
-                select(PolicyEvaluationInputSnapshotModel).where(
-                    PolicyEvaluationInputSnapshotModel.tenant_id == tenant_uuid,
-                    PolicyEvaluationInputSnapshotModel.policy_evaluation_run_id == run_uuid,
-                )
+            event = session.scalar(
+                select(PolicyEvaluationOutboxEventModel)
+                .where(PolicyEvaluationOutboxEventModel.id == event_uuid)
+                .with_for_update()
             )
-            assert snapshot is not None
-            qualifications = snapshot.source_qualification_metadata
-            source = PolicyEvaluationExecutionSource(
-                run=_to_run(session, row),
-                rule_set=_load_rule_set(session, row.rule_set_id),
-                input_snapshot=PolicyEvaluationInput(
-                    values=snapshot.input_values,
-                    llm_qualification=SourceQualification(str(qualifications["llm"])),
-                    vision_qualification=SourceQualification(str(qualifications["vision"])),
-                    alignment_qualification=SourceQualification(str(qualifications["alignment"])),
-                ),
+            if event is None:
+                raise AsyncEventIntegrityError(
+                    code="POLICY_EVALUATION_EVENT_NOT_FOUND",
+                    message="The policy evaluation request event was not found.",
+                )
+            dispatch_failure = (
+                event.status == "FAILED" and event.failure_code == "POLICY_EVALUATION_OUTBOX_FAILED"
+            )
+            integrity_error = validate_request_event(
+                event,
+                tenant_id=tenant_uuid,
+                case_id=case_uuid,
+                correlation_id=correlation_id,
+                run_id=run_uuid,
+                run_attribute="policy_evaluation_run_id",
             )
             if (
-                canonical_hash({"values": snapshot.input_values, "qualifications": qualifications})
-                != snapshot.snapshot_hash
+                dispatch_failure
+                and integrity_error is not None
+                and integrity_error.code == "ASYNC_EVENT_STATE_INVALID"
             ):
-                raise ValidationError("Policy evaluation snapshot hash mismatch.")
-            return source
+                recover_dispatch_failure(
+                    event,
+                    now=now,
+                    dispatch_failure_code="POLICY_EVALUATION_OUTBOX_FAILED",
+                )
+                integrity_error = validate_request_event(
+                    event,
+                    tenant_id=tenant_uuid,
+                    case_id=case_uuid,
+                    correlation_id=correlation_id,
+                    run_id=run_uuid,
+                    run_attribute="policy_evaluation_run_id",
+                )
+            if event.status == "CONSUMED" or (event.status == "FAILED" and not dispatch_failure):
+                return None
+            begin_consumer_attempt(event)
+            if integrity_error is not None:
+                actual_run = session.scalar(
+                    select(PolicyEvaluationRunModel)
+                    .where(
+                        PolicyEvaluationRunModel.tenant_id == event.tenant_id,
+                        PolicyEvaluationRunModel.id == event.policy_evaluation_run_id,
+                    )
+                    .with_for_update()
+                )
+                may_terminalize = actual_run is None or consumer_failure_may_terminalize_run(
+                    status=actual_run.status,
+                    lease_expires_at=actual_run.lease_expires_at,
+                    now=now,
+                )
+                if actual_run is not None and may_terminalize:
+                    actual_run.status = "FAILED"
+                    actual_run.started_at = actual_run.started_at or now
+                    actual_run.completed_at = now
+                    actual_run.failure_code = "POLICY_EVALUATION_EVENT_INTEGRITY_FAILED"
+                    actual_run.failure_message = "Policy evaluation event integrity failed."
+                    actual_run.claim_token = None
+                    actual_run.lease_expires_at = None
+                if not may_terminalize:
+                    event.consumer_last_error = (
+                        "Rejected mismatched delivery while a newer execution lease is active."
+                    )
+                elif dispatch_failure:
+                    record_rejected_dispatch_recovery(event, message=str(integrity_error))
+                else:
+                    mark_event_failed(
+                        event,
+                        now=now,
+                        code=integrity_error.code,
+                        message=str(integrity_error),
+                    )
+                deferred_error = integrity_error
+            else:
+                row = session.scalar(
+                    select(PolicyEvaluationRunModel)
+                    .where(
+                        PolicyEvaluationRunModel.tenant_id == tenant_uuid,
+                        PolicyEvaluationRunModel.id == run_uuid,
+                    )
+                    .with_for_update()
+                )
+                if row is None or row.case_id != case_uuid:
+                    error = AsyncEventIntegrityError(
+                        code="POLICY_EVALUATION_RUN_MISMATCH",
+                        message="The policy evaluation run does not match the request event.",
+                    )
+                    mark_event_failed(event, now=now, code=error.code, message=str(error))
+                    deferred_error = error
+                elif row.status in {"SUCCEEDED", "FAILED"}:
+                    mark_event_consumed(event, now=now)
+                elif (
+                    row.status == "RUNNING"
+                    and row.lease_expires_at is not None
+                    and row.lease_expires_at > now
+                ):
+                    event.consumer_last_error = "Execution lease is still active."
+                    deferred_error = ExecutionLeaseActiveError(retry_at=row.lease_expires_at)
+                elif row.execution_attempt_count >= self._max_execution_attempts:
+                    row.status = "FAILED"
+                    row.completed_at = now
+                    row.failure_code = "POLICY_EVALUATION_WORKER_ATTEMPTS_EXHAUSTED"
+                    row.failure_message = "Policy evaluation worker recovery attempts exhausted."
+                    row.claim_token = None
+                    row.lease_expires_at = None
+                    mark_event_failed(
+                        event,
+                        now=now,
+                        code="POLICY_EVALUATION_WORKER_ATTEMPTS_EXHAUSTED",
+                        message="Policy evaluation worker recovery attempts exhausted.",
+                    )
+                    deferred_error = ExecutionAttemptsExhaustedError(
+                        code="POLICY_EVALUATION_WORKER_ATTEMPTS_EXHAUSTED"
+                    )
+                else:
+                    snapshot = session.scalar(
+                        select(PolicyEvaluationInputSnapshotModel).where(
+                            PolicyEvaluationInputSnapshotModel.tenant_id == tenant_uuid,
+                            PolicyEvaluationInputSnapshotModel.policy_evaluation_run_id == run_uuid,
+                        )
+                    )
+                    if snapshot is None or (
+                        canonical_hash(
+                            {
+                                "values": snapshot.input_values,
+                                "qualifications": snapshot.source_qualification_metadata,
+                            }
+                        )
+                        != snapshot.snapshot_hash
+                    ):
+                        row.status = "FAILED"
+                        row.started_at = row.started_at or now
+                        row.completed_at = now
+                        row.failure_code = "POLICY_EVALUATION_SOURCE_INTEGRITY_FAILED"
+                        row.failure_message = "Policy evaluation source integrity failed."
+                        row.claim_token = None
+                        row.lease_expires_at = None
+                        mark_event_failed(
+                            event,
+                            now=now,
+                            code="POLICY_EVALUATION_SOURCE_INTEGRITY_FAILED",
+                            message="Policy evaluation source integrity failed.",
+                        )
+                        deferred_error = AsyncEventIntegrityError(
+                            code="POLICY_EVALUATION_SOURCE_INTEGRITY_FAILED",
+                            message="Policy evaluation source integrity failed.",
+                        )
+                    else:
+                        rule_set = _load_rule_set(session, row.rule_set_id)
+                        if rule_set.content_hash != row.rule_set_hash:
+                            row.status = "FAILED"
+                            row.started_at = row.started_at or now
+                            row.completed_at = now
+                            row.failure_code = "POLICY_EVALUATION_RULE_SET_HASH_MISMATCH"
+                            row.failure_message = "Policy rule-set hash mismatch."
+                            row.claim_token = None
+                            row.lease_expires_at = None
+                            mark_event_failed(
+                                event,
+                                now=now,
+                                code="POLICY_EVALUATION_RULE_SET_HASH_MISMATCH",
+                                message="Policy rule-set hash mismatch.",
+                            )
+                            deferred_error = AsyncEventIntegrityError(
+                                code="POLICY_EVALUATION_RULE_SET_HASH_MISMATCH",
+                                message="Policy rule-set hash mismatch.",
+                            )
+                        else:
+                            row.status = "RUNNING"
+                            row.started_at = row.started_at or now
+                            row.claim_token = claim_token
+                            row.lease_expires_at = now + self._lease_ttl
+                            row.execution_attempt_count += 1
+                            qualifications = snapshot.source_qualification_metadata
+                            source = PolicyEvaluationExecutionSource(
+                                run=_to_run(session, row),
+                                claim_token=str(claim_token),
+                                rule_set=rule_set,
+                                input_snapshot=PolicyEvaluationInput(
+                                    values=snapshot.input_values,
+                                    llm_qualification=SourceQualification(
+                                        str(qualifications["llm"])
+                                    ),
+                                    vision_qualification=SourceQualification(
+                                        str(qualifications["vision"])
+                                    ),
+                                    alignment_qualification=SourceQualification(
+                                        str(qualifications["alignment"])
+                                    ),
+                                ),
+                            )
+        if deferred_error is not None:
+            raise deferred_error
+        return source
 
-    def succeed(self, *, tenant_id: str, run_id: str, result: PolicyEvaluation) -> None:
+    def succeed(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        result: PolicyEvaluation,
+    ) -> bool:
         now = datetime.now(UTC)
         with self._factory.begin() as session:
+            event = session.scalar(
+                select(PolicyEvaluationOutboxEventModel)
+                .where(
+                    PolicyEvaluationOutboxEventModel.tenant_id == UUID(tenant_id),
+                    PolicyEvaluationOutboxEventModel.id == UUID(event_id),
+                    PolicyEvaluationOutboxEventModel.policy_evaluation_run_id == UUID(run_id),
+                )
+                .with_for_update()
+            )
+            if event is None or not event_allows_completion(
+                event,
+                dispatch_failure_code="POLICY_EVALUATION_OUTBOX_FAILED",
+            ):
+                return False
             run = session.scalar(
-                select(PolicyEvaluationRunModel).where(
+                select(PolicyEvaluationRunModel)
+                .where(
                     PolicyEvaluationRunModel.tenant_id == UUID(tenant_id),
                     PolicyEvaluationRunModel.id == UUID(run_id),
                     PolicyEvaluationRunModel.status == "RUNNING",
+                    PolicyEvaluationRunModel.claim_token == UUID(claim_token),
                 )
+                .with_for_update()
             )
             if run is None:
-                return
+                return False
             rules = {
                 row.rule_id: row
                 for row in session.scalars(
@@ -488,23 +716,136 @@ class SQLAlchemyPolicyEngineRepository:
             run.status = "SUCCEEDED"
             run.summary_status = result.summary_status.value
             run.completed_at = now
+            run.claim_token = None
+            run.lease_expires_at = None
+            mark_event_consumed(event, now=now)
+            review_effects = {
+                PolicyEffectType.REQUIRE_HUMAN_REVIEW,
+                PolicyEffectType.REQUIRE_ADDITIONAL_EVIDENCE,
+                PolicyEffectType.REQUIRE_MANAGER_REVIEW,
+                PolicyEffectType.FLAG_POLICY_EXCEPTION,
+                PolicyEffectType.PROHIBIT_AUTOMATION,
+            }
+            if any(
+                effect.type in review_effects
+                for item in result.rule_results
+                for effect in item.effects
+            ):
+                session.add(
+                    HumanReviewRequestEventModel(
+                        id=uuid4(),
+                        tenant_id=run.tenant_id,
+                        case_id=run.case_id,
+                        policy_evaluation_run_id=run.id,
+                        correlation_id=run.correlation_id,
+                        status="PENDING",
+                        attempt_count=0,
+                        available_at=now,
+                        created_at=now,
+                    )
+                )
+            return True
 
-    def fail(self, *, tenant_id: str, run_id: str, code: str, message: str) -> None:
+    def fail(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        code: str,
+        message: str,
+    ) -> bool:
         with self._factory.begin() as session:
-            session.execute(
-                update(PolicyEvaluationRunModel)
+            now = datetime.now(UTC)
+            event = session.scalar(
+                select(PolicyEvaluationOutboxEventModel)
+                .where(
+                    PolicyEvaluationOutboxEventModel.tenant_id == UUID(tenant_id),
+                    PolicyEvaluationOutboxEventModel.id == UUID(event_id),
+                    PolicyEvaluationOutboxEventModel.policy_evaluation_run_id == UUID(run_id),
+                )
+                .with_for_update()
+            )
+            if event is None or not event_allows_completion(
+                event,
+                dispatch_failure_code="POLICY_EVALUATION_OUTBOX_FAILED",
+            ):
+                return False
+            run = session.scalar(
+                select(PolicyEvaluationRunModel)
                 .where(
                     PolicyEvaluationRunModel.tenant_id == UUID(tenant_id),
                     PolicyEvaluationRunModel.id == UUID(run_id),
                     PolicyEvaluationRunModel.status == "RUNNING",
+                    PolicyEvaluationRunModel.claim_token == UUID(claim_token),
                 )
-                .values(
-                    status="FAILED",
-                    completed_at=datetime.now(UTC),
-                    failure_code=code[:128],
-                    failure_message=message[:1000],
-                )
+                .with_for_update()
             )
+            if run is None:
+                return False
+            run.status = "FAILED"
+            run.completed_at = now
+            run.failure_code = code[:128]
+            run.failure_message = message[:1000]
+            run.claim_token = None
+            run.lease_expires_at = None
+            mark_event_consumed(event, now=now)
+            return True
+
+    def record_consumer_failure(
+        self,
+        *,
+        event_id: str,
+        code: str,
+        message: str,
+    ) -> None:
+        try:
+            event_uuid = UUID(event_id)
+        except ValueError:
+            return
+        now = datetime.now(UTC)
+        with self._factory.begin() as session:
+            event = session.scalar(
+                select(PolicyEvaluationOutboxEventModel)
+                .where(PolicyEvaluationOutboxEventModel.id == event_uuid)
+                .with_for_update()
+            )
+            if event is None:
+                return
+            run = session.scalar(
+                select(PolicyEvaluationRunModel)
+                .where(
+                    PolicyEvaluationRunModel.tenant_id == event.tenant_id,
+                    PolicyEvaluationRunModel.id == event.policy_evaluation_run_id,
+                )
+                .with_for_update()
+            )
+            if event.status == "CONSUMED":
+                return
+            if event.status == "FAILED":
+                if event.failure_code == "POLICY_EVALUATION_OUTBOX_FAILED":
+                    record_rejected_dispatch_recovery(event, message=message)
+                return
+            if run is not None and not consumer_failure_may_terminalize_run(
+                status=run.status,
+                lease_expires_at=run.lease_expires_at,
+                now=now,
+            ):
+                if run.status == "RUNNING":
+                    event.consumer_last_error = (
+                        "Ignored stale terminal failure while a newer execution lease is active."
+                    )
+                return
+            if run is not None:
+                run.status = "FAILED"
+                run.started_at = run.started_at or now
+                run.completed_at = now
+                run.failure_code = code[:128]
+                run.failure_message = message[:1000]
+                run.claim_token = None
+                run.lease_expires_at = None
+            mark_event_failed(event, now=now, code=code, message=message)
 
 
 def _load_rule_set(session: Session, rule_set_id: UUID) -> PolicyRuleSet:

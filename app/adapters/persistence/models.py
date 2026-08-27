@@ -103,6 +103,13 @@ EXTRACTED_REQUESTED_ACTIONS = (
     "UNKNOWN",
 )
 OUTBOX_STATUSES = ("PENDING", "PROCESSING", "PUBLISHED", "FAILED")
+RELIABLE_ASYNC_OUTBOX_STATUSES = (
+    "PENDING",
+    "PROCESSING",
+    "PUBLISHED",
+    "CONSUMED",
+    "FAILED",
+)
 ANALYSIS_IDEMPOTENCY_OPERATIONS = ("analysis.create.v1",)
 VISION_CANONICAL_LABELS = (
     "LEAKAGE",
@@ -137,10 +144,63 @@ POLICY_QUERY_STRATEGIES = ("RAW", "DETERMINISTIC", "LLM")
 POLICY_RETRIEVAL_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 GROUNDED_EXPLANATION_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 POLICY_EVALUATION_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
+HUMAN_REVIEW_TASK_TYPES = (
+    "STANDARD_REVIEW",
+    "EVIDENCE_REVIEW",
+    "MANAGER_REVIEW",
+    "POLICY_EXCEPTION_REVIEW",
+    "SAFETY_REVIEW",
+)
+HUMAN_REVIEW_PRIORITIES = ("LOW", "NORMAL", "HIGH", "CRITICAL")
+HUMAN_REVIEW_STATUSES = (
+    "PENDING",
+    "CLAIMED",
+    "WAITING_FOR_EVIDENCE",
+    "ESCALATED",
+    "RESOLVED",
+)
+HUMAN_REVIEW_ACTIONS = (
+    "CREATED",
+    "CLAIMED",
+    "RELEASED",
+    "EVIDENCE_REQUESTED",
+    "RESUMED",
+    "ESCALATED",
+    "RESOLVED",
+)
+HUMAN_DECISION_TYPES = (
+    "APPROVE_REFUND",
+    "APPROVE_EXCHANGE",
+    "APPROVE_RESHIPMENT",
+    "APPROVE_REPAIR",
+    "REJECT_REQUEST",
+    "PROVIDE_INFORMATION",
+    "NO_ACTION",
+)
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
     return ", ".join(f"'{value}'" for value in values)
+
+
+RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY = (
+    "(status = 'PENDING' AND claimed_at IS NULL AND claim_token IS NULL "
+    "AND claimed_by IS NULL AND published_at IS NULL AND consumed_at IS NULL "
+    "AND failed_at IS NULL) OR "
+    "(status = 'PROCESSING' AND claimed_at IS NOT NULL AND claim_token IS NOT NULL "
+    "AND claimed_by IS NOT NULL AND published_at IS NULL AND consumed_at IS NULL "
+    "AND failed_at IS NULL AND attempt_count > 0) OR "
+    "(status = 'PUBLISHED' AND claimed_at IS NULL AND claim_token IS NULL "
+    "AND claimed_by IS NULL AND published_at IS NOT NULL AND consumed_at IS NULL "
+    "AND failed_at IS NULL AND attempt_count > 0) OR "
+    "(status = 'CONSUMED' AND claimed_at IS NULL AND claim_token IS NULL "
+    "AND claimed_by IS NULL AND published_at IS NOT NULL AND consumed_at IS NOT NULL "
+    "AND failed_at IS NULL AND attempt_count > 0 AND consumer_attempt_count > 0) OR "
+    "(status = 'FAILED' AND claimed_at IS NULL AND claim_token IS NULL "
+    "AND claimed_by IS NULL AND consumed_at IS NULL AND failed_at IS NOT NULL "
+    "AND failure_code IS NOT NULL AND attempt_count > 0 "
+    "AND (last_error IS NOT NULL OR consumer_last_error IS NOT NULL))"
+)
 
 
 class CreatedAtMixin:
@@ -158,6 +218,28 @@ class TimestampMixin(CreatedAtMixin):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class ReliableAsyncOutboxMixin:
+    """Shared delivery and consumer audit fields for identifier-only outboxes."""
+
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claim_token: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    claimed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    consumer_attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+    consumer_last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class TenantModel(TimestampMixin, Base):
@@ -1787,7 +1869,23 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
             "AND completed_at IS NOT NULL)",
             name="status_timestamps_consistent",
         ),
+        CheckConstraint(
+            "execution_attempt_count >= 0",
+            name="execution_attempts_valid",
+        ),
+        CheckConstraint(
+            "(status = 'RUNNING' AND claim_token IS NOT NULL "
+            "AND lease_expires_at IS NOT NULL AND execution_attempt_count > 0) OR "
+            "(status <> 'RUNNING' AND claim_token IS NULL AND lease_expires_at IS NULL)",
+            name="execution_claim_consistent",
+        ),
         UniqueConstraint("tenant_id", "id", name="uq_policy_retrieval_runs_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "id",
+            name="uq_policy_retrieval_runs_tenant_case_id",
+        ),
         UniqueConstraint(
             "tenant_id", "idempotency_key", name="uq_policy_retrieval_runs_tenant_key"
         ),
@@ -1797,6 +1895,12 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
             "case_id",
             "created_at",
             "id",
+        ),
+        Index(
+            "ix_policy_retrieval_runs_running_lease",
+            "lease_expires_at",
+            "id",
+            postgresql_where=text("status = 'RUNNING'"),
         ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
@@ -1821,6 +1925,16 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    execution_attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+    claim_token: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
 
 class PolicyRetrievalRunQueryModel(CreatedAtMixin, Base):
@@ -1898,7 +2012,7 @@ class PolicyRetrievalRunHitModel(CreatedAtMixin, Base):
     per_query_ranks: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
 
 
-class PolicyRetrievalOutboxEventModel(CreatedAtMixin, Base):
+class PolicyRetrievalOutboxEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Base):
     __tablename__ = "policy_retrieval_outbox_events"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -1907,19 +2021,49 @@ class PolicyRetrievalOutboxEventModel(CreatedAtMixin, Base):
             name="fk_policy_retrieval_outbox_run",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "retrieval_run_id"),
+            (
+                "policy_retrieval_runs.tenant_id",
+                "policy_retrieval_runs.case_id",
+                "policy_retrieval_runs.id",
+            ),
+            name="fk_policy_retrieval_outbox_run_case",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
-            "status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')", name="status_allowed"
+            f"status IN ({_sql_values(RELIABLE_ASYNC_OUTBOX_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempt_count_nonnegative"),
+        CheckConstraint(
+            "consumer_attempt_count >= 0",
+            name="consumer_attempts_valid",
+        ),
+        CheckConstraint(
+            RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY,
+            name="state_consistent",
         ),
         UniqueConstraint("tenant_id", "retrieval_run_id", name="uq_policy_retrieval_outbox_run"),
+        Index(
+            "ix_policy_retrieval_outbox_pending_dispatch",
+            "available_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_policy_retrieval_outbox_processing_claimed",
+            "claimed_at",
+            "id",
+            postgresql_where=text("status = 'PROCESSING'"),
+        ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False)
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class GroundingProfileModel(CreatedAtMixin, Base):
@@ -2003,6 +2147,13 @@ class PolicyCitationPackItemModel(CreatedAtMixin, Base):
             "citation_id",
             name="uq_citation_pack_items_citation_id",
         ),
+        UniqueConstraint("tenant_id", "id", name="uq_policy_citation_pack_items_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "id",
+            "policy_clause_row_id",
+            name="uq_policy_citation_pack_items_tenant_id_clause",
+        ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
@@ -2072,7 +2223,23 @@ class GroundedExplanationRunModel(CreatedAtMixin, Base):
             "AND completed_at IS NOT NULL)",
             name="status_timestamps_consistent",
         ),
+        CheckConstraint(
+            "execution_attempt_count >= 0",
+            name="execution_attempts_valid",
+        ),
+        CheckConstraint(
+            "(status = 'RUNNING' AND claim_token IS NOT NULL "
+            "AND lease_expires_at IS NOT NULL AND execution_attempt_count > 0) OR "
+            "(status <> 'RUNNING' AND claim_token IS NULL AND lease_expires_at IS NULL)",
+            name="execution_claim_consistent",
+        ),
         UniqueConstraint("tenant_id", "id", name="uq_grounded_explanation_runs_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "id",
+            name="uq_grounded_explanation_runs_tenant_case_id",
+        ),
         UniqueConstraint(
             "tenant_id", "idempotency_key", name="uq_grounded_explanation_runs_tenant_key"
         ),
@@ -2082,6 +2249,12 @@ class GroundedExplanationRunModel(CreatedAtMixin, Base):
             "case_id",
             "created_at",
             "id",
+        ),
+        Index(
+            "ix_grounded_explanation_runs_running_lease",
+            "lease_expires_at",
+            "id",
+            postgresql_where=text("status = 'RUNNING'"),
         ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
@@ -2099,6 +2272,16 @@ class GroundedExplanationRunModel(CreatedAtMixin, Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    execution_attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+    claim_token: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
 
 class GroundedExplanationResultModel(CreatedAtMixin, Base):
@@ -2136,7 +2319,7 @@ class GroundedExplanationResultModel(CreatedAtMixin, Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
-class GroundedExplanationOutboxEventModel(CreatedAtMixin, Base):
+class GroundedExplanationOutboxEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Base):
     __tablename__ = "grounded_explanation_outbox_events"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -2145,13 +2328,46 @@ class GroundedExplanationOutboxEventModel(CreatedAtMixin, Base):
             name="fk_grounded_explanation_outbox_run",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "grounded_explanation_run_id"),
+            (
+                "grounded_explanation_runs.tenant_id",
+                "grounded_explanation_runs.case_id",
+                "grounded_explanation_runs.id",
+            ),
+            name="fk_grounded_explanation_outbox_run_case",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
-            "status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')", name="status_allowed"
+            f"status IN ({_sql_values(RELIABLE_ASYNC_OUTBOX_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempt_count_nonnegative"),
+        CheckConstraint(
+            "consumer_attempt_count >= 0",
+            name="consumer_attempts_valid",
+        ),
+        CheckConstraint(
+            RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY,
+            name="state_consistent",
         ),
         UniqueConstraint(
             "tenant_id",
             "grounded_explanation_run_id",
             name="uq_grounded_explanation_outbox_run",
+        ),
+        Index(
+            "ix_grounded_explanation_outbox_pending_dispatch",
+            "available_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_grounded_explanation_outbox_processing_claimed",
+            "claimed_at",
+            "id",
+            postgresql_where=text("status = 'PROCESSING'"),
         ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
@@ -2159,9 +2375,6 @@ class GroundedExplanationOutboxEventModel(CreatedAtMixin, Base):
     case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     grounded_explanation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False)
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class PolicyRuleSetModel(CreatedAtMixin, Base):
@@ -2342,9 +2555,31 @@ class PolicyEvaluationRunModel(CreatedAtMixin, Base):
             "AND completed_at IS NOT NULL)",
             name="timestamps_valid",
         ),
+        CheckConstraint(
+            "execution_attempt_count >= 0",
+            name="execution_attempts_valid",
+        ),
+        CheckConstraint(
+            "(status = 'RUNNING' AND claim_token IS NOT NULL "
+            "AND lease_expires_at IS NOT NULL AND execution_attempt_count > 0) OR "
+            "(status <> 'RUNNING' AND claim_token IS NULL AND lease_expires_at IS NULL)",
+            name="execution_claim_consistent",
+        ),
         UniqueConstraint("tenant_id", "id", name="uq_policy_evaluation_runs_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "id",
+            name="uq_policy_evaluation_runs_tenant_case_id",
+        ),
         UniqueConstraint("tenant_id", "idempotency_key", name="uq_policy_evaluation_runs_key"),
         Index("ix_policy_evaluation_runs_case_created", "tenant_id", "case_id", "created_at", "id"),
+        Index(
+            "ix_policy_evaluation_runs_running_lease",
+            "lease_expires_at",
+            "id",
+            postgresql_where=text("status = 'RUNNING'"),
+        ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
@@ -2364,6 +2599,16 @@ class PolicyEvaluationRunModel(CreatedAtMixin, Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     failure_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    execution_attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+    claim_token: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
 
 class PolicyEvaluationInputSnapshotModel(CreatedAtMixin, Base):
@@ -2491,7 +2736,7 @@ class PolicyEvaluationEffectModel(CreatedAtMixin, Base):
     effect_value: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
-class PolicyEvaluationOutboxEventModel(CreatedAtMixin, Base):
+class PolicyEvaluationOutboxEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Base):
     __tablename__ = "policy_evaluation_outbox_events"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -2500,11 +2745,44 @@ class PolicyEvaluationOutboxEventModel(CreatedAtMixin, Base):
             name="fk_policy_evaluation_outbox_events_run",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "policy_evaluation_run_id"),
+            (
+                "policy_evaluation_runs.tenant_id",
+                "policy_evaluation_runs.case_id",
+                "policy_evaluation_runs.id",
+            ),
+            name="fk_policy_evaluation_outbox_run_case",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
-            "status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')", name="status_allowed"
+            f"status IN ({_sql_values(RELIABLE_ASYNC_OUTBOX_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempt_count_nonnegative"),
+        CheckConstraint(
+            "consumer_attempt_count >= 0",
+            name="consumer_attempts_valid",
+        ),
+        CheckConstraint(
+            RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY,
+            name="state_consistent",
         ),
         UniqueConstraint(
             "tenant_id", "policy_evaluation_run_id", name="uq_policy_evaluation_outbox_run"
+        ),
+        Index(
+            "ix_policy_evaluation_outbox_pending_dispatch",
+            "available_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_policy_evaluation_outbox_processing_claimed",
+            "claimed_at",
+            "id",
+            postgresql_where=text("status = 'PROCESSING'"),
         ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
@@ -2512,9 +2790,473 @@ class PolicyEvaluationOutboxEventModel(CreatedAtMixin, Base):
     case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     policy_evaluation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class HumanReviewTaskModel(TimestampMixin, Base):
+    __tablename__ = "human_review_tasks"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_human_review_tasks_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_evaluation_run_id"),
+            ("policy_evaluation_runs.tenant_id", "policy_evaluation_runs.id"),
+            name="fk_human_review_tasks_policy_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "current_assignee_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_human_review_tasks_assignee",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"task_type IN ({_sql_values(HUMAN_REVIEW_TASK_TYPES)})", name="type_allowed"
+        ),
+        CheckConstraint(
+            f"priority IN ({_sql_values(HUMAN_REVIEW_PRIORITIES)})", name="priority_allowed"
+        ),
+        CheckConstraint(f"status IN ({_sql_values(HUMAN_REVIEW_STATUSES)})", name="status_allowed"),
+        CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint(
+            "(status = 'CLAIMED' AND current_assignee_id IS NOT NULL) OR "
+            "(status <> 'CLAIMED' AND current_assignee_id IS NULL)",
+            name="assignee_status_consistent",
+        ),
+        CheckConstraint(
+            "(status = 'RESOLVED' AND resolved_at IS NOT NULL) OR "
+            "(status <> 'RESOLVED' AND resolved_at IS NULL)",
+            name="resolved_timestamp_consistent",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_human_review_tasks_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "policy_evaluation_run_id",
+            "task_type",
+            name="uq_human_review_tasks_policy_run_type",
+        ),
+        Index(
+            "ix_human_review_tasks_queue",
+            "tenant_id",
+            "status",
+            "priority",
+            "created_at",
+            "id",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_evaluation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    task_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    priority: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    current_assignee_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    mapping_rule_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    mapping_rule_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class HumanReviewPacketModel(CreatedAtMixin, Base):
+    __tablename__ = "human_review_packets"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "review_task_id"),
+            ("human_review_tasks.tenant_id", "human_review_tasks.id"),
+            name="fk_human_review_packets_task",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_human_review_packets_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_run_id"),
+            ("analysis_runs.tenant_id", "analysis_runs.id"),
+            name="fk_human_review_packets_analysis",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_evaluation_run_id"),
+            ("policy_evaluation_runs.tenant_id", "policy_evaluation_runs.id"),
+            name="fk_human_review_packets_policy_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "rule_set_id"),
+            ("policy_rule_sets.tenant_id", "policy_rule_sets.id"),
+            name="fk_human_review_packets_rule_set",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "llm_extraction_result_v2_id"),
+            ("llm_extraction_results_v2.tenant_id", "llm_extraction_results_v2.id"),
+            name="fk_human_review_packets_extraction",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "completeness_result_id"),
+            ("llm_extraction_results_v2.tenant_id", "llm_extraction_results_v2.id"),
+            name="fk_human_review_packets_completeness",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "citation_pack_id"),
+            ("policy_citation_packs.tenant_id", "policy_citation_packs.id"),
+            name="fk_human_review_packets_citation_pack",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("jsonb_typeof(vision_result_ids) = 'array'", name="vision_ids_array"),
+        CheckConstraint(
+            "jsonb_typeof(case_metadata_snapshot) = 'object'", name="case_snapshot_object"
+        ),
+        CheckConstraint(
+            "jsonb_typeof(qualification_snapshot) = 'object'",
+            name="qualification_snapshot_object",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(policy_effects) = 'array' AND jsonb_array_length(policy_effects) > 0",
+            name="effects_nonempty",
+        ),
+        CheckConstraint(
+            "rule_set_hash ~ '^[0-9a-f]{64}$' AND packet_hash ~ '^[0-9a-f]{64}$'",
+            name="hashes_valid",
+        ),
+        UniqueConstraint("tenant_id", "review_task_id", name="uq_human_review_packets_task"),
+        UniqueConstraint("tenant_id", "id", name="uq_human_review_packets_tenant_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    review_task_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_evaluation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_set_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    llm_extraction_result_v2_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    completeness_result_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    vision_result_ids: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    alignment_result_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    citation_pack_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    grounding_result_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    case_metadata_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    qualification_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    policy_effects: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    policy_summary_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    packet_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    packet_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class HumanReviewActionModel(CreatedAtMixin, Base):
+    __tablename__ = "human_review_actions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "review_task_id"),
+            ("human_review_tasks.tenant_id", "human_review_tasks.id"),
+            name="fk_human_review_actions_task",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "actor_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_human_review_actions_actor",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"action_type IN ({_sql_values(HUMAN_REVIEW_ACTIONS)})", name="type_allowed"
+        ),
+        CheckConstraint(
+            f"to_status IN ({_sql_values(HUMAN_REVIEW_STATUSES)})", name="to_status_allowed"
+        ),
+        CheckConstraint(
+            f"from_status IS NULL OR from_status IN ({_sql_values(HUMAN_REVIEW_STATUSES)})",
+            name="from_status_allowed",
+        ),
+        CheckConstraint("resulting_task_version = expected_task_version + 1", name="version_step"),
+        CheckConstraint("jsonb_typeof(reason_codes) = 'array'", name="reasons_array"),
+        CheckConstraint("jsonb_typeof(action_payload) = 'object'", name="payload_object"),
+        CheckConstraint(
+            "(action_type = 'CREATED' AND actor_id IS NULL AND actor_role IS NULL) OR "
+            "(action_type <> 'CREATED' AND actor_id IS NOT NULL AND "
+            "actor_role IN ('ADMIN','REVIEWER'))",
+            name="human_actor_required",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_human_review_actions_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "review_task_id",
+            "resulting_task_version",
+            name="uq_human_review_actions_task_version",
+        ),
+        Index(
+            "ix_human_review_actions_task_created",
+            "tenant_id",
+            "review_task_id",
+            "created_at",
+            "id",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    review_task_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    actor_role: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reason_codes: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    rationale: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    action_payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    expected_task_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    resulting_task_version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class HumanReviewAssignmentModel(CreatedAtMixin, Base):
+    __tablename__ = "human_review_assignments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "review_task_id"),
+            ("human_review_tasks.tenant_id", "human_review_tasks.id"),
+            name="fk_human_review_assignments_task",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "assignee_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_human_review_assignments_assignee",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "assigned_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_human_review_assignments_assigner",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "assignment_type IN ('SELF_CLAIM','ADMIN_ASSIGNMENT','ESCALATION_CLAIM')",
+            name="type_allowed",
+        ),
+        CheckConstraint(
+            "released_at IS NULL OR released_at >= assigned_at", name="released_after_assigned"
+        ),
+        Index(
+            "uq_human_review_assignments_current",
+            "tenant_id",
+            "review_task_id",
+            unique=True,
+            postgresql_where=text("released_at IS NULL"),
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    review_task_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    assignee_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    assigned_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    assignment_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class HumanReviewDecisionModel(CreatedAtMixin, Base):
+    __tablename__ = "human_review_decisions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "review_task_id"),
+            ("human_review_tasks.tenant_id", "human_review_tasks.id"),
+            name="fk_human_review_decisions_task",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "decided_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_human_review_decisions_user",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"decision_type IN ({_sql_values(HUMAN_DECISION_TYPES)})", name="type_allowed"
+        ),
+        CheckConstraint("length(btrim(rationale)) BETWEEN 10 AND 2000", name="rationale_length"),
+        CheckConstraint("jsonb_typeof(reason_codes) = 'array'", name="reasons_array"),
+        CheckConstraint("content_hash ~ '^[0-9a-f]{64}$'", name="hash_valid"),
+        CheckConstraint(
+            "outcome_relation IN ('CONSISTENT_WITH_RECOMMENDATION',"
+            "'DIFFERS_FROM_RECOMMENDATION','NO_COMPARABLE_RECOMMENDATION',"
+            "'INDETERMINATE_POLICY')",
+            name="outcome_relation_allowed",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_human_review_decisions_tenant_id"),
+        UniqueConstraint("tenant_id", "review_task_id", name="uq_human_review_decisions_task"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    review_task_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    decision_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason_codes: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    rationale: Mapped[str] = mapped_column(String(2000), nullable=False)
+    outcome_relation: Mapped[str] = mapped_column(String(64), nullable=False)
+    outcome_relation_rule_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    decided_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decision_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class HumanReviewDecisionBasisModel(CreatedAtMixin, Base):
+    __tablename__ = "human_review_decision_basis"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "human_review_decision_id"),
+            ("human_review_decisions.tenant_id", "human_review_decisions.id"),
+            name="fk_human_review_decision_basis_decision",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_rule_result_id"),
+            ("policy_rule_evaluation_results.tenant_id", "policy_rule_evaluation_results.id"),
+            name="fk_human_review_decision_basis_rule_result",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_clause_row_id"),
+            ("policy_clauses.tenant_id", "policy_clauses.id"),
+            name="fk_human_review_decision_basis_clause",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "citation_item_id"),
+            ("policy_citation_pack_items.tenant_id", "policy_citation_pack_items.id"),
+            name="fk_human_review_decision_basis_citation",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "citation_item_id", "policy_clause_row_id"),
+            (
+                "policy_citation_pack_items.tenant_id",
+                "policy_citation_pack_items.id",
+                "policy_citation_pack_items.policy_clause_row_id",
+            ),
+            name="fk_human_review_decision_basis_citation_clause",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_evidence_id"),
+            ("case_evidence.tenant_id", "case_evidence.id"),
+            name="fk_human_review_decision_basis_evidence",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "analysis_result_id"),
+            ("llm_extraction_results_v2.tenant_id", "llm_extraction_results_v2.id"),
+            name="fk_human_review_decision_basis_analysis",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "basis_type IN ('POLICY_RULE_RESULT','POLICY_CITATION','CASE_EVIDENCE',"
+            "'ANALYSIS_RESULT')",
+            name="type_allowed",
+        ),
+        CheckConstraint(
+            "(basis_type = 'POLICY_RULE_RESULT' AND policy_rule_result_id IS NOT NULL "
+            "AND policy_clause_row_id IS NULL AND citation_item_id IS NULL "
+            "AND case_evidence_id IS NULL AND analysis_result_id IS NULL) OR "
+            "(basis_type = 'POLICY_CITATION' AND policy_rule_result_id IS NULL "
+            "AND policy_clause_row_id IS NOT NULL AND citation_item_id IS NOT NULL "
+            "AND case_evidence_id IS NULL AND analysis_result_id IS NULL) OR "
+            "(basis_type = 'CASE_EVIDENCE' AND policy_rule_result_id IS NULL "
+            "AND policy_clause_row_id IS NULL AND citation_item_id IS NULL "
+            "AND case_evidence_id IS NOT NULL AND analysis_result_id IS NULL) OR "
+            "(basis_type = 'ANALYSIS_RESULT' AND policy_rule_result_id IS NULL "
+            "AND policy_clause_row_id IS NULL AND citation_item_id IS NULL "
+            "AND case_evidence_id IS NULL AND analysis_result_id IS NOT NULL)",
+            name="typed_reference_consistent",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "human_review_decision_id",
+            "basis_type",
+            "reference_id",
+            name="uq_human_review_decision_basis_reference",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    human_review_decision_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    basis_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    reference_id: Mapped[str] = mapped_column(String(320), nullable=False)
+    policy_rule_result_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    policy_clause_row_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    citation_item_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    case_evidence_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    analysis_result_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+
+
+class HumanReviewRequestEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Base):
+    __tablename__ = "human_review_request_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_human_review_request_events_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_evaluation_run_id"),
+            ("policy_evaluation_runs.tenant_id", "policy_evaluation_runs.id"),
+            name="fk_human_review_request_events_policy_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id", "policy_evaluation_run_id"),
+            (
+                "policy_evaluation_runs.tenant_id",
+                "policy_evaluation_runs.case_id",
+                "policy_evaluation_runs.id",
+            ),
+            name="fk_human_review_request_events_policy_run_case",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"status IN ({_sql_values(RELIABLE_ASYNC_OUTBOX_STATUSES)})",
+            name="status_allowed",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempt_count_nonnegative"),
+        CheckConstraint(
+            "consumer_attempt_count >= 0",
+            name="consumer_attempts_valid",
+        ),
+        CheckConstraint(
+            RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY,
+            name="state_consistent",
+        ),
+        UniqueConstraint(
+            "tenant_id", "policy_evaluation_run_id", name="uq_human_review_request_events_run"
+        ),
+        Index(
+            "ix_human_review_request_events_pending_dispatch",
+            "available_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_human_review_request_events_processing_claimed",
+            "claimed_at",
+            "id",
+            postgresql_where=text("status = 'PROCESSING'"),
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_evaluation_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
 
 
 PERSISTENCE_MODELS = (
@@ -2565,4 +3307,11 @@ PERSISTENCE_MODELS = (
     PolicyConditionEvaluationResultModel,
     PolicyEvaluationEffectModel,
     PolicyEvaluationOutboxEventModel,
+    HumanReviewTaskModel,
+    HumanReviewPacketModel,
+    HumanReviewActionModel,
+    HumanReviewAssignmentModel,
+    HumanReviewDecisionModel,
+    HumanReviewDecisionBasisModel,
+    HumanReviewRequestEventModel,
 )

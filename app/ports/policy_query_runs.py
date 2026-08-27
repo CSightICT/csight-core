@@ -18,6 +18,7 @@ class PolicyRetrievalExecutionSource(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
 
     run: PolicyRetrievalRun
+    claim_token: str = Field(min_length=1)
     customer_message: str = Field(min_length=1, repr=False)
     builder_input: PolicyQueryBuilderInput
 
@@ -55,19 +56,46 @@ class PolicyRetrievalRunRepository(Protocol):
         self, *, tenant_id: str, case_id: str, run_id: str
     ) -> PolicyRetrievalRunDetail | None: ...
 
-    def claim(self, *, tenant_id: str, run_id: str) -> PolicyRetrievalExecutionSource | None: ...
+    def claim(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicyRetrievalExecutionSource | None: ...
 
     def succeed(
         self,
         *,
         tenant_id: str,
         run_id: str,
+        event_id: str,
+        claim_token: str,
         plan: PolicyQueryPlan,
         hits: tuple[MultiQueryHit, ...],
         raw_query_hash: str | None,
-    ) -> None: ...
+    ) -> bool: ...
 
-    def fail(self, *, tenant_id: str, run_id: str, code: str, message: str) -> None: ...
+    def fail(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        code: str,
+        message: str,
+    ) -> bool: ...
+
+    def record_consumer_failure(
+        self,
+        *,
+        event_id: str,
+        code: str,
+        message: str,
+    ) -> None: ...
 
 
 __all__ = [

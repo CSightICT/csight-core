@@ -14,6 +14,7 @@ from app.interface.http.services import (
     Sprint4C2ServiceContainer,
     Sprint4C3AServiceContainer,
     Sprint5AServiceContainer,
+    Sprint5BServiceContainer,
 )
 from app.platform.errors import AuthenticationRequiredError
 from app.platform.tenant import Principal
@@ -114,6 +115,17 @@ def provide_sprint5a_services(request: Request) -> Sprint5AServiceContainer:
             headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
         )
     return cast(Sprint5AServiceContainer, configured_services)
+
+
+def provide_sprint5b_services(request: Request) -> Sprint5BServiceContainer:
+    configured_services = getattr(request.app.state, "sprint5b_services", None)
+    if configured_services is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Human review services are unavailable.",
+            headers={"X-Error-Code": "SERVICE_UNAVAILABLE"},
+        )
+    return cast(Sprint5BServiceContainer, configured_services)
 
 
 def provide_current_principal(

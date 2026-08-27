@@ -1,5 +1,7 @@
 """Sprint 4C-2 composition root."""
 
+from datetime import timedelta
+
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.policy_query_runs import SQLAlchemyPolicyRetrievalRunRepository
 from app.adapters.persistence.session import create_session_factory
@@ -25,7 +27,9 @@ def sprint4c2_is_configured(settings: Settings) -> bool:
 
 def build_sprint4c2_services(settings: Settings) -> Sprint4C2ServiceContainer:
     repository = SQLAlchemyPolicyRetrievalRunRepository(
-        create_session_factory(get_engine(settings))
+        create_session_factory(get_engine(settings)),
+        lease_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),
+        max_execution_attempts=settings.celery_task_max_retries + 1,
     )
     return Sprint4C2ServiceContainer(
         start_policy_retrieval_run=StartPolicyRetrievalRun(repository),
@@ -36,7 +40,9 @@ def build_sprint4c2_services(settings: Settings) -> Sprint4C2ServiceContainer:
 
 def build_execute_policy_retrieval_run(settings: Settings) -> ExecutePolicyRetrievalRun:
     repository = SQLAlchemyPolicyRetrievalRunRepository(
-        create_session_factory(get_engine(settings))
+        create_session_factory(get_engine(settings)),
+        lease_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),
+        max_execution_attempts=settings.celery_task_max_retries + 1,
     )
     return ExecutePolicyRetrievalRun(
         repository=repository,

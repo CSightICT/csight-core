@@ -1,5 +1,7 @@
 """Sprint 5A deterministic policy engine composition root."""
 
+from datetime import timedelta
+
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.policy_engine import SQLAlchemyPolicyEngineRepository
 from app.adapters.persistence.session import create_session_factory
@@ -18,7 +20,11 @@ def sprint5a_is_configured(settings: Settings) -> bool:
 
 
 def _repository(settings: Settings) -> SQLAlchemyPolicyEngineRepository:
-    return SQLAlchemyPolicyEngineRepository(create_session_factory(get_engine(settings)))
+    return SQLAlchemyPolicyEngineRepository(
+        create_session_factory(get_engine(settings)),
+        lease_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),
+        max_execution_attempts=settings.celery_task_max_retries + 1,
+    )
 
 
 def build_sprint5a_services(settings: Settings) -> Sprint5AServiceContainer:

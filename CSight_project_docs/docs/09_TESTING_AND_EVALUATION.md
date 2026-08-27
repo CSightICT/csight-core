@@ -284,3 +284,8 @@ Unit은 registry/operator/missing/aggregation/hash/replay를, contract는 unknow
 source/version/conflict를, API는 create/replay/conflict/role/tenant를 검증한다. PostgreSQL E2E는
 snapshot/outbox/append-only result/duplicate no-op를 확인한다. Dev80/Test40 gate는 selection,
 rule exact, condition, effect F1, summary, source, version, tenant/effective date, determinism이다.
+# Sprint 5B gates
+
+Required verification covers pure mapping/state/decision contracts, HTTP role and schema behavior,
+PostgreSQL transaction and concurrent claim behavior, queue envelope and worker boundaries, sealed
+60/30 evaluation artifacts, migration lifecycle/drift, and live Docker event-to-decision smoke.

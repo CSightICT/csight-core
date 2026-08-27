@@ -18,7 +18,7 @@ POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
 
 help:
 	@echo "CSight Core commands"
@@ -56,6 +56,9 @@ help:
 	@echo "  make ingest-policy-rules / validate-policy-rule-db  Persist and audit rules"
 	@echo "  make evaluate-policy-engine  Run Dev and sealed Test deterministic evaluation"
 	@echo "  make smoke-policy-evaluation  Run authenticated asynchronous policy smoke"
+	@echo "  make build-human-review-evaluation / validate-human-review-evaluation"
+	@echo "  make evaluate-human-review-workflow  Re-evaluate Dev and verify sealed artifacts"
+	@echo "  make smoke-human-review / inspect-human-review-queue  Verify local review runtime"
 	@echo "  make start-embedding  Start the private host-native Qwen embedding service"
 	@echo "  make stop-embedding  Stop the private embedding service started by Make"
 	@echo "  make health-embedding  Probe embedding health and pinned model metadata"
@@ -107,7 +110,7 @@ test:
 	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision and not external_embedding and not external_reranker and not external_local_llm"
 
 test-integration:
-	RUN_CORE_INTEGRATION=1 $(UV) run pytest -q -m integration
+	$(UV) run python scripts/run_integration_tests.py
 
 test-all: test test-integration
 
@@ -115,7 +118,7 @@ test-analysis:
 	$(UV) run pytest -q -m "not integration and not external_gpu" -k "analysis or outbox or vllm or text_extraction"
 
 test-analysis-integration:
-	RUN_CORE_INTEGRATION=1 $(UV) run pytest -q -m integration -k "analysis or outbox or vllm or text_extraction"
+	$(UV) run python scripts/run_integration_tests.py -- -k "analysis or outbox or vllm or text_extraction"
 
 test-external-llm:
 	RUN_EXTERNAL_GPU_TESTS=1 $(UV) run pytest -q -m external_gpu
@@ -243,6 +246,23 @@ evaluate-policy-engine:
 
 smoke-policy-evaluation:
 	$(UV) run python scripts/smoke_policy_evaluation.py --env-file $(ENV_FILE)
+
+build-human-review-evaluation:
+	$(UV) run python scripts/build_human_review_evaluation.py
+
+validate-human-review-evaluation:
+	$(UV) run python scripts/validate_human_review_evaluation.py
+
+evaluate-human-review-workflow:
+	$(UV) run python scripts/evaluate_human_review_workflow.py --split dev
+	$(UV) run python scripts/verify_human_review_results.py
+
+smoke-human-review:
+	$(UV) run python scripts/smoke_policy_evaluation.py --env-file $(ENV_FILE)
+	$(UV) run python scripts/smoke_human_review.py --env-file $(ENV_FILE)
+
+inspect-human-review-queue:
+	$(UV) run python scripts/inspect_human_review_queue.py --env-file $(ENV_FILE)
 
 start-embedding:
 	@test ! -f $(EMBEDDING_PID_FILE) || ! kill -0 $$(cat $(EMBEDDING_PID_FILE)) 2>/dev/null || { echo "Embedding service already running"; exit 1; }

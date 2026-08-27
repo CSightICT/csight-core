@@ -10,13 +10,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 5A — Versioned Deterministic Policy Engine Core 구현·검증 완료 |
-| 진행 중 작업 | Sprint 5A 미커밋 인계; 사용자 검토와 별도 Commit 승인 대기 |
+| 현재 완료 단계 | Sprint 5B — Human Review Workflow·Async Reliability Closeout PASS |
+| 진행 중 작업 | Sprint 5B 승인 범위 Commit·원격 기능 브랜치 백업 후 Sprint 5C 시작 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, Sprint 4B/4C Push·PR 없음 |
-| 로컬 Git | `feature/sprint-5a-policy-engine-core`, Base `d0950f6`, Sprint 5A 미커밋 |
-| 마지막 런타임 관측 | 2026-08-27, DB `0010` drift 0; Core 6 healthy; Policy async smoke PASS |
+| 로컬 Git | `feature/sprint-5b-human-review-workflow`, Base `67eafdd`, Closeout 변경 Commit 직전 |
+| 마지막 런타임 관측 | 2026-08-27, DB `0012` drift 0; Core 6 healthy; broker recovery·Human Review smoke PASS |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -80,6 +80,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 5A Synthetic Rule Set | PASS | Tenant 2, Rule Set 2, Rule 24, Source link 24, forbidden effect 0 |
 | Sprint 5A Dev/Test Evaluation | PASS | Dev80 freeze, sealed Test40 1회; exact/condition/effect/source/version/replay 100% |
 | Sprint 5A Migration·Live | PASS | 세 lifecycle 경로 drift 0, Core 6 healthy, async smoke와 tenant 격리 통과 |
+| Sprint 5B Task·Packet·Audit | PASS | effect mapping 1.0.0, task/packet/CREATED 각 1, duplicate event NOOP |
+| Sprint 5B Assignment·State | PASS | CAS claim, concurrent 1 success/1 conflict, release/evidence/resume/escalate |
+| Sprint 5B Human Decision | PASS | authenticated human-only resolve, rationale/basis 검증, immutable decision 1개 |
+| Sprint 5B Authorization | PASS | Viewer read-only, Manager/Safety Admin-only, assignee/Admin 및 tenant 격리 |
+| Sprint 5B Dev/Test Evaluation | PASS | Dev60/Test30 sealed; workflow metrics 1.0, safety violation 0 |
+| Sprint 5B Async Reliability | PASS | 4 outbox claim/lease/backoff/terminal state, 3 worker lease/fencing, hash fail-closed |
+| Sprint 5B Migration·Live | PASS | `0012` 세 lifecycle/drift 0, Core 6 healthy, broker outage recovery·live smoke |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
@@ -272,6 +279,36 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 전체 Ruff/Format/Pyright/default/integration/migration lifecycle 최종 실행
 - [x] 최신 Docker image rebuild, 5 queues consumer, API live smoke 및 cross-tenant/duplicate 검증
 - [x] 최종 실제 수치를 Sprint 5A 문서와 아래 session log에 append
+
+## 5.8. Sprint 5B 완료 체크리스트
+
+- [x] Sprint 5A 독립 감사 후 `67eafdd feat: add versioned policy engine core` 로컬 Commit
+- [x] `feature/sprint-5b-human-review-workflow` 생성; Push·PR·Sprint 5B Commit 없음
+- [x] Policy effect 집계와 `review_task_mapping/1.0.0` task type/priority 결정
+- [x] 성공 Policy Evaluation과 `human_review.requested.v1` durable event 원자 저장
+- [x] identifier-only `human-review` queue, bounded retry, thin task-creation worker
+- [x] Task/Packet/CREATED action 원자 생성과 duplicate event/task NOOP
+- [x] allowlisted metadata·qualification·policy/analysis provenance immutable packet/hash
+- [x] PENDING/CLAIMED/WAITING/ESCALATED/RESOLVED typed state machine
+- [x] CAS/row-lock claim, current assignment unique, concurrent claim 1 success/1 conflict
+- [x] Release, evidence request, Admin/new-evidence resume, escalation과 assignment history
+- [x] Viewer read-only, reviewer assignee scope, Manager/Safety/Escalated Admin-only
+- [x] 명시적 human Resolve만 Decision/Basis/RESOLVED action/projection 원자 생성
+- [x] Rationale 10–2000, policy basis 필수, citation/rule/evidence/run/tenant fail-closed
+- [x] deterministic outcome relation 1.0.0과 task당 immutable Decision 1개
+- [x] Queue/List/Detail/Case list와 여섯 action API, raw model/audit payload 비노출
+- [x] Migration `20260827_0011_human_review` 7개 table, 세 lifecycle, drift 0
+- [x] Human Review evaluation Dev60 freeze 후 sealed Test30 단 1회, verifier PASS
+- [x] ADR-0077~0088, Review 문서 5개, README/설계/Make/환경 문서 동기화
+- [x] Ruff, Format, Pyright, 전체 default/integration, Docker/queue/live smoke 검증
+- [x] Migration `20260827_0012_async_reliability`, 네 Outbox claim/lease/backoff/terminal state
+- [x] Retrieval·Grounding·Policy worker lease/fencing과 permanent/retry-exhausted 실패 기록
+- [x] Packet·Decision hash 조회/Resolve 직전 재검증과 변조 fail-closed
+- [x] Integration 임시 DB 격리·실행 후 삭제·잔존 0 검증
+- [x] 실제 RabbitMQ 중단→backoff→복구와 duplicate delivery `NOOP` 검증
+- [x] 외부 환불·교환·결제·CRM·알림·보고서·UI·Decision revision 미구현 유지
+- [x] 사용자 `kaputt_best_vision_architecture.md` 미수정·미삭제·미Stage
+- [x] 사용자 `CSight_MASTER_HANDOFF_2026-08-27.md` 미수정·미삭제·미Stage
 
 ## 6. GitHub 협업 구축 체크리스트
 
@@ -495,8 +532,30 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-27 | Sprint 5A Docker Runtime | PASS | 최종 image, Core 6 healthy, live/ready 정상, application queue 5개 consumer 1 |
 | 2026-08-27 | Sprint 5A Live Async | PASS | rules 12, replay 200, duplicate NOOP, tenant 404, Mock Vision NOT_EVALUATED |
 | 2026-08-27 | Sprint 5A Git Handoff | PASS | Branch 정확, Sprint 5A Commit·Push·PR 없음, Kaputt 미Stage 보존 |
+| 2026-08-27 | Sprint 5B Static | PASS | Ruff 0, Format 315, Pyright 0 errors/warnings/informations |
+| 2026-08-27 | Sprint 5B Default Regression | PASS | 484 passed, 57 deselected, 31 warnings |
+| 2026-08-27 | Sprint 5B Integration | PASS | 46 passed, 5 external-GPU skipped, 490 deselected, 3 warnings |
+| 2026-08-27 | Sprint 5B Focus | PASS | Human Review unit/HTTP/runtime 28, architecture 포함 focus 37, repository 2 |
+| 2026-08-27 | Sprint 5B Evaluation | PASS | Dev60/Test30 sealed, 9 workflow metrics 1.0, 9 violation counts 0 |
+| 2026-08-27 | Sprint 5B Migration | PASS | Empty→0011, 0010→0011, 0011→0010→0011, drift 0, 임시 DB 0 |
+| 2026-08-27 | Sprint 5B Docker Runtime | PASS | 최신 image, Core 6 healthy, application queue 6개 consumer 1/depth 0 |
+| 2026-08-27 | Sprint 5B Live Async/API | PASS | task/packet/created/claim/resolve/decision/basis 각 1, duplicate 409/NOOP, tenant 404 |
+| 2026-08-27 | Sprint 5B Git Handoff | PASS | Branch `feature/sprint-5b-human-review-workflow`, Commit·Push·PR 없음, Kaputt 제외 |
+| 2026-08-27 | Sprint 5B Reliability Static | PASS | Ruff 0, Format 324, Pyright 0 |
+| 2026-08-27 | Sprint 5B Reliability Regression | PASS | Default 516 passed/59 deselected; Integration 48 passed/5 external-GPU skipped/522 deselected |
+| 2026-08-27 | Sprint 5B Reliability Migration | PASS | Empty→0012, 0011→0012, 0012→0011→0012, drift 0, 임시 DB 잔존 0 |
+| 2026-08-27 | Sprint 5B Broker Recovery | PASS | RabbitMQ 중단 시 pending/backoff, 재기동 후 CONSUMED; duplicate 두 번 `NOOP`, Result 불변 |
+| 2026-08-27 | Sprint 5B Reliability Runtime | PASS | DB head 0012, Core 6 healthy, application queue 6개 consumer 1/depth 0, live smoke PASS |
 
 ## 8. 미해결 사항과 사용자 결정
+
+- Sprint 5B Closeout의 P0/P1 미해결은 0이다. 다만 합성 Rule/Workflow 검증이며 실제 기업 정책,
+  법률 판단, 실제 Vision, 운영 Review
+  UI 품질을 검증하지 않았다. Local LLM은 `LOCAL_POC`, Vision은 `MOCK_QUALIFIED`로 표시한다.
+- 외부 환불·교환·재배송·결제·CRM·고객 알림·최종 보고서 실행은 없다. Decision amendment,
+  자동 assignment, SLA escalation, packet revision도 Sprint 5C 이후로 미룬다.
+- 다음 구현은 Human Decision→Case Resolution projection과 별도 External Action port다.
+  현재 immutable Decision을 수정하거나 외부 액션을 암묵적으로 실행해서는 안 된다.
 
 - 저장소를 Private로 유지하는 현재 플랜에서는 `main`·`develop` Branch protection API가
   HTTP 403을 반환한다. 저장소 공개 전환 없이 지원 플랜을 적용할지 Issue #1에서 결정한다.
@@ -608,7 +667,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   paraphrase faithfulness를 측정하기 전에는 구조 통과를 의미 품질 통과로 승격하지 않는다.
 - [x] Sprint 5A에서 versioned Policy Engine Core를 구현하고 Grounded Explanation과 최종
   결정을 분리한다.
-- [ ] Sprint 5B 이후 Human Review decision record/UI/override를 별도 계약으로 설계한다.
+- [x] Sprint 5B Human Review decision record와 Admin override 계약을 구현한다.
+- [ ] Sprint 5C Resolution·External Action DRY-RUN과 React 상담원 UI를 구현한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -1097,3 +1157,55 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   범위만 로컬 Commit 예정이며 Push·PR 없음; Kaputt 사용자 파일 제외
 - 다음 작업: Commit SHA를 확인하고 `feature/sprint-5b-human-review-workflow`에서 immutable
   Review Packet, CAS Task, append-only Action 및 human-only Decision을 구현
+
+### 2026-08-27 — Sprint 5B Human Review Workflow
+
+- Git: Sprint 5A를 `67eafdd feat: add versioned policy engine core`로 로컬 Commit하고
+  `feature/sprint-5b-human-review-workflow` 생성. Sprint 5B Commit·Push·PR 없음
+- Boundary: Policy success가 identifier-only `human_review.requested.v1`을 원자 저장하고 thin
+  Worker는 Task/Packet/CREATED만 생성. Final Decision은 authenticated Admin/Reviewer Resolve만 생성
+- Workflow: versioned mapping, immutable packet, five-state machine, CAS claim, release/evidence/
+  resume/escalate, assignment history, append-only actions와 decision/basis를 구현
+- Authorization: Viewer read-only, Reviewer는 Standard/Evidence/Exception과 자신의 task만 action,
+  Manager/Safety/Escalated claim 및 Manager/Safety resolve는 Admin only; cross-tenant는 404
+- Integrity: Rule/Citation/Evidence/Analysis basis를 packet/run/tenant allowlist로 검증하고 rationale
+  10–2000자를 요구. Decision/Packet은 수정·삭제 경로 없이 content hash와 unique constraint로 보호
+- Evaluation: `human_review_workflow_v1` 90건, Dev60 freeze 뒤 sealed Test30 단 1회. mapping,
+  priority, transition, authorization, assignment, basis, outcome, audit, replay 모두 1.0; 위반 0
+- Verification: Ruff PASS, Format 315, Pyright 0, Default 484/57 deselected, Integration
+  46/5 skipped/490 deselected, migration 세 경로 drift 0, 임시 DB 0
+- Runtime: 최신 Docker 6 healthy, six application queues consumer 1/depth 0. Live task/packet/
+  created/claim/resolve/decision/basis 각 1, duplicate event NOOP, claim/resolve 409, tenant 404
+- Failure record: 첫 직접 probe에서 ORM relationship이 없는 aggregate insert flush 순서로 FK 오류가
+  발생해 root와 decision을 먼저 flush하도록 수정. 첫 전체 회귀의 8 failures는 이전 migration
+  테스트가 0010 head를 고정한 기대값이 원인이었고 0011 단일 head로 갱신 후 전체 통과
+- Scope: 실제 환불·교환·결제·CRM·알림·보고서·UI·Decision revision/자동 assignment/SLA 없음.
+  Grounding은 advisory, Local LLM은 LOCAL_POC, Vision은 MOCK_QUALIFIED
+- Handoff: `docs/progress/SPRINT_5B_HUMAN_REVIEW_WORKFLOW.md`와 ADR-0077~0088이 canonical 인계점.
+  `kaputt_best_vision_architecture.md`는 미수정·미삭제·미Stage이며 다음은 Sprint 5C 설계 검토
+
+### 2026-08-27 — Sprint 5B Async Reliability Closeout
+
+- 판정: P0 0, P1 0, `CLOSEOUT_PASS_WITH_PRODUCT_LIMITATIONS`
+- Reliability: Policy Retrieval·Grounding·Policy Evaluation·Human Review Outbox에 claim token,
+  lease, publish backoff, `CONSUMED/FAILED`와 실패 기록을 추가하고 fenced dispatcher로 통합
+- Worker: Retrieval·Grounding·Policy worker 실행 lease, late-result fencing, bounded retry와 poison
+  event의 durable failure를 구현; Human Review는 event 검증부터 Task·Packet·CREATED·CONSUMED까지
+  단일 트랜잭션으로 처리
+- Integrity: Packet/Decision hash를 조회와 Resolve 직전에 다시 검증하고 basis tenant/run/type/FK
+  일치를 fail-closed로 보강; duplicate Resolve도 기존 Decision hash를 먼저 검증
+- Verification: Ruff 0, Format 324, Pyright 0, Default 516 passed/59 deselected, disposable
+  Integration 48 passed/5 external-GPU skipped/522 deselected, focused reliability 검증 통과
+- Migration: Empty→0012, 0011→0012, 0012→0011→0012, drift 0, 임시 DB 잔존 0. 중간 개발형
+  0012가 stamp된 live DB도 tolerant downgrade 뒤 최종 round-trip과 drift 0 확인
+- Runtime: Core 6 healthy, six application queues consumer 1/depth 0. RabbitMQ 중단 중 event가
+  backoff된 뒤 재기동 후 `CONSUMED`; duplicate worker 실행 두 번 모두 `NOOP`, Result 수 불변
+- Failure record: 공유 DB Integration에서 dispatcher 경합이 드러나 disposable clone runner로
+  격리했다. 중간 0012 live schema의 누락 constraint로 첫 downgrade가 실패해 명시적
+  `DROP CONSTRAINT IF EXISTS` 복구 경로를 추가하고 전체 lifecycle을 재통과했다.
+- Git: `feature/sprint-5b-human-review-workflow`에서 지정 메시지로 Commit하고 동일 원격 기능
+  브랜치에 백업 예정. PR과 `develop` 병합은 거버넌스 PR #2와 보호 규칙 결정 전까지 보류
+- Scope: 실제 기업 정책/Case/사용자 분포, 실제 Vision, Qwen3.8 재평가와 운영 UI는 미검증.
+  `CSight_MASTER_HANDOFF_2026-08-27.md`와 `kaputt_best_vision_architecture.md`는 Commit 제외
+- 다음 작업: `feature/sprint-5c-case-resolution-external-action`에서 Resolution Projection,
+  immutable Action Intent, 입력 완전성 검증과 네트워크 없는 External Action DRY-RUN 구현

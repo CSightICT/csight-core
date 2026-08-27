@@ -4,12 +4,22 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Sequence
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4, uuid5
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.adapters.persistence.async_events import (
+    begin_consumer_attempt,
+    consumer_failure_may_terminalize_run,
+    event_allows_completion,
+    mark_event_consumed,
+    mark_event_failed,
+    record_rejected_dispatch_recovery,
+    recover_dispatch_failure,
+    validate_request_event,
+)
 from app.adapters.persistence.models import (
     AnalysisRunModel,
     CaseEvidenceModel,
@@ -29,6 +39,11 @@ from app.platform.analysis.llm_v2 import (
     CompletenessResult,
     LLMTextExtractionResultV2,
     SystemMissingInformation,
+)
+from app.platform.async_reliability import (
+    AsyncEventIntegrityError,
+    ExecutionAttemptsExhaustedError,
+    ExecutionLeaseActiveError,
 )
 from app.platform.errors import CaseNotFoundError, IdempotencyKeyReusedError, ValidationError
 from app.platform.policy_retrieval import PolicySearchHit, stable_json_hash
@@ -51,8 +66,20 @@ _NAMESPACE = UUID("ebd83a36-7c53-4d31-9ea0-c9517878be48")
 
 
 class SQLAlchemyPolicyRetrievalRunRepository:
-    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        *,
+        lease_ttl: timedelta = timedelta(minutes=5),
+        max_execution_attempts: int = 4,
+    ) -> None:
         self._factory = session_factory
+        if lease_ttl.total_seconds() <= 0:
+            raise ValueError("lease_ttl must be positive")
+        self._lease_ttl = lease_ttl
+        if max_execution_attempts <= 0:
+            raise ValueError("max_execution_attempts must be positive")
+        self._max_execution_attempts = max_execution_attempts
 
     def create(
         self,
@@ -226,83 +253,243 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                 ),
             )
 
-    def claim(self, *, tenant_id: str, run_id: str) -> PolicyRetrievalExecutionSource | None:
-        tenant_uuid, run_uuid = UUID(tenant_id), UUID(run_id)
+    def claim(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicyRetrievalExecutionSource | None:
+        event_uuid, tenant_uuid, case_uuid, run_uuid = map(
+            UUID, (event_id, tenant_id, case_id, run_id)
+        )
         now = datetime.now(UTC)
+        claim_token = uuid4()
+        deferred_error: RuntimeError | None = None
+        source: PolicyRetrievalExecutionSource | None = None
         with self._factory.begin() as session:
-            claimed = session.execute(
-                update(PolicyRetrievalRunModel)
-                .where(
-                    PolicyRetrievalRunModel.tenant_id == tenant_uuid,
-                    PolicyRetrievalRunModel.id == run_uuid,
-                    PolicyRetrievalRunModel.status == "QUEUED",
+            event = session.scalar(
+                select(PolicyRetrievalOutboxEventModel)
+                .where(PolicyRetrievalOutboxEventModel.id == event_uuid)
+                .with_for_update()
+            )
+            if event is None:
+                raise AsyncEventIntegrityError(
+                    code="POLICY_RETRIEVAL_EVENT_NOT_FOUND",
+                    message="The policy retrieval request event was not found.",
                 )
-                .values(status="RUNNING", started_at=now)
-                .returning(PolicyRetrievalRunModel.id)
-            ).scalar_one_or_none()
-            if claimed is None:
+            dispatch_failure = (
+                event.status == "FAILED" and event.failure_code == "POLICY_RETRIEVAL_OUTBOX_FAILED"
+            )
+            integrity_error = validate_request_event(
+                event,
+                tenant_id=tenant_uuid,
+                case_id=case_uuid,
+                correlation_id=correlation_id,
+                run_id=run_uuid,
+                run_attribute="retrieval_run_id",
+            )
+            if (
+                dispatch_failure
+                and integrity_error is not None
+                and integrity_error.code == "ASYNC_EVENT_STATE_INVALID"
+            ):
+                recover_dispatch_failure(
+                    event,
+                    now=now,
+                    dispatch_failure_code="POLICY_RETRIEVAL_OUTBOX_FAILED",
+                )
+                integrity_error = validate_request_event(
+                    event,
+                    tenant_id=tenant_uuid,
+                    case_id=case_uuid,
+                    correlation_id=correlation_id,
+                    run_id=run_uuid,
+                    run_attribute="retrieval_run_id",
+                )
+            if event.status == "CONSUMED" or (event.status == "FAILED" and not dispatch_failure):
                 return None
-            row = session.get(PolicyRetrievalRunModel, run_uuid)
-            assert row is not None
-            case = session.get(CaseModel, row.case_id)
-            result = session.get(LLMExtractionResultV2Model, row.text_result_id)
-            assert case is not None and result is not None
-            image_count = session.scalar(
-                select(func.count())
-                .select_from(CaseEvidenceModel)
-                .where(
-                    CaseEvidenceModel.tenant_id == tenant_uuid,
-                    CaseEvidenceModel.case_id == row.case_id,
-                    CaseEvidenceModel.evidence_type == "IMAGE",
-                    CaseEvidenceModel.upload_status == "AVAILABLE",
+            begin_consumer_attempt(event)
+            if integrity_error is not None:
+                actual_run = session.scalar(
+                    select(PolicyRetrievalRunModel)
+                    .where(
+                        PolicyRetrievalRunModel.tenant_id == event.tenant_id,
+                        PolicyRetrievalRunModel.id == event.retrieval_run_id,
+                    )
+                    .with_for_update()
                 )
-            )
-            extraction = LLMTextExtractionResultV2.model_validate(
-                {
-                    "schema_version": result.schema_version,
-                    "language": result.language,
-                    "issue_types": result.issue_types,
-                    "claims": result.claims,
-                    "requested_actions": result.requested_actions,
-                    "text_ambiguities": result.text_ambiguities,
-                    "summary": result.summary,
-                }
-            )
-            attributes = case.attributes
-            return PolicyRetrievalExecutionSource(
-                run=_to_run(row),
-                customer_message=case.customer_message,
-                builder_input=PolicyQueryBuilderInput(
-                    extraction=extraction,
-                    completeness=CompletenessResult(
-                        system_missing_information=tuple(
-                            SystemMissingInformation(value)
-                            for value in result.system_missing_information
+                may_terminalize = actual_run is None or consumer_failure_may_terminalize_run(
+                    status=actual_run.status,
+                    lease_expires_at=actual_run.lease_expires_at,
+                    now=now,
+                )
+                if actual_run is not None and may_terminalize:
+                    actual_run.status = "FAILED"
+                    actual_run.started_at = actual_run.started_at or now
+                    actual_run.completed_at = now
+                    actual_run.failure_code = "POLICY_RETRIEVAL_EVENT_INTEGRITY_FAILED"
+                    actual_run.failure_message = "Policy retrieval event integrity failed."
+                    actual_run.claim_token = None
+                    actual_run.lease_expires_at = None
+                if not may_terminalize:
+                    event.consumer_last_error = (
+                        "Rejected mismatched delivery while a newer execution lease is active."
+                    )
+                elif dispatch_failure:
+                    record_rejected_dispatch_recovery(event, message=str(integrity_error))
+                else:
+                    mark_event_failed(
+                        event,
+                        now=now,
+                        code=integrity_error.code,
+                        message=str(integrity_error),
+                    )
+                deferred_error = integrity_error
+            else:
+                row = session.scalar(
+                    select(PolicyRetrievalRunModel)
+                    .where(
+                        PolicyRetrievalRunModel.tenant_id == tenant_uuid,
+                        PolicyRetrievalRunModel.id == run_uuid,
+                    )
+                    .with_for_update()
+                )
+                if row is None or row.case_id != case_uuid:
+                    error = AsyncEventIntegrityError(
+                        code="POLICY_RETRIEVAL_RUN_MISMATCH",
+                        message="The policy retrieval run does not match the request event.",
+                    )
+                    mark_event_failed(event, now=now, code=error.code, message=str(error))
+                    deferred_error = error
+                elif row.status in {"SUCCEEDED", "FAILED"}:
+                    mark_event_consumed(event, now=now)
+                elif (
+                    row.status == "RUNNING"
+                    and row.lease_expires_at is not None
+                    and row.lease_expires_at > now
+                ):
+                    event.consumer_last_error = "Execution lease is still active."
+                    deferred_error = ExecutionLeaseActiveError(retry_at=row.lease_expires_at)
+                elif row.execution_attempt_count >= self._max_execution_attempts:
+                    row.status = "FAILED"
+                    row.completed_at = now
+                    row.failure_code = "POLICY_RETRIEVAL_WORKER_ATTEMPTS_EXHAUSTED"
+                    row.failure_message = "Policy retrieval worker recovery attempts exhausted."
+                    row.claim_token = None
+                    row.lease_expires_at = None
+                    mark_event_failed(
+                        event,
+                        now=now,
+                        code="POLICY_RETRIEVAL_WORKER_ATTEMPTS_EXHAUSTED",
+                        message="Policy retrieval worker recovery attempts exhausted.",
+                    )
+                    deferred_error = ExecutionAttemptsExhaustedError(
+                        code="POLICY_RETRIEVAL_WORKER_ATTEMPTS_EXHAUSTED"
+                    )
+                else:
+                    row.status = "RUNNING"
+                    row.started_at = row.started_at or now
+                    row.claim_token = claim_token
+                    row.lease_expires_at = now + self._lease_ttl
+                    row.execution_attempt_count += 1
+                    case = session.get(CaseModel, row.case_id)
+                    result = session.get(LLMExtractionResultV2Model, row.text_result_id)
+                    assert case is not None and result is not None
+                    image_count = session.scalar(
+                        select(func.count())
+                        .select_from(CaseEvidenceModel)
+                        .where(
+                            CaseEvidenceModel.tenant_id == tenant_uuid,
+                            CaseEvidenceModel.case_id == row.case_id,
+                            CaseEvidenceModel.evidence_type == "IMAGE",
+                            CaseEvidenceModel.upload_status == "AVAILABLE",
                         ),
-                        action_consistency=ActionConsistency(result.action_consistency),
-                    ),
-                    trusted_metadata=TrustedCaseMetadata(
-                        product_category=str(attributes.get("product_category", "GENERAL")),
-                        days_since_purchase=_optional_int(attributes.get("days_since_purchase")),
-                        available_image_count=int(image_count or 0),
-                        exception_context=bool(attributes.get("exception_context", False)),
-                        escalation_context=bool(attributes.get("escalation_context", False)),
-                    ),
-                ),
-            )
+                    )
+                    extraction = LLMTextExtractionResultV2.model_validate(
+                        {
+                            "schema_version": result.schema_version,
+                            "language": result.language,
+                            "issue_types": result.issue_types,
+                            "claims": result.claims,
+                            "requested_actions": result.requested_actions,
+                            "text_ambiguities": result.text_ambiguities,
+                            "summary": result.summary,
+                        }
+                    )
+                    attributes = case.attributes
+                    source = PolicyRetrievalExecutionSource(
+                        run=_to_run(row),
+                        claim_token=str(claim_token),
+                        customer_message=case.customer_message,
+                        builder_input=PolicyQueryBuilderInput(
+                            extraction=extraction,
+                            completeness=CompletenessResult(
+                                system_missing_information=tuple(
+                                    SystemMissingInformation(value)
+                                    for value in result.system_missing_information
+                                ),
+                                action_consistency=ActionConsistency(result.action_consistency),
+                            ),
+                            trusted_metadata=TrustedCaseMetadata(
+                                product_category=str(attributes.get("product_category", "GENERAL")),
+                                days_since_purchase=_optional_int(
+                                    attributes.get("days_since_purchase")
+                                ),
+                                available_image_count=int(image_count or 0),
+                                exception_context=bool(attributes.get("exception_context", False)),
+                                escalation_context=bool(
+                                    attributes.get("escalation_context", False)
+                                ),
+                            ),
+                        ),
+                    )
+        if deferred_error is not None:
+            raise deferred_error
+        return source
 
     def succeed(
         self,
         *,
         tenant_id: str,
         run_id: str,
+        event_id: str,
+        claim_token: str,
         plan: PolicyQueryPlan,
         hits: tuple[MultiQueryHit, ...],
         raw_query_hash: str | None,
-    ) -> None:
+    ) -> bool:
         tenant_uuid, run_uuid = UUID(tenant_id), UUID(run_id)
         now = datetime.now(UTC)
         with self._factory.begin() as session:
+            event = session.scalar(
+                select(PolicyRetrievalOutboxEventModel)
+                .where(
+                    PolicyRetrievalOutboxEventModel.tenant_id == tenant_uuid,
+                    PolicyRetrievalOutboxEventModel.id == UUID(event_id),
+                    PolicyRetrievalOutboxEventModel.retrieval_run_id == run_uuid,
+                )
+                .with_for_update()
+            )
+            if event is None or not event_allows_completion(
+                event,
+                dispatch_failure_code="POLICY_RETRIEVAL_OUTBOX_FAILED",
+            ):
+                return False
+            run = session.scalar(
+                select(PolicyRetrievalRunModel)
+                .where(
+                    PolicyRetrievalRunModel.tenant_id == tenant_uuid,
+                    PolicyRetrievalRunModel.id == run_uuid,
+                    PolicyRetrievalRunModel.status == "RUNNING",
+                    PolicyRetrievalRunModel.claim_token == UUID(claim_token),
+                )
+                .with_for_update()
+            )
+            if run is None:
+                return False
             for position, query in enumerate(plan.queries, start=1):
                 raw = raw_query_hash is not None and position == 1
                 session.add(
@@ -339,32 +526,113 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                         created_at=now,
                     )
                 )
-            session.execute(
-                update(PolicyRetrievalRunModel)
-                .where(
-                    PolicyRetrievalRunModel.tenant_id == tenant_uuid,
-                    PolicyRetrievalRunModel.id == run_uuid,
-                    PolicyRetrievalRunModel.status == "RUNNING",
-                )
-                .values(status="SUCCEEDED", completed_at=now)
-            )
+            run.status = "SUCCEEDED"
+            run.completed_at = now
+            run.claim_token = None
+            run.lease_expires_at = None
+            mark_event_consumed(event, now=now)
+            return True
 
-    def fail(self, *, tenant_id: str, run_id: str, code: str, message: str) -> None:
+    def fail(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        code: str,
+        message: str,
+    ) -> bool:
         with self._factory.begin() as session:
-            session.execute(
-                update(PolicyRetrievalRunModel)
+            now = datetime.now(UTC)
+            event = session.scalar(
+                select(PolicyRetrievalOutboxEventModel)
+                .where(
+                    PolicyRetrievalOutboxEventModel.tenant_id == UUID(tenant_id),
+                    PolicyRetrievalOutboxEventModel.id == UUID(event_id),
+                    PolicyRetrievalOutboxEventModel.retrieval_run_id == UUID(run_id),
+                )
+                .with_for_update()
+            )
+            if event is None or not event_allows_completion(
+                event,
+                dispatch_failure_code="POLICY_RETRIEVAL_OUTBOX_FAILED",
+            ):
+                return False
+            run = session.scalar(
+                select(PolicyRetrievalRunModel)
                 .where(
                     PolicyRetrievalRunModel.tenant_id == UUID(tenant_id),
                     PolicyRetrievalRunModel.id == UUID(run_id),
                     PolicyRetrievalRunModel.status == "RUNNING",
+                    PolicyRetrievalRunModel.claim_token == UUID(claim_token),
                 )
-                .values(
-                    status="FAILED",
-                    completed_at=datetime.now(UTC),
-                    failure_code=code[:128],
-                    failure_message=message[:1000],
-                )
+                .with_for_update()
             )
+            if run is None:
+                return False
+            run.status = "FAILED"
+            run.completed_at = now
+            run.failure_code = code[:128]
+            run.failure_message = message[:1000]
+            run.claim_token = None
+            run.lease_expires_at = None
+            mark_event_consumed(event, now=now)
+            return True
+
+    def record_consumer_failure(
+        self,
+        *,
+        event_id: str,
+        code: str,
+        message: str,
+    ) -> None:
+        try:
+            event_uuid = UUID(event_id)
+        except ValueError:
+            return
+        now = datetime.now(UTC)
+        with self._factory.begin() as session:
+            event = session.scalar(
+                select(PolicyRetrievalOutboxEventModel)
+                .where(PolicyRetrievalOutboxEventModel.id == event_uuid)
+                .with_for_update()
+            )
+            if event is None:
+                return
+            run = session.scalar(
+                select(PolicyRetrievalRunModel)
+                .where(
+                    PolicyRetrievalRunModel.tenant_id == event.tenant_id,
+                    PolicyRetrievalRunModel.id == event.retrieval_run_id,
+                )
+                .with_for_update()
+            )
+            if event.status == "CONSUMED":
+                return
+            if event.status == "FAILED":
+                if event.failure_code == "POLICY_RETRIEVAL_OUTBOX_FAILED":
+                    record_rejected_dispatch_recovery(event, message=message)
+                return
+            if run is not None and not consumer_failure_may_terminalize_run(
+                status=run.status,
+                lease_expires_at=run.lease_expires_at,
+                now=now,
+            ):
+                if run.status == "RUNNING":
+                    event.consumer_last_error = (
+                        "Ignored stale terminal failure while a newer execution lease is active."
+                    )
+                return
+            if run is not None:
+                run.status = "FAILED"
+                run.started_at = run.started_at or now
+                run.completed_at = now
+                run.failure_code = code[:128]
+                run.failure_message = message[:1000]
+                run.claim_token = None
+                run.lease_expires_at = None
+            mark_event_failed(event, now=now, code=code, message=message)
 
 
 def _ensure_profile(session: Session, strategy: QueryStrategy) -> PolicyQueryBuilderProfileModel:

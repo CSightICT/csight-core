@@ -13,9 +13,7 @@ from PIL import Image
 from csight_cv.data import build_transform
 from csight_cv.model import Dinov2BinaryClassifier
 
-DEFAULT_PACKAGE_DIRECTORY = (
-    Path(__file__).resolve().parents[2] / "model_package" / "e3_v1"
-)
+DEFAULT_PACKAGE_DIRECTORY = Path(__file__).resolve().parents[2] / "model_package" / "e3_v1"
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -90,9 +88,7 @@ def build_result(
         "analysis": {
             "defect_probability": defect_probability,
             "threshold": threshold,
-            "decision_support_band": decision_support_band(
-                defect_probability, threshold
-            ),
+            "decision_support_band": decision_support_band(defect_probability, threshold),
         },
         "capabilities": {
             "binary_defect_probability": True,
@@ -159,14 +155,10 @@ def infer(
 
     use_bf16 = device.type == "cuda" and torch.cuda.is_bf16_supported()
     autocast = (
-        torch.autocast(device_type="cuda", dtype=torch.bfloat16)
-        if use_bf16
-        else nullcontext()
+        torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else nullcontext()
     )
     with torch.inference_mode(), autocast:
-        defect_probability = float(
-            torch.sigmoid(model(pixel_values)).float().cpu().item()
-        )
+        defect_probability = float(torch.sigmoid(model(pixel_values)).float().cpu().item())
 
     return build_result(
         manifest=manifest,
@@ -180,14 +172,10 @@ def infer(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Run the versioned CSight E3 vision model"
-    )
+    parser = argparse.ArgumentParser(description="Run the versioned CSight E3 vision model")
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument(
-        "--package-directory", type=Path, default=DEFAULT_PACKAGE_DIRECTORY
-    )
+    parser.add_argument("--package-directory", type=Path, default=DEFAULT_PACKAGE_DIRECTORY)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--output", type=Path)
     return parser.parse_args()

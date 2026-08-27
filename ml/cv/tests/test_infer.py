@@ -33,9 +33,7 @@ def test_model_package_is_internally_consistent() -> None:
         (0.0, "HUMAN_REVIEW_REQUIRED"),
     ],
 )
-def test_decision_support_band_never_confirms_normal(
-    score: float, expected: str
-) -> None:
+def test_decision_support_band_never_confirms_normal(score: float, expected: str) -> None:
     assert decision_support_band(score, 0.8984375) == expected
 
 
@@ -52,8 +50,6 @@ def test_result_contract_is_json_serializable_and_requires_human_approval() -> N
     )
 
     json.dumps(payload)
-    assert payload["analysis"]["decision_support_band"] == (
-        "HIGH_CONFIDENCE_DEFECT_CANDIDATE"
-    )
+    assert payload["analysis"]["decision_support_band"] == ("HIGH_CONFIDENCE_DEFECT_CANDIDATE")
     assert payload["safety"]["human_final_approval_required"] is True
     assert payload["capabilities"]["defect_type"] is False

@@ -1,0 +1,8 @@
+wandb/
+outputs/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*-predictions.parquet
+

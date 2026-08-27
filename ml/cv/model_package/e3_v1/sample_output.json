@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "model": {
+    "name": "csight-dinov2-vits14-kaputt-binary",
+    "version": "e3-epoch10-20260827",
+    "checkpoint_sha256": "49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e",
+    "preprocess_version": "1.0",
+    "threshold_version": "1.0"
+  },
+  "input": {
+    "file_name": "example.jpg",
+    "image_sha256": "EXAMPLE_ONLY_NOT_A_REAL_HASH",
+    "width": 2048,
+    "height": 2048
+  },
+  "analysis": {
+    "defect_probability": 0.91,
+    "threshold": 0.8984375,
+    "decision_support_band": "HIGH_CONFIDENCE_DEFECT_CANDIDATE"
+  },
+  "capabilities": {
+    "binary_defect_probability": true,
+    "defect_type": false,
+    "defect_location_or_mask": false,
+    "severity": false
+  },
+  "safety": {
+    "human_final_approval_required": true,
+    "low_score_is_not_normal_confirmation": true,
+    "high_risk_cases_require_escalation": true
+  }
+}

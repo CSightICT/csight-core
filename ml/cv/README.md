@@ -1,0 +1,134 @@
+# CSight CV — Kaputt DINOv2 training
+
+This directory contains the standalone research training pipeline for CSight's
+Kaputt binary defect classifier. The model produces visual evidence; it does not
+make the final customer-service decision.
+
+## Scope
+
+- Base model: `facebook/dinov2-small` (ViT-S/14)
+- Input: full Kaputt query/tray image
+- Target: `defect` binary label
+- Secondary evaluation label: `major_defect`
+- Tracking: Weights & Biases (W&B)
+- Dataset/checkpoints: local only; never committed or uploaded as W&B artifacts
+
+Kaputt is restricted to education and scientific computer-vision research under
+its dataset terms. This pipeline is a non-commercial proof of concept.
+
+## Environment
+
+```bash
+python3 -m venv --system-site-packages /home/data/venvs/csight-cv
+source /home/data/venvs/csight-cv/bin/activate
+python -m pip install -r ml/cv/requirements.txt
+wandb login
+```
+
+Do not put `WANDB_API_KEY` or Hugging Face credentials in Git, logs, issues, or
+configuration files.
+
+## Data validation
+
+```bash
+python -m csight_cv.validate_data \
+  --dataset-root /home/data/datasets/kaputt/extracted \
+  --check-images
+```
+
+## Smoke run
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.train \
+  --config ml/cv/configs/kaputt_dinov2_vits14.yaml \
+  --mode linear_probe \
+  --max-train-samples 256 \
+  --max-val-samples 128 \
+  --epochs 1 \
+  --wandb-mode online
+```
+
+## Full training
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.train \
+  --config ml/cv/configs/kaputt_dinov2_vits14.yaml \
+  --mode full_finetune \
+  --wandb-mode online
+```
+
+The full-frame v2 experiment removes the implicit random resized crop, uses
+AdamW with separate backbone/classifier learning rates, and adds warmup:
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.train \
+  --config ml/cv/configs/kaputt_dinov2_vits14_fullframe_v2.yaml \
+  --mode full_finetune \
+  --wandb-mode online
+```
+
+Continue from the E2 best model while resetting optimizer and scheduler state:
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.train \
+  --config ml/cv/configs/kaputt_dinov2_vits14_fullframe_e3_stage2.yaml \
+  --mode full_finetune \
+  --init-checkpoint /home/data/csight-cv-runs/<e2-run>/best.pt \
+  --wandb-mode online
+```
+
+`--resume` restores a full interrupted run. `--init-checkpoint` loads model
+weights only and deliberately starts a new optimizer and learning-rate schedule.
+
+When Kaputt image extraction is still running, use the guarded launcher. It
+waits for the exact official split counts, runs the image and split integrity
+checks, and only then starts full fine-tuning in the background:
+
+```bash
+bash ml/cv/scripts/wait_for_data_and_train.sh
+```
+
+Operational state is written outside Git to
+`/home/data/csight-cv-ready.log`, `/home/data/csight-cv-training.log`, and
+`/home/data/csight-cv-training.pid`.
+
+The official test split must only be evaluated after the model and threshold are
+frozen:
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.evaluate \
+  --config ml/cv/configs/kaputt_dinov2_vits14.yaml \
+  --checkpoint /home/data/csight-cv-runs/<run>/best.pt \
+  --split test \
+  --allow-test
+```
+
+## Logged W&B metrics
+
+- `train/loss_step`, `train/loss_epoch`, `train/learning_rate`
+- `validation/loss`, `validation/ap_any`, `validation/ap_major`
+- `validation/auroc`, `validation/recall_at_50_precision`
+- `validation/recall_at_1_fpr`
+- GPU utilization, memory, CPU and system metrics from the W&B client
+
+Only configuration and scalar metrics are sent to W&B. Kaputt images and model
+checkpoints remain on the workstation.
+
+## Versioned E3 inference
+
+The `model_package/e3_v1` directory freezes the selected checkpoint identity,
+full-frame preprocessing, label meaning, threshold, output contract, and model
+card. The 253 MiB checkpoint is deliberately kept outside Git and is verified by
+SHA-256 before every CLI inference.
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.infer \
+  --checkpoint /home/data/csight-cv-runs/\
+dinov2-vits14-kaputt-fullframe-e3-stage2-b16-20260827-013335/best.pt \
+  --image /path/to/query-image.jpg \
+  --output /tmp/csight-e3-result.json
+```
+
+The output is decision support only. A high score is a high-confidence defect
+candidate for a reviewer. A lower score does not confirm that the item is normal,
+and a human remains responsible for the final customer-service decision.

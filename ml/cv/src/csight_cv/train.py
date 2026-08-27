@@ -36,7 +36,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
     )
-    parser.add_argument("--resume", type=Path)
+    checkpoint_group = parser.add_mutually_exclusive_group()
+    checkpoint_group.add_argument("--resume", type=Path)
+    checkpoint_group.add_argument("--init-checkpoint", type=Path)
     return parser.parse_args()
 
 
@@ -50,6 +52,9 @@ def load_config(path: Path, args: argparse.Namespace) -> dict[str, Any]:
     config["training_mode"] = args.mode
     config["max_train_samples"] = args.max_train_samples
     config["max_val_samples"] = args.max_val_samples
+    config["init_checkpoint"] = (
+        str(args.init_checkpoint) if args.init_checkpoint is not None else None
+    )
     return config
 
 
@@ -92,6 +97,7 @@ def build_optimizer(
     backbone_learning_rate: float,
     classifier_learning_rate: float,
     weight_decay: float,
+    fused: bool = False,
 ) -> AdamW:
     groups: dict[str, dict[str, Any]] = {}
     for component in ("backbone", "classifier"):
@@ -118,7 +124,7 @@ def build_optimizer(
         groups[f"{component}_{decay_name}"]["params"].append(parameter)
 
     parameter_groups = [group for group in groups.values() if group["params"]]
-    return AdamW(parameter_groups, betas=(0.9, 0.999))
+    return AdamW(parameter_groups, betas=(0.9, 0.999), fused=fused)
 
 
 def cosine_with_warmup(
@@ -194,6 +200,10 @@ def main() -> None:
     config = load_config(args.config, args)
     seed = int(config["seed"])
     seed_everything(seed)
+    torch.set_float32_matmul_precision(
+        str(config.get("float32_matmul_precision", "high"))
+    )
+    torch.backends.cudnn.benchmark = bool(config.get("cudnn_benchmark", False))
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for this training run")
     device = torch.device("cuda")
@@ -248,6 +258,13 @@ def main() -> None:
         args.mode,
         bool(config["gradient_checkpointing"]),
     ).to(device)
+    if args.init_checkpoint is not None:
+        initialization_checkpoint = torch.load(
+            args.init_checkpoint,
+            map_location="cpu",
+            weights_only=False,
+        )
+        model.load_state_dict(initialization_checkpoint["model_state_dict"])
     backbone_learning_rate = (
         float(config["linear_probe_learning_rate"])
         if args.mode == "linear_probe"
@@ -263,6 +280,7 @@ def main() -> None:
         backbone_learning_rate,
         classifier_learning_rate,
         float(config["weight_decay"]),
+        bool(config.get("fused_optimizer", False)),
     )
     accumulation = int(config["gradient_accumulation_steps"])
     total_updates = math.ceil(len(train_loader) / accumulation) * int(config["epochs"])
@@ -297,6 +315,11 @@ def main() -> None:
                 "train_samples": len(train_dataset),
                 "validation_samples": len(validation_dataset),
                 "wandb_url": run.url,
+                "init_checkpoint": (
+                    str(args.init_checkpoint)
+                    if args.init_checkpoint is not None
+                    else None
+                ),
             },
             ensure_ascii=False,
         ),

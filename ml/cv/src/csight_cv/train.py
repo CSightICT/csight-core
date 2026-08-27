@@ -100,9 +100,7 @@ def build_optimizer(
         for decay_name, decay_value in (("decay", weight_decay), ("no_decay", 0.0)):
             group_name = f"{component}_{decay_name}"
             learning_rate = (
-                backbone_learning_rate
-                if component == "backbone"
-                else classifier_learning_rate
+                backbone_learning_rate if component == "backbone" else classifier_learning_rate
             )
             groups[group_name] = {
                 "params": [],

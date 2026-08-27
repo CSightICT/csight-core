@@ -114,3 +114,21 @@ PYTHONPATH=ml/cv/src python -m csight_cv.evaluate \
 Only configuration and scalar metrics are sent to W&B. Kaputt images and model
 checkpoints remain on the workstation.
 
+## Versioned E3 inference
+
+The `model_package/e3_v1` directory freezes the selected checkpoint identity,
+full-frame preprocessing, label meaning, threshold, output contract, and model
+card. The 253 MiB checkpoint is deliberately kept outside Git and is verified by
+SHA-256 before every CLI inference.
+
+```bash
+PYTHONPATH=ml/cv/src python -m csight_cv.infer \
+  --checkpoint /home/data/csight-cv-runs/\
+dinov2-vits14-kaputt-fullframe-e3-stage2-b16-20260827-013335/best.pt \
+  --image /path/to/query-image.jpg \
+  --output /tmp/csight-e3-result.json
+```
+
+The output is decision support only. A high score is a high-confidence defect
+candidate for a reviewer. A lower score does not confirm that the item is normal,
+and a human remains responsible for the final customer-service decision.

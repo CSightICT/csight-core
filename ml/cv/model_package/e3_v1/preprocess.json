@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "color_mode": "RGB",
+  "resize": {
+    "type": "resize",
+    "width": 1024,
+    "height": 1024,
+    "interpolation": "bicubic",
+    "antialias": true,
+    "preserve_aspect_ratio": false
+  },
+  "tensor": {
+    "channel_order": "CHW",
+    "value_range_before_normalization": [0.0, 1.0]
+  },
+  "normalization": {
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225]
+  },
+  "test_time_augmentation": false
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "output_logit_count": 1,
+  "negative": {
+    "id": 0,
+    "name": "no_defect_dataset_label",
+    "operational_meaning": "Not a confirmed-normal decision; route to human review below threshold."
+  },
+  "positive": {
+    "id": 1,
+    "name": "any_defect",
+    "operational_meaning": "Candidate evidence of any defect for human review."
+  },
+  "unsupported_outputs": [
+    "defect_type",
+    "defect_location",
+    "defect_mask",
+    "severity",
+    "refund_or_exchange_decision"
+  ]
+}

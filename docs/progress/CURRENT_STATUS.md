@@ -8,12 +8,12 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | Sprint 0 — Foundation; CV 학습 파이프라인 준비 |
-| 진행 중 작업 | E2 best checkpoint 동결 및 최종 test 평가 준비 |
+| 진행 중 작업 | E3 stage-2 연속 학습 실행 중; test split은 미사용 |
 | 마지막 갱신일 | 2026-08-27, Asia/Seoul |
 | 연결 GitHub 계정 | `kimhrin` |
 | 원격 저장소 | Private `CSightICT/csight-core` |
 | 로컬 Git | `main`·`develop`, Foundation 초기 커밋 `6fc20d3` |
-| 마지막 런타임 관측 | 2026-08-27, full-frame DINOv2 E2 완료; AP 0.839467, AUROC 0.917615 |
+| 마지막 런타임 관측 | 2026-08-27 10:37 KST, E3 실행 중; GPU 100%, VRAM 19,051/24,564MiB, 오류 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -98,7 +98,9 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - [x] W&B에 loss, learning rate, AP, AUROC와 시스템 지표 동기화 확인
 - [x] E1을 epoch 4 checkpoint까지 보존 후 중단: 최고 validation AP 0.306988, W&B run `93fdt5a0`
 - [x] Full-frame resize + AdamW E2 완료: 8 epochs, AP 0.839467, AUROC 0.917615, W&B run `0kitqdog`
-- [ ] validation AP 기준 best checkpoint 확정
+- [x] E2 validation AP 기준 best checkpoint 확정
+- [x] E3: E2 best 가중치 초기화, batch 16, fused AdamW, 12 epochs 실행 시작 (`e33m1xdx`)
+- [ ] E3 validation AP 기준 최종 best checkpoint 확정
 - [ ] 모델·임계값 고정 후 test split 1회 평가
 
 ## 7. 미해결 사항과 사용자 결정
@@ -177,3 +179,13 @@ append-only로 유지한다. 상세 Sprint 0 증거는 `SPRINT_0_FOUNDATION.md`�
 - 제한: 여러 학습 요소를 함께 변경했으므로 개선을 resize 하나에만 귀속할 수 없음
 - 미실행: test split 평가
 - 다음 작업: best checkpoint와 임계값을 동결한 뒤 test split을 한 번만 평가
+
+### 2026-08-27 — E3 stage-2 연속 학습 시작
+
+- 목적: E2가 마지막 epoch까지 개선된 점을 근거로 E2 best 가중치에서 저학습률 연속 학습
+- 변경: optimizer/scheduler는 새로 초기화, batch 16, backbone LR `2e-6`, classifier LR `3e-5`, 2% warmup, fused AdamW
+- VRAM 판단: batch 16 약 17.5GiB·27.2 images/s, batch 20 약 21.8GiB·28.9 images/s로 측정해 장시간 안정 여유가 큰 batch 16 채택
+- 검증: Ruff/format, compileall, pytest 5건, 1024px batch 16 weights-only 스모크 통과
+- 실행 중: W&B run `e33m1xdx`; 초기 GPU 100%, VRAM 19,051/24,564MiB, OOM·NaN·traceback 없음
+- 미실행: test split 평가
+- 다음 작업: validation 지표와 early stopping을 감시하고 최종 best checkpoint를 동결

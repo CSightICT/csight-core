@@ -960,3 +960,55 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   Push·PR은 하지 않음
 - 다음 작업: 지정 Commit에서 `feature/sprint-4c3b-local-mlx-grounding`을 만들고 preferred
   MLX artifact 존재성·revision·호환성을 먼저 검증한 뒤 Dev→freeze→Test 순서로 진행
+
+### 2026-08-27 — Sprint 4C-3B Local MLX PoC
+
+- Git: 4C-3A를 `72cbe12 feat: add citation grounding guardrails`로 로컬 Commit하고
+  `feature/sprint-4c3b-local-mlx-grounding` 생성; 4C-3B Commit·Push·PR 없음
+- Runtime: exact `mlx-community/Qwen3.5-9B-MLX-4bit` revision
+  `938d8919941c6e7efd3c7150eff7fe9d12afa631`, MLX 0.32.2/mlx-vlm 0.6.17,
+  localhost:8080, 4096 context, 512 output, concurrency 1, thinking disabled
+- Extraction: Dev120/Test40 구조·source quote 100%, Test issue/action/ambiguity F1
+  0.8533/0.1935/0.1951; `LOCAL_POC` only
+- Query: Dev80/Test40 구조·안전 100%. Test Local Recall@10 0.90와 coverage 0.75가 RAW
+  0.975/0.85보다 낮아 `RAW_REMAINS_SELECTED`
+- Grounding: Dev40/Test10, Injection Dev20/Test10 구조·citation·의미·replay 100%, 위반 0;
+  사람 spot-check Dev20/Test10 모두 rubric PASS
+- Live: Docker Core 최신 rebuild 성공, 6개 healthy. Docker Worker→Mac MLX 실제 safe-default
+  top-3 E2E 10/10, duplicate 0, citation violation 0. top-10은 4096 context 초과로 fail-closed
+- Stability: 2시간 34분 이상 연속, RSS 약 6.50 GB, swap 0
+- 미완료: 실제 timeout→recovery와 malformed-provider fault injection은 미실행(offline contract만
+  존재). Qwen3.8 Production Target 재qualification 필요
+- 검증: Ruff/Format/Pyright PASS, Default 437 passed, Architecture+Unit+Contract+E2E 437 passed,
+  Integration 42 passed/5 skipped, External Local MLX 3 passed/skip 0, Migration drift 0,
+  `git diff --check` PASS, 실제 Local 결과 cross-tenant 404
+- 장애: unreachable Local endpoint는 retryable `LLM_PROVIDER_UNAVAILABLE`/provider `mlx`, Core
+  readiness 200, Mock fallback 0. 실제 timeout recovery와 malformed response injection은 미실행
+- Git 인계: Sprint 4C-3B 변경은 요청대로 미커밋; `kaputt_best_vision_architecture.md`는
+  미수정·미삭제·미Stage
+- 다음 작업: 실제 timeout recovery/malformed provider fault injection, Qwen3.8 재qualification,
+  Sprint 5A Policy Engine과 Human Review Gate 준비
+
+### 2026-08-27 — Sprint 4C-3B Independent Closeout
+
+- 판정: P0 0, P1 0, `SPRINT_4C3B_CLOSEOUT=PASS`; 범위는 Local PoC이며 Qwen3.8 Production
+  qualification이나 실제 기업 정책 품질을 의미하지 않음
+- Runtime: pinned Qwen3.5-9B MLX revision, MLX 0.32.2/mlx-vlm 0.6.17, strict JSON과 reasoning
+  leakage 0을 재확인; 실제 unreachable endpoint는 retryable provider `mlx`, Core ready 200
+- Regression: Ruff 0, Format 275, Pyright 0, Default 437 passed/53 deselected,
+  Integration 42 passed/5 external-GPU skipped, External Local MLX 3 passed/487 deselected
+- Artifact: 봉인 Test를 재실행하지 않고 Extraction 40, Query 40, Grounding 10, Injection 10의
+  metric/count와 frozen profile·현재 code prompt hash를 검증; Test 재실행 guard 확인
+- 선택 결과: Extraction issue/action/ambiguity F1 0.8533/0.1935/0.1951, Local Query
+  Recall@10 0.90 대 RAW 0.975로 `RAW_REMAINS_SELECTED`; 작은 합성 Grounding 결과를 Production
+  faithfulness로 과장하지 않음
+- Persistence/Runtime: head `20260827_0009`, drift 0, MLX extraction stage 12와 grounding result
+  10, duplicate result group 0, raw prompt/response/reasoning column 0; Core 6 healthy, 4 application
+  queue consumer 1/depth 0
+- NOT_RUN: 실행 중 Local server의 ownership PID file이 없어 restart smoke는 안전상 미실행;
+  실제 timeout→recovery와 malformed-provider runtime injection도 `OFFLINE_CONTRACT_ONLY` 유지
+- Git: Closeout 문서 추가, `git diff --check` PASS. `kaputt_best_vision_architecture.md`는
+  미수정·미삭제·미Stage; 정확한 로컬 Commit 메시지는
+  `feat: add local MLX LLM grounding PoC`, Push·PR 금지
+- 다음 작업: Closeout Commit 뒤 `feature/sprint-5a-policy-engine-core`를 생성하고, versioned
+  deterministic Policy Engine을 LLM/RAG/최종 업무 결정과 분리해 구현

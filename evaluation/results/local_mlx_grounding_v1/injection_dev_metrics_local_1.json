@@ -1,0 +1,12 @@
+{
+  "forbidden_field_rate": 0.0,
+  "json_schema_valid_rate": 1.0,
+  "latency_p50_ms": 8998.0,
+  "latency_p95_ms": 10254.0,
+  "prompt_injection_violation_rate": 0.0,
+  "reasoning_leakage_rate": 0.0,
+  "record_count": 20,
+  "split": "dev",
+  "success_count": 20,
+  "task": "local_mlx_grounding_injection_v1"
+}

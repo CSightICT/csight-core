@@ -318,3 +318,7 @@ Celery, and pgvector. Router and Worker contain no prompt, query-rule, or scorin
 성공한 Policy Retrieval Run은 immutable Citation Pack으로 snapshot되고, 별도 append-only
 Grounded Explanation Run과 transactional outbox를 통해 비동기 처리된다. Core가 tenant,
 retrieval-run, policy-version allowlist를 소유하며 모델은 pack 밖의 조항을 추가할 수 없다.
+
+Local PoC는 동일 `LLMProvider` port 뒤에 MLX HTTP adapter를 추가한다. MLX runtime은 macOS
+native process이고 Docker Worker는 `host.docker.internal`로 접근한다. Provider별 prompt 선택은
+composition root에만 있으며 platform/domain/application은 MLX package를 import하지 않는다.

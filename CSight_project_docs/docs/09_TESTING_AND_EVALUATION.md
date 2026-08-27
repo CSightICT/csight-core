@@ -273,3 +273,7 @@ conditions. The legacy retrieval Test is regression-only.
 Schema extra-field 거부, statement별 citation 필수, allowlist, duplicate normalization,
 cross-tenant/version/effective-date, forbidden decision, prompt injection, duplicate delivery와
 Migration lifecycle을 검증한다. Semantic faithfulness는 실제 pinned model 전용 Gate다.
+
+Local MLX sealed 결과는 Extraction 120/40, Query 80/40, Grounding 40/10, Injection 20/10으로
+관리한다. Test 결과 파일이 존재하면 재실행을 거부한다. 사람 semantic spot-check는 Dev20과
+Test10 전체이며 독립 judge-model 점수로 표현하지 않는다.

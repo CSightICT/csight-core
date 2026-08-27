@@ -1,0 +1,21 @@
+{
+  "dataset_hash": "5040f219aff5546a88073f132889215df2574c3196bdcad9f4f9e28141fd72c4",
+  "frozen": false,
+  "input_schema_version": "1.0",
+  "model_artifact": "mlx-community/Qwen3.5-9B-MLX-4bit",
+  "model_revision": "938d8919941c6e7efd3c7150eff7fe9d12afa631",
+  "output_schema_version": "1.0",
+  "profile_hash": "590badd24371e288ea6053fa3dfda03e89cac15bcdd3b45130a32f79ba0f1fe9",
+  "profile_name": "local_mlx_query-builder",
+  "profile_version": "1.0.0",
+  "prompt_hash": "fcea72dfb06fa6d8c35ecaaf81a44983cecd3dbc753227a6c8a0702e43ab49d3",
+  "prompt_name": "policy_query_builder",
+  "prompt_version": "1.1.0-local.1",
+  "qualification_scope": "LOCAL_POC",
+  "sampling": {
+    "max_output_tokens": 512,
+    "temperature": 0.0
+  },
+  "selection_split": "dev",
+  "test_reconfiguration_allowed": false
+}

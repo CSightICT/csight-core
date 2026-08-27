@@ -531,3 +531,20 @@ semantic citation precision/recall, unsupported claim rate, paraphrase faithfuln
 `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`입니다. 구조와 평가 경계는
 [`docs/rag/CITATION_GROUNDING_ARCHITECTURE.md`](docs/rag/CITATION_GROUNDING_ARCHITECTURE.md)와
 [`docs/rag/GROUNDING_EVALUATION_GUIDE.md`](docs/rag/GROUNDING_EVALUATION_GUIDE.md)를 참조합니다.
+
+## Sprint 4C-3B local MLX PoC
+
+Mac의 `mlx-community/Qwen3.5-9B-MLX-4bit`를 native MLX-VLM로 실행하고 기존 Provider port를
+통해 Extraction v2, Query Builder, Citation-grounded Explanation을 평가합니다. Docker Worker는
+`host.docker.internal:8080`을 사용하며 기본 Query Strategy는 계속 RAW입니다.
+
+```bash
+make setup-local-llm
+make start-local-llm
+make health-local-llm
+make test-local-llm
+make smoke-local-llm-e2e
+```
+
+자세한 실행·평가 규칙은 [`docs/llm/LOCAL_MLX_RUNTIME_GUIDE.md`](docs/llm/LOCAL_MLX_RUNTIME_GUIDE.md)와
+[`docs/progress/SPRINT_4C3B_LOCAL_MLX_POC.md`](docs/progress/SPRINT_4C3B_LOCAL_MLX_POC.md)를 봅니다.

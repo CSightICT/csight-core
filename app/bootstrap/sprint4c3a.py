@@ -11,8 +11,20 @@ from app.application.grounding import (
 )
 from app.bootstrap.dependencies import build_llm_provider
 from app.bootstrap.settings import Settings
-from app.domains.product_defect_cs.prompts import GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1
+from app.domains.product_defect_cs.prompts import (
+    GROUNDED_POLICY_EXPLANATION_PROMPT_LOCAL_2,
+    GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1,
+)
 from app.interface.http.services import Sprint4C3AServiceContainer
+from app.platform.analysis.prompts import PromptManifest
+
+
+def _grounding_prompt(settings: Settings) -> PromptManifest:
+    return (
+        GROUNDED_POLICY_EXPLANATION_PROMPT_LOCAL_2
+        if settings.llm_provider == "mlx"
+        else GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1
+    )
 
 
 def sprint4c3a_is_configured(settings: Settings) -> bool:
@@ -30,7 +42,7 @@ def build_sprint4c3a_services(settings: Settings) -> Sprint4C3AServiceContainer:
         start_grounded_explanation=StartGroundedExplanation(
             repository,
             llm,
-            GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1,
+            _grounding_prompt(settings),
         ),
         list_grounded_explanations=ListGroundedExplanationRuns(repository),
         get_grounded_explanation=GetGroundedExplanationRun(repository),
@@ -43,7 +55,7 @@ def build_execute_grounded_explanation(settings: Settings) -> ExecuteGroundedExp
             create_session_factory(get_engine(settings))
         ),
         llm=build_llm_provider(settings),
-        prompt=GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1,
+        prompt=_grounding_prompt(settings),
     )
 
 

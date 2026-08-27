@@ -115,7 +115,7 @@ class Settings(BaseSettings):
         validation_alias="MAX_IMAGE_PIXELS",
     )
 
-    llm_provider: Literal["mock", "vllm"] = Field(
+    llm_provider: Literal["mock", "vllm", "mlx"] = Field(
         default="mock",
         validation_alias="LLM_PROVIDER",
     )
@@ -438,8 +438,8 @@ class Settings(BaseSettings):
                 "ALLOWED_IMAGE_MIME_TYPES and ALLOWED_IMAGE_EXTENSIONS must share a format"
             )
 
-        if self.llm_provider == "vllm" and self.llm_base_url is None:
-            raise ValueError("LLM_BASE_URL is required for the vllm provider")
+        if self.llm_provider in {"vllm", "mlx"} and self.llm_base_url is None:
+            raise ValueError("LLM_BASE_URL is required for a remote HTTP LLM provider")
         if self.vision_provider != "mock" and self.vision_base_url is None:
             raise ValueError("VISION_BASE_URL is required for a non-mock Vision provider")
         if not (

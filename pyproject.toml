@@ -52,6 +52,7 @@ markers = [
     "external_vision: tests requiring an explicitly configured external Vision service",
     "external_embedding: tests requiring an explicitly configured embedding service",
     "external_reranker: tests requiring an explicitly configured reranker service",
+    "external_local_llm: tests requiring the host-native Local MLX service",
 ]
 
 [tool.ruff]

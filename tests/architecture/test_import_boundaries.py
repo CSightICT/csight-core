@@ -17,6 +17,8 @@ FORBIDDEN_TECHNOLOGIES = {
     "httpx2",
     "jwt",
     "minio",
+    "mlx",
+    "mlx_vlm",
     "multipart",
     "openai",
     "pwdlib",
@@ -133,6 +135,23 @@ def test_private_reranker_service_has_no_core_database_dependency() -> None:
     source = path.read_text(encoding="utf-8").lower()
     assert "database_url" not in source
     assert "tenant_id" not in source
+
+
+@pytest.mark.unit
+def test_local_llm_runtime_has_no_core_database_dependency() -> None:
+    root = PROJECT_ROOT / "infra" / "local_llm"
+    if not root.exists():
+        return
+    violations: list[str] = []
+    for path in sorted(root.rglob("*.py")):
+        roots = imported_roots(path)
+        forbidden = roots & {"sqlalchemy", "psycopg", "pgvector"}
+        source = path.read_text(encoding="utf-8").lower()
+        if forbidden or "database_url" in source:
+            violations.append(str(path.relative_to(PROJECT_ROOT)))
+    assert not violations, "Local LLM runtime imports Core DB dependencies: " + ", ".join(
+        violations
+    )
 
 
 @pytest.mark.unit

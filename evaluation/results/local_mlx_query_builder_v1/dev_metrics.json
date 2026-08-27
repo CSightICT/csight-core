@@ -1,0 +1,41 @@
+{
+  "candidate_recall_at_20": 1.0,
+  "cross_tenant_retrieval_rate": 0.0,
+  "direct": {
+    "duplicate_query_rate": 0.0,
+    "empty_query_rate": 0.0,
+    "filter_hint": {
+      "f1": 0.847724,
+      "precision": 0.931034,
+      "recall": 0.778098
+    },
+    "forbidden_field_rate": 0.0,
+    "json_schema_valid_rate": 1.0,
+    "prompt_injection_violation_rate": 0.0,
+    "pydantic_validation_rate": 1.0,
+    "query_purpose": {
+      "f1": 0.717489,
+      "precision": 1.0,
+      "recall": 0.559441
+    },
+    "reasoning_leakage_rate": 0.0
+  },
+  "exact_gold_coverage_at_10": 0.7125,
+  "future_policy_retrieval_rate": 0.0,
+  "latency_p50_ms": 7317.5,
+  "latency_p95_ms": 8107.0,
+  "mrr_at_10": 0.734747,
+  "ndcg_at_10": 0.705863,
+  "recall_at_1": 0.6875,
+  "recall_at_10": 0.9,
+  "recall_at_20": 1.0,
+  "recall_at_3": 0.7375,
+  "recall_at_5": 0.75,
+  "record_count": 80,
+  "retired_policy_retrieval_rate": 0.0,
+  "split": "dev",
+  "success_count": 80,
+  "task": "local_mlx_query_builder_v1",
+  "wrong_version_retrieval_rate": 0.0,
+  "zero_result_rate": 0.0
+}

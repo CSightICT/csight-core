@@ -1,0 +1,21 @@
+{
+  "dataset_hash": "c3e32c74572ed6c9f4a886779b049a061dd82b8ff74dcd6e5915f844a5c6ba62",
+  "frozen": true,
+  "input_schema_version": "2.0",
+  "model_artifact": "mlx-community/Qwen3.5-9B-MLX-4bit",
+  "model_revision": "938d8919941c6e7efd3c7150eff7fe9d12afa631",
+  "output_schema_version": "2.0",
+  "profile_hash": "d29a459629c57b4d8a63387dfaa1a4aeb0e580244c5874246073fe84fe312c23",
+  "profile_name": "local_mlx_extraction",
+  "profile_version": "1.0.0",
+  "prompt_hash": "94b7580438a3e19b58e84c32aa4eaa4f3658bad4ef4686cd552bb8831be5ac6a",
+  "prompt_name": "product_defect_text_extraction",
+  "prompt_version": "2.0.0-local.2",
+  "qualification_scope": "LOCAL_POC",
+  "sampling": {
+    "max_output_tokens": 512,
+    "temperature": 0.0
+  },
+  "selection_split": "dev",
+  "test_reconfiguration_allowed": false
+}

@@ -1,0 +1,21 @@
+{
+  "dataset_hash": "901d3ae05aba26c21b451ad6acc6e6e2be41fff228cb282bbb21d4115ab4cbf3",
+  "frozen": true,
+  "input_schema_version": "1.0",
+  "model_artifact": "mlx-community/Qwen3.5-9B-MLX-4bit",
+  "model_revision": "938d8919941c6e7efd3c7150eff7fe9d12afa631",
+  "output_schema_version": "1.0",
+  "profile_hash": "9d4ee385cd03d194689125f4fb4146f8d16f81cbcbbfe87285d6a70c9d6fdaac",
+  "profile_name": "local_mlx_grounding",
+  "profile_version": "1.0.0",
+  "prompt_hash": "e375f153be637bd674fa620e9452d2e55161ff29cbb35843e2b3ae7aefa52297",
+  "prompt_name": "grounded_policy_explanation",
+  "prompt_version": "1.1.0-local.2",
+  "qualification_scope": "LOCAL_POC",
+  "sampling": {
+    "max_output_tokens": 512,
+    "temperature": 0.0
+  },
+  "selection_split": "dev",
+  "test_reconfiguration_allowed": false
+}

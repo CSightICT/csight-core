@@ -292,6 +292,7 @@ class VLLMLLMProvider:
             system_message=prompt.system_template,
             user_message=user_message,
             schema=PolicyQueryPlan.model_json_schema(),
+            schema_name="csight_policy_query_plan",
         )
         started_at = self._clock()
         status, provider_request_id, raw_response = self._post(payload)

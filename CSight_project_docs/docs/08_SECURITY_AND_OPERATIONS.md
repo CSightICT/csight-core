@@ -264,3 +264,7 @@ query text, clause text, JWTs, keys, and vectors. Provider failures never silent
 Citation allowlist는 tenant/retrieval/version 경계를 fail-closed로 검증한다. Raw prompt,
 provider response, reasoning, 고객 원문, clause text, token, secret은 broker나 log에 넣지 않는다.
 Provider 장애는 Grounded Run 실패로 격리하고 Core readiness와 기존 retrieval은 유지한다.
+
+Local MLX는 loopback에만 bind하고 별도 virtualenv와 immutable model revision을 사용한다.
+Docker에는 host bridge URL만 제공한다. Optional LLM health는 Core readiness 의존성이 아니며,
+provider failure는 Mock fallback 없이 기존 retry/failure 의미론으로 격리한다.

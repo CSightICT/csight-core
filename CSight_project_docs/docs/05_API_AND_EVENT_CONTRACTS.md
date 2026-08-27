@@ -518,3 +518,7 @@ Reranker 장애는 `503 RERANKER_PROVIDER_UNAVAILABLE`이며 silent fallback과 
 `POST/GET /api/v1/cases/{case_id}/grounded-explanation-runs`는 성공한 retrieval run ID만 받아
 `202` 비동기 실행을 생성하고 List/Get을 제공한다. Queue payload는 event, tenant, Case,
 grounded-run, correlation ID만 포함한다. 응답은 내부 clause row ID와 tenant를 노출하지 않는다.
+
+Local MLX도 기존 Analysis/Retrieval/Grounding API와 identifier-only event를 그대로 사용한다.
+Provider metadata는 `mlx`, local served-name, version/revision, prompt hash를 기록하되 host cache
+path와 raw prompt/response/reasoning은 공개하거나 저장하지 않는다.

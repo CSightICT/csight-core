@@ -188,6 +188,21 @@ def test_vllm_provider_requires_base_url() -> None:
         )
 
 
+def test_mlx_provider_requires_base_url_and_is_allowlisted() -> None:
+    with pytest.raises(ValidationError, match="LLM_BASE_URL"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            llm_provider="mlx",
+        )
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        llm_provider=" MLX ",
+        llm_base_url="http://host.docker.internal:8080/v1",
+    )
+    assert settings.llm_provider == "mlx"
+    assert settings.llm_base_url_value == "http://host.docker.internal:8080/v1"
+
+
 def test_vllm_settings_are_normalized_bounded_and_keep_api_key_secret() -> None:
     settings = Settings(
         _env_file=None,  # pyright: ignore[reportCallIssue]
@@ -223,7 +238,7 @@ def test_vllm_settings_are_normalized_bounded_and_keep_api_key_secret() -> None:
 
 
 def test_llm_provider_is_allowlisted() -> None:
-    with pytest.raises(ValidationError, match=r"mock.*vllm"):
+    with pytest.raises(ValidationError, match=r"mock.*vllm.*mlx"):
         Settings(
             _env_file=None,  # pyright: ignore[reportCallIssue]
             llm_provider="unknown-provider",

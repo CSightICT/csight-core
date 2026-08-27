@@ -336,3 +336,7 @@ are separate; unavailable external Qwen cells remain Skipped.
 Grounding 50과 Prompt Injection 30으로 구조적 citation/decision/injection/replay 지표를
 평가한다. 실제 Qwen이 없으면 semantic citation precision/recall, unsupported claim rate와
 paraphrase faithfulness는 Skip이며 Mock 결과를 모델 성능으로 보고하지 않는다.
+
+4C-3B Local PoC는 Qwen3.5-9B MLX 4-bit를 Dev→freeze→sealed Test로 평가한다. Local 성능은
+Qwen3.8 Production Target과 분리한다. Query Builder가 RAW를 일관되게 개선하지 못했으므로 RAW를
+유지하고, Local Grounding은 context-budgeted Citation Pack으로만 qualified-with-limitations다.

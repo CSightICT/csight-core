@@ -22,13 +22,25 @@ from app.domains.product_defect_cs import (
     PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
     PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
 )
+from app.domains.product_defect_cs.prompts import (
+    PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2_LOCAL_2,
+)
 from app.interface.http.services import Sprint2ServiceContainer
+from app.platform.analysis.prompts import PromptManifest
 from app.ports.analysis_repository import AnalysisUnitOfWorkFactory
 from app.ports.message_queue import MessageQueue
 
 
 class Sprint2ConfigurationError(RuntimeError):
     """Raised without configuration values when Sprint 2 cannot be composed."""
+
+
+def _v2_prompt(settings: Settings) -> PromptManifest:
+    return (
+        PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2_LOCAL_2
+        if settings.llm_provider == "mlx"
+        else PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+    )
 
 
 def sprint2_is_configured(settings: Settings) -> bool:
@@ -50,7 +62,7 @@ def build_sprint2_services(settings: Settings) -> Sprint2ServiceContainer:
             provider=provider,
             vision_provider=build_vision_provider(settings),
             prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
-            prompt_v2=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
+            prompt_v2=_v2_prompt(settings),
             clock=clock,
             id_generator=id_generator,
         ),
@@ -67,7 +79,7 @@ def build_execute_text_extraction(settings: Settings) -> ExecuteTextExtraction:
         uow_factory=_uow_factory(settings),
         provider=build_llm_provider(settings),
         prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
-        prompt_v2=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
+        prompt_v2=_v2_prompt(settings),
         clock=UtcClock(),
         id_generator=Uuid4Generator(),
         claim_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),

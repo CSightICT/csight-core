@@ -18,7 +18,7 @@ POLICY_INDEX_VERSION ?= 1.0.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm smoke-analysis build-policy-corpus validate-policy-corpus build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
 
 help:
 	@echo "CSight Core commands"
@@ -66,6 +66,11 @@ help:
 	@echo "  make activate-policy-reranker-profile  Persist the locked ACTIVE execution profile"
 	@echo "  make evaluate-policy-reranker-{dev,test}  Run the locked reranker evaluation"
 	@echo "  make smoke-policy-reranked-search  Run two-tenant HYBRID_RERANKED smoke"
+	@echo "  make setup-local-llm / start-local-llm / stop-local-llm / health-local-llm"
+	@echo "  make test-local-llm / qualify-local-llm  Opt in to the host-native MLX service"
+	@echo "  make evaluate-local-{extraction,query-builder,grounding}  Run Local MLX Dev"
+	@echo "  make evaluate-local-llm-all  Run all Local MLX Dev evaluations"
+	@echo "  make smoke-local-llm-e2e  Run the Local MLX PoC smoke path"
 
 up:
 	$(COMPOSE_CMD) up --build --detach --wait
@@ -95,7 +100,7 @@ typecheck:
 	$(UV) run pyright
 
 test:
-	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision and not external_embedding and not external_reranker"
+	$(UV) run pytest -q -m "not integration and not external_gpu and not external_vision and not external_embedding and not external_reranker and not external_local_llm"
 
 test-integration:
 	RUN_CORE_INTEGRATION=1 $(UV) run pytest -q -m integration
@@ -119,6 +124,45 @@ test-external-embedding:
 
 test-external-reranker:
 	RUN_EXTERNAL_RERANKER_TESTS=1 RERANKER_BASE_URL=$(RERANKER_BASE_URL) $(UV) run pytest -q -m external_reranker
+
+setup-local-llm:
+	./infra/local_llm/setup_local_llm.sh
+
+start-local-llm:
+	./infra/local_llm/serve_local_llm.sh
+
+stop-local-llm:
+	$(UV) run python infra/local_llm/stop_local_llm.py
+
+health-local-llm:
+	./infra/local_llm/healthcheck.sh
+
+qualify-local-llm:
+	.venv-local-llm/bin/python infra/local_llm/qualify_local_llm.py
+
+test-local-llm:
+	RUN_EXTERNAL_LOCAL_LLM_TESTS=1 ./infra/local_llm/run_backend_with_local_llm.sh \
+		$(UV) run pytest -q -m external_local_llm
+
+evaluate-local-extraction:
+	./infra/local_llm/run_backend_with_local_llm.sh \
+		$(UV) run python scripts/evaluate_local_mlx.py --task extraction --split dev
+
+evaluate-local-query-builder:
+	./infra/local_llm/run_backend_with_local_llm.sh \
+		$(UV) run python scripts/evaluate_local_mlx.py --task query-builder --split dev
+
+evaluate-local-grounding:
+	./infra/local_llm/run_backend_with_local_llm.sh \
+		$(UV) run python scripts/evaluate_local_mlx.py --task grounding --split dev
+
+evaluate-local-llm-all:
+	./infra/local_llm/run_backend_with_local_llm.sh \
+		$(UV) run python scripts/evaluate_local_mlx.py --task all --split dev
+
+smoke-local-llm-e2e:
+	./infra/local_llm/run_backend_with_local_llm.sh \
+		$(UV) run python scripts/smoke_local_mlx_e2e.py --env-file $(ENV_FILE)
 
 smoke-analysis:
 	$(UV) run python scripts/smoke_analysis.py --env-file $(ENV_FILE)

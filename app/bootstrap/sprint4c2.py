@@ -12,7 +12,10 @@ from app.application.policy_query_runs import (
 from app.bootstrap.dependencies import build_llm_provider
 from app.bootstrap.settings import Settings
 from app.bootstrap.sprint4b import build_sprint4b_services, sprint4b_is_configured
-from app.domains.product_defect_cs.prompts import POLICY_QUERY_BUILDER_PROMPT_V1_1
+from app.domains.product_defect_cs.prompts import (
+    POLICY_QUERY_BUILDER_PROMPT_LOCAL_2,
+    POLICY_QUERY_BUILDER_PROMPT_V1_1,
+)
 from app.interface.http.services import Sprint4C2ServiceContainer
 
 
@@ -39,7 +42,11 @@ def build_execute_policy_retrieval_run(settings: Settings) -> ExecutePolicyRetri
         repository=repository,
         search=build_sprint4b_services(settings).search_policy_clauses,
         llm=build_llm_provider(settings),
-        prompt=POLICY_QUERY_BUILDER_PROMPT_V1_1,
+        prompt=(
+            POLICY_QUERY_BUILDER_PROMPT_LOCAL_2
+            if settings.llm_provider == "mlx"
+            else POLICY_QUERY_BUILDER_PROMPT_V1_1
+        ),
     )
 
 

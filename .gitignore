@@ -14,6 +14,8 @@ htmlcov/
 .venv/
 .venv-embedding/
 .venv-reranker/
+.venv-local-llm/
+infra/local_llm/.server.pid
 .embedding-service.pid
 .embedding-service.log
 .reranker-service.pid

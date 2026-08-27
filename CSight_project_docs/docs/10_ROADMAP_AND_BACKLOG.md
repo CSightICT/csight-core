@@ -322,3 +322,7 @@ injection evaluation, and grounded RAG evaluation.
 4C-3A는 Citation Pack, strict grounding schema, deterministic validators, Mock E2E와 구조 평가를
 완료한다. 4C-3B는 실제 Qwen Dev/freeze/Test, semantic faithfulness, unsupported claim과 injection
 모델 평가를 수행한다. Sprint 5에서 versioned Policy Engine과 Human Review를 연결한다.
+
+4C-3B 결과는 Local Runtime/Grounding qualified-with-limitations, RAW Query 유지다. 후속은 같은
+pipeline의 Qwen3.8 RTX4090/vLLM 재qualification, 실제 timeout fault injection, Sprint 5A
+versioned Policy Engine과 Human Review Gate다.

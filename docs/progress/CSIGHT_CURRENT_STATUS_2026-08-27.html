@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="2026-08-28 재검증된 CSight 합성 HDP-100 기술 PoC와 실제 E3 미연결 경계">
-  <title>CSight HDP-100 합성 기술 PoC 현황 · 2026-08-28 재검증</title>
+  <meta name="description" content="2026-08-28 CSight R1 가상 문의 10건, 3열 상담원 UI, 가상 정책 2.0.1 내부 데모 현황">
+  <title>CSight · R1 문의 10건과 정책 2.0.1 내부 데모 · 2026-08-28</title>
   <style>
     :root {
       color-scheme: light;
@@ -180,6 +180,49 @@
     .metric span { display: block; margin-top: 9px; color: var(--muted); font-size: 12px; font-weight: 700; }
     .metric small { display: block; margin-top: 4px; color: #889591; font-size: 11px; }
 
+    .workbench-preview {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: #ecefe9;
+    }
+    .workbench-column {
+      min-height: 250px;
+      border: 1px solid #d6ddd6;
+      border-radius: 18px;
+      background: var(--card);
+      padding: 20px;
+    }
+    .workbench-column header { display: flex; align-items: center; gap: 10px; }
+    .workbench-column .step {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: var(--ink);
+      color: white;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .workbench-column h3 { margin: 0; font-size: 17px; letter-spacing: -0.03em; }
+    .workbench-column p { margin: 16px 0 0; color: var(--muted); font-size: 13px; }
+    .workbench-column ul { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .workbench-column li { border-radius: 10px; background: #f2f4ef; padding: 9px 11px; color: #40534f; font-size: 12px; }
+    .workbench-column.policy { border-color: #bcded6; background: #f8fffc; }
+    .workbench-fold {
+      margin-top: 12px;
+      border: 1px dashed #b8c5c0;
+      border-radius: 14px;
+      padding: 12px 15px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
     .flow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
     .flow-step {
       position: relative;
@@ -273,7 +316,7 @@
 
     .git-strip {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 1px;
       overflow: hidden;
       border: 1px solid var(--line);
@@ -294,6 +337,7 @@
       .hero-meta { margin: 0; align-content: center; }
       .status-grid { grid-template-columns: repeat(2, 1fr); }
       .metrics { grid-template-columns: repeat(3, 1fr); }
+      .workbench-preview { grid-template-columns: 1fr; }
       .flow { grid-template-columns: repeat(2, 1fr); }
       .flow-step::after { display: none; }
     }
@@ -336,9 +380,9 @@
 <body>
   <header class="topbar">
     <div class="shell topbar-inner">
-      <div class="brand"><span class="brand-mark">CS</span> CSight · 오늘의 HDP-100 데모 상태</div>
+      <div class="brand"><span class="brand-mark">CS</span> CSight · R1 문의 10건 데모 상태</div>
       <div class="top-actions">
-        <a href="http://127.0.0.1:8080/login">상담원 콘솔 열기</a>
+        <a href="https://doongdoong.org/login">내부 상담원 콘솔 열기</a>
         <a href="#next">다음 할 일</a>
         <button class="print-button" type="button" onclick="window.print()">인쇄 / PDF</button>
       </div>
@@ -349,20 +393,27 @@
     <section class="hero" aria-labelledby="page-title">
       <div class="hero-grid">
         <div>
-          <p class="eyebrow">Final Reverification · 2026-08-28</p>
-          <h1 id="page-title">합성 데모 팩은 준비.<br>실제 E3는 아직 연결 전.</h1>
-          <p class="hero-copy">가상의 HDP-100 상품으로 36개 합성 문의와 5개 안전 시나리오를 보여줄 수 있습니다. 현재 화면에 연결된 Vision은 Mock 이진 계약뿐이며, 실제 E3 모델 추론과 제품 성능은 주장할 수 없습니다.</p>
-          <div class="verdict"><span class="verdict-dot"></span> SCENARIO TECH POC READY · MOCK LIVE PASS</div>
+          <p class="eyebrow">R1 Fictional Commerce Demo · 2026-08-28</p>
+          <h1 id="page-title">가상 문의 10건.<br>3열 상담 화면과 정책 2.0.1.</h1>
+          <p class="hero-copy">사진에서 실제로 보이는 범위와 고객이 주장한 배송·작동·누수·옵션 정보를 분리한 R1 문의 10건을 준비했습니다. 상담원 화면은 문의 내용, 이미지 근거, 정책 기반 권고의 3열 구조이며, 신규 가상 정책 8개·52조항을 더해 전체 20개 문서·136개 조항을 검색합니다.</p>
+          <div class="verdict"><span class="verdict-dot"></span> R1 10 CASES · 3-COLUMN UI · CANONICAL RULE SET 2.0.1 · DECISION / ACTION 0</div>
         </div>
         <aside class="hero-side" aria-label="현재 기준점">
           <div class="hero-side-card">
-            <strong>오늘 보여줄 수 있는 범위</strong>
-            <span>Fictional HDP-100 합성 기술 데모</span>
+            <strong>현재 시연 범위</strong>
+            <span>내부 가상 문의 10건 + 비공개 이미지 + 가상 정책</span>
           </div>
           <div class="hero-meta">
             <span>DB Head · 0015</span>
-            <span>Vision · Mock binary only</span>
-            <span>Actual E3 · BLOCKED</span>
+            <span>Vision · 실제 E3, 후보 6 / 기준 미만 4</span>
+            <span>Policy · 신규 8 Document / 52 Clause</span>
+            <span>Policy 전체 · 20 Document / 136 Clause</span>
+            <span>Rule Set · canonical 2.0.1</span>
+            <span>대표 경로 · 3개 Human Review PENDING</span>
+            <span>Human Decision / Action · 0 / 0</span>
+            <span>전체 회귀 · PASS</span>
+            <span>Web · 공개 공유 Gate 미충족</span>
+            <span>제품 성능·Limited PoC · 주장하지 않음</span>
           </div>
         </aside>
       </div>
@@ -370,11 +421,13 @@
 
     <nav class="quick-nav" aria-label="페이지 바로가기">
       <a href="#summary">한눈에 보기</a>
-      <a href="#verification">합성 팩 수치</a>
+      <a href="#ui">3열 검토 화면</a>
+      <a href="#verification">R1 구성</a>
+      <a href="#top100">두 이미지 소스</a>
       <a href="#claims">보여줄 것 / 금지 주장</a>
       <a href="#model">E3 보고서 경계</a>
       <a href="#threshold">점수 해석</a>
-      <a href="#demo">데모 5개</a>
+      <a href="#demo">대표 경로 3개</a>
       <a href="#pending">현재 미완료</a>
       <a href="#next">다음 순서</a>
     </nav>
@@ -384,46 +437,85 @@
     <section id="summary">
       <div class="section-head">
         <div><p class="section-kicker">Executive Summary</p><h2>오늘 상태, 네 문장으로</h2></div>
-        <p class="section-note">준비된 합성 데모와 아직 없는 실제 모델 증거를 분리했습니다.</p>
+        <p class="section-note">완료된 내부 검증과 공개 공유·제품 qualification이 막힌 경계를 분리했습니다.</p>
       </div>
       <div class="status-grid">
         <article class="status-card accent-green">
-          <span class="label">OFFLINE PACK</span>
-          <span class="value">9 / 9 준비 완료</span>
-          <span class="detail">36 Case·Gold, 합성 정책, 5개 데모와 해시 검증</span>
+          <span class="label">REALISTIC CASES</span>
+          <span class="value">R1 10건</span>
+          <span class="detail">4~5문장 가상 이커머스 문의와 고객 진술·사진 관찰 분리</span>
         </article>
         <article class="status-card accent-blue">
-          <span class="label">LIVE VISION</span>
-          <span class="value">Mock 계약만 연결</span>
-          <span class="detail">이진 점수·threshold·안전한 화면 표시를 검증</span>
+          <span class="label">CONSULTANT UI</span>
+          <span class="value">3열 검토대</span>
+          <span class="detail">문의 내용 · 이미지 근거 · 정책 기반 권고를 한 화면에서 비교</span>
         </article>
         <article class="status-card accent-amber">
-          <span class="label">ACTUAL E3</span>
-          <span class="value">실행 차단</span>
-          <span class="detail">checkpoint·endpoint·reference가 없고 probe도 미실행</span>
+          <span class="label">FICTIONAL POLICY</span>
+          <span class="value">20 / 136</span>
+          <span class="detail">신규 8문서·52조항 포함, canonical rule set 2.0.1</span>
         </article>
         <article class="status-card accent-dark">
-          <span class="label">PARALLEL JOIN</span>
-          <span class="value">복구 검증 완료</span>
-          <span class="detail">새 live Run fc249b72… SUCCEEDED</span>
+          <span class="label">FINAL BUSINESS OUTCOME</span>
+          <span class="value">0 / 0</span>
+          <span class="detail">Human Decision 0 · External Action 0, 자동 결론 없음</span>
         </article>
       </div>
     </section>
 
+    <section id="ui">
+      <div class="section-head">
+        <div><p class="section-kicker">Three-column Review Workbench</p><h2>상담원이 보는 핵심만 3열로</h2></div>
+        <p class="section-note">실행 ID와 운영 정보는 접어 두고, 고객 주장·이미지·정책 근거를 먼저 비교합니다.</p>
+      </div>
+      <div class="workbench-preview" aria-label="상담원 3열 검토 화면 구조">
+        <article class="workbench-column">
+          <header><span class="step">1</span><h3>문의 내용</h3></header>
+          <p>4~5문장 R1 가상 문의와 주문·상품 참조, 고객이 원하는 처리를 함께 표시합니다.</p>
+          <ul><li>가상 문의 · PoC 배지</li><li>배송·작동·누수·옵션은 고객 진술</li><li>금액·통화·수량·배송지 추론 금지</li></ul>
+        </article>
+        <article class="workbench-column">
+          <header><span class="step">2</span><h3>이미지 근거</h3></header>
+          <p>인증된 Private Evidence와 Binary Vision의 이미지 단위 후보 점수를 나란히 확인합니다.</p>
+          <ul><li>사진에서 직접 보이는 범위 별도 표시</li><li>결함 위치·유형·bbox 생성 없음</li><li>기준 미만은 정상 판정이 아님</li></ul>
+        </article>
+        <article class="workbench-column policy">
+          <header><span class="step">3</span><h3>정책 기반 권고</h3></header>
+          <p>가상 정책 Top-3 인용과 typed rule의 검토 후보만 보여 주며 최종 결정은 만들지 않습니다.</p>
+          <ul><li>가상 사내 정책 · PoC 전용 배지</li><li>문서·조항·Rule Set 버전 표시</li><li>인증된 사람만 최종 결정 가능</li></ul>
+        </article>
+      </div>
+      <div class="workbench-fold">운영 실행 ID · Workflow 연결 · Resolution · DRY-RUN은 하단 접이식 보조 영역에서 확인</div>
+    </section>
+
     <section id="verification">
       <div class="section-head">
-        <div><p class="section-kicker">Synthetic Pack</p><h2>오늘 추가한 검증 가능한 구성</h2></div>
-        <p class="section-note">모든 숫자는 fictional HDP-100 합성 팩의 구성 수치입니다.</p>
+        <div><p class="section-kicker">R1 Demo Composition</p><h2>이번 변경에서 확정한 구성</h2></div>
+        <p class="section-note">최종 종합 회귀 결과와 섞지 않고 데이터·화면·정책 구성만 표시합니다.</p>
       </div>
       <div class="metrics">
-        <article class="metric"><strong>36</strong><span>합성 Case</span><small>demo 5 · dev 21 · test 10</small></article>
-        <article class="metric"><strong>36</strong><span>1:1 Human Gold</span><small>실제 상담 기록 아님</small></article>
-        <article class="metric"><strong>10</strong><span>합성 정책 Clause</span><small>법률·상업 효력 없음</small></article>
-        <article class="metric"><strong>7</strong><span>결정론적 Rule</span><small>사람 최종 결정 유지</small></article>
-        <article class="metric"><strong>5</strong><span>대표 데모</span><small>안전 경계 포함</small></article>
-        <article class="metric"><strong>9/9</strong><span>Offline Acceptance</span><small>artifact·hash·연결성</small></article>
+        <article class="metric"><strong>10</strong><span>R1 가상 문의</span><small>결함 후보 6 · 기준 미만 참고 4</small></article>
+        <article class="metric"><strong>3</strong><span>상담원 검토 열</span><small>문의 · 이미지 · 정책 권고</small></article>
+        <article class="metric"><strong>8</strong><span>신규 가상 정책 문서</span><small>실제 기업 정책 아님</small></article>
+        <article class="metric"><strong>52</strong><span>신규 정책 조항</span><small>기존 포함 전체 136</small></article>
+        <article class="metric"><strong>2.0.1</strong><span>Canonical Rule Set</span><small>2.0.0은 활성 기준으로 사용하지 않음</small></article>
+        <article class="metric"><strong>0</strong><span>Decision · Action</span><small>사람 결정·외부 실행 생성 없음</small></article>
       </div>
-      <div class="notice"><strong>2026-08-28 최종 재검증:</strong> Ruff PASS·Format 365·Pyright 0, Backend 603 passed/65 deselected, Integration 54 passed·외부 GPU 5 skipped/609 deselected·임시 DB 0, Web lint·typecheck·OpenAPI·build PASS, Vitest 10·Playwright 5가 통과했습니다. DB Head 0015, 7개 서비스, consumer 1/depth 0인 업무 Queue 8개, API·Web·이 상태 HTML도 HTTP 200입니다.<br><strong>Offline pack hash:</strong> <code>6be7ad00ba4b92bd99fbcb0ab6c7b9163e387aa8ccd734751c479a2352c24ef1</code></div>
+      <div class="notice"><strong>2026-08-28 최종 종합 재검증:</strong> Ruff PASS·Format 384·Pyright 0, Backend 658 passed/65 deselected, Integration 54 passed·외부 GPU 5 skipped/664 deselected·임시 DB 제거, Web lint·typecheck·OpenAPI·build PASS, Vitest 39·Playwright 5가 통과했습니다. 정책 전용 19개 테스트와 prepare 2회 재실행도 통과했습니다.<br><strong>R1 10건 report canonical hash:</strong> <code>6a7b9af27016ea9a88141878cdbadaca71b2e3ea660f9b47c9d944c4f7002dba</code></div>
+    </section>
+
+    <section id="top100">
+      <div class="section-head">
+        <div><p class="section-kicker">Two Source Boundaries</p><h2>결함 표본과 정상 참고를 섞은 방식</h2></div>
+        <p class="section-note">원본 문서의 설명은 지시가 아니라 검증 대상 메타데이터로만 사용했습니다.</p>
+      </div>
+      <div class="status-grid">
+        <article class="status-card accent-green"><span class="label">DEFECT SOURCE</span><span class="value">6장 선택</span><span class="detail">Top-100 중 rank 003·032·054·058·078·080</span></article>
+        <article class="status-card accent-blue"><span class="label">NORMAL REFERENCE SOURCE</span><span class="value">77 / 77 기준 미만</span><span class="detail">그중 rank 002·008·017·023 네 장을 데모에 사용</span></article>
+        <article class="status-card accent-amber"><span class="label">CURATED RATIO</span><span class="value">6 : 4</span><span class="detail">시연용 고정 비율이며 실제 문의 분포가 아님</span></article>
+        <article class="status-card accent-dark"><span class="label">PRIVATE OBJECT CHECK</span><span class="value">10 / 10</span><span class="detail">인증 후 실제 이미지 바이트 size·SHA 재대조</span></article>
+      </div>
+      <div class="notice"><strong>판정:</strong> <code>R1_INTERNAL_DEMO_MANIFEST_READY</code>. 결함 6장은 E3가 이미 맞힌 사례에서 고른 positive-only·correct-only 표본이고, 정상 참고 4장은 낮은 점수 allowlist입니다. 이 6:4 결과로 accuracy·specificity·FPR·실제 불량률을 계산하지 않습니다.<br><strong>출처 경계:</strong> 두 소스 모두 공개 재배포 권리가 확인되지 않아 원본은 Git·공개 Web static에 복사하지 않았으며 내부 시연에서만 사용합니다.</div>
     </section>
 
     <section id="claims">
@@ -434,22 +526,29 @@
         <article class="panel">
           <h3>오늘 보여줄 수 있음</h3>
           <ul class="clean-list">
-            <li>가상 HDP-100 문의 36건과 구조화된 Human Gold</li>
-            <li>합성 정책 10개 Clause와 7개 안전 Rule의 연결</li>
-            <li>Mock any-defect 점수와 고정 threshold의 화면 표시</li>
-            <li>사람 검토, 입력 누락 보류, Safety 권한 차단</li>
-            <li>실제 부작용이 없는 Resolution과 DRY-RUN 결과</li>
+            <li>사진 관찰과 고객 진술을 분리한 R1 가상 고객 문의 10건</li>
+            <li>문의 내용·이미지 근거·정책 기반 권고를 비교하는 3열 상담원 화면</li>
+            <li><span><a href="https://doongdoong.org/login">doongdoong.org</a>의 인증된 내부 상담원 콘솔</span></li>
+            <li>비공개 Evidence 이미지 미리보기와 출처·선택 편향·권리 상태 표시</li>
+            <li>실제 E3 any-defect 점수와 고정 threshold의 분석 결과 저장</li>
+            <li>신규 가상 정책 8문서·52조항, 기존 포함 전체 20문서·136조항</li>
+            <li>canonical rule set 2.0.1과 RAW Query + HYBRID + Top-3 근거 구조</li>
+            <li>대표 3개 경로의 Human Review <code>PENDING</code>과 Human Decision·Action 0</li>
+            <li>기존 Sprint 5C의 입력 누락 보류·Safety 권한·부작용 없는 DRY-RUN 계약</li>
             <li>Vision 실패 시 Partial Success와 사람 검토 경로</li>
           </ul>
         </article>
         <article class="panel">
           <h3>오늘 주장하면 안 됨</h3>
           <ul class="clean-list excluded">
-            <li>실제 E3 checkpoint로 추론했다는 주장</li>
-            <li>HDP-100 또는 실제 고객 환경에서의 정확도</li>
+            <li>selected-positive 100/100을 E3 일반 정확도나 제품 성능으로 확대</li>
+            <li>6:4 시연 비율을 실제 불량률·문의 분포로 해석</li>
+            <li>실제 고객 환경이나 상품군에서의 정확도</li>
             <li>threshold 미만 이미지를 정상으로 판정</li>
             <li>이진 점수로 결함 유형·위치·원인을 확정</li>
-            <li>실제 기업 정책이나 고객 데이터로 검증했다는 주장</li>
+            <li>fictional 정책을 실제 기업 정책이나 법률 근거로 표현</li>
+            <li>fixture 기반 5개 화면 시나리오를 모두 live causal E2E로 표현</li>
+            <li>Access·강한 Credential·재배포 권리 확인 전 공개 URL이나 계정을 제3자에게 공유</li>
             <li>자동 승인, 실제 외부 실행, 비용 절감 또는 ROI</li>
           </ul>
         </article>
@@ -459,15 +558,15 @@
     <section id="model">
       <div class="section-head">
         <div><p class="section-kicker">Supplied E3 Report</p><h2>보고서에서 받은 E3 수치</h2></div>
-        <p class="section-note">담당자 보고 수치이며 CSight가 best.pt로 재현한 결과가 아닙니다.</p>
+        <p class="section-note">체크포인트 forward는 실행했지만 dataset-level 성능 수치는 재평가하지 않았습니다.</p>
       </div>
       <div class="status-grid">
         <article class="status-card accent-blue"><span class="label">ANY-DEFECT AP</span><span class="value">0.884863</span><span class="detail">담당자 제공 held-out report</span></article>
         <article class="status-card accent-blue"><span class="label">AUROC</span><span class="value">0.931604</span><span class="detail">담당자 제공 held-out report</span></article>
         <article class="status-card accent-amber"><span class="label">FROZEN THRESHOLD</span><span class="value">0.8984375</span><span class="detail">validation에서 선택됐다고 보고됨</span></article>
-        <article class="status-card accent-dark"><span class="label">CSIGHT REPRODUCTION</span><span class="value">미재현</span><span class="detail">checkpoint·endpoint·독립 prediction 실행 없음</span></article>
+        <article class="status-card accent-dark"><span class="label">CSIGHT RUNTIME</span><span class="value">개별 Forward PASS</span><span class="detail">dataset metric 재현·제품 qualification 아님</span></article>
       </div>
-      <div class="notice">E3는 위치나 유형을 찾는 Detection 모델이 아니라 image-level <strong>binary any-defect candidate</strong>입니다. 보고서의 dataset-level 수치를 개별 이미지 결과에 복사하지 않습니다.</div>
+      <div class="notice">E3는 위치나 유형을 찾는 Detection 모델이 아니라 image-level <strong>binary any-defect candidate</strong>입니다. 보고서의 dataset-level 수치를 개별 이미지 결과에 복사하지 않습니다. Top-100 실제 재생은 checkpoint 연결을 검증했지만 positive-only·correct-only 선택 편향 때문에 AP·AUROC를 재현한 평가가 아닙니다.</div>
     </section>
 
     <section id="threshold">
@@ -497,56 +596,58 @@
 
     <section id="flow">
       <div class="section-head">
-        <div><p class="section-kicker">Today’s Safe Flow</p><h2>합성 데모 처리 흐름</h2></div>
-        <p class="section-note">Vision은 참고 점수이고 최종 결정은 사람에게 남습니다.</p>
+        <div><p class="section-kicker">Today’s Safe Flow</p><h2>현실형 10건의 처리 흐름</h2></div>
+        <p class="section-note">Vision과 정책은 검토 참고이고 최종 결정은 인증된 사람에게 남습니다.</p>
       </div>
-      <div class="flow" aria-label="HDP-100 합성 Case 처리 흐름">
-        <article class="flow-step"><span class="n">01</span><strong>합성 Case</strong><span>fictional HDP-100 문의</span></article>
+      <div class="flow" aria-label="현실형 내부 데모 Case 처리 흐름">
+        <article class="flow-step"><span class="n">01</span><strong>가상 고객 Case</strong><span>결함 후보 6 · 정상 참고 4</span></article>
         <article class="flow-step"><span class="n">02</span><strong>Text 분석</strong><span>고객 주장 구조화</span></article>
-        <article class="flow-step"><span class="n">03</span><strong>Mock Binary</strong><span>후보 점수만 제공</span></article>
-        <article class="flow-step"><span class="n">04</span><strong>합성 Policy</strong><span>10 Clause · 7 Rule</span></article>
+        <article class="flow-step"><span class="n">03</span><strong>E3 Binary</strong><span>실제 가중치 후보 점수</span></article>
+        <article class="flow-step"><span class="n">04</span><strong>가상 Policy</strong><span>RAW Query · HYBRID · Top-3</span></article>
         <article class="flow-step human"><span class="n">05</span><strong>Human Review</strong><span>자료요청·권한·결정</span></article>
         <article class="flow-step action"><span class="n">06</span><strong>Resolution</strong><span>명시 입력만 사용</span></article>
         <article class="flow-step action"><span class="n">07</span><strong>DRY-RUN</strong><span>실제 부작용 0</span></article>
       </div>
-      <div class="notice"><strong>Live Mock 확인:</strong> Run <code>fc249b72-92b4-4160-adee-2c9b0b66b092</code>는 <strong>SUCCEEDED</strong>, score 0.961864, threshold 0.8984375였습니다. 위치 Detection은 0개이고 자동 Decision은 만들지 않았습니다.</div>
+      <div class="notice"><strong>Live 대표 경로:</strong> 수리 검토·Safety Review·단순 변심 반품 3건이 Text v2→RAW Query→HYBRID Retrieval→Top-3 Citation→Grounding→Policy 2.0.1을 모두 <strong>SUCCEEDED</strong>했고 matching Human Review 3건이 <strong>PENDING</strong>입니다. Vision score는 정책 입력과 분리하며 Human Decision·Resolution·Action Intent·Simulation은 모두 0입니다.</div>
     </section>
 
     <section id="demo">
       <div class="section-head">
-        <div><p class="section-kicker">Five Demo Cases</p><h2>HDP-100 대표 시나리오</h2></div>
-        <p class="section-note">합성 Gold와 Fixture로 정의한 오늘의 시연 계약입니다.</p>
+        <div><p class="section-kicker">Three Verified Paths</p><h2>실제로 재검증한 대표 경로 3개</h2></div>
+        <p class="section-note">실제처럼 보이는 문의를 쓰되 사진에서 확인되지 않는 사실과 최종 판단은 분리합니다.</p>
       </div>
       <div class="scenario-list">
-        <article class="scenario"><span class="scenario-no">1</span><div><strong>눈에 보이는 펌프 분리 → 교환 DRY-RUN</strong><p>사람 승인 뒤 Intent·Attempt·Result 1개, 실제 부작용 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>Mock Vision + Human Review</small></div></article>
-        <article class="scenario"><span class="scenario-no">2</span><div><strong>환불액·통화 누락 → ACTION_NEEDS_INPUT</strong><p>문장에서 값을 추론하지 않고 Intent·Attempt·Result 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>명시 입력 경계</small></div></article>
-        <article class="scenario"><span class="scenario-no">3</span><div><strong>펌프 공회전 → 작동 증거 요청</strong><p>정지 이미지로 기능 고장을 확정하지 않고 Decision·Action 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>영상·수동 시험 필요</small></div></article>
-        <article class="scenario"><span class="scenario-no">4</span><div><strong>날카로운 파손·누출 → Safety Review</strong><p>Reviewer는 차단하고 Admin만 결정, 외부 실행은 DRY-RUN</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>권한·안전 경계</small></div></article>
-        <article class="scenario"><span class="scenario-no">5</span><div><strong>Vision Timeout → Partial Success</strong><p>Text 결과는 보존하고 Human Review, 자동 Decision·Action 0</p></div><div class="evidence"><span class="badge fixture">SYNTHETIC GOLD</span><small>Vision 실패 경계</small></div></article>
+        <article class="scenario"><span class="scenario-no">1</span><div><strong>고신뢰 결함 후보 → 수리 검토</strong><p>스프레이 용기와 분리된 보호캡은 사진 관찰로, 분사 이상은 고객 진술로 구분해 정책 근거와 사람 검토까지 확인</p></div><div class="evidence"><span class="badge live">LIVE PASS</span><small>R1 DEFECT · rank 054</small></div></article>
+        <article class="scenario"><span class="scenario-no">2</span><div><strong>기준 미만 참고 → 단순 변심 반품 검토</strong><p>포장된 형상만 사진 근거로 쓰고 기준 미만을 정상으로 확정하지 않은 채 반품 조건과 추가 확인 항목 제시</p></div><div class="evidence"><span class="badge live">LIVE PASS</span><small>R1 BELOW THRESHOLD · rank 008</small></div></article>
+        <article class="scenario"><span class="scenario-no">3</span><div><strong>액체 튐 고객 진술 → Safety Review</strong><p>사진으로 확인되지 않는 안전 주장을 자동 기각하지 않고 관리자 검토로 보내며 Decision·Action은 생성하지 않음</p></div><div class="evidence"><span class="badge live">LIVE PASS</span><small>R1 SAFETY · rank 078</small></div></article>
       </div>
-      <div class="notice">다섯 시나리오는 실제 E3 이미지 inference나 실제 고객 업무 E2E가 아니라 합성 Scenario PoC의 기대 계약입니다.</div>
+      <div class="notice">세 경로의 고객 문장과 정책은 모두 가상입니다. 비동기 실행은 Human Review 대기까지 통과했지만, 사람이 Resolve하지 않았으므로 최종 보고서나 DRY-RUN 결과를 미리 만들지 않았습니다. 현재 Human Decision·External Action은 0입니다.</div>
     </section>
 
     <section id="pending" class="gate-wrap">
       <div class="gate-head">
-        <div><p class="section-kicker">Current Blockers</p><h2>지금 남은 두 가지</h2><p>Mock 기반 Scenario PoC 완료와 실제 E3·Limited PoC를 같은 판정으로 합치지 않습니다.</p></div>
-        <span class="blocked-badge">ACTUAL E3 / LIMITED POC BLOCKED</span>
+        <div><p class="section-kicker">Current Boundaries</p><h2>내부 시연 전 반드시 확인할 Gate</h2><p>내부 데모, 최종 회귀, 공개 공유, 제품 성능 qualification을 같은 판정으로 합치지 않습니다.</p></div>
+        <span class="blocked-badge">PUBLIC SHARING / LIMITED POC BLOCKED</span>
       </div>
       <div class="gate-grid">
-        <article class="gate-card"><strong>실제 E3 Runtime</strong><span>endpoint·checkpoint package·endpoint reference가 없고 runtime probe도 실행하지 않아 BLOCKED</span></article>
-        <article class="gate-card"><strong>Limited PoC</strong><span>실제 기업 Data·Policy는 오늘 범위에서 의도적으로 제외했고 별도 승격 Gate가 필요</span></article>
+        <article class="gate-card"><strong>최종 종합 회귀</strong><span>R1 문의·3열 UI·canonical rule set 2.0.1·대표 3경로까지 PASS</span></article>
+        <article class="gate-card"><strong>Canonical Policy 전환</strong><span>2.0.1 sole active 확인; 비정규 2.0.0과 실패 Run은 삭제 없이 RETIRED 감사 이력으로 보존</span></article>
+        <article class="gate-card"><strong>라벨·권리 검증</strong><span>정상 참고는 사용자 진술뿐이고 두 소스 모두 재사용 권리·독립 Gold가 확인되지 않음</span></article>
+        <article class="gate-card"><strong>제품도메인 성능</strong><span>선별된 6:4는 실제 분포가 아니며 accuracy·specificity·FPR·ROI를 산출하지 않음</span></article>
+        <article class="gate-card"><strong>공개 접속 보호</strong><span>Cloudflare Access와 강한 Demo Credential이 없으므로 URL·계정을 제3자에게 공유하지 않음</span></article>
       </div>
     </section>
 
     <section id="next">
       <div class="section-head">
-        <div><p class="section-kicker">Next Actions</p><h2>실제 모델 연결을 위한 순서</h2></div>
-        <p class="section-note">오늘의 합성 데모는 유지한 채 실제 E3 증거를 별도 추가합니다.</p>
+        <div><p class="section-kicker">Next Actions</p><h2>내부 시연 이후의 안전한 순서</h2></div>
+        <p class="section-note">내부 시연은 준비됐지만 공개 공유와 제품 qualification은 별도 Gate입니다.</p>
       </div>
       <div class="next-list">
-        <article class="next-item"><div><strong>E3 실행 자산 확보</strong><span>best.pt package, immutable hash/revision, private endpoint 준비</span></div><span class="owner">VISION</span></article>
-        <article class="next-item"><div><strong>실제 E3 external gate 실행</strong><span>실제 이미지 inference, threshold drift, latency와 failure path 검증</span></div><span class="owner">VISION·BACKEND</span></article>
-        <article class="next-item"><div><strong>실제 기업 PoC는 별도 승인</strong><span>고객 Data·정책·Privacy·Shadow evidence가 생긴 뒤 Limited PoC Gate 평가</span></div><span class="owner">사업·보안</span></article>
+        <article class="next-item"><div><strong>대기 중인 대표 3건을 사람이 검토</strong><span>실제 판단을 입력할 때만 Resolve하고, 그 전에는 Report·Resolution·DRY-RUN을 만들지 않음</span></div><span class="owner">상담원·ADMIN</span></article>
+        <article class="next-item"><div><strong>정책 입력 provenance 보강</strong><span>Vision 미연결 qualification과 generic 금액 입력을 source-tagged typed 입력으로 분리</span></div><span class="owner">BACKEND</span></article>
+        <article class="next-item"><div><strong>공개 접속 보호</strong><span>외부 공유 전 Cloudflare Access 또는 강한 Demo Credential을 적용하고 실제 데이터 업로드 금지</span></div><span class="owner">보안·운영</span></article>
+        <article class="next-item"><div><strong>권리 확인된 자체 표본·Gold 확보</strong><span>기업 데이터 없이도 자체 촬영 결함·정상 표본으로 제품별 성능 Gate를 별도 설계</span></div><span class="owner">VISION·기획</span></article>
       </div>
     </section>
 
@@ -554,17 +655,18 @@
       <div class="section-head"><div><p class="section-kicker">Handoff</p><h2>현재 작업 기준점</h2></div></div>
       <div class="git-strip">
         <article class="git-item"><span>Sprint 5C 기능</span><code>0a5f529 · feat: add case resolution and PoC console</code></article>
-        <article class="git-item"><span>HDP-100 기능</span><code>dfd6db2 · feat: add hard-plastic scenario PoC</code></article>
-        <article class="git-item"><span>원격 백업</span><code>origin/feature/scenario-poc-hard-plastic · 기능 SHA 확인</code></article>
+        <article class="git-item"><span>HDP-100 기준점</span><code>5c152fd · closeout (기능 dfd6db2)</code></article>
+        <article class="git-item"><span>R1 10건 Demo</span><code>local 변경 · 6 defect candidate / 4 below-threshold reference</code></article>
+        <article class="git-item"><span>Policy / Regression</span><code>canonical 2.0.1 sole active · 종합 회귀 PASS</code></article>
       </div>
-      <div class="notice">DB Head는 <strong>0015</strong>입니다. HDP-100 기능 Commit <code>dfd6db2ab2052c4ce9a7f922d682c8e574abb05d</code>가 원격 기능 브랜치에 백업됐습니다. PR과 <code>develop</code> 병합은 실행하지 않았고, 상태 문서는 별도 closeout 원장으로 기록합니다. 사용자 소유 루트 문서 2개는 수정·삭제·Stage하지 않습니다.</div>
+      <div class="notice">DB Head는 <strong>0015</strong>입니다. 기존 HDP-100 기준점 <code>5c152fd</code> 이후 R1 문의·실제 E3·가상 정책 2.0.1·3열 Web 보강은 최종 종합 회귀를 통과한 로컬 미Commit 상태입니다. Commit·Push·PR은 실행하지 않았고, 사용자 소유 루트 문서 2개와 raw image·checkpoint·local report는 Git에서 제외했습니다.</div>
     </section>
   </main>
 
   <footer>
     <div class="shell footer-inner">
-      <span>CSight HDP-100 Synthetic Scenario Status · Reverified 2026-08-28 · Asia/Seoul</span>
-      <span>근거: CURRENT_STATUS.md / SCENARIO_POC_ACCEPTANCE_RUNNER.md / acceptance_report.json</span>
+      <span>CSight R1 Fictional Commerce Internal Demo Status · 2026-08-28 · Asia/Seoul</span>
+      <span>근거: CURRENT_STATUS.md / realistic_internal_demo_v2 / CSight Commerce policy v2 / local-only artifacts</span>
     </div>
   </footer>
 </body>

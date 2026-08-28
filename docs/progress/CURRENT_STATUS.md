@@ -12,13 +12,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 5C 내부 데모 PASS; 합성 HDP-100 Scenario Tech PoC·Mock Binary Vision Live PASS |
-| 진행 중 작업 | Vision 담당자의 실제 E3 checkpoint package·private endpoint 인계 대기 |
+| 현재 완료 단계 | Sprint 5C 내부 데모 PASS; 실제 E3 Runtime·R1 가상 문의 10건·CSight Commerce 가상 정책 `2.0.1`·상담원 중심 Workspace·`이어하기` 422 복구·사람 확정형 0.70 빠른 검토/자동 문서 흐름·환불 처리 확인서 종합 회귀 PASS |
+| 진행 중 작업 | 대표 3건은 Human Review `PENDING`; 실제 Human Decision 생성은 사용자 클릭 전 0. E3/backend와 상담원 Web을 두 개의 검토 가능한 로컬 Commit으로 고정했고, 상태 문서 Commit과 원격 PoC fast-forward·CI 확인을 진행 중. 공개 공유 Gate는 BLOCKED |
 | 마지막 갱신일 | 2026-08-28, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, 기능 Commit `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`를 `origin/feature/scenario-poc-hard-plastic`에 백업; PR 없음 |
-| 로컬 Git | `feature/scenario-poc-hard-plastic`; 기능 기준점 `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`, 이후 상태 문서는 별도 closeout 원장으로 관리 |
-| 마지막 런타임 관측 | 2026-08-28, DB Head `0015`; 7 services healthy, 업무 Queue 8개 consumer 1/depth 0; live Run `fc249b72-92b4-4160-adee-2c9b0b66b092` `SUCCEEDED` |
+| 원격 저장소 | `CSightICT/csight-core` — Private, Scenario 기능 `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`와 closeout `5c152fd0d1e97eba3b41b2ecea1cff7811814d90`를 `origin/feature/scenario-poc-hard-plastic`에 백업; PR 없음 |
+| 로컬 Git | `feature/scenario-poc-hard-plastic`; E3/backend `0f4de4b`, 상담원 Web `b3e09cf` 로컬 Commit 완료. 원격 PoC는 아직 `5c152fd`; 상태 문서 Commit·fast-forward Push·원격 CI 확인 전 |
+| 마지막 검증 관측 | 2026-08-28 14:36 KST, Ruff·Format 384·Pyright 0; 기본 658 PASS, Integration 54 PASS/외부 GPU 5 Skip, Vision E3 5 PASS; Web lint·typecheck·OpenAPI sync·build, Vitest 17 files/49 tests, Playwright 5 PASS. DB Head `0015`, drift 없음, Core 7 healthy, API ready·local/public Login HTTP 200; 인증 Human Decision 클릭은 미실행 |
+| 마지막 GitHub 관측 | 2026-08-28 14:28 KST, GitHub Plugin·`ls-remote` 교차 확인. 원격 7 branches, `poc/mvp/final` 명명 branch와 tag 0. 현재 PoC branch `5c152fd` CI PASS, `main/develop`보다 21 commits ahead; 로컬 후속 작업은 미Commit·미Push |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -46,7 +47,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 2 독립 Closeout | PASS | P0/P1 미해결 0, 정적·회귀·Migration·Docker·Live Gate 재통과 |
 | Sprint 2.5 Qwen3.8 실제 서빙 | QUALIFIED_WITH_LIMITATIONS | 4090 Cold Start 2회, 26분 안정성, 안전 Gate와 실제 Backend E2E 통과; Action/Missing 품질 제한 |
 | Sprint 3 Vision·Multimodal | MOCK_QUALIFIED | Canonical Vision, Snapshot, Text/Vision fan-out/join, Partial Success와 live Mock E2E 통과 |
-| Sprint 3 실제 Vision | NOT_AVAILABLE | Endpoint/model/sample 미제공; `SKIPPED_EXTERNAL_VISION_NOT_AVAILABLE` 1건 |
+| Sprint 3 실제 Vision | INTERNAL_E3_CONNECTED_WITH_LIMITATIONS | SHA 고정 E3를 loopback MPS endpoint와 Core에 연결; 합성 이미지 1건이며 제품 qualification 아님 |
 | Sprint 4A LLM Contract v2 | PASS | v1 보존, v2 Prompt/Schema/Persistence/API와 live Mock 통과 |
 | Sprint 4A Policy Reference | PASS | 합성 2 Tenant, 24 Document, 168 Clause, retired 6 |
 | Sprint 4A Evaluation Data | PASS | 160/120/50/30/10, Gold missing·cross-tenant 0 |
@@ -98,13 +99,25 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 5C Git Handoff | PASS | `0a5f529 feat: add case resolution and PoC console`, 원격 5C 기능 브랜치 백업 완료; PR 없음 |
 | HDP-100 합성 Scenario Pack | OFFLINE_READY | fictional product, 36 synthetic Case/Gold, 10 clause/7 rule, 5 demo, acceptance 9/9 |
 | E3 보고서 지표 | REPORTED_NOT_REPRODUCED | AP 0.884863, AUROC 0.931604, threshold 0.8984375는 담당자 보고 수치; CSight 재현 아님 |
-| Binary Vision Runtime | MOCK_ONLY | image-level any-defect 계약과 threshold 해석만 Mock으로 live 연결 |
-| 실제 E3 Runtime | BLOCKED | 실제 `best.pt` checkpoint package와 private serving endpoint 부재 |
+| Binary Vision Runtime | ACTUAL_E3_INTERNAL | image-level any-defect E3 score와 threshold 해석을 실제 checkpoint로 live 연결; Mock 기본값은 회귀용으로 유지 |
+| 실제 E3 Runtime | PASS_WITH_SCOPE | exact E3 SHA/size/schema, offline strict load, loopback HTTP, MPS forward와 Core append-only 저장 통과; 합성 연결 증거만 해당 |
+| E3 Top-100 Positive Replay | PASS_WITH_SCOPE | selected-correct defect 100/normal 0 전수 forward와 hard-plastic Core 6건 통과; 연결 재현 증거이며 성능평가·제품 qualification 아님 |
 | Vision Assessment Migration | PASS | DB Head `0015`, migration lifecycle·drift와 append-only assessment persistence 통과 |
 | Parallel Text/Vision Join | PASS | parent `FOR UPDATE` 직렬화와 terminal redelivery reconciliation; 새 live Run과 기존 orphan 복구 통과 |
-| HDP-100 Git Handoff | PASS | `dfd6db2 feat: add hard-plastic scenario PoC`, 동일 원격 기능 브랜치 SHA 확인; PR·`develop` 병합 미실행 |
-| Limited PoC 승격 | BLOCKED | 실제 기업 Data/Policy는 오늘 범위에서 의도적으로 제외; Privacy·Vision·Shadow·Qwen 증거도 미확보 |
+| HDP-100 Git Handoff | PASS | 기능 `dfd6db2`, closeout `5c152fd`; local HEAD와 동일 원격 기능 브랜치 SHA 확인, PR·`develop` 병합 미실행 |
+| R1 Visual-Aligned Inquiry Demo | PASS | 이미지 관찰과 고객 진술을 분리한 4~5문장 가상 문의 10건; 결함 후보 6·기준 미만 참고 4, seed/replay와 private Evidence SHA 검증 |
+| R1 Three-Column Console | PASS | 문의 내용·이미지 근거·정책 기반 권고 3열, legacy v2 숨김·R1 fail-closed 표시, 하단 운영 상세 접기 |
+| R1 Consultant Workspace Simplification | PASS | `지금 할 일` 단일 CTA·4단계 진행 표시·문의/이미지+정책 2열 본문·기술 정보 접기, 데스크톱 inert X 제거 |
+| R1 Continue Policy-Date Recovery | PASS | 업무 시간대 `Asia/Seoul` 기준일 계산으로 UTC/KST 효력일 422 해소; API `{error}` 계약의 코드·메시지를 UI에 그대로 표시 |
+| R1 Human-confirmed Quick Review | PASS | PoC 준비도 0.70 Gate, 정책 효과 기반 단일 허용 mapping·비허용 `REJECT_REQUEST`, 자동 basis/rationale, CAS Claim→Resolve→비동기 Report 자동 열기; 모델 자동 Decision 0 |
+| R1 Refund Processing Confirmation | PASS | immutable report snapshot만 사용한 환불 전용 운영 문서·A4 인쇄 화면; 금액/통화 누락 fail-closed, 결제취소·고객통지·RMA 미연동 표시, 실제 환불 완료 주장 0 |
+| CSight Commerce Fictional Policy | PASS | 신규 8 Document·52 Clause, 전체 20/136; 문서·Index `2.0.0`, canonical Rule Set `2.0.1` sole active |
+| R1 Policy→Human Review | PASS | 수리·Safety·단순변심 3건이 Policy `SUCCEEDED`, matching Review `PENDING`; Decision·Resolution·Action 0 |
+| R1 Public Sharing Gate | BLOCKED | Cloudflare Access·강한 Credential·이미지 재배포 권리 미확보; 현재 본인 내부 시연 전용 |
+| Limited PoC 승격 | BLOCKED | 실제 기업 Data/Policy는 오늘 범위에서 의도적으로 제외; Privacy·제품도메인 Vision·Shadow·Qwen 증거 미확보 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
+| GitHub PoC·MVP·Release Branch Audit | PASS | 현재 PoC=`feature/scenario-poc-hard-plastic`; MVP 통합 기준=`develop`; 최종 릴리스 기준=`main`. 별도 `poc/mvp/final` branch·tag 없음, 원격 PoC도 최신 로컬 변경 전 상태 |
+| PoC 안전 Commit 준비 | PASS_PENDING_REMOTE | Secret·5 MiB 초과·가중치·원본 이미지 0. E3/backend `0f4de4b`, Web `b3e09cf`로 분리했고 사용자 소유 문서 3개는 미추적 보존; 원격 Push·CI는 아직 미실행 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
 | GitHub 조직·저장소 | PASS | `CSightICT`와 Private `CSightICT/csight-core` 생성 확인 |
@@ -348,7 +361,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 7 services healthy, 8 queues consumer 1/depth 0, live Decision→validated `DRY_RUN` 검증
 - [x] 실제 RabbitMQ outage의 PENDING attempt 3→CONSUMED attempt 5와 final validated 검증
 - [x] 5개 demo의 증거 수준을 구분하고 Scenario 3–5를 fixture-driven UI/component-backed로 기록
-- [x] 현재 판정을 `SYNTHETIC_MOCK_SIMULATION_DEMO`로 유지하고 Limited PoC 외부 증거를 미해결로 기록
+- [x] Sprint 5C 완료 당시 판정을 `SYNTHETIC_MOCK_SIMULATION_DEMO`로 유지하고 Limited PoC 외부 증거를 미해결로 기록
 - [x] `0a5f529 feat: add case resolution and PoC console` Commit과 동일 원격 기능 브랜치 백업, PR 없음
 - [x] 사용자 소유 루트 문서 두 개 미수정·미삭제·미Stage
 
@@ -363,11 +376,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 담당자 보고 AP 0.884863, AUROC 0.931604, threshold 0.8984375를 출처 경계와 함께 기록
 - [x] 위 E3 지표를 `report_metrics_reproduced_by_csight=false`로 표시하고 CSight 성능 주장 차단
 - [x] score `>= 0.8984375`는 `HIGH_CONFIDENCE_DEFECT_CANDIDATE`, 미만은 정상 판정이 아님을 고정
-- [x] binary image assessment를 기존 Detection과 분리하고 Mock 계약만 live 연결
+- [x] binary image assessment를 기존 Detection과 분리하고 Mock 회귀 계약과 실제 E3 내부 runtime을 각각 live 연결
 - [x] `20260827_0015_vision_image_assessment`를 현재 DB Head로 적용
 - [x] 실제 기업 Data/Policy는 오늘 시나리오 범위에서 의도적으로 제외
-- [ ] 실제 `best.pt` checkpoint package와 private E3 serving endpoint 확보
-- [ ] 실제 E3 이미지 inference, immutable model identity, latency/error/threshold drift를 external gate로 검증
+- [x] 실제 E3 checkpoint package와 host-private loopback serving endpoint 확보
+- [x] 실제 E3 이미지 inference, immutable model identity, latency와 threshold 계약을 synthetic connectivity image로 검증
+- [x] safe stop→idempotent setup→server restart 뒤 동일 synthetic score와 Docker Worker health 200 재확인
+- [ ] 실제 endpoint timeout→retry recovery와 malformed-response fail-closed를 live fault injection으로 검증
 - [x] parallel Text/Vision terminal join race 수정본의 live causal 재검증 완료
 - [x] 현재 branch의 정확한 default/integration/static/runtime 수치를 별도 원장 행으로 추가
 - [x] 사용자 소유 루트 문서 두 개 미수정·미삭제·미Stage
@@ -649,6 +664,50 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-28 | HDP-100 HTTP Surfaces | PASS | API·Web·상태 HTML 각각 HTTP 200 |
 | 2026-08-28 | HDP-100 Git Commit·Remote Backup | NOT_RUN | 로컬 변경은 최종 검증됐으나 기능 Commit과 원격 기능 브랜치 Push는 아직 pending |
 | 2026-08-28 | HDP-100 Git Commit·Remote Backup | PASS | `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d feat: add hard-plastic scenario PoC`; local·`origin/feature/scenario-poc-hard-plastic` 동일 SHA, PR·`develop` 병합 미실행 |
+| 2026-08-28 | HDP-100 Status Closeout·Remote Backup | PASS | `5c152fd0d1e97eba3b41b2ecea1cff7811814d90 docs: close out hard-plastic scenario PoC`; local HEAD·원격 기능 브랜치 일치, PR 없음 |
+| 2026-08-28 | E1–E3 Weight Transfer Integrity | PASS | 전달 3개 checkpoint의 SHA256SUMS 재계산 일치; E3 size 264,918,248와 SHA `49e8a64c…1037e`가 canonical manifest와 일치 |
+| 2026-08-28 | E3 Safe Offline Load | PASS | unsafe globals 0, `weights_only=True`·CPU mmap, exact root/config/225 float32 tensor/22,056,961 parameter/finite/strict key 검증; runtime model fetch 0 |
+| 2026-08-28 | E3 Host Runtime | PASS_WITH_SCOPE | loopback `127.0.0.1:8093`, MPS float32, direct HTTP synthetic score 0.5347466/threshold 0.8984375, Detection 0; 제품 qualification 아님 |
+| 2026-08-28 | E3 Core Causal Integration | PASS_WITH_SCOPE | Run `893f8927-7c71-4246-936b-5c752493ffc4` SUCCEEDED; exact model/version/SHA, BELOW_HIGH_CONFIDENCE_THRESHOLD, automatic Decision 0 |
+| 2026-08-28 | E3 Failure Boundaries | PASS_WITH_SCOPE | wrong task와 MIME/content mismatch HTTP 422, sparse hash-drift가 `torch.load` 전 차단, symlink 거부, safe stop/setup/restart와 score 재현 통과; 실제 timeout recovery는 미실행 |
+| 2026-08-28 | E3 Runtime Backend Regression | PASS | Ruff 0, Format 374, Pyright 0, Default 605 passed/65 deselected, Integration 54 passed/5 external-GPU skipped/611 deselected, disposable DB 0 |
+| 2026-08-28 | E3 Runtime Frontend Regression | PASS | lint·typecheck·OpenAPI·build, Vitest 10, Playwright fixture E2E 5 통과 |
+| 2026-08-28 | E3 Runtime Live Health | PASS | DB Head `0015`, E3 health 200, Core 7 services healthy, 8 queues consumer 1/depth 0, API·Web·상태 HTML HTTP 200 |
+| 2026-08-28 | E3 Status Dashboard Browser QA | PASS | 실제 E3 연결/제품 qualification 차단 문구를 브라우저 DOM에서 확인하고 기존 상태 탭을 갱신 |
+| 2026-08-28 | E3 Runtime Git Handoff | NOT_RUN | 현재 변경은 로컬 미Commit·미Push; checkpoint와 사용자 소유 루트 문서 2개는 Git 제외 |
+| 2026-08-28 | Local Demo Admin Identity | PASS | tenant `csight`, user `csight@csight.demo`, active `ADMIN` 1계정/1역할; token·me HTTP 200, Argon2 hash 저장 확인 |
+| 2026-08-28 | Cloudflare Public Demo Route | PASS_WITH_SCOPE | `doongdoong.org`·`www`의 game 3000/WS 3001 ingress를 CSight Web 8080으로 전환; 외부 system-info·token·me 200와 브라우저 Login DOM 확인, Access 미적용 |
+| 2026-08-28 | E3 Top-100 Package Integrity | PASS_WITH_SCOPE | JPEG 100장 SHA/decode/2048²/RGB/EXIF·ICC 0, exact duplicate 0; package tree `4543f49f…cb132`, license·annotation provenance는 미제공 |
+| 2026-08-28 | E3 Top-100 Direct Replay | PASS_WITH_SCOPE | 실제 E3 100/100 완료, source 0.5와 frozen 0.8984375 모두 100/100; score 0.9980715~0.9999757, selected-positive라 일반 metric 아님 |
+| 2026-08-28 | E3 Top-100 Core Sample | PASS_WITH_SCOPE | 비식별 hard-plastic rank 003/032/054/058/078/080 6건 모두 SUCCEEDED; Evidence SHA·direct/Core score delta 0·Detection 0 |
+| 2026-08-28 | E3 Top-100 Post-run Safety Audit | PASS | 6 Case 모두 Human Review Task/Resolution Event/Action Intent 0, Resolution GET 404; raw image Git·public Web 복사 0 |
+| 2026-08-28 | E3 Top-100 Replay Report | PASS | local-only report hash `9400509e18689d6696e303a7f30a803cd1252872d21ff123c28b0b50e1d9d2bf` 재계산 일치; 원본·report는 Git 제외 |
+| 2026-08-28 | E3 Top-100 Tool Static·Focused | PASS | Ruff 0, Format 376 files, Pyright 0; 새 unit/architecture focus 9 passed, E3 runtime 5 passed |
+| 2026-08-28 | E3 Top-100 Default Regression | PASS | 612 passed, 65 deselected, 기존 deprecation warning 36 |
+| 2026-08-28 | E3 Top-100 Status HTML | PASS | parse error·duplicate ID·missing anchor·external asset 0, local status·external login HTTP 200; Browser 1324px에서 카드 4·가로 overflow·console warning/error 0, 기존 console-link 세로 배치 수정 |
+| 2026-08-28 | E3 Top-100 Integration Suite | NOT_RUN | App/API/Migration 계약 변경 없음; 실제 E3 100건과 Core 6건 causal run으로 이번 변경을 검증, 기존 54 integration 수치는 재사용하지 않음 |
+| 2026-08-28 | E3 Normal Reference Audit·Replay | PASS_WITH_SCOPE | 사용자 제공 JPEG 77/77 SHA/decode/2048² RGB·EXIF/ICC 0·Top-100 overlap 0; 실제 E3 77/77이 0.8984375 미만. 사용자 진술 외 Gold·license·provenance는 없음 |
+| 2026-08-28 | Realistic Internal Demo 6:4 | PASS_WITH_SCOPE | 결함 selected-correct 6 + 정상 참고 4를 10개 자연어 Case와 private Evidence로 고정; 실제 E3 10/10, 후보 6·기준 미만 4, 정상 성능·실제 분포 평가 아님 |
+| 2026-08-28 | Private Evidence Content | PASS | 인증·tenant/Case scope·AVAILABLE·bounded read·size/SHA fail-closed endpoint와 Web Blob preview 구현; 10/10 저장 Object를 frozen source SHA로 재검증 |
+| 2026-08-28 | `csight` Synthetic Policy Runtime | PASS | fictional corpus 12 Document/84 Clause/84 Qwen embedding/ACTIVE index 1, Rule/Source 12/12; local-only fail-closed prepare 2회 모두 신규 0·exact reuse |
+| 2026-08-28 | Representative Policy→Review Flow | PASS_WITH_SCOPE | 결함 1·기준 미만 1이 Text v2→RAW Top-3→Grounding→Policy `SUCCEEDED`, matching Review 2 `PENDING`; E3는 policy input과 연결하지 않았고 Decision·Resolution·Action 0 |
+| 2026-08-28 | Realistic Demo Backend Regression | PASS | Ruff PASS, Format 382, Pyright 0; default 648 passed/65 deselected, Integration 54 passed/5 external-GPU skipped/654 deselected, disposable DB 제거 |
+| 2026-08-28 | Realistic Demo Frontend Regression | PASS | lint·typecheck·OpenAPI sync·build, Vitest 32, Playwright fixture scenario 5; 공개 Login DOM·console error 0 |
+| 2026-08-28 | Realistic Demo Git Handoff | NOT_RUN | 이번 변경은 로컬 미Commit·미Push·PR 없음; raw image·checkpoint·local reports와 사용자 소유 루트 문서 2개는 Git 제외 |
+| 2026-08-28 | R1 Visual-Aligned Seed Replay | PASS | R1 10건 seed/replay, Evidence integrity 10/10, 신규 workflow row 0; report hash `6a7b9af27016ea9a88141878cdbadaca71b2e3ea660f9b47c9d944c4f7002dba` |
+| 2026-08-28 | CSight Commerce Policy `2.0.1` | PASS | 신규 8 Document·52 Clause·25 Rule/35 Source; 전체 20/136. prepare 1회 insert 25, 2회째 insert 0·exact reuse, `2.0.1` sole active |
+| 2026-08-28 | Faulty Policy `2.0.0` Recovery | PASS | immutable hash 불일치 원인을 source 정렬로 확정; faulty `2.0.0`·failed Run은 삭제 없이 RETIRED 감사 이력, clean ingest는 v1+2.0.1만 생성 |
+| 2026-08-28 | R1 Representative Policy→Review | PASS | 수리·Safety·단순변심 3건이 Text v2→RAW Top-3→Grounding→Policy `2.0.1` SUCCEEDED, Review 3 PENDING; Decision·Resolution·Intent·Attempt·Result 0 |
+| 2026-08-28 | R1 Backend Final Regression | PASS | Ruff PASS, Format 384, Pyright 0; default 658 passed/65 deselected, Integration 54 passed/5 external-GPU skipped/664 deselected, disposable DB 제거 |
+| 2026-08-28 | R1 Frontend Final Regression | PASS | lint·typecheck·OpenAPI sync·build PASS, Vitest 39, Playwright fixture 5; 공개 Login DOM·가로 overflow·console warning/error 0 |
+| 2026-08-28 | R1 Runtime Reverification | PASS | 12:48 KST DB Head 0015, E3·Embedding MPS와 Core 7 services healthy, API live/ready·Web health PASS, Core `VISION_PROVIDER=remote` identity 일치 |
+| 2026-08-28 | R1 Git Handoff | NOT_RUN | 사용자 지시 없음; 로컬 미Commit·미Push·PR. raw image·checkpoint·local report와 사용자 소유 루트 문서 2개는 Git 제외 |
+| 2026-08-28 | Consultant UX·Continue 422 Regression | PASS_WITH_SCOPE | UTC/KST policy-date 원인을 API log·DB rule 효력일로 확정; OpenAPI sync·lint·typecheck·build, Vitest 42, Playwright fixture 5 PASS; 13:22 KST Core 7 healthy·API/Web/외부 tunnel health PASS. rebuild로 memory token이 초기화되어 인증 Case 수동 클릭은 미실행 |
+| 2026-08-28 | Human-confirmed Quick Review Regression | PASS | OpenAPI sync·lint·typecheck·build, Vitest 15 files/45 tests, Playwright 5 PASS. Scenario 1이 정확한 CAS Claim v1→Resolve v2, `APPROVE_REPAIR`, rule+citation basis, Report 자동 navigation을 검증; Safety Reviewer 차단/Admin quick review 유지 |
+| 2026-08-28 | Quick Review Runtime Surface | PASS | 13:50 KST 재빌드 후 Core 7 services healthy, API ready·Web health·외부 tunnel health PASS; 공개 Login title/DOM, browser console warning/error 0. 실제 인증 Decision 클릭은 데이터 변경 방지를 위해 NOT_RUN |
+| 2026-08-28 | Refund Processing Confirmation UI | PASS | Shopify·Stripe·국내 전자상거래법 공식 자료의 공통 운영 필드를 참고해 특정 기업 복제 없이 구현. typecheck·lint·build PASS, Vitest 17 files/49 tests, Playwright fixture 5 PASS, 1440px full-page visual QA PASS |
+| 2026-08-28 | Refund Confirmation Runtime Surface | PASS | 14:04 KST Web/API rebuild 후 DB Head `0015`, Core 7 services healthy, API readiness OK, local/public Login HTTP 200; 실제 Human Decision·환불 실행은 NOT_RUN |
+| 2026-08-28 | GitHub Branch Stage Audit | PASS | 원격 7 branches. PoC `5c152fd`는 main/develop보다 21 commits, Sprint 5C보다 2 commits ahead이고 latest CI success. Vision `3e2d596`은 PoC와 55/21 diverged, latest CI success·Draft PR #4. PR #2 open, PoC PR·release tag 없음 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -656,31 +715,80 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   합성이다. Offline acceptance 9/9는 artifact와 안전 계약의 완전성을 뜻하며 실제 고객/상품
   성능이나 실제 기업 정책 타당성을 뜻하지 않는다.
 - E3 AP 0.884863, AUROC 0.931604, threshold 0.8984375는 담당자가 제공한 offline 보고서 수치다.
-  CSight가 checkpoint로 재계산하거나 prediction artifact를 독립 재현하지 않았으므로
-  `SUPPLIED_OFFLINE_REPORT_WITH_LIMITATIONS`를 유지한다.
+  CSight가 전달 checkpoint로 개별 forward와 threshold 적용은 실행했지만 held-out dataset metric을
+  재계산하지 않았으므로 `SUPPLIED_OFFLINE_REPORT_WITH_LIMITATIONS`는 유지한다.
 - E3 score가 0.8984375 이상이면 고신뢰 `defect candidate`일 뿐 결함 유형·위치·최종 결정을
   뜻하지 않는다. 미만은 `정상`이나 결함 없음이 아니라 고신뢰 후보 기준 미만이다.
-- 현재 live 연결은 deterministic Mock binary contract뿐이다. 실제 E3 `best.pt` package와 private
-  endpoint와 endpoint reference가 없고 runtime probe도 실행하지 않아 actual E3 runtime은
-  `RUNTIME_VISION_INTEGRATION_BLOCKED`다.
+- 현재 live 연결은 exact SHA가 고정된 E3 checkpoint를 host-native loopback endpoint로 띄우고
+  Docker Worker가 호출하는 경로까지 통과했다. 합성 이미지 score 0.5347466은 threshold 미만이라
+  정상 판정 없이 사람 검토로 수렴했다. 이는 제품별 정확도나 domain-shift qualification이 아니다.
+- 전달 Top-100은 무결성 검사와 실제 E3 100/100 재실행, hard-plastic Core 6/6을 통과했다. 그러나
+  E3가 이미 맞힌 defect 100/normal 0만 역선택한 자료라 accuracy·recall·specificity·FPR·calibration을
+  산출하지 않는다. hard-plastic 14장도 모두 major defect이고 HDP-100 다섯 Human Gold를 대체하지 않는다.
+- 사용자 제공 정상 참고 폴더 77장은 실제 E3에서 모두 frozen threshold 미만이었고 그중 4장을
+  현실형 내부 데모에 섞었다. 그러나 정상 label의 근거는 사용자 진술뿐이고 무작위 표본·독립 Gold·
+  license·원소유자·dataset revision이 없으므로 specificity/FPR 또는 `정상 확인` 근거가 아니다.
+- 현실형 10건의 6:4는 화면 시연을 위해 의도적으로 고른 비율이다. 결함 6장은 selected-correct
+  positive, 정상 참고 4장은 낮은 score의 pixel-reviewed allowlist이므로 실제 발생률·정확도·비교
+  성능으로 해석하지 않는다. raw image는 private Evidence에만 저장하고 Git·공개 Web static에 복사하지 않는다.
+- 실제 E3 결과는 `attributes.realistic_demo.policy_input_linkage=NOT_LINKED_TO_POLICY_INPUT`으로
+  고정했다. 대표 3건의 Text/검색/Grounding/Policy/Human Review는 실제 비동기 경로를 통과했지만
+  정책 판단이 Vision score를 사용했다는 뜻이 아니며, Review Packet이 최종 근거 snapshot이다.
+- UI는 Retrieval↔Grounding의 직접 연결만 표시하고 Policy는 Text analysis 연결만 확정한다.
+  다중 실행이 있을 때 Grounding↔Policy exact chain을 추정하지 않으며, 최신 실패 실행이 이전 성공
+  결과를 가리지 않도록 실패 단계만 새 idempotency key로 재시도한다.
+- Top-100 package에는 license, 원소유자, dataset revision, annotation provenance와 공개 재배포
+  권리가 없다. 상품 label·barcode가 보이고 rank 061에는 개인 이름이 있어 Core 표본에서 제외했다.
+  원본은 Git·Docker context·공개 Web에 복사하지 않고 내부 비상업 연결 재현에만 사용한다.
 - parallel Text/Vision terminal join race는 parent Run row lock과 terminal redelivery
   reconciliation으로 수정했다. PostgreSQL 동시성 회귀와 새 live Run이 통과했고, 실제로
   고립됐던 기존 Run도 동일 event 재전달의 `NOOP` 경로에서 `SUCCEEDED`로 복구됐다.
 - 실제 기업 Data와 실제 기업 Policy 반입은 오늘 HDP-100 합성 시나리오 범위에서 의도적으로
   제외했다. 따라서 실제 고객·정책·Privacy·Shadow 근거를 확보했다는 주장으로 승격하지 않는다.
-- Sprint 5C 구현과 내부 데모 Gate는 통과했지만 현재 판정은
-  `SYNTHETIC_MOCK_SIMULATION_DEMO`다. 실제 기업 정책·Case·사용자 Query 분포와 ROI를 검증하지
-  않았으며 Local LLM은 `LOCAL_POC`, Vision은 `MOCK_QUALIFIED`로 표시한다.
+- Sprint 5C 구현과 내부 데모 Gate는 통과했고 현재 판정은
+  `SYNTHETIC_REAL_E3_TECH_DEMO`다. 실제 기업 정책·Case·사용자 Query 분포와 ROI를 검증하지
+  않았으며 Local LLM은 `LOCAL_POC`, Vision은 `E3_RUNTIME_CONNECTED_NOT_PRODUCT_QUALIFIED`다.
+- Kaputt 기반 E3는 교육·과학적 CV 연구 범위의 비상업 합성 기술 데모로만 사용한다. 사용자
+  지시에 따라 Web 콘솔은 현재 `doongdoong.org` 공개 터널에 연결됐지만 E3 endpoint 자체는
+  loopback에 남아 있다. 실제 데이터 업로드, 고객·상업 파일럿과 성능 홍보는 권리·법률 승인 전 차단한다.
 - Limited PoC 승격에는 고객/상품/결함 범위, 비식별 실제 Case 30건 이상과 Human Gold,
   버전·효력일이 있는 실제 정책, 개인정보 Retention·삭제·EXIF·접근 승인, 실제 Vision qualification
   또는 명시적 제외, 실제 Qwen Extraction·Grounding 재평가와 Shadow 비교가 모두 필요하다.
 - 실제 `LIVE` 외부 실행, 환불·교환·재배송·수리·결제·CRM·고객 알림, Case Closure, Decision
   amendment, Review 단계 입력 보완, 자동 assignment/SLA, OIDC/RLS는 구현하지 않았다.
+- `csight` Admin은 사용자가 지정한 짧은 데모 Credential을 사용하며 Cloudflare Access는 없다.
+  Web이 공개 터널에 연결된 현재 상태는 임시 합성 시연에만 사용하고, 외부 공유 전에는 Access를
+  적용하거나 Credential을 강화해야 한다. 원장과 Git에는 비밀번호를 기록하지 않는다.
 - 5개 Playwright demo는 intercepted API fixture를 사용한다. Scenario 1은 별도 live backend causal
   경로가 있고 Scenario 2는 PostgreSQL integration 경로가 있지만, Scenario 3–5는
   fixture-driven UI/component-backed이며 다섯 건 모두를 live causal E2E로 해석하면 안 된다.
-- HDP-100 기능은 `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`로 Commit했고 동일 원격 기능
+- 현재 R1 10건 중 대표 3건은 Human Review `PENDING`까지만 준비했다. 사람 계정으로 Resolve하기
+  전에는 Decision·Review Report·Resolution·DRY-RUN을 만들지 않으며, 이번 세션에서도 생성 수는 0이다.
+- canonical Rule Set `2.0.1`은 DB 재구성 순서와 동일한 rule/source 정렬을 강제한다. 기존 faulty
+  `2.0.0`과 그 실패 Evaluation/Outbox는 삭제하지 않고 RETIRED 감사 이력으로 남겼다.
+- 정책 입력 snapshot은 실제 Vision과 미연결인데도 `MOCK_QUALIFIED`로 기록되는 provenance 정밀도
+  한계가 남아 있다. 또한 `case.order_amount`는 generic attributes 기반이므로 실제 입력 확장 전
+  source-tagged typed schema로 분리해야 한다. 현재 R1 seed는 이 값을 제공하지 않는다.
+- `분석 계속하기` 422는 Case의 UTC 날짜 `2026-08-27`을 그대로 보내면 KST
+  `2026-08-28`부터 효력인 Rule Set `2.0.1`이 선택되지 않던 문제였다. 현재 Web은
+  가상 한국 데모의 업무 시간대 `Asia/Seoul`로 기준일을 계산한다. 다중 지역·실제 Tenant
+  적용 전에는 서버가 권위 있는 Tenant timezone/policy-date 계약을 제공해야 한다.
+- UI·API 수정과 자동 회귀는 통과했지만 Web rebuild로 기존 브라우저 memory token이
+  초기화되어 인증된 R1 Case에서 수정된 CTA를 직접 클릭하는 마지막 수동 확인은 남아 있다.
+  로그인 후 기존 실패 Case에서 재시도하면 추가 결정 없이 확인할 수 있다.
+- HDP-100 기능은 `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`, closeout은
+  `5c152fd0d1e97eba3b41b2ecea1cff7811814d90`로 Commit했고 local HEAD와 동일 원격 기능
   브랜치 SHA를 확인했다. PR 생성과 `develop` 병합은 아직 실행하지 않았다.
+- GitHub에는 장기 `poc`, `mvp`, `final` branch가 따로 없다. 경량 GitFlow 계약상 현재 PoC는
+  `feature/scenario-poc-hard-plastic`, 다음 통합/MVP 후보는 `develop`, 배포 가능한 최종 기준은
+  `main`이다. 별도 영구 `mvp/final` branch를 추가하기보다 검증된 feature PR→`develop`,
+  안정화 `release/vX.Y.Z`→`main`, annotated tag 순서를 따라야 한다.
+- 원격 PoC는 아직 `5c152fd`다. 이후 실제 E3 runtime·Top-100/정상 참고 replay·현실형 10건·가상 정책
+  `2.0.1`은 `0f4de4b`, 상담원 UI·422 복구·빠른 검토·환불 확인서는 `b3e09cf`로 로컬 Commit했다.
+  상태 문서 Commit과 원격 fast-forward·CI 확인 전이며 사용자 소유 문서 3개는 계속 미추적 보존한다.
+- Vision 담당 원격 `feature/3-kaputt-dinov2-training`은 공통 기준 `4037d73`에서 PoC와 갈라져
+  Vision 쪽 55 commits, PoC 쪽 21 commits가 서로 독점이다. Draft PR #4와 latest CI는 PASS지만
+  PoC branch에 직접 merge하면 status/doc 및 runtime 계약 충돌 검토가 필요하다.
 
 - 저장소를 Private로 유지하는 현재 플랜에서는 `main`·`develop` Branch protection API가
   HTTP 403을 반환한다. 저장소 공개 전환 없이 지원 플랜을 적용할지 Issue #1에서 결정한다.
@@ -698,8 +806,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Sprint 2.5에서 실제 Qwen Endpoint와 `external_gpu` 5건, Backend E2E 10건을 검증했다.
   다만 합성 기준 Action Accuracy 0.23과 Missing Information F1 0.00이므로 자동 Workflow
   결정에 사용하지 않고 Policy·Human Review 경계를 유지한다.
-- Sprint 3 Vision Stage는 Mock-qualified지만 실제 Vision server/model/dataset/threshold
-  calibration은 검증하지 않았다. 외부 endpoint/model/sample이 없어 실제 검증은 1건 Skip이다.
+- Sprint 3 Vision Stage의 원래 Closeout은 Mock-qualified였다. 이후 E3 server/model/threshold
+  runtime 연결은 통과했지만 실제 제품 dataset과 제품별 calibration은 여전히 검증하지 않았다.
 - Text/Vision Alignment와 Claim↔Detection matching은 구현하지 않았다. Review UI와 immutable
   Review Report는 Sprint 5C 내부 데모로 구현됐지만 실제 운영 사용자/정책/데이터 품질 증거는
   없다. Policy Engine은 typed guidance만 생성하고 최종 업무 결정은 계속 Human Review가
@@ -744,6 +852,21 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   확대 해석하지 않는다.
 - Citation Pack은 합성 Reference corpus의 immutable snapshot이다. 실제 기업 정책 정확성,
   법률 효력, 실제 사용자 분포, 보관·삭제 정책은 검증하지 않았다.
+- 빠른 검토 `0.70`은 모델 confidence, Vision threshold, 정책 정확도 또는 실제 위험 확률이 아니다.
+  `REQUIRES_HUMAN_REVIEW` 0.35, immutable Rule 0.25, Citation 0.15, qualification metadata 0.10,
+  단일 `MARK_REVIEW_ELIGIBILITY` mapping 0.15의 PoC workflow-readiness 합계다. 제품 적용 전에는
+  실제 상담원 사용성·오판 비용·Shadow 비교로 별도 재설정해야 한다.
+- `허용`은 immutable Packet에서 `RETURN/REFUND/EXCHANGE/RESHIPMENT/REPAIR_REVIEW` 중 하나의
+  typed mapping이 확정될 때만 활성화된다. `OTHER`, `ACTION_REVIEW`, 충돌 mapping은 고객 문장이나
+  모델 출력으로 추론하지 않고 상세 검토로 보낸다. `비허용`은 준비도 Gate 통과 시
+  `REJECT_REQUEST`로 기록한다.
+- 빠른 검토는 사람이 누르는 하나의 UI 동작으로 기존 Claim·Resolve API를 조합한다. 자동화 테스트에서
+  Decision→Resolution→Report를 검증했지만 실제 대기 중 R1 Case는 사용자 판단을 대신하지 않기 위해
+  이번 세션에서 클릭하지 않았다. 따라서 live DB의 해당 Decision 생성은 다음 사용자 조작으로 남는다.
+- 환불 처리 확인서는 Shopify·Stripe와 국내 전자상거래 공식 자료의 공통 필드를 참고한 CSight 가상
+  사내 양식이다. 실제 결제업자 취소, 고객 통지, RMA·추적번호, 법정 처리기한을 기록한 증빙이 아니며,
+  외부 연동 전에는 해당 항목을 `미요청/미발송/미연동`으로 유지한다. `ACTION_DRY_RUN_VALIDATED`도
+  `환불 완료`가 아니라 `환불 요청 검증 완료`로만 표시한다.
 
 ## 9. 다음 실행 항목
 
@@ -765,8 +888,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   별도 설계하고 Human Review Gate를 유지한다.
 - [x] Sprint 3 Vision Stage, Evidence Snapshot, Text/Vision fan-out/join과 Partial Failure를
   ADR로 고정하고 Append-only Run·Attempt·Outbox를 확장한다.
-- [ ] 실제 Vision endpoint, immutable model/dataset/taxonomy/threshold와 qualification image를
-  제공받으면 `make test-external-vision`으로 real model Gate를 실행한다.
+- [x] 실제 E3 endpoint와 immutable model/taxonomy/threshold를 연결하고 synthetic image로
+  direct HTTP와 Core causal model Gate를 실행한다.
+- [ ] 제품도메인 대표 이미지와 Human Gold를 고정한 뒤 별도 product qualification을 실행한다.
 - [ ] 다음 기능 Sprint에서는 먼저 Evidence Alignment 입력 계약과 Claim↔Detection matching,
   confidence calibration을 설계하고 Policy/Approval을 계속 분리한다.
 - [ ] Evidence Reconciliation·Orphan Cleanup·업로드 Idempotency와 Retention 정책을
@@ -804,12 +928,52 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   수치를 새 원장 행에 추가한다. 기존 Sprint 5C 554/51 수치는 덮어쓰지 않는다.
 - [x] HDP-100 변경을 `dfd6db2 feat: add hard-plastic scenario PoC`로 Commit하고 동일 원격 기능
   브랜치 SHA를 확인한다. PR과 `develop` 병합은 별도 결정 전까지 보류한다.
-- [ ] 실제 `best.pt` checkpoint package와 private E3 endpoint를 확보한 뒤
-  `external_vision` Gate로 model identity, threshold, inference와 failure path를 검증한다.
+- [x] 실제 E3 checkpoint와 host-private endpoint를 확보하고 model identity, threshold,
+  direct inference와 Core 저장 경로를 검증한다.
+- [x] safe stop·idempotent setup·restart 뒤 direct score 재현과 Docker Worker health를 확인한다.
+- [x] 전달받은 selected-correct Top-100의 파일 무결성을 검증하고 실제 E3 100장 전수 replay와
+  비식별 hard-plastic 6건의 local Core causal sample을 수행한다.
+- [x] 사용자 제공 정상 참고 77장을 격리 감사·실제 E3 replay하고, 결함 후보 6·threshold 미만 참고
+  4의 현실형 내부 데모 Case/Evidence 10건을 비공개 저장 경로에 고정한다.
+- [x] `csight` fictional 정책 Runtime을 local-only fail-closed로 준비하고 대표 결함 1·기준 미만 1을
+  Text v2→RAW Top-3→Grounding→Policy→Human Review `PENDING`까지 실제 실행한다.
+- [x] R1 장문 문의 10건·3열 상담원 UI·CSight Commerce 가상 정책 8문서/52조항과 canonical
+  Rule Set `2.0.1`을 구현하고 대표 수리·Safety·단순변심 3건을 Human Review까지 실제 실행한다.
+- [x] Case Workspace를 `지금 할 일` 단일 CTA와 2열 본문으로 단순화하고,
+  데스크톱 inert X를 제거하며 UTC/KST policy-date 422와 API 오류 메시지 파싱을 수정한다.
+- [x] Review 화면에 PoC 준비도 0.70 기반 `허용/비허용` 빠른 검토를 추가하고, 인증 Human 클릭 뒤
+  CAS Claim→Resolve→Resolution/DRY-RUN→immutable Review Report 자동 열기를 연결한다.
+- [x] `APPROVE_REFUND` 보고서를 금액·수량·처리 상태·취소 요청·고객 통지·반품 추적·정책 승인·
+  감사 ID가 포함된 `환불 처리 확인서`로 분리하고 A4 인쇄, 누락값 fail-closed, 실제 환불 미실행
+  표기를 검증한다.
+- [ ] 인증된 담당자가 대기 중인 비Safety 대표 Case 하나에서 실제 `허용` 또는 `비허용`을 선택하고,
+  생성된 Decision·Resolution·Report를 확인한다. 이 선택은 변경 불가능한 사람의 최종 판단이다.
+- [ ] 로그인한 상담원 세션에서 기존 422 Case의 `분석 계속하기`를 한 번 누르고
+  Policy `2.0.1` 성공 또는 이전 성공 실행 복구를 확인한다.
+- [ ] 상담원 콘솔에서 대기 중인 대표 3건을 인증된 사람이 검토한다. 실제 판단이 입력되기 전에는
+  Resolve·Review Report·Resolution·DRY-RUN을 만들지 않는다.
+- [ ] 실제 데이터 입력 전에 Policy input qualification과 금액 provenance를 source-tagged typed
+  schema로 보강한다.
+- [ ] HDP-100 5개 합성 시나리오의 대표 이미지셋·Human Gold·재현 점수를 버전 고정한다.
+- [ ] E3 endpoint timeout/restart와 malformed response를 live 주입하고 retry/fail-closed를 검증한다.
+- [x] `doongdoong.org`·`www` Cloudflare ingress를 지뢰찾기 3000/3001에서 CSight Web 8080으로
+  전환하고 외부 Web·API·Admin 인증과 브라우저 Login 화면을 검증한다.
+- [x] GitHub 조직 저장소의 원격 branch·PR·CI·tag와 로컬 worktree를 교차 감사하고
+  PoC=`feature/scenario-poc-hard-plastic`, MVP 통합=`develop`, 최종 릴리스=`main` 역할을 확인한다.
+- [x] 로컬 후속 변경을 E3 runtime, 현실형 demo/policy, 상담원 Web, 상태 문서의 검토 가능한
+  Commit으로 분리하되 사용자 소유 문서·raw image·checkpoint·local report는 제외한다.
+- [ ] 분리 Commit 전체 회귀와 Secret/대용량 파일 감사를 통과했다. 사용자의 승인 범위에서
+  원격 PoC branch를 fast-forward로 최신화하고 CI 결과를 확인한다.
+- [ ] Vision Draft PR #4의 `ml/cv` 변경을 현재 PoC runtime 계약과 별도 비교해 충돌을 해결한 뒤
+  `develop` 통합 순서를 결정한다. PoC PR과 PR #2/보호 규칙 결정 전 `main` 승격은 금지한다.
+- [ ] 공개 터널을 공유하기 전 Cloudflare Access를 적용하거나 `csight` Admin Credential을
+  강화하고, 시연 종료 뒤 터널 복원·중단 여부를 결정한다.
+- [ ] Kaputt 권리 범위를 벗어나는 고객·상업 사용은 별도 법률·권리자 승인 전 차단한다.
 - [ ] 고객 후보, 상품군 1개, 결함 유형 2~3개와 비식별 실제 Case/Human Gold 30건 이상을 확보한다.
 - [ ] 버전·효력일이 있는 실제 기업 정책과 실제 Policy/Case/User Query 분포 평가를 확보한다.
 - [ ] Retention·삭제·EXIF 제거·접근권한 승인을 받고 증거 artifact ID/hash를 Gate에 연결한다.
-- [ ] 실제 Vision manifest·결함별 평가를 완료하거나 Vision 제외 범위를 명시 승인한다.
+- [x] E3 manifest·preprocess·threshold·labels·model card와 checkpoint SHA package를 고정한다.
+- [ ] 제품별 결함 평가를 완료하거나 Vision의 제품 적용 제외 범위를 명시 승인한다.
 - [ ] 실제 목표 분포에서 Qwen3.8 Extraction·Grounding을 재평가하고 Shadow Mode Human 비교를 완료한다.
 - [ ] 모든 외부 증거와 zero-safety/clean-environment artifact가 갖춰진 뒤에만
   `make require-limited-poc`으로 `LIMITED_POC` 승격을 판정한다.
@@ -1485,3 +1649,300 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Documentation boundary: 이 상태 문서 갱신 자체의 Commit SHA는 아직 없으므로 기록하지 않는다.
 - Git safety: 사용자 소유 `CSight_MASTER_HANDOFF_2026-08-27.md`와
   `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지 않았다.
+
+### 2026-08-28 — Real E3 Host Runtime and Synthetic Core Integration
+
+- 목표: 담당자가 전달한 E1–E3 weights/README/SHA를 검증하고 canonical E3만 선택해 오늘의
+  HDP-100 합성 기술 PoC에 실제 checkpoint forward를 연결
+- Weight integrity: 세 checkpoint의 제공 SHA-256과 재계산값이 모두 일치. E3는 원격
+  canonical manifest의 size 264,918,248와 SHA
+  `49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e`까지 일치
+- Package/runtime: manifest·preprocess·threshold·labels·offline DINOv2 config를 고정하고,
+  checkpoint는 Git/Docker 밖의 경로만 허용. unsafe globals 0, `weights_only=True`·mmap,
+  exact root/config/tensor count/dtype/finite/strict key를 통과해야만 loopback server가 시작됨
+- Direct inference: MPS float32 host runtime health 200. 합성 펌프 connectivity image의 실제 E3
+  score 0.5347465873, frozen threshold 0.8984375, 결과
+  `BELOW_HIGH_CONFIDENCE_THRESHOLD`, Detection·normal classification·automatic Decision 0
+- Core causal path: Docker Worker→host-private endpoint 200. Run
+  `893f8927-7c71-4246-936b-5c752493ffc4`가 `SUCCEEDED`로 완료되고 exact model/version/SHA와
+  image assessment가 append-only 저장됨
+- Failure/recovery: wrong task와 MIME/content mismatch 422, hash drift가 `torch.load` 전 차단,
+  symlink 거부. 첫 stop 직후 즉시 health probe는 종료 유예 중 200이어서 재시도 후 closed를
+  확인. 첫 setup 재실행은 기존 venv를 거부해 `--allow-existing`으로 수정하고 safe stop→setup→
+  restart 뒤 동일 score와 Worker health 200을 재확인. 실제 timeout/malformed-response live
+  fault injection은 `NOT_RUN`
+- Backend verification: Ruff 0, Format 374, Pyright 0, Default 605 passed/65 deselected,
+  disposable Integration 54 passed/5 external-GPU skipped/611 deselected, 임시 DB 0. E3 전용
+  package/fail-closed test 5 passed
+- Frontend/runtime: lint·typecheck·OpenAPI·build, Vitest 10, intercepted-fixture Playwright 5
+  통과. DB Head `0015`, Core 7 services healthy, 8 queues consumer 1/depth 0, API·Web·상태 HTML
+  HTTP 200. 브라우저에서 실제 E3 PASS와 product qualification BLOCKED 문구를 직접 확인
+- Scope: 실제 checkpoint 연결은 `PASS_WITH_SCOPE`지만 합성 이미지 한 건의 기술 연결일 뿐
+  held-out metric 재현, HDP-100 제품 accuracy, 고객 데이터/정책, ROI 증거가 아니다. Kaputt
+  권리 범위 때문에 내부 비상업 연구 데모로 제한하고 public/customer/commercial 사용은 차단
+- Git: 기존 Scenario 기능·closeout HEAD `5c152fd`는 원격 기능 브랜치와 일치. E3 runtime
+  변경은 로컬 미Commit·미Push이며 가중치와 사용자 소유 루트 문서 두 개는 수정·복사·Stage하지 않음
+- 다음 작업: HDP-100 5개 대표 합성 이미지·Human Gold·재현 점수를 고정하고 실제
+  timeout/recovery와 malformed-response fail-closed를 주입 검증
+
+### 2026-08-28 — Local Demo Admin Identity
+
+- 목표: 상담원 콘솔에서 한 계정으로 일반 검토와 Safety Admin 시나리오를 모두 시연할 수 있도록
+  local tenant `csight`와 `csight@csight.demo` 계정 생성
+- Persistence: active Tenant 1, active User 1, `ADMIN` Role 1을 한 DB transaction으로 생성;
+  비밀번호는 Argon2 hash로만 저장하고 평문은 원장·파일·Git에 기록하지 않음
+- Verification: `/api/v1/auth/token` HTTP 200, 발급 Token으로 `/api/v1/auth/me` HTTP 200;
+  Principal email과 단일 `ADMIN` Role, tenant user count 1과 account role count 1 확인
+- Scope: 현재 loopback local demo 전용. 외부 공개·공유 환경에서는 Credential 교체 또는 계정
+  제거가 선행돼야 함
+- Git: Runtime DB identity 생성과 상태 원장 갱신만 수행; Commit·Push 없음
+
+### 2026-08-28 — Cloudflare Domain Switch to CSight
+
+- 목표: 개인 지뢰찾기 서버에 사용하던 `doongdoong.org` Cloudflare Tunnel을 현재 CSight 합성
+  기술 데모 Web으로 전환
+- Routing: root·`www`의 game HTTP `3000`과 `/socket` WebSocket `3001` ingress를 제거하고
+  host loopback CSight Web `127.0.0.1:8080`으로 통합; catch-all 404 유지
+- Activation: cloudflared ingress validation `OK`, LaunchAgent tunnel process kickstart 성공;
+  지뢰찾기 HTTP/WS 서버는 로컬에서 계속 실행되지만 도메인에서는 분리됨
+- External verification: root·`www` system-info가 `csight-core-api`, Web health 200; 외부
+  `/auth/token`·`/auth/me` 200와 single `ADMIN` Principal 확인, Token cache header no-store/no-cache
+- Browser QA: `https://doongdoong.org/login`, title `CSight 상담원 콘솔`, login form DOM과 console
+  error 0을 확인하고 사용자에게 보이는 탭으로 인계
+- Security boundary: Cloudflare Access 미적용이고 Demo Admin Credential이 짧다. 실제 데이터는
+  업로드하지 않으며 외부 공유 전에 Access 또는 Credential 강화가 필요
+- Git: Cloudflare local config와 상태 원장만 변경; CSight Commit·Push 없음
+
+### 2026-08-28 — E3 Top-100 Selected-Positive Replay and Core Sample
+
+- 목표: 전달된 E3-correct selected-positive package를 원본 복사 없이 실제 E3와 Core 경로로 재생
+- Source integrity: JPEG 100/100의 manifest SHA·decode·2048² RGB·EXIF/ICC 부재를 확인.
+  `DEFECT 100 / NORMAL 0`, hard-plastic 14장 모두 major defect이며 package tree SHA는
+  `4543f49f9a54a989a694096b89f3be83a47cd1d80c4c46a5e2ab4ff4937cb132`
+- Direct E3: exact revision `49e8a64c…1037e`, MPS float32에서 100/100 완료. source threshold
+  0.5와 frozen threshold 0.8984375 모두 100/100; score 0.9980715–0.9999757,
+  mean 0.9993894, median latency 932 ms
+- Core causal sample: 시각 검토 allowlist ranks 003·032·054·058·078·080의
+  Case→Evidence→Analysis 6/6 `SUCCEEDED`; Evidence SHA와 direct/Core score delta 0
+- Safety audit: 각 Case의 Human Review Task·Resolution Event·Action Intent 0, Resolution GET 404.
+  평가기가 Human Decision·Resolution·External Action을 요청하지 않았고 위치 Detection도 0
+- Verdict: `TOP100_SELECTED_SUCCESS_REPLAY_AND_CORE_SAMPLE_PASS`; canonical report SHA
+  `9400509e18689d6696e303a7f30a803cd1252872d21ff123c28b0b50e1d9d2bf`
+- Verification: Ruff 0, Format 376, Pyright 0, 새 focus 9 passed, E3 runtime 5 passed,
+  default 612 passed/65 deselected. HTML 구조·local status·external login HTTP와 1324px Browser
+  카드/overflow/console 검증 통과; 시각 QA에서 발견한 기존 console-link 세로 배치를 수정. App/API/
+  Migration 변경이 없어 disposable Integration 전체 suite는 재실행하지 않고 실제 Core 6건으로 검증
+- Claim boundary: positive-only·correct-only 선택 편향 때문에 AP·AUROC·accuracy·recall·정상
+  확인·제품 qualification·Limited PoC 승격 근거가 아님. package에 license·annotation provenance·
+  공개 재배포 권리가 없고 rank 061에는 개인 이름이 보여 제외; 원본·report는 Git과 공개 Web 밖에 유지
+- Git: Commit·Push·PR 없음. 사용자 소유 `CSight_MASTER_HANDOFF_2026-08-27.md`와
+  `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지 않음
+- 다음 작업: HDP-100 다섯 대표 이미지·Human Gold 고정, timeout/malformed-response live Gate,
+  공개 접속 보호와 데이터 권리 확인
+
+### 2026-08-28 — Realistic 6:4 Internal Demo and Human Review Staging
+
+- 목표: selected-correct 결함만 보이던 기술 재생을 실제 상담 화면에 가까운 10건 구성으로 바꾸고,
+  사용자 제공 정상 참고 이미지를 과장 없이 섞어 실제 E3·private Evidence·합성 정책 검토 경로를 확인
+- Normal source: JPEG 77장, 2048×2048 RGB, EXIF/ICC·exact duplicate·Top-100 overlap 0. 실제
+  E3 77/77이 source 0.5와 frozen 0.8984375 모두 미만이며 score 범위
+  0.0000208903–0.0001434958. label 근거는 사용자 진술뿐이고 license·provenance·독립 Gold는 없음
+- Frozen 6:4 selection: selected-correct defect ranks 003·032·054·058·078·080과 normal-reference
+  ranks 002·008·017·023을 10개 합성 자연어 문의에 연결. 결과는 고신뢰 defect candidate 6,
+  threshold 미만 참고 4이며 실제 prevalence·accuracy·normal confirmation이 아님
+- Private Evidence: 원본을 Git·Web static에 복사하지 않고 tenant/Case-scoped Evidence API에 저장.
+  인증된 same-origin content endpoint가 size/SHA를 fail-closed 재검증했고 최종 replay에서 10/10 일치
+- Policy runtime: fictional `csight` corpus 12 Document/84 Clause/84 Qwen3 embedding/ACTIVE index 1,
+  Rule/Source link 12/12. local/test와 loopback PostgreSQL/Embedding만 허용하며 existing semantic,
+  embedding SHA/vector, exact index metadata가 다르면 자동 수정 없이 실패. 실제 prepare 2회 모두
+  bundle/ingestion reuse, embedding created 0
+- Live representative flow: `REAL-DEMO-DEFECT-03`과 `REAL-DEMO-NORMAL-01`이 각각 Text v2,
+  RAW Top-3 Retrieval, Grounding, Policy Evaluation `SUCCEEDED`와 matching Human Review `PENDING`까지
+  완료. E3는 `NOT_LINKED_TO_POLICY_INPUT`; Human Decision·Resolution·Action Intent·Simulation 0
+- Idempotency/safety replay: 정책·Review 2건을 만든 뒤 10건 seed를 다시 실행해 Case/Analysis replay
+  10, Evidence reuse·authenticated integrity 10, 새 workflow row 0을 확인. workflow before/after는
+  Retrieval/Grounding/Policy/Review 각각 2로 동일, canonical report hash
+  `8f26ed1ff7f8dca6daf55eee08106651e31ad2fa5cc3ed078cd8070b111cc6b7`
+- UI: Bearer-authenticated image Blob preview, source provenance/selection bias/rights badge, E3 score·
+  threshold 안전 해석, citation title/body/version, independent run IDs와 Review Packet 원장을 표시.
+  최신 FAILED는 이전 성공 결과를 가리지 않고 실패한 Text/Vision branch만 새 key로 재시도
+- Verification: Ruff PASS, Format 382, Pyright 0; default 648 passed/65 deselected/36 warnings,
+  disposable Integration 54 passed/5 external-GPU skipped/654 deselected and removed; focused E3/demo
+  29, E3 runtime 5; Web lint·typecheck·OpenAPI·build, Vitest 32, Playwright fixture 5 PASS
+- Runtime/browser: DB Head `0015`, Core 7 services healthy, Qwen embedding 8091과 E3 8093 health PASS,
+  Evidence content OpenAPI path 존재·unauthenticated 401. `https://doongdoong.org/login` 새 Web build와
+  Login DOM, browser console error 0 확인; rebuild로 기존 browser memory token이 만료되어 로그인 후
+  실제 Case 화면 검증은 사용자 세션에서 이어감
+- Git safety: Commit·Push·PR 없음. checkpoint·raw image·local reports와 사용자 소유
+  `CSight_MASTER_HANDOFF_2026-08-27.md`, `kaputt_best_vision_architecture.md`는 Git 제외
+- 다음 작업: 상담원 콘솔에서 대표 2건을 사람이 직접 검토한다. 승인된 Human Decision이 생기기
+  전에는 Review Report·Resolution·DRY-RUN을 생성하지 않고, 공개 공유 전 Access/credential과
+  데이터 권리 경계를 먼저 보강한다.
+
+### 2026-08-28 — R1 Visual-Aligned Inquiry, Three-Column Console, and Policy 2.0.1
+
+- 목표: 짧고 이미지와 어긋날 수 있던 상담 문구를 실제 이커머스 반품·교환·환불 문의처럼 확장하고,
+  상담원이 고객 주장·이미지·가상 사내 정책을 한 화면에서 비교할 수 있는 내부 데모를 완성
+- R1 inquiry contract: 결함 후보 6·기준 미만 참고 4의 10건을 각 4~5문장으로 고정하고
+  `demo_image_observation`과 `CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS`를 분리. 실기업명·
+  이메일·전화번호는 manifest validation에서 차단하고 legacy v2 Case는 삭제 없이 UI에서 숨김
+- Seed/replay: R1 10 Case/Evidence/실제 E3를 생성한 뒤 같은 입력을 재실행해 Case/Analysis 10 replay,
+  Evidence reuse·integrity 10, 신규 workflow row 0을 확인. canonical report hash는
+  `6a7b9af27016ea9a88141878cdbadaca71b2e3ea660f9b47c9d944c4f7002dba`
+- UI: Case 상세의 최상단을 `문의 내용 / 이미지 근거 / 정책 기반 권고` 3열로 정리하고 가상 문의·
+  가상 사내 정책 배지, 사진 관찰/고객 진술 경계, exact E3 binary identity를 표시. 실행 ID·Workflow·
+  Resolution은 하단 접이식 보조 영역으로 이동하고 bbox가 섞인 binary 결과는 fail-closed 처리
+- Fictional policy: CSight Commerce 운영규정 8 Document·52 Clause와 25 typed Rule·35 Source를
+  추가. 기존 포함 전체 20 Document·136 Clause이며 문서·retrieval index는 `2.0.0`, canonical
+  Rule Set/Rules는 `2.0.1`로 고정
+- Reliability recovery: 최초 v2 `2.0.0`에서 다중 source 순서와 DB 재구성 순서가 달라 immutable
+  hash mismatch가 발생한 원인을 확정. production reconstruction과 ingest에 canonical 정렬을 강제하고,
+  faulty `2.0.0`·failed Evaluation/Outbox는 삭제 없이 frozen hash가 일치하는 RETIRED 이력으로 보존.
+  clean 환경은 v1+2.0.1만 만들며 live DB는 v1/2.0.0 RETIRED, 2.0.1 sole active
+- Policy replay: prepare 1회에서 successor Rule 25를 추가하고, 2회째 bundle/ingestion exact reuse와
+  insert 0을 확인. 현재 감사 이력 포함 Rule/Source는 62/82, active Rule Set은 1개
+- Live representative flow: R1 rank 054 수리, rank 078 Safety, rank 008 단순변심 3건이 각각
+  Text v2→RAW Top-3→Grounding→Policy `2.0.1`을 `SUCCEEDED`했고 matching Human Review 3건이
+  `PENDING`. Top-3는 모두 `CSC-OPS-* / 2.0.0`; R1 10건의 Decision·Resolution·Intent·Attempt·Result 0
+- Verification: Ruff PASS, Format 384, Pyright 0; default 658 passed/65 deselected/36 warnings;
+  disposable Integration 54 passed/5 external-GPU skipped/664 deselected/5 warnings and removed;
+  policy focus 19; Web lint·typecheck·OpenAPI sync·build, Vitest 39, Playwright fixture 5 PASS
+- Runtime/browser at 12:48 KST: Docker 재시작 후 E3·Qwen Embedding MPS와 Core 7 services healthy,
+  DB Head `0015`, API live/ready·Web health PASS, Core는 exact E3 remote identity 사용. 공개 Login은
+  title/DOM/가로 overflow/console warning·error 0을 확인했고 비밀번호 입력이나 Human Resolve는 하지 않음
+- Scope: 10건·정책은 모두 가상이며 E3 score는 policy input과 미연결. selected-correct 6:4와 권리
+  미확인 이미지는 제품 성능·실제 분포·상업 PoC 근거가 아니며, Access·강한 Credential·재배포 권리
+  확보 전 `doongdoong.org` URL과 계정을 제3자에게 공유하지 않음
+- P2: policy input snapshot의 Vision qualification이 미연결 상태에서도 `MOCK_QUALIFIED`이고,
+  `case.order_amount`가 generic attributes provenance를 사용한다. 현재 R1 seed에는 금액 입력이 없고
+  최종 조치를 만들지 않지만 실제 데이터 전 source-tagged typed schema 보강이 필요
+- Git safety: Commit·Push·PR 없음. checkpoint·raw image·local reports와 사용자 소유
+  `CSight_MASTER_HANDOFF_2026-08-27.md`, `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지 않음
+- 다음 작업: 대표 Review 3건은 인증된 사람이 실제 판단할 때만 Resolve한다. 외부 공유 전
+  Access/Credential과 권리 경계를 보강하고, 제품 적용 전에는 권리 확인된 자체 표본·Human Gold와
+  policy input provenance를 별도 qualification한다.
+
+### 2026-08-28 — Consultant-first Workspace UX and Policy Date Recovery
+
+- 목표: 실사용 상담원이 첫 화면에서 다음 행동을 바로 이해하도록 Case Workspace를
+  단순화하고, 우측 `이어하기`가 정책 평가에서 반환하던 HTTP 422를 해소
+- UX: 상단에 `지금 할 일` 단일 주요 CTA와 문의 접수→사진 확인→정책 검토→
+  담당자 결정 4단계를 추가. 본문은 문의·이미지 맥락과 정책 권고의 2열로 재배치하고,
+  모델 identity·실행 ID·Resolution은 접은 상세로 유지. 상시 노출되던 기능 없는
+  데스크톱 X는 제거하고 모바일 사이드바가 열렸을 때만 닫기 버튼을 표시
+- 422 원인: Case `created_at` UTC `2026-08-27`을 문자열로 잘라 정책 기준일로 사용했지만,
+  한국 업무일은 `2026-08-28`이었고 active Rule Set `2.0.1`도 그날부터 효력이었음.
+  API log와 DB rule 효력일을 조회해 `No active policy rule set is valid for as_of_date` 경로를 확정
+- 수정: Web이 Case 시각을 `Asia/Seoul` 업무일로 변환한 후 정책 평가를 요청하고,
+  서버의 `{error: {code, message}}` 계약을 클라이언트가 정상 파싱하여 재발 시에도
+  포괄적 422 문구 대신 실제 이유를 표시
+- 검증: OpenAPI generated snapshot sync, ESLint, TypeScript, production build PASS; Vitest
+  14 files/42 tests, Playwright fixture scenario 5 PASS. 13:22 KST Core 7 services healthy,
+  API readiness·Web health·외부 tunnel health PASS
+- 미실행: rebuild로 브라우저 memory token이 초기화되어 인증된 실제 Case에서
+  CTA 수동 클릭은 재로그인 후로 인계. 자동 회귀와 비인증 live health는 통과
+- 보안·업무 경계: Policy·Vision은 권고만 제공하고 인증된 사람만 최종 결정.
+  이번 세션에서 Decision·Resolution·Action을 생성하지 않음
+- Git safety: Commit·Push·PR 없음. 사용자 소유 `CSight_MASTER_HANDOFF_2026-08-27.md`,
+  `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지 않음
+- 다음 작업: 사용자가 재로그인한 뒤 기존 422 Case에서 `분석 계속하기`를
+  한 번 누르고 Policy `2.0.1` 성공 또는 기존 성공 실행 복구를 확인
+
+### 2026-08-28 — Human-confirmed Quick Review and Automatic Report Flow
+
+- 목표: 담당자가 복잡한 Decision form을 작성하지 않고 `허용/비허용`만 눌러도 검토 확정부터
+  Resolution·DRY-RUN·최종 검토 문서까지 이어지는 PoC 기술 흐름 구현
+- Decision boundary: 모델·정책·Worker가 Decision을 만들지 않으며 인증된 담당자의 명시적 클릭만
+  기존 Human Resolve를 호출. Safety·Manager·Policy Exception은 Reviewer를 차단하고 Admin만 허용
+- Readiness Gate: threshold `0.70`. Human Review 상태 0.35 + immutable Rule 0.25 + Citation 0.15 +
+  qualification metadata 0.10 + 단일 policy eligibility mapping 0.15. 모델 accuracy나 Vision
+  threshold가 아니라 PoC 화면 단순화를 위한 workflow-readiness이며 ADR-0097에 고정
+- Allow mapping: `RETURN/REFUND_REVIEW`→`APPROVE_REFUND`, `EXCHANGE_REVIEW`→
+  `APPROVE_EXCHANGE`, `RESHIPMENT_REVIEW`→`APPROVE_RESHIPMENT`, `REPAIR_REVIEW`→
+  `APPROVE_REPAIR`. 복수·미지원 mapping은 허용을 비활성화하고 상세 검토로 fail-closed
+- Deny mapping: Gate를 통과한 담당자의 `비허용`은 `REJECT_REQUEST`. 첫 Rule+Citations를 immutable
+  basis로 자동 첨부하고 고정된 투명 rationale을 기록하며 고객 원문·LLM·Vision score로 Action을 추론하지 않음
+- Client flow: PENDING/허용 권한 상태에서 한 번의 클릭으로 CAS Claim 후 갱신 version으로 Resolve.
+  기존 비동기 Resolution/Simulation worker와 `review_report/1.0.0`을 polling하고 생성 즉시 인쇄 가능한
+  보고서 화면을 자동으로 열며 별도 server Workflow Coordinator나 mutation API는 추가하지 않음
+- UX: 우측 Decision Panel의 주 동작을 큰 `허용/비허용` 두 버튼과 준비도 meter로 단순화.
+  상세 Decision·자료 요청·이관·반환은 접힌 예외 경로로 유지하고 버튼 클릭 시 immutable 최종 결정임을 명시
+- Verification: OpenAPI sync, ESLint, TypeScript, production build PASS; Vitest 15 files/45 tests,
+  Playwright fixture 5 PASS. 첫 시나리오는 Claim expected v1→Resolve v2, `APPROVE_REPAIR`,
+  Rule+Citation, Report 자동 navigation과 side effects 0을 검증
+- Runtime/browser: 13:50 KST Web rebuild, Core 7 services healthy, API ready·Web·외부 tunnel
+  health PASS. 공개 Login title/DOM과 console warning/error 0; 비밀번호 입력이나 실제 Human Resolve는 미실행
+- Scope: `0.70`을 성능·정확도·위험 확률·Limited PoC 증거로 주장하지 않음. 실제 상담원 clickstream과
+  Shadow Gold 전에는 합성 데모용이며 LIVE 외부 실행과 Case Closure는 계속 없음
+- Git safety: Commit·Push·PR 없음. 사용자 소유 `CSight_MASTER_HANDOFF_2026-08-27.md`,
+  `kaputt_best_vision_architecture.md`는 수정·삭제·Stage하지 않음
+- 다음 작업: 인증 담당자가 비Safety 대표 Case 하나의 정책/근거를 확인한 뒤 실제 `허용` 또는
+  `비허용`을 선택하고 생성된 immutable Decision·Resolution·Report를 확인
+
+### 2026-08-28 — Reference-informed Refund Processing Confirmation
+
+- 목표: Human Decision 이후 생성되는 환불 보고서를 실제 이커머스 운영자가 읽는 환불 처리 문서와
+  유사한 구조로 개선하되, 특정 기업 서식 복제와 실제 환불 완료 오인을 방지
+- Reference: Shopify 공식 환불 안내의 금액·수량·배송비·사유·환불수단·고객 통지·timeline,
+  Stripe 공식 환불 안내의 원결제수단·pending/succeeded/failed lifecycle, 국내 전자상거래법
+  제18조의 환급·결제업자 취소 요청 관점을 공통 필드로 채택. 상세 근거와 경계는
+  `docs/resolution/REFUND_PROCESSING_CONFIRMATION.md`에 기록
+- 구현: `APPROVE_REFUND` 또는 `REFUND` Intent를 감지해 `환불 처리 확인서`로 렌더링. 문서번호,
+  주문/SKU, 금액·통화·수량, 승인 근거, 취소 요청·통지·RMA/추적, 처리 이력, 정책/담당자 승인,
+  Report/Packet/Decision/Intent/Result 감사 ID·Hash를 화면과 A4 인쇄에 구성
+- Fail-closed: snapshot에 없는 값은 추정하지 않으며 금액·통화 누락은 `입력 필요`와
+  `환불 정보 보완 필요`로 표시. 외부 결제/회수/통지 식별자는 `미요청/미발송/미연동`,
+  `side_effects_performed=false`는 `실제 환불 미실행`으로 고정
+- Verification: TypeScript·ESLint·production build PASS; Vitest 17 files/49 tests,
+  Playwright 다섯 fixture scenario PASS. 1440px full-page 캡처로 데스크톱 문서 밀도·표·timeline·
+  감사 footer를 직접 확인. 신규 환불 문서는 backend 계약 변경 없이 immutable report snapshot만 사용
+- Runtime/data: Web/API 이미지를 재빌드해 현재 데모에 반영. 14:04 KST DB Head `0015`, Core 7
+  services healthy, API ready와 local/public Login HTTP 200. 실제 인증 Human Decision과 외부 환불은 실행하지 않음
+- Git safety: Commit·Push·PR 없음. 사용자 소유 `CSight_MASTER_HANDOFF_2026-08-27.md`,
+  `kaputt_best_vision_architecture.md`와 새 미추적 개인 자료를 수정·삭제·Stage하지 않음
+- 다음 작업: 인증 담당자가 명시적으로 환불을 허용한 complete refund Case에서 18,900 KRW 같은
+  제출 입력이 문서에 표시되고 DRY-RUN 결과/실제 부작용 없음이 고정되는지 live UI로 확인
+
+### 2026-08-28 — GitHub PoC, MVP, and Release Branch Audit
+
+- 목표: `CSightICT/csight-core`에 PoC·MVP·최종 단계용 branch가 실제로 존재하는지 확인하고
+  현재 로컬 구현과 원격 저장 상태의 차이를 확정
+- 원격: private repository, default `main`, 총 7 branches. 명시적 `poc`, `mvp`, `final`,
+  `release/*` branch와 tag는 없음. 경량 GitFlow 문서상 장기 branch는 `main/develop`만 유지
+- Stage mapping: 현재 PoC 작업선은 `feature/scenario-poc-hard-plastic@5c152fd`, 다음 MVP 통합
+  후보는 `develop@4037d73`, 최종 릴리스 기준은 `main@4037d73`. PoC는 main/develop보다
+  21 commits ahead, Sprint 5C branch보다 2 commits ahead이고 뒤처짐 0
+- CI/PR: PoC head push CI success. Governance PR #2는 open, Vision PR #4는 Draft/open이며
+  `feature/3-kaputt-dinov2-training@3e2d596` latest push/PR CI success. PoC branch PR은 없음
+- Divergence: Vision branch와 PoC branch는 `4037d73`에서 갈라져 Vision-only 55 commits,
+  PoC-only 21 commits. 자동 fast-forward나 무검토 직접 merge 대상이 아님
+- Local gap: local HEAD는 remote PoC와 같지만 후속 구현이 tracked 44 files, untracked 36 paths로
+  남아 있음. E3 runtime, replay/demo/policy, 상담원 UX, 422/quick review/refund document가 원격 미반영
+- 판정: GitHub 최신화 필요. 그러나 `main/develop` 직접 Push나 영구 `mvp/final` branch 생성이
+  아니라 변경을 논리 단위로 분리 검증한 PoC backup→PR to `develop`→release/tag→`main` 순서가 맞음
+- 실행: GitHub/로컬 read-only 감사와 이 원장 갱신만 수행. Commit·Push·branch 생성·PR 수정·병합 없음
+- 다음 작업: 사용자 소유 자료를 제외한 Commit 후보 목록을 먼저 확정하고, 전체 회귀 뒤 사용자의
+  명시적 승인으로 PoC branch backup을 갱신한다. 이후 Vision PR #4 통합 순서를 별도 결정
+
+### 2026-08-28 — Realistic PoC Safe Commit Preparation
+
+- 목표: 원격보다 앞선 E3 runtime·현실형 데모·가상 정책·상담원 UI를 사용자 소유 자료와 분리해
+  검토 가능한 PoC Commit으로 고정하고 fast-forward 원격 백업 전 안전 Gate를 재확인
+- Commit: E3/backend/policy/scenario `0f4de4b feat: add E3-backed realistic demo runtime`,
+  상담원 UI/빠른 검토/환불 문서 `b3e09cf feat(web): streamline consultant review and refund reports`.
+  이 원장을 포함한 상태 문서 Commit과 원격 Push는 아직 미실행
+- 전체 검증: Ruff PASS, Format 384, Pyright 0; 기본 658 PASS/65 deselected,
+  disposable Integration 54 PASS/외부 GPU 5 Skip/664 deselected 후 DB 정리, Vision E3 5 PASS.
+  Web lint·typecheck·OpenAPI sync·production build, Vitest 17 files/49 tests, Playwright 5 PASS
+- Data/runtime 검증: 합성 Scenario acceptance 9/9, 정책 DB 24 Document/168 Clause와 mismatch 0,
+  Rule Set 2/Rule 24/forbidden decision effect 0. DB Head `0015`, Alembic drift 없음,
+  Core 7 services healthy, API ready·local Web·public Login HTTP 200
+- 승격 판정: `make verify-poc-readiness`는 정상 종료했지만 외부 증거 Gate가 비어 있어
+  `SYNTHETIC_MOCK_SIMULATION_DEMO`를 유지. 실제 기업 데이터·정책·ROI·제품 Vision qualification을
+  확보했다는 주장으로 승격하지 않음
+- Git safety: 후보에서 Secret·5 MiB 초과 파일·가중치·checkpoint·원본 이미지 0. 사용자 소유
+  `CSight_MASTER_HANDOFF_2026-08-27.md`, `kaputt_best_vision_architecture.md`,
+  `ecommerce_vibe_coding_cs_automation_market_research.md`는 수정·삭제·Stage하지 않고 미추적 보존
+- 미실행: 인증 Human Decision 클릭, 실제 외부 환불, PR 생성, `develop/main` 병합, 원격 Push·CI
+- 다음 작업: 상태 문서 Commit 뒤 원격 PoC가 기존 `5c152fd`인지 다시 확인하고 fast-forward Push,
+  GitHub Actions 성공을 관측한 후 정확한 원격 SHA와 Run을 이 원장에 추가

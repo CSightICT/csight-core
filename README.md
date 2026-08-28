@@ -20,9 +20,9 @@ Review Packet을 확인하고 Resolve할 때에만 immutable Human Decision을 �
 Sprint 5C는 그 Decision을 Case 상태와 분리된 Resolution으로 매핑하고, 명시 입력이 완전할 때만
 immutable Action Intent와 네트워크 없는 `DRY_RUN`을 생성합니다. Terminal Resolution은
 immutable Review Report를 만들며 콘솔은 분자·분모·표본 수가 있는 PoC KPI를 표시합니다.
-실제 기업 정책·Case·Vision qualification·개인정보 승인·Shadow Mode 증거가 없으므로 현재
-판정은 **합성 데이터·Mock Vision 기반 시뮬레이션 데모**이며 실제 PoC 성능이나 ROI를 주장하지
-않습니다.
+실제 기업 정책·Case·제품별 Vision qualification·개인정보 승인·Shadow Mode 증거가 없으므로
+현재 판정은 **합성 데이터·실제 E3 내부 기술 시뮬레이션 데모**이며 실제 고객 PoC 성능이나
+ROI를 주장하지 않습니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
 
@@ -346,6 +346,72 @@ confidence, `normalized_xyxy` bbox, model/taxonomy/threshold/pre/postprocess ver
 Provider는 private `POST /v1/vision/analyze` multipart 계약을 사용하며 Binary, Signed URL,
 MinIO credential과 Raw provider JSON을 Queue/DB에 저장하지 않는다. 실제 Vision 검증은
 설정된 endpoint와 sample image가 있을 때만 `make test-external-vision`으로 실행한다.
+
+전달받은 E3 체크포인트의 내부 합성 기술 PoC는 Core와 분리된 host-native runtime으로
+실행한다. 체크포인트는 저장소 밖에 두며 시작할 때 크기·SHA-256·안전한 tensor schema를
+강제 검증한다.
+
+```bash
+make setup-vision-e3
+VISION_E3_CHECKPOINT_PATH=/absolute/path/E3_best_epoch10.pt make start-vision-e3
+# 다른 터미널
+make qualify-vision-e3
+make up-e3-scenario-poc
+make smoke-e3-scenario-vision
+```
+
+자세한 실행법과 권리·성능 주장 경계는
+[`infra/vision_e3/README.md`](infra/vision_e3/README.md)를 참조한다. 이 경로의 실제 E3
+forward 통과는 합성 이미지 연결 증거이며, 제품별 정확도나 고객·상업 PoC qualification은
+아니다.
+
+E3가 이미 맞힌 Kaputt selected-positive 패키지는 별도 replay로만 실행한다. 원본은 저장소와
+공개 Web에 복사하지 않고, 결과 보고서도 ignore된 `local-data/`에 둔다.
+
+```bash
+make replay-e3-top100 E3_TOP100_PACKAGE=/absolute/path/to/top100-package
+```
+
+이 명령의 100/100은 사전 선별된 결함 성공 사례의 재실행 통과율이다. 정상 확인, accuracy,
+recall, specificity, FPR, calibration 또는 HDP-100 제품 qualification으로 해석하지 않는다.
+검증 범위와 고정 Core 표본은
+[`evaluation/vision_e3_top100_replay_v1/README.md`](evaluation/vision_e3_top100_replay_v1/README.md)를
+참조한다.
+
+실사용 화면용 내부 데모 v2는 결함 선별 표본 6장과 사용자 제공 정상 참고 4장을 `6:4`로 섞어
+4문장짜리 가상 이커머스 문의 10건으로 만든다. 각 문의는 사진과 다시 대조한
+`VISUAL_ALIGNED_R1`이며, 사진에 보이지 않는 작동·누수·주문수량·옵션은 고객 진술로만
+표시한다. 정상 참고 폴더는 전수 SHA·decode 검사와 실제 E3 재생을 거치지만,
+사용자 진술 외 독립 Gold가 없으므로 결과를 정상 확인이나 성능지표로 부르지 않는다. 원본은 모두
+Private Evidence에만 저장하고, Web은 인증된 same-origin content API로 크기·SHA가 검증된 이미지
+Blob을 표시한다.
+
+```bash
+make seed-realistic-poc-demo-v2 \
+  REALISTIC_DEMO_TOP100_SOURCE=/absolute/path/to/top100-package \
+  REALISTIC_DEMO_NORMAL_SOURCE=/absolute/path/to/normal-images
+```
+
+같은 명령을 다시 실행하면 Case·Evidence·Analysis Run을 재사용하면서 실제 Private Evidence
+content를 다시 읽어 원본과 일치하는지 확인한다. 이 시드는 Policy·Review·Decision·Action을 만들지
+않으며, `csight` 로그인용 합성 정책 런타임은 아래 명령으로 별도 준비한다.
+
+```bash
+make prepare-csight-policy-runtime
+```
+
+이 명령은 기존 `product_defect_policy/1.0.0`과 그 source row를 보존하고, 완전한 가상
+`CSight Commerce` 사내 운영규정·retrieval index `2.0.0`과 canonical typed rule set
+`2.0.1`을 활성화한다. 이미 로컬에 생성된 noncanonical rule set `2.0.0`은 삭제하지 않고
+RETIRED 감사 이력으로만 보존한다. 이 정책은
+`SYNTHETIC_REFERENCE_FICTIONAL_DEMO_ONLY`이고 실제 E3 결과를 정책 입력으로 사용하지 않는다.
+최종 업무 결정은 인증된 사람만 기록하며 LIVE 외부 실행은 계속 비활성이다. 정책 v2의 조항·rule
+map은 [`docs/rag/CSIGHT_COMMERCE_POLICY_V2_REFERENCE.md`](docs/rag/CSIGHT_COMMERCE_POLICY_V2_REFERENCE.md),
+준비·재실행 계약은
+[`docs/rag/CSIGHT_SYNTHETIC_POLICY_RUNTIME.md`](docs/rag/CSIGHT_SYNTHETIC_POLICY_RUNTIME.md)를
+참조한다. 데모 데이터의 권리·선택 편향 경계는
+[`evaluation/realistic_internal_demo_v2/README.md`](evaluation/realistic_internal_demo_v2/README.md)를
+참조한다.
 
 ```bash
 export RUN_EXTERNAL_GPU_TESTS=1

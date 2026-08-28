@@ -19,6 +19,12 @@
 이 Runner 자체는 네트워크를 사용하지 않으므로 manifest의 `AVAILABLE`/`READY` 선언만으로
 runtime을 승격하지 않고 항상 `VISION_RUNTIME_PROBE_NOT_EXECUTED`를 남긴다.
 
+2026-08-28 후속 검증에서는 별도 E3 live gate가 전달 checkpoint의 exact SHA, 실제 HTTP
+forward, Core Worker 연동과 stop/setup/restart 뒤 score 재현을 통과했다. 따라서 봉인된 오프라인
+Acceptance Report의 runtime-blocked 판정은 생성 시점 기록으로 유지하되, 현재 내부 합성 기술
+PoC의 실제 runtime 상태는 `CURRENT_STATUS.md`의 최신 원장을 기준으로 판단한다. 제품 대표 이미지,
+Gold, domain-shift와 live timeout/malformed-response fault injection은 여전히 별도 미완료 Gate다.
+
 ## 검사 범위
 
 Runner는 `evaluation/scenario_poc_hard_plastic_v1`에서 다음을 검사한다.

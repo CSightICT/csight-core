@@ -4,11 +4,15 @@ import {
   decodeCaseDetail,
   decodeCasePage,
   decodeCurrentUser,
+  decodeEvidenceAccessUrl,
   decodeGroundingDetail,
+  decodeGroundingRuns,
   decodeIntentDetail,
   decodeIntentList,
   decodePocSummary,
   decodePolicyDetail,
+  decodePolicyEvaluationRuns,
+  decodePolicyRetrievalRuns,
   decodeResolution,
   decodeRetrievalDetail,
   decodeReviewActionResult,
@@ -25,11 +29,15 @@ import type {
   CasePage,
   CurrentUser,
   Evidence,
+  EvidenceAccessUrl,
   ExternalActionIntent,
   ExternalActionIntentDetail,
   GroundingDetail,
+  GroundingRun,
   PocSummary,
   PolicyDetail,
+  PolicyEvaluationRun,
+  PolicyRetrievalRun,
   ResolutionView,
   RetrievalDetail,
   ReviewActionResult,
@@ -70,15 +78,20 @@ function emitSessionExpired(): void {
 async function parseError(response: Response): Promise<ApiError> {
   let body: unknown;
   try { body = await response.json(); } catch { body = undefined; }
-  const details = body && typeof body === "object" ? body as Record<string, unknown> : {};
-  const detail = details.detail;
-  const nested = detail && typeof detail === "object" ? detail as Record<string, unknown> : {};
-  const message = typeof nested.message === "string"
-    ? nested.message
+  const root = body && typeof body === "object" ? body as Record<string, unknown> : {};
+  const error = root.error;
+  const detail = root.detail;
+  const structured = error && typeof error === "object"
+    ? error as Record<string, unknown>
+    : detail && typeof detail === "object" && !Array.isArray(detail)
+      ? detail as Record<string, unknown>
+      : {};
+  const message = typeof structured.message === "string"
+    ? structured.message
     : typeof detail === "string"
       ? detail
       : `요청을 처리하지 못했습니다 (${response.status}).`;
-  const code = typeof nested.code === "string" ? nested.code : `HTTP_${response.status}`;
+  const code = typeof structured.code === "string" ? structured.code : `HTTP_${response.status}`;
   return new ApiError({ status: response.status, code, message, details: body });
 }
 
@@ -108,6 +121,40 @@ async function request(path: string, options: RequestOptions = {}): Promise<unkn
   }
   if (response.status === 204) return undefined;
   return response.json();
+}
+
+async function requestImageBlob(path: string): Promise<Blob> {
+  const token = tokenVault.get();
+  if (!token) {
+    emitSessionExpired();
+    throw new ApiError({ status: 401, code: "SESSION_EXPIRED", message: "다시 로그인해 주세요." });
+  }
+  const response = await fetch(path, {
+    method: "GET",
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    if (response.status === 401) emitSessionExpired();
+    throw await parseError(response);
+  }
+  const contentType = response.headers.get("Content-Type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (!contentType || !["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
+    throw new ApiError({
+      status: 502,
+      code: "EVIDENCE_CONTENT_TYPE_INVALID",
+      message: "증거 이미지 응답 형식을 확인할 수 없습니다.",
+    });
+  }
+  const content = await response.blob();
+  if (content.size === 0) {
+    throw new ApiError({
+      status: 502,
+      code: "EVIDENCE_CONTENT_EMPTY",
+      message: "증거 이미지 응답이 비어 있습니다.",
+    });
+  }
+  return content;
 }
 
 const json = (value: unknown): string => JSON.stringify(value);
@@ -156,11 +203,21 @@ export const api = {
       method: "POST", body: form,
     }) as Evidence;
   },
-  async openEvidence(caseId: string, evidenceId: string): Promise<void> {
-    const value = await request(`/api/v1/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}/access-url`, {
+  async getEvidenceAccessUrl(caseId: string, evidenceId: string): Promise<EvidenceAccessUrl> {
+    const value = decodeEvidenceAccessUrl(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}/access-url`, {
       method: "POST",
-    }) as { url: string };
-    window.open(value.url, "_blank", "noopener,noreferrer");
+    }));
+    if (value.evidence_id !== evidenceId) {
+      throw new ApiError({
+        status: 502,
+        code: "EVIDENCE_ACCESS_ID_MISMATCH",
+        message: "증거 미리보기 응답의 식별자가 요청과 일치하지 않습니다.",
+      });
+    }
+    return value;
+  },
+  async getEvidenceContent(caseId: string, evidenceId: string): Promise<Blob> {
+    return requestImageBlob(`/api/v1/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}/content`);
   },
   async startAnalysis(caseId: string, pipeline: string, pipelineVersion: string, key: string): Promise<AnalysisRun> {
     return decodeAnalysisRun(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/analysis-runs`, {
@@ -183,6 +240,9 @@ export const api = {
   async getRetrieval(caseId: string, runId: string): Promise<RetrievalDetail> {
     return decodeRetrievalDetail(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/policy-retrieval-runs/${encodeURIComponent(runId)}`));
   },
+  async listRetrieval(caseId: string): Promise<PolicyRetrievalRun[]> {
+    return decodePolicyRetrievalRuns(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/policy-retrieval-runs`));
+  },
   async startGrounding(caseId: string, retrievalRunId: string, key: string): Promise<{ id: string; status: string }> {
     return await request(`/api/v1/cases/${encodeURIComponent(caseId)}/grounded-explanation-runs`, {
       method: "POST", idempotencyKey: key, body: json({ retrieval_run_id: retrievalRunId }),
@@ -191,6 +251,9 @@ export const api = {
   async getGrounding(caseId: string, runId: string): Promise<GroundingDetail> {
     return decodeGroundingDetail(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/grounded-explanation-runs/${encodeURIComponent(runId)}`));
   },
+  async listGrounding(caseId: string): Promise<GroundingRun[]> {
+    return decodeGroundingRuns(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/grounded-explanation-runs`));
+  },
   async startPolicy(caseId: string, analysisRunId: string, asOfDate: string, key: string): Promise<{ policy_evaluation_run_id: string; status: string }> {
     return await request(`/api/v1/cases/${encodeURIComponent(caseId)}/policy-evaluation-runs`, {
       method: "POST", idempotencyKey: key, body: json({ analysis_run_id: analysisRunId, as_of_date: asOfDate }),
@@ -198,6 +261,9 @@ export const api = {
   },
   async getPolicy(caseId: string, runId: string): Promise<PolicyDetail> {
     return decodePolicyDetail(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/policy-evaluation-runs/${encodeURIComponent(runId)}`));
+  },
+  async listPolicy(caseId: string): Promise<PolicyEvaluationRun[]> {
+    return decodePolicyEvaluationRuns(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/policy-evaluation-runs`));
   },
   async listReviewTasks(query = ""): Promise<ReviewTask[]> {
     return decodeReviewTasks(await request(`/api/v1/human-review-tasks${query}`));

@@ -13,9 +13,37 @@ const analysis = {
   }, stages: [], extraction_result: null,
   extraction_result_v2: {}, vision_results: [], failed_stages: [],
 } as AnalysisDetail;
-const retrieval = { run: { id: "retrieval-1", case_id: "case-1", analysis_run_id: "analysis-1", strategy: "RAW", top_k: 3, status: "SUCCEEDED" }, query_plan: null, retrieval_profile: { base_mode: "HYBRID", reranker_enabled: false }, hits: [] } as RetrievalDetail;
-const grounding = { run: { id: "grounding-1", case_id: "case-1", retrieval_run_id: "retrieval-1", citation_pack_id: "pack-1", status: "SUCCEEDED" }, citation_pack: {}, explanation: {}, structural_validation: {}, semantic_evaluation_status: "SKIPPED" } as GroundingDetail;
-const policy = { run: { id: "policy-1", case_id: "case-1", analysis_run_id: "analysis-1", status: "SUCCEEDED" }, input_qualification: {}, rule_results: [] } as PolicyDetail;
+const lifecycle = {
+  case_id: "case-1", status: "SUCCEEDED", correlation_id: "correlation-1",
+  created_at: "2026-08-27T00:00:00Z", started_at: "2026-08-27T00:00:00Z",
+  completed_at: "2026-08-27T00:00:01Z", failure_code: null, failure_message: null,
+};
+const retrieval = {
+  run: {
+    ...lifecycle, id: "retrieval-1", analysis_run_id: "analysis-1", strategy: "RAW",
+    as_of_date: "2026-08-27", top_k: 3,
+  },
+  query_plan: null,
+  retrieval_profile: { base_mode: "HYBRID", reranker_enabled: false },
+  hits: [],
+} as RetrievalDetail;
+const grounding = {
+  run: { ...lifecycle, id: "grounding-1", retrieval_run_id: "retrieval-1", citation_pack_id: "pack-1" },
+  citation_pack: { citations: [{
+    citation_id: "CIT-001", rank: 1, policy_clause_id: "clause-1", document_id: "policy-1",
+    document_version: "1.0.0", title: "합성 정책", section_path: ["결함"], clause_type: "ELIGIBILITY",
+    text: "결함 증거와 주문 정보를 사람이 검토합니다.",
+  }] },
+  explanation: {}, structural_validation: {}, semantic_evaluation_status: "SKIPPED",
+} as GroundingDetail;
+const policy = {
+  run: {
+    ...lifecycle, id: "policy-1", analysis_run_id: "analysis-1", summary_status: "REVIEW_REQUIRED",
+    rule_set: { name: "synthetic", version: "1.0.0", hash: "hash-1" }, as_of_date: "2026-08-27",
+  },
+  input_qualification: {},
+  rule_results: [],
+} as PolicyDetail;
 const review = { id: "review-1", case_id: "case-1", policy_evaluation_run_id: "policy-1", status: "PENDING" } as ReviewTask;
 
 describe("policy workflow", () => {

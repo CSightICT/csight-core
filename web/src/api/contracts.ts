@@ -61,6 +61,12 @@ export interface Evidence {
   updated_at: string;
 }
 
+export interface EvidenceAccessUrl {
+  evidence_id: string;
+  url: string;
+  expires_at: string;
+}
+
 export interface CaseDetail extends CaseSummary {
   customer_message: string;
   attributes: Record<string, unknown>;
@@ -146,8 +152,45 @@ export interface AsyncRun {
   [key: string]: unknown;
 }
 
+export interface PolicyRetrievalRun extends AsyncRun {
+  analysis_run_id: string;
+  strategy: string;
+  as_of_date: string;
+  top_k: number;
+  correlation_id: string;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+}
+
+export interface GroundingRun extends AsyncRun {
+  retrieval_run_id: string;
+  citation_pack_id: string;
+  correlation_id: string;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+}
+
+export interface PolicyEvaluationRun extends AsyncRun {
+  analysis_run_id: string;
+  summary_status: string | null;
+  rule_set: Record<string, string>;
+  as_of_date: string;
+  correlation_id: string;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+}
+
 export interface RetrievalDetail {
-  run: AsyncRun & { analysis_run_id: string; strategy: string; top_k: number };
+  run: PolicyRetrievalRun;
   query_plan: Record<string, unknown> | null;
   retrieval_profile: Record<string, unknown>;
   hits: Array<Record<string, unknown> & {
@@ -158,20 +201,32 @@ export interface RetrievalDetail {
   }>;
 }
 
+export interface PolicyCitationSnapshot {
+  citation_id: string;
+  rank: number;
+  policy_clause_id: string;
+  document_id: string;
+  document_version: string;
+  title: string;
+  section_path: string[];
+  clause_type: string;
+  text: string;
+}
+
+export interface PolicyCitationPack extends Record<string, unknown> {
+  citations: PolicyCitationSnapshot[];
+}
+
 export interface GroundingDetail {
-  run: AsyncRun & { retrieval_run_id: string; citation_pack_id: string };
-  citation_pack: Record<string, unknown>;
+  run: GroundingRun;
+  citation_pack: PolicyCitationPack;
   explanation: Record<string, unknown> | null;
   structural_validation: Record<string, unknown> | null;
   semantic_evaluation_status: string;
 }
 
 export interface PolicyDetail {
-  run: AsyncRun & {
-    analysis_run_id: string;
-    summary_status?: string | null;
-    rule_set?: Record<string, string>;
-  };
+  run: PolicyEvaluationRun;
   input_qualification: Record<string, string>;
   rule_results: Array<Record<string, unknown>>;
 }

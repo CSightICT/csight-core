@@ -127,6 +127,45 @@ The browser uses the Web service's `/api` proxy. JWT access tokens stay in memor
 contains only validated opaque workflow IDs and idempotency keys so a user can reauthenticate and
 resume existing idempotent runs. No server-side Workflow Coordinator was added.
 
+### 5.1 Human-confirmed PoC quick review extension
+
+The Review detail screen additionally offers two primary actions, `ALLOW` and `DENY`, when the
+deterministic quick-review readiness score reaches `0.70`. This is a contract-readiness score, not a
+model confidence or accuracy metric. It assigns `0.35` to the human-review policy state, `0.25` to
+an immutable rule basis, `0.15` to an immutable citation, `0.10` to qualification metadata, and
+`0.15` to one unambiguous `MARK_REVIEW_ELIGIBILITY` mapping.
+
+The authenticated user's click composes the existing CAS claim and resolve APIs. `ALLOW` maps only
+from packet-contained policy eligibility to the existing typed approval Decision; `DENY` maps to
+`REJECT_REQUEST`. The browser automatically attaches the first immutable rule and citation, records
+a transparent fixed rationale, waits for the existing Resolution/DRY-RUN workers, and opens the
+immutable `review_report/1.0.0` when available. Additional-evidence states and Admin-only tasks still
+fail closed. Customer prose, Vision score, LLM output, and requested-action inference are not used
+to choose the Decision type. The detailed form remains available as an exception path.
+
+This extension adds no server-side coordinator, new mutation API, model-created Decision, `LIVE`
+action, or Case closure. Its accepted boundary is recorded in
+`CSight_project_docs/docs/adr/0097-human-confirmed-poc-quick-review.md`.
+
+### 5.2 Reference-informed refund processing confirmation
+
+An `APPROVE_REFUND` Decision or immutable `REFUND` Action Intent now selects a dedicated
+`환불 처리 확인서` instead of the generic snapshot viewer. The document is informed by common
+operational fields from official Shopify refund guidance, Stripe refund lifecycle documentation,
+and Korean e-commerce refund/cancellation requirements. It does not copy a real company's visual
+identity or represent an executed payment transaction.
+
+The view contains the order and product reference, amount/currency/quantity, refund reason, human
+approval, policy version, payment-provider cancellation request, customer notification, return
+authorization/tracking, processing timeline, and immutable audit identifiers. Values are read only
+from `review_report/1.0.0`; missing inputs remain missing. `ACTION_NEEDS_INPUT` says no request was
+created, while `ACTION_DRY_RUN_VALIDATED` says only that the request shape was validated. Every
+variant visibly states that the external payment, refund, collection, and notification side effects
+were not performed.
+
+The field rationale, source links, and production limitations are recorded in
+[`REFUND_PROCESSING_CONFIRMATION.md`](../resolution/REFUND_PROCESSING_CONFIRMATION.md).
+
 ## 6. Migration
 
 | Revision | Purpose |
@@ -147,6 +186,7 @@ and schema drift checks passed; final drift is 0.
 | Frontend static/contracts | PASS — lint, TypeScript, generated OpenAPI check, and production build |
 | Frontend component/unit | PASS — Vitest 6 |
 | Frontend browser scenarios | PASS — Playwright 5 |
+| Refund confirmation extension | PASS — TypeScript, ESLint, build; Vitest 17 files/49 tests; Playwright 5; 1440px full-page visual QA |
 | PostgreSQL migration | PASS — head `0014`, drift 0 |
 | Runtime health | PASS — 7 services healthy |
 | Queue topology | PASS — 8 application queues, each consumer 1 and depth 0 |

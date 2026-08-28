@@ -6,11 +6,15 @@ import type {
   CaseDetail,
   CasePage,
   CurrentUser,
+  EvidenceAccessUrl,
   ExternalActionIntent,
   ExternalActionIntentDetail,
+  GroundingRun,
   GroundingDetail,
+  PolicyEvaluationRun,
   PocSummary,
   PolicyDetail,
+  PolicyRetrievalRun,
   ResolutionView,
   RetrievalDetail,
   ReviewActionResult,
@@ -39,6 +43,21 @@ const evidenceSchema = z.object({
   upload_status: z.string(), original_filename: z.string(), content_type: z.string(),
   size_bytes: z.number(), sha256: z.string(), width: z.number(), height: z.number(),
   created_by: z.string(), created_at: z.string(), updated_at: z.string(),
+});
+
+const evidenceAccessUrlSchema = z.object({
+  evidence_id: z.string().min(1),
+  url: z.string().min(1).refine((value) => {
+    try {
+      const parsed = new URL(value);
+      return (parsed.protocol === "http:" || parsed.protocol === "https:")
+        && parsed.username === ""
+        && parsed.password === "";
+    } catch {
+      return false;
+    }
+  }, "Evidence URL must use HTTP or HTTPS without embedded credentials."),
+  expires_at: z.string().min(1),
 });
 
 const runSchema = z.object({
@@ -78,6 +97,9 @@ export const decodeCaseDetail = (value: unknown): CaseDetail => caseSummarySchem
   latest_analysis_run: runSchema.nullable(),
 }).parse(value) as CaseDetail;
 
+export const decodeEvidenceAccessUrl = (value: unknown): EvidenceAccessUrl =>
+  evidenceAccessUrlSchema.parse(value) as EvidenceAccessUrl;
+
 export const decodeAnalysisRun = (value: unknown): AnalysisRun => runSchema.parse(value) as AnalysisRun;
 
 export const decodeAnalysisDetail = (value: unknown): AnalysisDetail => z.object({
@@ -92,23 +114,52 @@ export const decodeAnalysisDetail = (value: unknown): AnalysisDetail => z.object
   failed_stages: z.array(z.string()),
 }).parse(value) as AnalysisDetail;
 
-const asyncRunSchema = record.and(z.object({ id: z.string(), case_id: z.string(), status: z.string() }));
+const lifecycleRunSchema = z.object({
+  id: z.string(), case_id: z.string(), status: z.string(), correlation_id: z.string(), created_at: z.string(),
+  started_at: stringOrNull, completed_at: stringOrNull, failure_code: stringOrNull, failure_message: stringOrNull,
+});
+const policyRetrievalRunSchema = lifecycleRunSchema.extend({
+  analysis_run_id: z.string(), strategy: z.string(), as_of_date: z.string(), top_k: z.number().int().positive(),
+});
+const groundingRunSchema = lifecycleRunSchema.extend({
+  retrieval_run_id: z.string(), citation_pack_id: z.string(),
+});
+const policyEvaluationRunSchema = lifecycleRunSchema.extend({
+  analysis_run_id: z.string(), summary_status: stringOrNull, rule_set: z.record(z.string(), z.string()), as_of_date: z.string(),
+});
+
+const policyCitationSchema = z.object({
+  citation_id: z.string().min(1), rank: z.number().int().positive(), policy_clause_id: z.string().min(1),
+  document_id: z.string().min(1), document_version: z.string().min(1), title: z.string().min(1),
+  section_path: z.array(z.string().min(1)).min(1), clause_type: z.string().min(1), text: z.string().min(1),
+});
+
+const policyCitationPackSchema = record.and(z.object({ citations: z.array(policyCitationSchema) }));
 
 export const decodeRetrievalDetail = (value: unknown): RetrievalDetail => z.object({
-  run: asyncRunSchema.and(z.object({ analysis_run_id: z.string(), strategy: z.string(), top_k: z.number() })),
+  run: record.and(policyRetrievalRunSchema),
   query_plan: record.nullable(), retrieval_profile: record, hits: z.array(record),
 }).parse(value) as RetrievalDetail;
 
+export const decodePolicyRetrievalRuns = (value: unknown): PolicyRetrievalRun[] =>
+  z.object({ items: z.array(policyRetrievalRunSchema) }).parse(value).items as PolicyRetrievalRun[];
+
 export const decodeGroundingDetail = (value: unknown): GroundingDetail => z.object({
-  run: asyncRunSchema.and(z.object({ retrieval_run_id: z.string(), citation_pack_id: z.string() })),
-  citation_pack: record, explanation: record.nullable(), structural_validation: record.nullable(),
+  run: record.and(groundingRunSchema),
+  citation_pack: policyCitationPackSchema, explanation: record.nullable(), structural_validation: record.nullable(),
   semantic_evaluation_status: z.string(),
 }).parse(value) as GroundingDetail;
 
+export const decodeGroundingRuns = (value: unknown): GroundingRun[] =>
+  z.object({ items: z.array(groundingRunSchema) }).parse(value).items as GroundingRun[];
+
 export const decodePolicyDetail = (value: unknown): PolicyDetail => z.object({
-  run: asyncRunSchema.and(z.object({ analysis_run_id: z.string() })),
+  run: record.and(policyEvaluationRunSchema),
   input_qualification: z.record(z.string(), z.string()), rule_results: z.array(record),
 }).parse(value) as PolicyDetail;
+
+export const decodePolicyEvaluationRuns = (value: unknown): PolicyEvaluationRun[] =>
+  z.object({ items: z.array(policyEvaluationRunSchema) }).parse(value).items as PolicyEvaluationRun[];
 
 export const decodeReviewTasks = (value: unknown): ReviewTask[] =>
   z.object({ items: z.array(reviewTaskSchema) }).parse(value).items as ReviewTask[];

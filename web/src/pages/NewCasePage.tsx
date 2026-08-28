@@ -64,7 +64,7 @@ export function NewCasePage() {
         </div>
       </Card>
       {showsExternal && <Card title="외부 조치 입력" description="5C에서는 이 화면에서 최초 입력만 받으며, 누락 시 보류됩니다." className="spaced-card">
-        <Notice title="안전한 입력 원칙"><span>금액·통화·수량·배송지 참조는 상담 내용이나 AI 설명에서 추정하지 않습니다. 비워두면 <strong>ACTION_NEEDS_INPUT</strong>으로 표시되고 모의 실행을 만들지 않습니다.</span></Notice>
+        <Notice title="안전한 입력 원칙"><span>금액·통화·수량·배송지 참조는 문의 내용이나 AI 설명에서 추정하지 않습니다. 비워두면 <strong>ACTION_NEEDS_INPUT</strong>으로 표시되고 모의 실행을 만들지 않습니다.</span></Notice>
         <div className="form-grid action-fields">
           {action === "REFUND" && <>
             <label>환불 금액<input name="amount" type="text" inputMode="decimal" maxLength={20} pattern="[0-9]{1,15}(\.[0-9]{1,4})?" placeholder="예: 48000.00" /></label>

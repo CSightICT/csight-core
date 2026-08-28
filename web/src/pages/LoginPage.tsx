@@ -35,7 +35,7 @@ export function LoginPage() {
       <div className="login-brand"><span className="brand-mark"><ShieldCheck size={22} /></span><strong>CSight</strong></div>
       <div className="story-copy">
         <p className="eyebrow"><Sparkles size={15} /> 설명 가능한 고객 대응</p>
-        <h1>사진과 상담 내용에서<br />정책 근거까지 한 흐름으로.</h1>
+        <h1>사진과 문의 내용에서<br />정책 근거까지 한 흐름으로.</h1>
         <p>AI는 증거를 정리하고, 버전이 고정된 정책과 담당자의 판단이 최종 결정을 만듭니다.</p>
       </div>
       <div className="trust-row"><LockKeyhole size={18} /><span>로그인 정보와 접근 토큰은 브라우저 저장소에 남기지 않습니다.</span></div>

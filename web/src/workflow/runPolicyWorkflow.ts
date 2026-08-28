@@ -82,7 +82,7 @@ export async function runPolicyWorkflow(
     checkpoint = checkpointStore.patch(caseId, { idempotencyKeys: { ...checkpoint.idempotencyKeys, analysisV2: textKey } });
   }
   if (!checkpoint.analysisV2RunId) {
-    options.onProgress?.({ stage: "TEXT_V2", status: "STARTING", message: "상담 내용을 구조화하고 있습니다." });
+    options.onProgress?.({ stage: "TEXT_V2", status: "STARTING", message: "문의 내용을 구조화하고 있습니다." });
     const started = await client.startAnalysis(caseId, "product_defect_text_extraction", "2.0.0", textKey);
     checkpoint = checkpointStore.patch(caseId, { analysisV2RunId: started.analysis_run_id });
   }

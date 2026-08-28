@@ -22,7 +22,7 @@ export function AppShell() {
     </header>
     {open && <button className="nav-scrim" type="button" aria-label="메뉴 닫기" onClick={() => setOpen(false)} />}
     <aside className={`sidebar ${open ? "sidebar-open" : ""}`} aria-label="주 메뉴">
-      <div className="sidebar-brand"><Brand /><button className="icon-button mobile-only" type="button" aria-label="메뉴 닫기" onClick={() => setOpen(false)}><X /></button></div>
+      <div className="sidebar-brand"><Brand />{open && <button className="icon-button mobile-only" type="button" aria-label="메뉴 닫기" onClick={() => setOpen(false)}><X /></button>}</div>
       <nav>{navItems.map(({ to, label, icon: Icon }) => <NavLink
         key={to} to={to} onClick={() => setOpen(false)}
         className={({ isActive }) => isActive ? "nav-link nav-link-active" : "nav-link"}

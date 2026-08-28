@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 
 const labels: Record<string, string> = {
+  RECEIVED: "접수",
   OPEN: "접수",
   PENDING: "대기",
   QUEUED: "대기",
@@ -20,6 +21,11 @@ const labels: Record<string, string> = {
   ACTION_DRY_RUN_VALIDATED: "모의 실행 검증됨",
   ACTION_DRY_RUN_FAILED: "모의 실행 실패",
   LIVE_EXTERNAL_ACTION_DISABLED: "실제 실행 차단",
+  EVALUATED: "정책 확인 완료",
+  REQUIRES_HUMAN_REVIEW: "담당자 검토 필요",
+  REQUIRES_ADDITIONAL_EVIDENCE: "추가 자료 필요",
+  NO_APPLICABLE_RULE: "적용 정책 없음",
+  BLOCKED_INPUT_INCOMPLETE: "입력 정보 부족",
 };
 
 export function StatusBadge({ status, subtle = false }: { status: string; subtle?: boolean }) {
@@ -28,7 +34,7 @@ export function StatusBadge({ status, subtle = false }: { status: string; subtle
     ? "positive"
     : ["FAILED", "ACTION_DRY_RUN_FAILED"].includes(normalized)
       ? "danger"
-      : ["PARTIAL_SUCCESS", "WAITING_FOR_EVIDENCE", "ACTION_NEEDS_INPUT", "ESCALATED"].includes(normalized)
+    : ["PARTIAL_SUCCESS", "WAITING_FOR_EVIDENCE", "ACTION_NEEDS_INPUT", "ESCALATED", "REQUIRES_HUMAN_REVIEW", "REQUIRES_ADDITIONAL_EVIDENCE", "NO_APPLICABLE_RULE", "BLOCKED_INPUT_INCOMPLETE"].includes(normalized)
         ? "warning"
         : ["RUNNING", "CLAIMED", "ACTION_READY"].includes(normalized)
           ? "active"

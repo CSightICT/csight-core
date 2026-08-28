@@ -12,7 +12,20 @@ export interface BinaryVisionAssessmentView {
     | "HIGH_CONFIDENCE_DEFECT_CANDIDATE"
     | "BELOW_HIGH_CONFIDENCE_THRESHOLD";
   isCandidate: boolean;
+  isExactE3Identity: boolean;
 }
+
+const E3_IDENTITY = {
+  providerName: "remote_vision",
+  modelName: "csight-dinov2-vits14-kaputt-binary",
+  modelVersion: "e3-epoch10-20260827",
+  modelRevision: "49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e",
+  taxonomyVersion: "csight-any-defect-assessment-v1",
+  thresholdVersion: "1.0",
+  preprocessVersion: "1.0",
+  postprocessVersion: "sigmoid-any-defect-v1",
+  threshold: 0.8984375,
+} as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -34,9 +47,22 @@ export function readBinaryVisionAssessments(
     const assessment = result.image_assessment;
     if (!isRecord(assessment)) return [];
 
-    const { assessment_type: assessmentType, score, threshold, outcome } = assessment;
+    const detections = result.detections;
+    const {
+      assessment_type: assessmentType,
+      model_output_name: modelOutputName,
+      score,
+      threshold,
+      threshold_operator: thresholdOperator,
+      outcome,
+    } = assessment;
     if (
-      assessmentType !== "ANY_DEFECT"
+      result.schema_version !== "1.0"
+      || !Array.isArray(detections)
+      || detections.length !== 0
+      || assessmentType !== "ANY_DEFECT"
+      || modelOutputName !== "defect"
+      || thresholdOperator !== "GREATER_THAN_OR_EQUAL"
       || typeof score !== "number"
       || !Number.isFinite(score)
       || score < 0
@@ -61,6 +87,15 @@ export function readBinaryVisionAssessments(
       : providerName === "remote_vision"
         ? "REMOTE_UNQUALIFIED"
         : "UNKNOWN";
+    const isExactE3Identity = providerName === E3_IDENTITY.providerName
+      && modelName === E3_IDENTITY.modelName
+      && result.model_version === E3_IDENTITY.modelVersion
+      && result.model_revision === E3_IDENTITY.modelRevision
+      && result.taxonomy_version === E3_IDENTITY.taxonomyVersion
+      && result.threshold_version === E3_IDENTITY.thresholdVersion
+      && result.preprocess_version === E3_IDENTITY.preprocessVersion
+      && result.postprocess_version === E3_IDENTITY.postprocessVersion
+      && threshold === E3_IDENTITY.threshold;
     return [{
       evidenceId,
       providerName,
@@ -73,10 +108,19 @@ export function readBinaryVisionAssessments(
       threshold,
       outcome,
       isCandidate,
+      isExactE3Identity,
     }];
   });
 }
 
 export function formatVisionProbability(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
+}
+
+export function describeVisionQualification(
+  qualification: BinaryVisionAssessmentView["qualification"],
+): string {
+  if (qualification === "SYNTHETIC_MOCK") return "합성 Mock · 연결 검증 전용";
+  if (qualification === "REMOTE_UNQUALIFIED") return "원격 추론 · 제품 적격성 미확인";
+  return "Provider 적격성 확인 불가";
 }

@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
 import { Card, DefinitionList, EmptyState, Loading, Notice, PageHeader, formatDate, friendlyError, textValue } from "../components/Ui";
+import { RefundConfirmation } from "../report/RefundConfirmation";
+import { buildRefundDocument } from "../report/refundDocument";
 
 export function ReportPage({ print = false }: { print?: boolean }) {
   const { caseId = "" } = useParams();
@@ -15,6 +17,7 @@ export function ReportPage({ print = false }: { print?: boolean }) {
   if (report.error || !report.data) return <div className="page"><div className="error-panel" role="alert">{friendlyError(report.error)}</div></div>;
 
   const data = report.data;
+  const refundDocument = buildRefundDocument(data);
   const entries = Object.entries(data).filter(([key]) => !key.endsWith("_snapshot") && key !== "data_scope");
   const sections = [
     ["케이스 스냅샷", data.case_snapshot],
@@ -26,6 +29,13 @@ export function ReportPage({ print = false }: { print?: boolean }) {
     ["Qualification 스냅샷", data.qualification_snapshot],
     ["데이터 범위", data.data_scope],
   ] as const;
+
+  if (refundDocument.isRefund) return <div className={print ? "print-report" : "page refund-report-page"}>
+    {!print && <PageHeader eyebrow="Immutable refund record" title="환불 처리 확인서" description="담당자 승인과 환불 DRY-RUN 결과를 실제 운영 문서 형식으로 정리했습니다."
+      actions={<><Link className="button button-ghost" to={`/cases/${caseId}`}><ArrowLeft size={18} />케이스</Link><Link className="button button-primary" to={`/cases/${caseId}/report/print`}><Printer size={18} />인쇄 보기</Link></>} />}
+    {print && <div className="refund-print-action print-hide"><button className="button button-primary" type="button" onClick={() => window.print()}><Printer size={18} />인쇄 / PDF 저장</button></div>}
+    <RefundConfirmation document={refundDocument} />
+  </div>;
 
   return <div className={print ? "print-report" : "page page-narrow"}>
     {!print && <PageHeader eyebrow="Immutable review report" title="최종 검토 보고서" description="Resolution 시점에 생성된 변경 불가능한 보고서입니다."

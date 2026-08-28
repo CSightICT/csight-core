@@ -1,25 +1,37 @@
-import { ArrowLeft, CheckCircle2, FileImage, FileText, Gavel, LockKeyhole, MessageSquareWarning, ShieldAlert, UserCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileCheck2, FileImage, FileText, Gavel, LockKeyhole, MessageSquareWarning, ShieldAlert, ThumbsDown, ThumbsUp, UserCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { Card, DefinitionList, Loading, Notice, PageHeader, formatDate, friendlyError, shortId, textValue } from "../components/Ui";
 import { StatusBadge } from "../components/StatusBadge";
+import { assessQuickReview, quickResolveInput, reviewBasisOptions, type BasisOption, type QuickReviewVerdict } from "../review/quickReview";
 
 const decisions = ["APPROVE_REFUND", "APPROVE_EXCHANGE", "APPROVE_RESHIPMENT", "APPROVE_REPAIR", "REJECT_REQUEST", "PROVIDE_INFORMATION", "NO_ACTION"];
 const reasons = ["POLICY_CONDITION_MET", "POLICY_CONDITION_NOT_MET", "POLICY_EXCEPTION", "EVIDENCE_SUFFICIENT", "EVIDENCE_INSUFFICIENT", "CUSTOMER_INFORMATION_ONLY", "OTHER"];
 
-interface BasisOption { type: string; reference_id: string; label: string }
-
 export function ReviewDetailPage() {
   const { taskId = "" } = useParams();
   const { user, hasRole } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"summary" | "rules" | "citations" | "history">("summary");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [awaitingReportCaseId, setAwaitingReportCaseId] = useState<string | null>(null);
   const detail = useQuery({ queryKey: ["review", taskId], queryFn: () => api.getReviewTask(taskId), enabled: Boolean(taskId) });
+  const report = useQuery({
+    queryKey: ["report", awaitingReportCaseId],
+    queryFn: () => api.getReport(awaitingReportCaseId as string),
+    enabled: Boolean(awaitingReportCaseId),
+    retry: false,
+    refetchInterval: (query) => query.state.data ? false : 600,
+  });
+
+  useEffect(() => {
+    if (awaitingReportCaseId && report.data) navigate(`/cases/${awaitingReportCaseId}/report`, { replace: true });
+  }, [awaitingReportCaseId, navigate, report.data]);
 
   const action = useMutation({
     mutationFn: ({ name, body }: { name: string; body: Record<string, unknown> }) => api.reviewAction(taskId, name, body),
@@ -39,28 +51,49 @@ export function ReviewDetailPage() {
     },
   });
 
-  const basisOptions = useMemo<BasisOption[]>(() => {
-    if (!detail.data) return [];
-    const options: BasisOption[] = [];
-    detail.data.rule_results.forEach((rule) => {
-      const id = String(rule.id ?? rule.rule_result_id ?? rule.rule_id ?? "");
-      if (id) options.push({ type: "POLICY_RULE_RESULT", reference_id: id, label: `규칙 ${textValue(rule.rule_id ?? id)} · ${textValue(rule.status)}` });
-    });
-    detail.data.citation_items.forEach((citation, index) => {
-      const id = String(citation.citation_id ?? citation.id ?? "");
-      if (id) options.push({ type: "POLICY_CITATION", reference_id: id, label: `인용 ${index + 1} · ${textValue(citation.clause_id ?? id)}` });
-    });
-    const extraction = detail.data.packet.llm_extraction_result_v2_id;
-    if (typeof extraction === "string" && extraction) options.push({ type: "ANALYSIS_RESULT", reference_id: extraction, label: `Text v2 분석 · ${shortId(extraction)}` });
-    return options;
-  }, [detail.data]);
+  const basisOptions = useMemo<BasisOption[]>(() => detail.data ? reviewBasisOptions(detail.data) : [], [detail.data]);
+  const quickReview = useMemo(() => detail.data ? assessQuickReview(detail.data) : null, [detail.data]);
+  const quickAction = useMutation({
+    mutationFn: async (verdict: QuickReviewVerdict) => {
+      if (!detail.data || !quickReview) throw new Error("빠른 검토 준비도를 확인할 수 없습니다.");
+      const currentTask = detail.data.task;
+      const requiresAdmin = ["SAFETY_REVIEW", "MANAGER_REVIEW", "POLICY_EXCEPTION_REVIEW"].includes(currentTask.task_type);
+      const mayClaim = (!requiresAdmin || hasRole("ADMIN"))
+        && (currentTask.status === "PENDING" || (currentTask.status === "ESCALATED" && hasRole("ADMIN")));
+      let expectedVersion = currentTask.version;
+      if (mayClaim) {
+        const claimed = await api.reviewAction(taskId, "claim", { expected_version: expectedVersion });
+        expectedVersion = claimed.task.version;
+      }
+      return api.resolveReview(taskId, quickResolveInput(quickReview, verdict, expectedVersion));
+    },
+    onSuccess: async () => {
+      const caseId = detail.data?.task.case_id;
+      setActionError(null);
+      if (caseId) setAwaitingReportCaseId(caseId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["review", taskId] }),
+        queryClient.invalidateQueries({ queryKey: ["reviews"] }),
+        caseId ? queryClient.invalidateQueries({ queryKey: ["resolution", caseId] }) : Promise.resolve(),
+        caseId ? queryClient.invalidateQueries({ queryKey: ["report", caseId] }) : Promise.resolve(),
+      ]);
+    },
+    onError: async (cause) => {
+      if (cause instanceof ApiError && cause.status === 409) {
+        await queryClient.invalidateQueries({ queryKey: ["review", taskId] });
+        setActionError("다른 담당자가 먼저 작업을 변경했습니다. 최신 내용을 불러왔으니 다시 확인해 주세요.");
+      } else setActionError(friendlyError(cause));
+    },
+  });
 
   if (detail.isLoading) return <div className="page"><Loading label="검토 패킷의 무결성을 확인하는 중" /></div>;
   if (detail.error || !detail.data) return <div className="page"><div className="error-panel" role="alert">{friendlyError(detail.error)}</div></div>;
   const { task, packet } = detail.data;
-  const safetyBlocked = task.task_type === "SAFETY_REVIEW" && !hasRole("ADMIN");
-  const canClaim = !safetyBlocked && (task.status === "PENDING" || (task.status === "ESCALATED" && hasRole("ADMIN")));
+  const adminOnlyTask = ["SAFETY_REVIEW", "MANAGER_REVIEW", "POLICY_EXCEPTION_REVIEW"].includes(task.task_type);
+  const adminOnlyBlocked = adminOnlyTask && !hasRole("ADMIN");
+  const canClaim = !adminOnlyBlocked && (task.status === "PENDING" || (task.status === "ESCALATED" && hasRole("ADMIN")));
   const canAct = task.status === "CLAIMED" && task.current_assignee_id === user?.user_id;
+  const canQuickReview = Boolean(quickReview?.eligible) && (canClaim || canAct) && !adminOnlyBlocked;
 
   function simpleAction(name: string, body: Record<string, unknown>) {
     setActionError(null);
@@ -97,7 +130,7 @@ export function ReviewDetailPage() {
     <PageHeader eyebrow={`Review · ${shortId(task.id)}`} title="최종 결정 검토" description={`Case ${shortId(task.case_id)} · 패킷 버전 ${task.version}`}
       actions={<><Link className="button button-ghost" to="/reviews"><ArrowLeft size={18} />검토함</Link><StatusBadge status={task.status} /></>} />
     {actionError && <div className="inline-alert inline-alert-danger" role="alert">{actionError}</div>}
-    {safetyBlocked && <Notice tone="danger" title="Safety Case 권한 차단"><span>안전 검토의 최종 결정은 ADMIN만 기록할 수 있습니다. 검토자는 근거를 확인하고 관리자에게 이관할 수 있습니다.</span></Notice>}
+    {adminOnlyBlocked && <Notice tone="danger" title="관리자 전용 검토"><span>Safety·Manager·Policy Exception 검토의 최종 결정은 ADMIN만 기록할 수 있습니다. 검토자는 근거를 확인하고 관리자에게 이관할 수 있습니다.</span></Notice>}
     <div className="review-layout">
       <div className="review-body">
         <div className="tabs" role="tablist" aria-label="검토 자료">
@@ -119,10 +152,14 @@ export function ReviewDetailPage() {
       </div>
       <aside className="decision-panel">
         <Card title="검토 작업">
-          {task.status === "RESOLVED" ? <><Notice tone="success" title="결정이 고정되었습니다"><span>기존 결정은 변경하지 않습니다. 다른 결정이 발견되면 자동 대체하지 않고 수동 후속 조치로 전환됩니다.</span></Notice><DefinitionList items={Object.entries(detail.data.decision ?? {}).slice(0, 6).map(([label, value]) => ({ label, value: textValue(value) }))} /><Link className="button button-primary full-button" to={`/cases/${task.case_id}`}>Resolution 확인</Link></> : <>
-            {canClaim && <button className="button button-primary full-button" disabled={action.isPending} type="button" onClick={() => simpleAction("claim", {})}><UserCheck size={18} />내가 검토하기</button>}
+          {task.status === "RESOLVED" ? <><Notice tone="success" title="결정이 고정되었습니다"><span>기존 결정은 변경하지 않습니다. 다른 결정이 발견되면 자동 대체하지 않고 수동 후속 조치로 전환됩니다.</span></Notice><DefinitionList items={Object.entries(detail.data.decision ?? {}).slice(0, 6).map(([label, value]) => ({ label, value: textValue(value) }))} /><Link className="button button-primary full-button" to={`/cases/${task.case_id}/report`}><FileCheck2 size={18} />최종 검토 문서 보기</Link><Link className="button button-ghost full-button" to={`/cases/${task.case_id}`}>처리 결과 확인</Link></> : <>
+            {canQuickReview && quickReview && <QuickReviewPanel assessment={quickReview} pending={quickAction.isPending || Boolean(awaitingReportCaseId)} onVerdict={(verdict) => quickAction.mutate(verdict)} />}
+            {awaitingReportCaseId && <Notice tone="success" title="결정 기록 완료 · 문서 생성 중"><span>Resolution과 DRY-RUN 처리 결과를 반영한 검토 문서가 준비되면 자동으로 열립니다.</span></Notice>}
+            {canClaim && !canQuickReview && <button className="button button-primary full-button" disabled={action.isPending} type="button" onClick={() => simpleAction("claim", {})}><UserCheck size={18} />내가 검토하기</button>}
             {task.status === "WAITING_FOR_EVIDENCE" && <button className="button button-primary full-button" disabled={action.isPending} type="button" onClick={() => simpleAction("resume", { rationale: "추가 자료가 제출되어 검토를 재개합니다." })}>검토 재개</button>}
-            {canAct && !safetyBlocked && <DecisionForms basisOptions={basisOptions} onEvidence={requestEvidence} onResolve={resolve} pending={action.isPending} />}
+            {canAct && !adminOnlyBlocked && <details className="manual-review-details"><summary>상세 결정 또는 자료 요청</summary><DecisionForms basisOptions={basisOptions} onEvidence={requestEvidence} onResolve={resolve} pending={action.isPending} /></details>}
+            {canClaim && canQuickReview && <details className="manual-review-details"><summary>빠른 검토 대신 상세 검토</summary><button className="button button-ghost full-button" disabled={action.isPending || quickAction.isPending} type="button" onClick={() => simpleAction("claim", {})}><UserCheck size={18} />상세 검토 시작</button></details>}
+            {quickReview && !quickReview.eligible && task.status !== "WAITING_FOR_EVIDENCE" && <Notice tone="warning" title="빠른 검토 보류"><span>{quickReview.blockers.join(" ")}</span></Notice>}
             {canAct && <div className="minor-actions">
               <button className="button button-ghost" type="button" disabled={action.isPending} onClick={() => simpleAction("escalate", { reason_codes: [task.task_type === "SAFETY_REVIEW" ? "SAFETY_RISK" : "INSUFFICIENT_AUTHORITY"], rationale: "권한과 위험 수준을 확인하기 위해 관리자 검토가 필요합니다." })}><ShieldAlert size={17} />관리자 이관</button>
               <button className="button button-ghost" type="button" disabled={action.isPending} onClick={() => simpleAction("release", { reason_code: "WORK_QUEUE_RETURN" })}>작업 반환</button>
@@ -136,9 +173,30 @@ export function ReviewDetailPage() {
 }
 
 function PacketSummary({ packet }: { packet: Record<string, unknown> }) {
-  const recommendation = packet.recommendation ?? packet.policy_recommendation ?? packet.summary_status;
-  const qualification = packet.input_qualification ?? packet.model_qualification;
+  const recommendation = packet.policy_summary_status ?? packet.recommendation ?? packet.policy_recommendation ?? packet.summary_status;
+  const qualification = packet.qualification_snapshot ?? packet.input_qualification ?? packet.model_qualification;
   return <div className="packet-highlight"><div><span>정책 권고</span><strong>{textValue(recommendation)}</strong></div><div><span>입력 qualification</span><strong>{textValue(qualification)}</strong></div></div>;
+}
+
+function QuickReviewPanel({ assessment, pending, onVerdict }: {
+  assessment: ReturnType<typeof assessQuickReview>;
+  pending: boolean;
+  onVerdict(verdict: QuickReviewVerdict): void;
+}) {
+  const percent = Math.round(assessment.score * 100);
+  const threshold = Math.round(assessment.threshold * 100);
+  return <section className="quick-review-panel" aria-labelledby="quick-review-title" data-testid="quick-review-panel">
+    <div className="quick-review-head"><div><p className="eyebrow">PoC 빠른 검토</p><h3 id="quick-review-title">허용 여부만 선택하세요</h3></div><span className="readiness-score">준비도 {percent}%</span></div>
+    <p>정책 근거는 자동 첨부되고, 결정 기록부터 DRY-RUN 및 최종 검토 문서 생성까지 이어집니다.</p>
+    <div className="quick-review-meter"><span style={{ width: `${percent}%` }} /><i style={{ left: `${threshold}%` }} /></div>
+    <small>빠른 검토 기준 {threshold}% · 모델 정확도가 아닌 정책·근거·입력 준비도입니다.</small>
+    <div className="quick-verdict-actions">
+      <button className="button quick-allow" type="button" disabled={pending || !assessment.allowDecision} onClick={() => onVerdict("ALLOW")}><ThumbsUp size={20} /><span><strong>{assessment.allowLabel}</strong><small>즉시 확정하고 문서 생성</small></span></button>
+      <button className="button quick-deny" type="button" disabled={pending} onClick={() => onVerdict("DENY")}><ThumbsDown size={20} /><span><strong>비허용</strong><small>거절 결정과 문서 생성</small></span></button>
+    </div>
+    {!assessment.allowDecision && <p className="quick-review-note">정책 효과에서 처리 유형이 하나로 정해지지 않아 허용은 상세 검토가 필요합니다. 비허용은 바로 기록할 수 있습니다.</p>}
+    <p className="quick-review-warning"><LockKeyhole size={14} />버튼을 누르면 로그인한 담당자의 변경 불가능한 최종 결정으로 기록됩니다.</p>
+  </section>;
 }
 
 function RecordList({ items, icon, empty }: { items: Array<Record<string, unknown>>; icon: React.ReactNode; empty: string }) {

@@ -2431,3 +2431,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   stage는 수행하지 않음
 - 다음 작업: GitHub Actions 결과를 확인한 뒤 사용자가 원하면 이 브랜치에서 리뷰용 PR을 생성하고,
   인증 상담원 수동 시나리오 QA와 번들 분할을 별도 후속 커밋으로 진행
+
+### 2026-08-28 — Operator Workflow CI Selector Stabilization
+
+- 최종 상태 문서 커밋 `7ad1b9f`의 Run #33177439114에서 Backend Quality Job은 PASS했으나,
+  Consultant console E2E가 `추가 자료 필요` 문구 두 곳을 하나로 가정한 strict locator 때문에 1건 FAIL
+- 같은 상태 badge가 한 곳 또는 두 곳에 나타나는 양쪽 UI 상태를 허용하되 첫 번째 정확 일치 항목이
+  보이는지 검증하도록 수정. 제품 동작·API·DB는 변경하지 않고 브라우저 회귀 검사의 모호성만 제거
+- 실패 Run과 원인은 원장에 그대로 보존. 수정 후 로컬 Playwright 5/5 PASS, 수정 커밋의 GitHub CI를
+  다시 확인
+- 범위: PR·병합·tag/release 없음. 사용자 소유 미추적 문서 3개는 계속 Commit·Push에서 제외

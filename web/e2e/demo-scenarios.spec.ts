@@ -58,7 +58,7 @@ test("3. 이미지 부족 건은 추가자료 요청 상태이며 결정과 조�
   await page.getByText("결정 이후 · 처리 결과 확인").click();
   await expect(page.getByText("아직 처리 결과가 없습니다")).toBeVisible();
   await navigateInSession(page, "/reviews/task-evidence");
-  await expect(page.getByText("추가 자료 필요")).toBeVisible();
+  await expect(page.getByText("추가 자료 필요", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "검토 재개" })).toBeVisible();
   await expect(page.getByRole("button", { name: "결정 확정" })).toHaveCount(0);
 });

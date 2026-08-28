@@ -16,10 +16,10 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 진행 중 작업 | 기존 10건을 보존한 `poc_closed_set/2.0.0` 확장 팩 10건을 추가해 현재 시연 범위를 결함 후보 12·사람 확인 저점수 참고 8의 총 20건으로 늘렸다. 상품군 4/4·결함군 3/3을 표현하지만 클래스별 성능평가가 아니다. 다음은 인증 상담원 검토와 20건 연속 운영 측정이다. |
 | 마지막 갱신일 | 2026-08-28, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, E3/backend `0f4de4b`, 상담원 Web `b3e09cf`, 현실형 PoC handoff `81b6e20`을 `origin/feature/scenario-poc-hard-plastic`에 fast-forward 백업; PR 없음 |
-| 로컬 Git | `feature/scenario-poc-hard-plastic`; HEAD·원격 PoC `dfaa3731519b2dadc3941a162a46cb2aa00694a3` 동기화. 이후 가상 상품 카탈로그와 Commerce Context R2·Web·문서는 로컬 미Commit·미Push이며 사용자 소유 미추적 문서 3개 보존 |
+| 원격 저장소 | `CSightICT/csight-core` — Private. 누적 운영형 상담원 제품과 방향 전환 기록을 새 `origin/codex/operator-console-product-direction`에 기능 기준점 `c90357d`로 백업; PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; `feature/scenario-poc-hard-plastic`의 `dfaa373`에서 분기. 기능 기준점 `c90357d`를 원격 확인했고 이 원장 갱신은 후속 문서 커밋으로 기록. 사용자 소유 미추적 문서 3개 보존 |
 | 마지막 검증 관측 | 2026-08-28 22:29 KST, 상담·검토·지표·보고서·메일 화면에서 `PoC/모의/시뮬레이션/DRY-RUN/Mock/데모/시연` 개발 문구를 운영형 표현으로 교체. 기존 기록은 표시 단계에서 정리하고 신규 메일 본문도 같은 계약을 적용. 외부 결제·메일 시스템 미반영 문구와 실행 차단은 유지. Web lint·typecheck·OpenAPI sync·24 files/63 tests·build PASS, 관련 Backend 15 tests와 Ruff·Format PASS. local/public JS `index-BdA6eGFX.js`, CSS `index-CWAdx66O.css` 일치, Core 7개 서비스 healthy. |
-| 마지막 GitHub 관측 | 2026-08-28 14:42 KST, 원격 PoC `dfaa3731519b2dadc3941a162a46cb2aa00694a3`, GitHub Actions CI Run #109와 두 Job PASS. 이후 가상 상품/가격 카탈로그는 원격 미반영, PR·`develop/main` 병합 없음 |
+| 마지막 GitHub 관측 | 2026-08-28 22:39 KST, 새 원격 브랜치 `origin/codex/operator-console-product-direction` 생성과 기능 커밋 `c90357da845a522bd3ce8ba8446c39f57139fafe` 일치 확인. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -117,6 +117,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Review Decision Workspace Readability | PASS_WITH_SCOPE | 허용/비허용 상세 화면을 최대 1540px, 결정 패널 460px 이상, 선택 버튼 90px로 확대하고 데스크톱 밀도·태블릿 한 열·모바일 보정을 적용. 인증 브라우저 육안 확인은 미실행 |
 | Operator-friendly Policy Summary | PASS_WITH_SCOPE | 원본 정책 enum·qualification JSON·모델 식별자를 첫 화면에서 제거하고 정책 권고, 문의/이미지 분석, 일치 확인, 근거 정합성을 자연어 상태로 표시. 원본 API/DB snapshot은 불변 보존 |
 | Operational-language Console | PASS_WITH_SCOPE | 화면과 출력 문서의 개발·검증 용어를 상담 업무 표현으로 교체하고 기존 `DEMO` 식별자·주소는 표시 단계에서 정리. 외부 결제·메일 시스템 미연결과 실제 처리 0 경계는 명시적으로 유지. 인증 화면 수동 육안 확인은 미실행 |
+| Product Direction Rationale | PASS | 모델 중심 기술 검증에서 사람 확정형 상담 운영 제품으로 이동한 근거, 채택 원칙, 의도적 제외 범위와 실제 고객 승격 조건을 `docs/product/PRODUCT_DIRECTION_EVOLUTION_2026-08-28.md`에 기록 |
+| Operator Workflow Git Handoff | PASS | 누적 변경 100개 파일을 `c90357d`로 커밋해 새 원격 브랜치에 Push. 고신뢰 Secret·1 MiB 초과 staged blob 0, 사용자 소유 문서 3개 제외, PR 없음 |
 | R1 Three-Column Console | PASS | 문의 내용·이미지 근거·정책 기반 권고 3열, legacy v2 숨김·R1 fail-closed 표시, 하단 운영 상세 접기 |
 | R1 Consultant Workspace Simplification | PASS | `지금 할 일` 단일 CTA·4단계 진행 표시·문의/이미지+정책 2열 본문·기술 정보 접기, 데스크톱 inert X 제거 |
 | R1 Continue Policy-Date Recovery | PASS | 업무 시간대 `Asia/Seoul` 기준일 계산으로 UTC/KST 효력일 422 해소; API `{error}` 계약의 코드·메시지를 UI에 그대로 표시 |
@@ -2396,3 +2398,26 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Git safety: Commit·Push·PR 없음, 사용자 소유 미추적 문서와 원본 이미지는 수정·삭제·Stage하지 않음
 - 다음 작업: 사용자가 로그인한 상태에서 대표 환불 케이스의 상담 상세→빠른 검토→환불 확인서→안내
   메일을 순서대로 열어 잔여 개발 문구와 실제 처리 오해 가능성이 없는지 최종 육안 확인
+
+### 2026-08-28 — Operator Workflow Product Direction and Git Handoff
+
+- 목표: 현재까지 누적된 고객·주문 문맥, 20건 closed set, 상담원 UI, 빠른 검토, 환불 문서,
+  안내 메일, 데이터 자산과 운영형 문구 변경을 별도 GitHub 브랜치에 보존하고 방향 전환 이유를 기록
+- 방향 문서: `docs/product/PRODUCT_DIRECTION_EVOLUTION_2026-08-28.md`에 초기 기술 검증 목표,
+  E3 이진 계약과 Qwen enrichment 한계, 실제 기업 데이터 없이 업무 흐름을 보여줘야 했던 이유,
+  Human Decision·명시 입력·외부 시스템 미반영·비식별 데이터 자산 원칙과 다음 승격 조건을 정리
+- Git: `feature/scenario-poc-hard-plastic`의 `dfaa373`에서
+  `codex/operator-console-product-direction` 생성. 누적 100개 파일, 7,096 additions/309 deletions를
+  `c90357d feat: evolve CSight into an operator workflow`로 커밋하고 같은 이름의 원격 브랜치에 Push
+- 안전 감사: staged diff의 고신뢰 Secret 패턴 0, 1 MiB 초과 blob 0, `git diff --cached --check`
+  PASS. `CSight_MASTER_HANDOFF_2026-08-27.md`, `ecommerce_vibe_coding_cs_automation_market_research.md`,
+  `kaputt_best_vision_architecture.md`는 미추적 상태로 보존하고 Commit·Push에서 제외
+- 검증: Ruff PASS, Format 392 files PASS, Pyright 0, 기본 Backend 686 PASS/65 deselected,
+  Web ESLint·TypeScript·OpenAPI sync·24 files/63 tests·production build PASS. 번들 500 kB 초과 권고
+  1건은 기능 실패가 아니며 후속 최적화 대상
+- 원격 확인: 22:39 KST `refs/heads/codex/operator-console-product-direction`이
+  `c90357da845a522bd3ce8ba8446c39f57139fafe`를 가리키는 것을 확인
+- 범위: 새 브랜치와 커밋·Push만 수행. PR 생성, `develop/main` 병합, tag/release, 사용자 소유 문서
+  stage는 수행하지 않음
+- 다음 작업: GitHub Actions 결과를 확인한 뒤 사용자가 원하면 이 브랜치에서 리뷰용 PR을 생성하고,
+  인증 상담원 수동 시나리오 QA와 번들 분할을 별도 후속 커밋으로 진행

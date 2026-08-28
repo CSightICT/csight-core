@@ -17,9 +17,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 마지막 갱신일 | 2026-08-28, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private. 누적 운영형 상담원 제품과 방향 전환 기록을 새 `origin/codex/operator-console-product-direction`에 기능 기준점 `c90357d`로 백업; PR·`develop/main` 병합 없음 |
-| 로컬 Git | `codex/operator-console-product-direction`; `feature/scenario-poc-hard-plastic`의 `dfaa373`에서 분기. 기능 기준점 `c90357d`를 원격 확인했고 이 원장 갱신은 후속 문서 커밋으로 기록. 사용자 소유 미추적 문서 3개 보존 |
-| 마지막 검증 관측 | 2026-08-28 22:29 KST, 상담·검토·지표·보고서·메일 화면에서 `PoC/모의/시뮬레이션/DRY-RUN/Mock/데모/시연` 개발 문구를 운영형 표현으로 교체. 기존 기록은 표시 단계에서 정리하고 신규 메일 본문도 같은 계약을 적용. 외부 결제·메일 시스템 미반영 문구와 실행 차단은 유지. Web lint·typecheck·OpenAPI sync·24 files/63 tests·build PASS, 관련 Backend 15 tests와 Ruff·Format PASS. local/public JS `index-BdA6eGFX.js`, CSS `index-CWAdx66O.css` 일치, Core 7개 서비스 healthy. |
-| 마지막 GitHub 관측 | 2026-08-28 22:39 KST, 새 원격 브랜치 `origin/codex/operator-console-product-direction` 생성과 기능 커밋 `c90357da845a522bd3ce8ba8446c39f57139fafe` 일치 확인. PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; `feature/scenario-poc-hard-plastic`의 `dfaa373`에서 분기. 기능 `c90357d`, handoff `dac2447`, 운영형 E2E 보정 `42616a4`를 원격 확인했고 이 원장 closeout은 후속 문서 커밋으로 기록. 사용자 소유 미추적 문서 3개 보존 |
+| 마지막 검증 관측 | 2026-08-28 22:52 KST, 로컬 Ruff·Format 392 files·Pyright 0·Backend 686 PASS/65 deselected, Web lint·typecheck·OpenAPI sync·24 files/63 tests·build·Playwright 5 PASS. GitHub CI Run #33177206525의 Quality와 Consultant console 두 Job 및 5개 UI 시나리오 PASS. local/public JS `index-BdA6eGFX.js`, CSS `index-CWAdx66O.css` 일치, Core 7개 서비스 healthy. |
+| 마지막 GitHub 관측 | 2026-08-28 22:52 KST, `origin/codex/operator-console-product-direction`의 운영형 E2E 보정 커밋 `42616a4557d84cb8caa5e66d167aed4d1ba7db29`에 대한 CI Run #33177206525 PASS. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -2417,6 +2417,16 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   1건은 기능 실패가 아니며 후속 최적화 대상
 - 원격 확인: 22:39 KST `refs/heads/codex/operator-console-product-direction`이
   `c90357da845a522bd3ce8ba8446c39f57139fafe`를 가리키는 것을 확인
+- CI 정정: 문서 handoff `dac2447`의 Run #33176499654는 화면이 자연어로 바뀐 뒤에도 E2E가
+  `APPROVE_REPAIR`, `Resolution 및 DRY-RUN` 같은 이전 표시를 찾고 있어 Consultant console Job이
+  FAIL. 제품 기능 문제가 아니라 stale selector 18곳의 불일치였으며 실패 기록은 삭제하거나 재실행으로
+  덮지 않음
+- E2E 보정: 현재 화면의 수리 승인, 처리 사전 확인, 온라인 접수, 사내 정책 참고 자료와 외부 시스템
+  미연결 문구를 검증하도록 수정. 로컬 Playwright 5/5 PASS 후 `42616a4 test(web): align scenarios
+  with operator labels`로 Push
+- 최종 원격 Gate: 22:52 KST `42616a4`의 GitHub CI Run #33177206525 PASS. Quality Job은
+  Ruff·Format·Pyright·기본 회귀, Consultant console Job은 lint·typecheck·OpenAPI·unit·build·
+  Playwright 5개 시나리오를 모두 통과
 - 범위: 새 브랜치와 커밋·Push만 수행. PR 생성, `develop/main` 병합, tag/release, 사용자 소유 문서
   stage는 수행하지 않음
 - 다음 작업: GitHub Actions 결과를 확인한 뒤 사용자가 원하면 이 브랜치에서 리뷰용 PR을 생성하고,

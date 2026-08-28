@@ -13,13 +13,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | Sprint 5C 내부 데모 PASS; 실제 E3 Runtime·R1 가상 문의 10건·CSight Commerce 가상 정책 `2.0.1`·상담원 중심 Workspace·`이어하기` 422 복구·사람 확정형 0.70 빠른 검토/자동 문서 흐름·환불 처리 확인서 종합 회귀 PASS |
-| 진행 중 작업 | 대표 3건은 Human Review `PENDING`; 실제 Human Decision 생성은 사용자 클릭 전 0. E3/backend와 상담원 Web을 두 개의 검토 가능한 로컬 Commit으로 고정했고, 상태 문서 Commit과 원격 PoC fast-forward·CI 확인을 진행 중. 공개 공유 Gate는 BLOCKED |
+| 진행 중 작업 | 대표 3건은 Human Review `PENDING`; 실제 Human Decision 생성은 사용자 클릭 전 0. E3/backend·상담원 Web·상태 문서를 원격 PoC에 fast-forward 백업했고 CI Run #108 PASS. PR·`develop/main` 병합은 보류하며 공개 공유 Gate는 BLOCKED |
 | 마지막 갱신일 | 2026-08-28, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private, Scenario 기능 `dfd6db2ab2052c4ce9a7f922d682c8e574abb05d`와 closeout `5c152fd0d1e97eba3b41b2ecea1cff7811814d90`를 `origin/feature/scenario-poc-hard-plastic`에 백업; PR 없음 |
-| 로컬 Git | `feature/scenario-poc-hard-plastic`; E3/backend `0f4de4b`, 상담원 Web `b3e09cf` 로컬 Commit 완료. 원격 PoC는 아직 `5c152fd`; 상태 문서 Commit·fast-forward Push·원격 CI 확인 전 |
+| 원격 저장소 | `CSightICT/csight-core` — Private, E3/backend `0f4de4b`, 상담원 Web `b3e09cf`, 현실형 PoC handoff `81b6e20`을 `origin/feature/scenario-poc-hard-plastic`에 fast-forward 백업; PR 없음 |
+| 로컬 Git | `feature/scenario-poc-hard-plastic`; HEAD·원격 PoC `81b6e207e1a593c2f3f3f44cc2fde441a49498c1` 동기화 후 이 CI closeout 원장만 수정 중. 사용자 소유 미추적 문서 3개는 보존 |
 | 마지막 검증 관측 | 2026-08-28 14:36 KST, Ruff·Format 384·Pyright 0; 기본 658 PASS, Integration 54 PASS/외부 GPU 5 Skip, Vision E3 5 PASS; Web lint·typecheck·OpenAPI sync·build, Vitest 17 files/49 tests, Playwright 5 PASS. DB Head `0015`, drift 없음, Core 7 healthy, API ready·local/public Login HTTP 200; 인증 Human Decision 클릭은 미실행 |
-| 마지막 GitHub 관측 | 2026-08-28 14:28 KST, GitHub Plugin·`ls-remote` 교차 확인. 원격 7 branches, `poc/mvp/final` 명명 branch와 tag 0. 현재 PoC branch `5c152fd` CI PASS, `main/develop`보다 21 commits ahead; 로컬 후속 작업은 미Commit·미Push |
+| 마지막 GitHub 관측 | 2026-08-28 14:39 KST, 원격 PoC `81b6e207e1a593c2f3f3f44cc2fde441a49498c1`, GitHub Actions CI Run #108 PASS. 원격 7 branches와 `poc/mvp/final` 명명 branch·tag 0, PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -116,8 +116,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | R1 Public Sharing Gate | BLOCKED | Cloudflare Access·강한 Credential·이미지 재배포 권리 미확보; 현재 본인 내부 시연 전용 |
 | Limited PoC 승격 | BLOCKED | 실제 기업 Data/Policy는 오늘 범위에서 의도적으로 제외; Privacy·제품도메인 Vision·Shadow·Qwen 증거 미확보 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
-| GitHub PoC·MVP·Release Branch Audit | PASS | 현재 PoC=`feature/scenario-poc-hard-plastic`; MVP 통합 기준=`develop`; 최종 릴리스 기준=`main`. 별도 `poc/mvp/final` branch·tag 없음, 원격 PoC도 최신 로컬 변경 전 상태 |
-| PoC 안전 Commit 준비 | PASS_PENDING_REMOTE | Secret·5 MiB 초과·가중치·원본 이미지 0. E3/backend `0f4de4b`, Web `b3e09cf`로 분리했고 사용자 소유 문서 3개는 미추적 보존; 원격 Push·CI는 아직 미실행 |
+| GitHub PoC·MVP·Release Branch Audit | PASS | 현재 PoC=`feature/scenario-poc-hard-plastic`; MVP 통합 기준=`develop`; 최종 릴리스 기준=`main`. 별도 `poc/mvp/final` branch·tag 없음, PoC 최신화 후에도 역할 유지 |
+| PoC 안전 원격 백업 | PASS | Secret·5 MiB 초과·가중치·원본 이미지 0. E3/backend `0f4de4b`, Web `b3e09cf`, handoff `81b6e20`을 fast-forward Push했고 CI #108 PASS; 사용자 소유 문서 3개 미추적 보존 |
 | 초기 Git 안전성 감사 | PASS | 고신뢰 Secret·5 MiB 초과 파일 없음, 방어 Ignore 보강 |
 | 로컬 Git 초기화 | PASS | `main` 초기 커밋 `6fc20d3`, 로컬 `develop` 준비 |
 | GitHub 조직·저장소 | PASS | `CSightICT`와 Private `CSightICT/csight-core` 생성 확인 |
@@ -783,9 +783,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   `feature/scenario-poc-hard-plastic`, 다음 통합/MVP 후보는 `develop`, 배포 가능한 최종 기준은
   `main`이다. 별도 영구 `mvp/final` branch를 추가하기보다 검증된 feature PR→`develop`,
   안정화 `release/vX.Y.Z`→`main`, annotated tag 순서를 따라야 한다.
-- 원격 PoC는 아직 `5c152fd`다. 이후 실제 E3 runtime·Top-100/정상 참고 replay·현실형 10건·가상 정책
-  `2.0.1`은 `0f4de4b`, 상담원 UI·422 복구·빠른 검토·환불 확인서는 `b3e09cf`로 로컬 Commit했다.
-  상태 문서 Commit과 원격 fast-forward·CI 확인 전이며 사용자 소유 문서 3개는 계속 미추적 보존한다.
+- 원격 PoC는 `81b6e20`까지 fast-forward했고 CI #108이 PASS했다. 실제 E3 runtime·Top-100/정상 참고
+  replay·현실형 10건·가상 정책 `2.0.1`은 `0f4de4b`, 상담원 UI·422 복구·빠른 검토·환불 확인서는
+  `b3e09cf`, handoff는 `81b6e20`이다. 사용자 소유 문서 3개는 계속 미추적 보존한다.
 - Vision 담당 원격 `feature/3-kaputt-dinov2-training`은 공통 기준 `4037d73`에서 PoC와 갈라져
   Vision 쪽 55 commits, PoC 쪽 21 commits가 서로 독점이다. Draft PR #4와 latest CI는 PASS지만
   PoC branch에 직접 merge하면 status/doc 및 runtime 계약 충돌 검토가 필요하다.
@@ -962,8 +962,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   PoC=`feature/scenario-poc-hard-plastic`, MVP 통합=`develop`, 최종 릴리스=`main` 역할을 확인한다.
 - [x] 로컬 후속 변경을 E3 runtime, 현실형 demo/policy, 상담원 Web, 상태 문서의 검토 가능한
   Commit으로 분리하되 사용자 소유 문서·raw image·checkpoint·local report는 제외한다.
-- [ ] 분리 Commit 전체 회귀와 Secret/대용량 파일 감사를 통과했다. 사용자의 승인 범위에서
-  원격 PoC branch를 fast-forward로 최신화하고 CI 결과를 확인한다.
+- [x] 분리 Commit 전체 회귀와 Secret/대용량 파일 감사를 통과하고 사용자의 승인 범위에서
+  원격 PoC branch를 fast-forward로 최신화해 CI #108 성공을 확인한다.
 - [ ] Vision Draft PR #4의 `ml/cv` 변경을 현재 PoC runtime 계약과 별도 비교해 충돌을 해결한 뒤
   `develop` 통합 순서를 결정한다. PoC PR과 PR #2/보호 규칙 결정 전 `main` 승격은 금지한다.
 - [ ] 공개 터널을 공유하기 전 Cloudflare Access를 적용하거나 `csight` Admin Credential을
@@ -1946,3 +1946,18 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 미실행: 인증 Human Decision 클릭, 실제 외부 환불, PR 생성, `develop/main` 병합, 원격 Push·CI
 - 다음 작업: 상태 문서 Commit 뒤 원격 PoC가 기존 `5c152fd`인지 다시 확인하고 fast-forward Push,
   GitHub Actions 성공을 관측한 후 정확한 원격 SHA와 Run을 이 원장에 추가
+
+### 2026-08-28 — Realistic PoC Remote Backup and CI Closeout
+
+- 목표: 검증·분리한 세 Commit을 현재 PoC 작업선에만 안전하게 백업하고 원격 회귀 결과를 확정
+- 원격 경합 확인: Push 직전 `origin/feature/scenario-poc-hard-plastic`가 감사 기준 `5c152fd`와
+  동일하고 local이 정확히 3 commits ahead임을 fetch로 재확인
+- 범위 감사: 115 changed files, 금지된 image/checkpoint/archive 확장자 0, 5 MiB 초과 blob 0,
+  고신뢰 Secret pattern 0. 사용자 소유 미추적 문서 3개는 staging과 Commit 범위 밖에 유지
+- Push: `5c152fd..81b6e20` fast-forward. `develop`, `main`, Vision branch, PR, tag, release는 변경하지 않음
+- GitHub CI: Run #108, head `81b6e207e1a593c2f3f3f44cc2fde441a49498c1`, conclusion `success`.
+  `Quality and fast tests`와 `Consultant console` 두 Job 모두 PASS
+- 판정: 최신 현실형 내부 기술 데모 변경은 원격 PoC에 백업 완료. 합성 정책·선별 이미지·제품
+  qualification 미완료 경계와 Human-only final decision은 그대로 유지
+- 다음 작업: 이 closeout 원장 Commit의 최종 CI를 확인한 뒤, Vision Draft PR #4와의 충돌 검토 및
+  거버넌스 승인 전에는 PoC PR·`develop/main` 통합을 실행하지 않음

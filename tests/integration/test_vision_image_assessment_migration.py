@@ -21,6 +21,7 @@ pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[2]
 PREVIOUS = "20260827_0014_review_report_poc_metrics"
 REVISION = "20260827_0015_vision_image_assessment"
+HEAD = "20260828_0016_communication_learning_assets"
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +111,7 @@ def test_migration_round_trip_constraints_and_drift(
     assert "vision_detections" in inspect(engine).get_table_names()
 
     command.upgrade(config, REVISION)
+    command.upgrade(config, HEAD)
     command.check(config)
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == REVISION
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == HEAD

@@ -188,18 +188,24 @@ describe("CaseWorkspacePage", () => {
       }, { status: 404 })),
       http.get("/api/v1/cases/case-1", () => HttpResponse.json({
         case_id: "case-1", tenant_id: "tenant-1", domain_type: "product_defect_cs", status: "RECEIVED",
-        order_ref: "TOP100-RANK-054", product_ref: "KAPUTT-PLASTIC-HARD-PROXY", requested_action: "UNSPECIFIED",
-        created_at: now, updated_at: now, customer_message: "내부 시뮬레이션 이미지입니다.", attributes: {
+        order_ref: "TOP100-RANK-054", product_ref: "DEMO-V2-SPRAY-CONTAINER-03", requested_action: "UNSPECIFIED",
+        created_at: now, updated_at: now, customer_message: "상품 상태를 확인해 주세요.", attributes: {
           demo_image_observation: "본체 표면과 결합부 외관이 촬영되어 있습니다.",
           demo_claim_boundary: "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
           realistic_demo: {
             schema_version: "2.0", dataset_id: "realistic-internal-demo-v2",
             scenario_scope: "INTERNAL_CURATED_ECOMMERCE_INQUIRY_6_DEFECT_4_BELOW_THRESHOLD",
-            narrative_revision: "VISUAL_ALIGNED_R1",
+            narrative_revision: "COMMERCE_CONTEXT_R2_E3",
             source_grade: "KAPUTT_SELECTED_CORRECT_POSITIVE",
             selection_bias: "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE",
             rights_status: "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
             policy_input_linkage: "NOT_LINKED_TO_POLICY_INPUT",
+          },
+          synthetic_commerce_context: {
+            schema_version: "synthetic_commerce_context/1.0.0", data_classification: "SYNTHETIC_DEMO_ONLY",
+            customer: { customer_id: "CUST-DEMO-100003", display_name: "이도윤", phone_masked: "010-****-7356", membership_tier: "VIP" },
+            order: { sales_channel: "CSight 마켓", seller_name: "CSight 퍼스널케어", ordered_at: "2026-08-18T12:05:00Z", product_display_name: "바이올렛 리페어 에센스 100", sku: "CS-DEMO-SPR-003", quantity: 1, unit_price: "27900", merchandise_amount: "27900", shipping_fee: "0", discount_amount: "2000", paid_amount: "25900", currency: "KRW", payment_method_masked: "체크카드 **** 7731", payment_status: "PAID" },
+            delivery: { shipping_address_ref: "DEMO-V2-ADDR-003", recipient: "이도윤", phone_masked: "010-****-7356", postal_code: "13529", address_line1: "경기도 가상시 데모로 103", address_line2: "시연빌라 502호", carrier: "CSight 익스프레스", tracking_number_masked: "CSE-****-0303", delivered_at: "2026-08-19T07:48:00Z" },
           },
         },
         created_by: "user-1", evidence: [], status_history: [], latest_analysis_run: visionLatest,
@@ -215,11 +221,19 @@ describe("CaseWorkspacePage", () => {
     expect(screen.getByRole("heading", { name: "문의 내용" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "이미지 근거" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "정책 기반 권고" })).toBeVisible();
-    expect(screen.getByTestId("fictional-inquiry-badge")).toHaveTextContent("가상 문의 · PoC");
+    expect(screen.getByTestId("fictional-inquiry-badge")).toHaveTextContent("온라인 접수");
+    expect(screen.getByTestId("fictional-product-card")).toHaveTextContent("바이올렛 리페어 에센스 100");
+    expect(screen.getByTestId("fictional-product-card")).toHaveTextContent("21,000~35,000원");
+    expect(screen.getByTestId("fictional-product-card")).toHaveTextContent("실제 판매가/환불 금액 아님");
+    expect(screen.getByTestId("commerce-context-card")).toHaveTextContent("이도윤");
+    expect(screen.getByTestId("commerce-context-card")).toHaveTextContent("CUST-100003");
+    expect(screen.getByTestId("commerce-context-card")).toHaveTextContent("25,900");
+    expect(screen.getByTestId("commerce-context-card")).toHaveTextContent("010-****-7356");
+    expect(screen.getByTestId("commerce-context-card")).toHaveTextContent("경기도 다온시 한결로 103");
     expect(screen.getByTestId("image-observation-boundary")).toHaveTextContent("사진에서 확인되는 범위");
     expect(screen.getByTestId("image-observation-boundary")).toHaveTextContent("본체 표면과 결합부 외관이 촬영되어 있습니다.");
     expect(screen.getByTestId("image-observation-boundary")).toHaveTextContent("비가시 정보는 고객 진술이며 Vision 근거가 아닙니다");
-    expect(screen.getAllByText("가상 사내 정책 · PoC 전용").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("사내 정책 참고 자료").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole("heading", { name: "상담 내용" })).not.toBeInTheDocument();
     expect(await screen.findByTestId("text-analysis-summary")).toHaveTextContent("text-latest");
     expect(await screen.findByTestId("vision-result")).toHaveTextContent("99.94%");
@@ -545,9 +559,9 @@ describe("CaseWorkspacePage", () => {
       <Route path="/cases/:caseId" element={<><Link to="/cases/case-b">B 케이스로 전환</Link><CaseWorkspacePage /></>} />
     </Routes></MemoryRouter></QueryClientProvider>);
 
-    expect(await screen.findByRole("heading", { name: "ORD-A" })).toBeVisible();
+    expect(await screen.findByText(/주문 번호 ORD-A/)).toBeVisible();
     await userEvent.click(screen.getByRole("link", { name: "B 케이스로 전환" }));
-    expect(await screen.findByRole("heading", { name: "ORD-B" })).toBeVisible();
+    expect(await screen.findByText(/주문 번호 ORD-B/)).toBeVisible();
     await waitFor(() => expect(screen.getByTestId("text-analysis-summary")).toHaveTextContent("analysis-b"));
     await waitFor(() => expect(JSON.parse(sessionStorage.getItem("csight.workflow.v1") ?? "{}")).toMatchObject({
       caseId: "case-b", analysisV2RunId: "analysis-b",

@@ -70,6 +70,10 @@ def validate_json_object(value: dict[str, JsonValue]) -> dict[str, JsonValue]:
         json.dumps(value, allow_nan=False, sort_keys=True, separators=(",", ":"))
     except (TypeError, ValueError) as exception:
         raise ValueError("attributes must be a JSON-compatible object") from exception
+    if "synthetic_commerce_context" in value:
+        from app.platform.commerce_context import validate_synthetic_commerce_context
+
+        validate_synthetic_commerce_context(value["synthetic_commerce_context"])
     return value
 
 

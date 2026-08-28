@@ -25,7 +25,7 @@
     "min_sentence_count": 3,
     "max_sentence_count": 5,
     "real_company_affiliation_claimed": false,
-    "revision": "VISUAL_ALIGNED_R1"
+    "revision": "COMMERCE_CONTEXT_R2_E3"
   },
   "cases": [
     {
@@ -40,11 +40,19 @@
         "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-001",
+        "order_ref": "DEMO-R2-ORD-20260828-001",
         "product_ref": "DEMO-V2-SPRAY-CONTAINER-01",
         "customer_message": "온라인 마켓에서 스프레이형 플라스틱 용기를 새 상품으로 주문해 배송받았습니다. 박스를 개봉했을 때 검은 보호캡이 용기와 분리되어 있었고 제가 다시 끼워 보아도 고정되지 않았습니다. 내용물은 사용하지 않았으며 배송 전부터 분리돼 있었는지는 사진만으로 확인하기 어렵지만 수령 직후 상태를 첨부했습니다. 정상적으로 잠기는 같은 형태의 상품으로 교환하고 기존 상품 회수 일정을 안내해 주세요.",
         "requested_action": "EXCHANGE",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100001", "display_name": "박서윤", "phone_masked": "010-****-1842", "membership_tier": "SILVER"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 뷰티랩", "ordered_at": "2026-08-25T09:18:00+09:00", "product_display_name": "루미에어 미스트 에센스 120", "sku": "CS-DEMO-SPR-001", "quantity": 1, "unit_price": "24900", "merchandise_amount": "24900", "shipping_fee": "0", "discount_amount": "2000", "paid_amount": "22900", "currency": "KRW", "payment_method_masked": "간편결제 **** 3814", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-001", "recipient": "박서윤", "phone_masked": "010-****-1842", "postal_code": "06231", "address_line1": "서울특별시 데모구 시연로 28", "address_line2": "CSight 타워 101호", "carrier": "CSight 로지스", "tracking_number_masked": "CSL-****-0101", "delivered_at": "2026-08-27T13:42:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 2,
           "product_category": "GENERAL",
           "demo_image_observation": "스프레이형 용기와 분리되어 놓인 검은 보호캡이 보이며, 배송 중 파손 여부는 사진만으로 확인되지 않습니다.",
@@ -69,11 +77,19 @@
         "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-002",
+        "order_ref": "DEMO-R2-ORD-20260828-002",
         "product_ref": "DEMO-V2-FLIPTOP-CONTAINER-02",
         "customer_message": "온라인 쇼핑몰에서 대용량 플립탑 플라스틱 용기를 주문했고 예정된 날짜에 배송받았습니다. 개봉한 뒤 소량 사용해 보니 상부 덮개가 단단히 잠기지 않고 뚜껑 주변에서 내용물이 샜습니다. 첨부한 사진에는 덮개가 열린 용기만 보이며 실제 누수 현상은 사진으로 확인되지 않아 고객 진술로 접수합니다. 기능 하자로 반품하고 결제 금액을 환불받고 싶으니 회수 가능한 일정도 안내해 주세요.",
         "requested_action": "REFUND",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100002", "display_name": "김하늘", "phone_masked": "010-****-4821", "membership_tier": "GOLD"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 리빙", "ordered_at": "2026-08-26T10:14:00+09:00", "product_display_name": "화이트랩 바디 로션 300", "sku": "CS-DEMO-FLP-002", "quantity": 1, "unit_price": "18900", "merchandise_amount": "18900", "shipping_fee": "0", "discount_amount": "0", "paid_amount": "18900", "currency": "KRW", "payment_method_masked": "신용카드 **** 1042", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-002", "recipient": "김하늘", "phone_masked": "010-****-4821", "postal_code": "06236", "address_line1": "서울특별시 데모구 시연로 41", "address_line2": "가상아파트 203동 804호", "carrier": "CSight 로지스", "tracking_number_masked": "CSL-****-0202", "delivered_at": "2026-08-27T14:22:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 1,
           "product_category": "GENERAL",
           "demo_image_observation": "상부 덮개가 열린 플립탑 용기 한 개가 보이며, 누수나 잠금 불량은 사진만으로 확인되지 않습니다.",
@@ -98,11 +114,19 @@
         "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-003",
+        "order_ref": "DEMO-R2-ORD-20260828-003",
         "product_ref": "DEMO-V2-SPRAY-CONTAINER-03",
         "customer_message": "판매자 배송 상품으로 스프레이형 플라스틱 용기를 주문했고 수령 당일 외관을 확인한 뒤 개봉했습니다. 며칠 사용한 뒤부터 검은 보호캡이 반복해서 빠지고 분사 상태도 일정하지 않았다고 고객이 설명했습니다. 첨부 사진에서는 용기와 분리된 보호캡만 확인되며 실제 분사 불량이나 사용 중 상태는 사진으로 판정할 수 없습니다. 전체 반품보다 분사부 수리나 부품 교체가 가능한지, 어렵다면 어떤 자료를 추가로 제출해야 하는지 문의드립니다.",
         "requested_action": "REPAIR",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100003", "display_name": "이도윤", "phone_masked": "010-****-7356", "membership_tier": "VIP"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 퍼스널케어", "ordered_at": "2026-08-18T21:05:00+09:00", "product_display_name": "바이올렛 리페어 에센스 100", "sku": "CS-DEMO-SPR-003", "quantity": 1, "unit_price": "27900", "merchandise_amount": "27900", "shipping_fee": "0", "discount_amount": "2000", "paid_amount": "25900", "currency": "KRW", "payment_method_masked": "체크카드 **** 7731", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-003", "recipient": "이도윤", "phone_masked": "010-****-7356", "postal_code": "13529", "address_line1": "경기도 가상시 데모로 103", "address_line2": "시연빌라 502호", "carrier": "CSight 익스프레스", "tracking_number_masked": "CSE-****-0303", "delivered_at": "2026-08-19T16:48:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 9,
           "product_category": "GENERAL",
           "demo_image_observation": "스프레이형 용기와 분리된 검은 보호캡이 보이며, 분사 불량 여부는 사진만으로 확인되지 않습니다.",
@@ -127,11 +151,19 @@
         "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-004",
+        "order_ref": "DEMO-R2-ORD-20260828-004",
         "product_ref": "DEMO-V2-SMALL-PUMP-CONTAINER-04",
         "customer_message": "소형 펌프형 플라스틱 용기를 온라인 마켓에서 주문했고 필요한 일정에 맞춰 배송받았습니다. 박스를 개봉하자 투명 보호캡이 본체와 분리되어 있었고 고객은 펌프 고정 상태도 불안해 보인다고 접수했습니다. 첨부 사진에서는 금색 펌프가 용기에 붙어 있고 투명 캡이 떨어져 있는 모습만 확인되며 실제 작동 상태는 알 수 없어 아직 사용하지 않았습니다. 환불보다는 상품을 회수하면서 같은 구성의 정상 상품을 다시 배송해 주길 바라며 가능한 처리 일정을 문의드립니다.",
         "requested_action": "OTHER",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100004", "display_name": "최유진", "phone_masked": "010-****-9264", "membership_tier": "GOLD"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 셀렉트", "ordered_at": "2026-08-24T14:33:00+09:00", "product_display_name": "골드리프 펌프 세럼 50", "sku": "CS-DEMO-PMP-004", "quantity": 1, "unit_price": "32900", "merchandise_amount": "32900", "shipping_fee": "0", "discount_amount": "0", "paid_amount": "32900", "currency": "KRW", "payment_method_masked": "신용카드 **** 5519", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-004", "recipient": "최유진", "phone_masked": "010-****-9264", "postal_code": "48058", "address_line1": "부산광역시 데모구 센텀가상로 12", "address_line2": "PoC 레지던스 1204호", "carrier": "CSight 로지스", "tracking_number_masked": "CSL-****-0404", "delivered_at": "2026-08-26T11:16:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 3,
           "product_category": "GENERAL",
           "demo_image_observation": "금색 펌프가 달린 소형 용기와 분리된 투명 보호캡이 보이며, 펌프 작동 상태는 사진으로 확인되지 않습니다.",
@@ -156,11 +188,19 @@
         "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-005",
+        "order_ref": "DEMO-R2-ORD-20260828-005",
         "product_ref": "DEMO-V2-SPRAY-CONTAINER-05",
         "customer_message": "온라인 쇼핑몰에서 스프레이형 플라스틱 용기를 주문해 배송 이틀 뒤 개봉했습니다. 고객은 처음 사용했을 때 분사부가 불안정해 액체가 얼굴 쪽으로 튀었다고 설명했고 즉시 사용을 중단했습니다. 첨부 사진에는 용기와 분리된 검은 보호캡만 보이며 노즐 이탈이나 액체가 튄 상황은 사진으로 확인되지 않습니다. 안전이 걱정되어 추가 사용은 하지 않으려 하니 하자 반품 가능 여부를 확인하고 회수 접수를 요청드립니다.",
         "requested_action": "RETURN",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100005", "display_name": "정민서", "phone_masked": "010-****-3488", "membership_tier": "BASIC"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 헤어케어", "ordered_at": "2026-08-22T18:47:00+09:00", "product_display_name": "로즈핏 헤어 미스트 150", "sku": "CS-DEMO-SPR-005", "quantity": 1, "unit_price": "18900", "merchandise_amount": "18900", "shipping_fee": "3000", "discount_amount": "0", "paid_amount": "21900", "currency": "KRW", "payment_method_masked": "간편결제 **** 6207", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-005", "recipient": "정민서", "phone_masked": "010-****-3488", "postal_code": "34126", "address_line1": "대전광역시 가상구 데모중앙로 7", "address_line2": "시연오피스텔 707호", "carrier": "CSight 익스프레스", "tracking_number_masked": "CSE-****-0505", "delivered_at": "2026-08-24T15:05:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 4,
           "product_category": "GENERAL",
           "demo_image_observation": "스프레이형 용기와 분리된 검은 보호캡이 보이며, 노즐 이탈이나 액체가 튄 상황은 사진으로 확인되지 않습니다.",
@@ -182,11 +222,19 @@
         "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-006",
+        "order_ref": "DEMO-R2-ORD-20260828-006",
         "product_ref": "DEMO-V2-NOZZLE-CONTAINER-06",
         "customer_message": "다중 판매자 온라인 마켓에서 노즐형 플라스틱 용기를 주문했고 배송 상자를 받은 날 바로 개봉했습니다. 포장 안에서 본체와 흰색 노즐·마개 부품이 각각 분리되어 있었고 별도의 조립 설명서는 찾지 못했습니다. 누락이나 파손 여부는 사진만으로 알 수 없어 내용물을 넣거나 실제로 사용하지 않았으며 억지로 결합하지도 않았습니다. 정상 조립이 가능한 구성인지, 누락 부품은 없는지와 추가로 필요한 확인 사진을 먼저 안내해 주세요.",
         "requested_action": "INFORMATION",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100006", "display_name": "한지우", "phone_masked": "010-****-5703", "membership_tier": "SILVER"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 생활용품", "ordered_at": "2026-08-26T08:39:00+09:00", "product_display_name": "듀얼캡 리필 디스펜서 400", "sku": "CS-DEMO-NOZ-006", "quantity": 1, "unit_price": "11900", "merchandise_amount": "11900", "shipping_fee": "3000", "discount_amount": "0", "paid_amount": "14900", "currency": "KRW", "payment_method_masked": "계좌이체 **** 0912", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-006", "recipient": "한지우", "phone_masked": "010-****-5703", "postal_code": "41911", "address_line1": "대구광역시 데모구 가상동로 66", "address_line2": "CSight 하우스 B-302", "carrier": "CSight 로지스", "tracking_number_masked": "CSL-****-0606", "delivered_at": "2026-08-27T17:31:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 1,
           "product_category": "GENERAL",
           "demo_image_observation": "반투명 본체와 흰색 노즐·마개 부품이 떨어져 보이며, 누락이나 파손 여부는 사진만으로 확인되지 않습니다.",
@@ -208,11 +256,19 @@
         "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-007",
+        "order_ref": "DEMO-R2-ORD-20260828-007",
         "product_ref": "DEMO-V2-PACKED-SMALL-GOODS-07",
         "customer_message": "온라인 마켓에서 소형 수납용품 3단 옵션을 주문했고 배송된 외부 상자만 개봉했습니다. 내부에는 버블랩으로 포장된 상품 한 개가 있었으며 고객은 동봉 표기에 2단 옵션이라고 적혀 있었다고 설명했습니다. 첨부 사진만으로는 실제 상품과 단수, 옵션 표기나 파손 여부를 확인할 수 없어 포장을 풀거나 사용하지 않은 상태로 접수합니다. 주문 내역과 동봉 표기가 다르다면 미사용 상태로 동일한 3단 옵션 교환을 요청하고 싶습니다.",
         "requested_action": "EXCHANGE",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100007", "display_name": "윤서준", "phone_masked": "010-****-8115", "membership_tier": "GOLD"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 홈스토리지", "ordered_at": "2026-08-26T12:06:00+09:00", "product_display_name": "모듈박스 미니 수납함 3단", "sku": "CS-DEMO-PKG-007", "quantity": 1, "unit_price": "19900", "merchandise_amount": "19900", "shipping_fee": "0", "discount_amount": "0", "paid_amount": "19900", "currency": "KRW", "payment_method_masked": "신용카드 **** 4408", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-007", "recipient": "윤서준", "phone_masked": "010-****-8115", "postal_code": "21554", "address_line1": "인천광역시 가상구 데모해안로 19", "address_line2": "테스트파크 104동 1202호", "carrier": "CSight 익스프레스", "tracking_number_masked": "CSE-****-0707", "delivered_at": "2026-08-27T12:18:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 1,
           "product_category": "GENERAL",
           "demo_image_observation": "버블랩으로 포장된 소형 물체 한 개만 보이며, 실제 상품·단수·옵션 표기·파손 여부는 확인되지 않습니다.",
@@ -237,11 +293,19 @@
         "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-008",
+        "order_ref": "DEMO-R2-ORD-20260828-008",
         "product_ref": "DEMO-V2-PACKED-CYLINDER-GOODS-08",
         "customer_message": "온라인 쇼핑몰에서 원통형 보관용품을 주문했고 안내된 날짜에 배송받았습니다. 크기를 확인하려고 외부 배송 상자만 개봉했으며 제품을 감싼 버블랩과 내부 포장은 그대로 두었습니다. 고객은 주문 상세의 치수가 사용 목적에 맞지 않아 미사용 반품을 원하지만 첨부 사진만으로 실제 치수나 상품 상태는 확인할 수 없습니다. 단순 변심 사유로 반품이 가능한지와 반품 배송비 부담 기준을 문의드립니다.",
         "requested_action": "RETURN",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100008", "display_name": "오지안", "phone_masked": "010-****-2639", "membership_tier": "BASIC"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 키친웨어", "ordered_at": "2026-08-25T19:52:00+09:00", "product_display_name": "롱스택 원통 수납통 1L", "sku": "CS-DEMO-CYL-008", "quantity": 1, "unit_price": "17900", "merchandise_amount": "17900", "shipping_fee": "3000", "discount_amount": "0", "paid_amount": "20900", "currency": "KRW", "payment_method_masked": "간편결제 **** 8832", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-008", "recipient": "오지안", "phone_masked": "010-****-2639", "postal_code": "16491", "address_line1": "경기도 가상시 데모광장로 88", "address_line2": "샘플타운 808동 1503호", "carrier": "CSight 로지스", "tracking_number_masked": "CSL-****-0808", "delivered_at": "2026-08-27T10:44:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 2,
           "product_category": "GENERAL",
           "demo_image_observation": "길쭉한 원통형 물체가 버블랩에 완전히 포장되어 있으며, 실제 치수나 상품 상태는 확인되지 않습니다.",
@@ -263,11 +327,19 @@
         "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-009",
+        "order_ref": "DEMO-R2-ORD-20260828-009",
         "product_ref": "DEMO-V2-PACKED-HOUSEHOLD-SET-09",
         "customer_message": "온라인 마켓에서 생활용품 두 개를 한 주문으로 구매했고 배송 완료 알림과 함께 상자 한 개를 받았습니다. 외부 상자를 개봉했을 때 버블랩으로 포장된 물체 한 개만 보여 고객은 나머지 한 개가 누락됐다고 접수했습니다. 첨부 사진은 포장 물체 한 개만 보여 줄 뿐 실제 주문 수량이나 누락 여부, 내부 상품 상태는 확인할 수 없어 아직 사용하지 않았습니다. 주문 내역을 확인해 누락된 한 개만 다시 배송할 수 있는지, 아니면 전체 반품 후 재주문해야 하는지 문의드립니다.",
         "requested_action": "OTHER",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100009", "display_name": "강현우", "phone_masked": "010-****-6940", "membership_tier": "VIP"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 홈컬렉션", "ordered_at": "2026-08-24T11:27:00+09:00", "product_display_name": "멀티홈 욕실 정리세트 4P", "sku": "CS-DEMO-SET-009", "quantity": 2, "unit_price": "24900", "merchandise_amount": "49800", "shipping_fee": "0", "discount_amount": "5000", "paid_amount": "44800", "currency": "KRW", "payment_method_masked": "신용카드 **** 2106", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-009", "recipient": "강현우", "phone_masked": "010-****-6940", "postal_code": "61011", "address_line1": "광주광역시 데모구 가상문화로 32", "address_line2": "CSight 빌리지 301호", "carrier": "CSight 익스프레스", "tracking_number_masked": "CSE-****-0909", "delivered_at": "2026-08-26T18:02:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 3,
           "product_category": "GENERAL",
           "demo_image_observation": "버블랩으로 포장된 물체 한 개가 보이며, 실제 주문 수량·누락 여부·내부 상품 상태는 확인되지 않습니다.",
@@ -292,11 +364,19 @@
         "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
       },
       "case_input": {
-        "order_ref": "DEMO-V2-ORD-20260828-010",
+        "order_ref": "DEMO-R2-ORD-20260828-010",
         "product_ref": "DEMO-V2-PACKED-RECTANGLE-GOODS-10",
         "customer_message": "온라인 쇼핑몰에서 직사각형 소형 수납용품을 주문했고 완충재로 포장된 상태로 배송받았습니다. 외부 배송 상자를 개봉한 뒤 고객은 화면에서 예상한 색상보다 어두워 사용하지 않은 채 환불하고 싶다고 설명했습니다. 첨부 사진에는 버블랩 포장과 라벨 일부만 보여 실제 색상과 크기, 균열이나 미사용 여부는 확인할 수 없습니다. 상품 하자가 아닌 단순 변심 환불이 가능한지와 결제 취소 시점, 회수 방법을 함께 안내해 주세요.",
         "requested_action": "REFUND",
         "attributes": {
+          "synthetic_commerce_context": {
+            "schema_version": "synthetic_commerce_context/1.0.0",
+            "data_classification": "SYNTHETIC_DEMO_ONLY",
+            "customer": {"customer_id": "CUST-DEMO-100010", "display_name": "송아린", "phone_masked": "010-****-4177", "membership_tier": "SILVER"},
+            "order": {"sales_channel": "CSight 마켓", "seller_name": "CSight 데스크웨어", "ordered_at": "2026-08-26T15:41:00+09:00", "product_display_name": "플랫케이스 오거나이저 2P", "sku": "CS-DEMO-REC-010", "quantity": 1, "unit_price": "21900", "merchandise_amount": "21900", "shipping_fee": "0", "discount_amount": "6000", "paid_amount": "15900", "currency": "KRW", "payment_method_masked": "체크카드 **** 3390", "payment_status": "PAID"},
+            "delivery": {"shipping_address_ref": "DEMO-V2-ADDR-010", "recipient": "송아린", "phone_masked": "010-****-4177", "postal_code": "31156", "address_line1": "충청남도 가상시 데모산업로 15", "address_line2": "PoC 센터 4층 410호", "carrier": "CSight 로지스", "tracking_number_masked": "CSL-****-1010", "delivered_at": "2026-08-27T16:37:00+09:00"},
+            "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS"
+          },
           "days_since_purchase": 1,
           "product_category": "GENERAL",
           "demo_image_observation": "직사각형 물체의 버블랩 포장과 라벨 일부만 보이며, 실제 색상·크기·균열·미사용 여부는 확인되지 않습니다.",

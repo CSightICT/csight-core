@@ -30,7 +30,7 @@ describe("NewCasePage", () => {
     await user.selectOptions(screen.getByLabelText("요청 유형"), "REFUND");
     await user.type(screen.getByLabelText("환불 금액"), "999999999999999.0001");
     await user.type(screen.getByLabelText("통화 코드"), "KRW");
-    await user.click(screen.getByRole("button", { name: /케이스 등록/ }));
+    await user.click(screen.getByRole("button", { name: /문의 등록/ }));
     await screen.findByText("생성 완료");
     expect(captured).toEqual({
       order_ref: "ORD-1", product_ref: "SKU-1", customer_message: "제품이 파손되어 환불을 요청합니다.",

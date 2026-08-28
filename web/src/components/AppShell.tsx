@@ -1,4 +1,4 @@
-import { BarChart3, BriefcaseBusiness, ClipboardCheck, LogOut, Menu, Plus, ShieldCheck, X } from "lucide-react";
+import { BarChart3, BriefcaseBusiness, ClipboardCheck, Database, LogOut, Menu, Plus, ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
@@ -8,7 +8,8 @@ const navItems = [
   { to: "/cases", label: "상담 케이스", icon: BriefcaseBusiness },
   { to: "/cases/new", label: "새 케이스", icon: Plus },
   { to: "/reviews", label: "검토함", icon: ClipboardCheck },
-  { to: "/metrics", label: "PoC 지표", icon: BarChart3 },
+  { to: "/metrics", label: "운영 지표", icon: BarChart3 },
+  { to: "/data-assets", label: "데이터 자산", icon: Database },
 ];
 
 export function AppShell() {

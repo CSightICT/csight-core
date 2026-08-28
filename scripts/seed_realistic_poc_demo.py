@@ -19,6 +19,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Literal, Self, cast
 from urllib.error import HTTPError, URLError
@@ -48,7 +49,16 @@ from app.adapters.persistence.models import (
 )
 from app.adapters.security import PyJWTAccessTokenCodec
 from app.bootstrap.settings import Settings
+from app.platform.commerce_context import validate_synthetic_commerce_context
+from app.platform.poc_demo_selection import (
+    PocClosedSetError,
+    PocClosedSetRegistry,
+    PocSourceKind,
+    assess_poc_admission,
+    load_poc_closed_set_registry,
+)
 from scripts.evaluate_e3_normal_reference import (
+    SAFE_INTERNAL_DEMO_RANKS,
     NormalReferenceFailure,
     ValidatedNormalReference,
     validate_normal_reference,
@@ -72,15 +82,22 @@ from scripts.smoke_scenario_vision import (
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST_V1 = ROOT / "evaluation/realistic_internal_demo_v1/manifest.json"
 DEFAULT_MANIFEST_V2 = ROOT / "evaluation/realistic_internal_demo_v2/manifest.json"
+DEFAULT_MANIFEST_V3 = ROOT / "evaluation/realistic_internal_demo_v3/manifest.json"
 DEFAULT_MANIFEST = DEFAULT_MANIFEST_V1
+DEFAULT_CLOSED_SET_REGISTRY = ROOT / "evaluation/poc_closed_set_v1/registry.json"
+DEFAULT_CLOSED_SET_REGISTRY_V2 = ROOT / "evaluation/poc_closed_set_v2/registry.json"
 DEFAULT_OUTPUT_V1 = ROOT / "local-data/realistic-internal-demo-v1/seed_report.json"
 DEFAULT_OUTPUT_V2 = ROOT / "local-data/realistic-internal-demo-v2/seed_report.json"
+DEFAULT_OUTPUT_V3 = ROOT / "local-data/realistic-internal-demo-v3/seed_report.json"
 DEFAULT_OUTPUT = DEFAULT_OUTPUT_V1
 DATASET_ID_V1 = "realistic-internal-demo-v1"
 DATASET_ID_V2 = "realistic-internal-demo-v2"
+DATASET_ID_V3 = "realistic-internal-demo-v3"
 DATASET_ID = DATASET_ID_V1
 DEFECT_RANKS = (3, 32, 54, 58, 78, 80)
 NORMAL_REFERENCE_RANKS = (2, 8, 17, 23)
+DEFECT_RANKS_V3 = (1, 9, 22, 31, 73, 79)
+NORMAL_REFERENCE_RANKS_V3 = (1, 20, 65, 67)
 TERMINAL_ANALYSIS_STATUSES = frozenset({"SUCCEEDED", "PARTIAL_SUCCESS", "FAILED"})
 REQUESTED_ACTIONS = frozenset(
     {"EXCHANGE", "REFUND", "RETURN", "REPAIR", "INFORMATION", "OTHER", "UNSPECIFIED"}
@@ -173,13 +190,32 @@ class DemoCaseInput(BaseModel):
             raise ValueError("demo Case product_category must stay on the non-policy GENERAL scope")
         if "realistic_demo" in self.attributes or "realistic_internal_demo" in self.attributes:
             raise ValueError("provenance attributes are reserved for the seed command")
+        context_value = self.attributes.get("synthetic_commerce_context")
+        if context_value is None:
+            return self
+        context = validate_synthetic_commerce_context(context_value)
+        external = self.attributes.get("external_action_input")
+        if not isinstance(external, dict):
+            raise ValueError("external_action_input must be an object")
+        if self.requested_action == "REFUND":
+            try:
+                explicit_amount = Decimal(str(external.get("amount")))
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError("refund demo requires an explicit decimal amount") from None
+            if external.get("currency") != context.order.currency:
+                raise ValueError("refund currency must match the synthetic paid currency")
+            if explicit_amount != context.order.paid_amount:
+                raise ValueError("explicit refund amount must match the synthetic paid amount")
+        shipping_ref = external.get("shipping_address_ref")
+        if shipping_ref is not None and shipping_ref != context.delivery.shipping_address_ref:
+            raise ValueError("external shipping reference must match the synthetic delivery")
         return self
 
 
 class DemoCase(BaseModel):
     model_config = _MODEL_CONFIG
 
-    demo_id: str = Field(pattern=r"^REAL-DEMO-(V2-)?(DEFECT|NORMAL)-[0-9]{2}$")
+    demo_id: str = Field(pattern=r"^REAL-DEMO-(V[23]-)?(DEFECT|NORMAL)-[0-9]{2}$")
     source: DemoSource
     case_input: DemoCaseInput
 
@@ -215,14 +251,23 @@ class DemoNarrativeContract(BaseModel):
     min_sentence_count: Literal[3]
     max_sentence_count: Literal[5]
     real_company_affiliation_claimed: Literal[False]
-    revision: Literal["VISUAL_ALIGNED_R1"]
+    revision: Literal[
+        "VISUAL_ALIGNED_R1",
+        "COMMERCE_CONTEXT_R2",
+        "COMMERCE_CONTEXT_R2_E3",
+        "CLOSED_SET_EXPANSION_R3",
+    ]
 
 
 class DemoManifest(BaseModel):
     model_config = _MODEL_CONFIG
 
-    schema_version: Literal["1.0.0", "2.0.0"]
-    dataset_id: Literal["realistic-internal-demo-v1", "realistic-internal-demo-v2"]
+    schema_version: Literal["1.0.0", "2.0.0", "3.0.0"]
+    dataset_id: Literal[
+        "realistic-internal-demo-v1",
+        "realistic-internal-demo-v2",
+        "realistic-internal-demo-v3",
+    ]
     tenant_slug: Literal["csight"]
     selection: DemoSelection
     boundaries: DemoBoundaries
@@ -231,12 +276,17 @@ class DemoManifest(BaseModel):
 
     @model_validator(mode="after")
     def require_frozen_selection(self) -> Self:
-        is_v2 = self.dataset_id == DATASET_ID_V2
-        expected_schema_version = "2.0.0" if is_v2 else "1.0.0"
+        version_by_dataset = {
+            DATASET_ID_V1: "1.0.0",
+            DATASET_ID_V2: "2.0.0",
+            DATASET_ID_V3: "3.0.0",
+        }
+        expected_schema_version = version_by_dataset[self.dataset_id]
         if self.schema_version != expected_schema_version:
             raise ValueError("schema_version and dataset_id must identify the same demo version")
-        if is_v2 != (self.narrative_contract is not None):
-            raise ValueError("only the v2 dataset requires the ecommerce narrative contract")
+        has_ecommerce_narrative = self.dataset_id in {DATASET_ID_V2, DATASET_ID_V3}
+        if has_ecommerce_narrative != (self.narrative_contract is not None):
+            raise ValueError("ecommerce demo datasets require the narrative contract")
         if len(self.cases) != 10:
             raise ValueError("realistic demo manifest must contain exactly ten cases")
         defect_ranks = tuple(
@@ -249,44 +299,126 @@ class DemoManifest(BaseModel):
             for item in self.cases
             if item.source.kind == "USER_SUPPLIED_NORMAL_REFERENCE"
         )
-        if defect_ranks != DEFECT_RANKS or normal_ranks != NORMAL_REFERENCE_RANKS:
+        expected_defect_ranks = (
+            DEFECT_RANKS_V3 if self.dataset_id == DATASET_ID_V3 else DEFECT_RANKS
+        )
+        expected_normal_ranks = (
+            NORMAL_REFERENCE_RANKS_V3
+            if self.dataset_id == DATASET_ID_V3
+            else NORMAL_REFERENCE_RANKS
+        )
+        if defect_ranks != expected_defect_ranks or normal_ranks != expected_normal_ranks:
             raise ValueError("manifest does not match the frozen 6:4 source-rank selection")
-        if self.selection.defect_ranks != DEFECT_RANKS:
+        if self.selection.defect_ranks != expected_defect_ranks:
             raise ValueError("selection.defect_ranks does not match case records")
-        if self.selection.normal_reference_ranks != NORMAL_REFERENCE_RANKS:
+        if self.selection.normal_reference_ranks != expected_normal_ranks:
             raise ValueError("selection.normal_reference_ranks does not match case records")
         if len({item.demo_id for item in self.cases}) != len(self.cases):
             raise ValueError("demo identifiers must be unique")
         if len({item.case_input.order_ref for item in self.cases}) != len(self.cases):
             raise ValueError("demo order references must be unique")
-        expected_demo_prefix = "REAL-DEMO-V2-" if is_v2 else "REAL-DEMO-"
+        expected_demo_prefix = {
+            DATASET_ID_V1: "REAL-DEMO-",
+            DATASET_ID_V2: "REAL-DEMO-V2-",
+            DATASET_ID_V3: "REAL-DEMO-V3-",
+        }[self.dataset_id]
         if any(not item.demo_id.startswith(expected_demo_prefix) for item in self.cases):
             raise ValueError("demo identifiers must stay within their dataset version")
-        if not is_v2 and any(item.demo_id.startswith("REAL-DEMO-V2-") for item in self.cases):
-            raise ValueError("v1 cannot use v2 demo identifiers")
-        if is_v2:
+        if has_ecommerce_narrative:
             for item in self.cases:
+                if "synthetic_commerce_context" not in item.case_input.attributes:
+                    raise ValueError("v2 demo Cases require a synthetic commerce context")
                 message = item.case_input.customer_message
                 sentence_count = sum(message.count(mark) for mark in (".", "?", "!"))
                 if sentence_count < 3 or sentence_count > 5 or len(message) < 120:
                     raise ValueError(
-                        "v2 inquiries must contain three to five substantive sentences"
+                        "ecommerce inquiries must contain three to five substantive sentences"
                     )
                 lowered = message.lower()
                 if any(name in lowered for name in PROHIBITED_COMMERCE_NAMES):
                     raise ValueError(
-                        "v2 inquiries cannot name or impersonate a real ecommerce company"
+                        "ecommerce inquiries cannot name or impersonate a real company"
                     )
                 if EMAIL_PATTERN.search(message) or PHONE_PATTERN.search(message):
-                    raise ValueError("v2 inquiries cannot contain email or phone PII")
+                    raise ValueError("ecommerce inquiries cannot contain email or phone PII")
                 observation = item.case_input.attributes.get("demo_image_observation")
                 if not isinstance(observation, str) or len(observation.strip()) < 20:
-                    raise ValueError("v2 inquiries require a substantive image observation")
+                    raise ValueError("ecommerce inquiries require a substantive image observation")
                 if (
                     item.case_input.attributes.get("demo_claim_boundary")
                     != "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS"
                 ):
-                    raise ValueError("v2 inquiries require the customer-statement claim boundary")
+                    raise ValueError(
+                        "ecommerce inquiries require the customer-statement claim boundary"
+                    )
+        return self
+
+
+class DemoExpansionOverrides(BaseModel):
+    model_config = _MODEL_CONFIG
+
+    order_ref: str = Field(min_length=1, max_length=200)
+    product_ref: str = Field(min_length=1, max_length=200)
+    customer_message: str = Field(min_length=120, max_length=20_000)
+    requested_action: str
+    product_display_name: str = Field(min_length=2, max_length=160)
+    synthetic_sku: str = Field(pattern=r"^CS-DEMO-[A-Z0-9-]{3,40}$")
+    unit_price: Decimal = Field(gt=0)
+    shipping_fee: Decimal = Field(ge=0)
+    discount_amount: Decimal = Field(ge=0)
+    image_observation: str = Field(min_length=20, max_length=500)
+    declared_safety_risk: bool
+    external_action_input_mode: Literal[
+        "NONE",
+        "QUANTITY_AND_INHERITED_ADDRESS",
+        "REFUND_PAID_AMOUNT",
+    ]
+
+    @model_validator(mode="after")
+    def require_expansion_business_input(self) -> Self:
+        if self.requested_action not in REQUESTED_ACTIONS:
+            raise ValueError("expansion requested_action is unsupported")
+        if self.discount_amount > self.unit_price + self.shipping_fee:
+            raise ValueError("expansion discount cannot exceed the pre-discount total")
+        if (self.requested_action == "REFUND") != (
+            self.external_action_input_mode == "REFUND_PAID_AMOUNT"
+        ):
+            raise ValueError("refund expansion requires explicit paid-amount input mode")
+        return self
+
+
+class DemoExpansionCase(BaseModel):
+    model_config = _MODEL_CONFIG
+
+    demo_id: str = Field(pattern=r"^REAL-DEMO-V3-(DEFECT|NORMAL)-[0-9]{2}$")
+    base_demo_id: str = Field(pattern=r"^REAL-DEMO-V2-(DEFECT|NORMAL)-[0-9]{2}$")
+    source: DemoSource
+    overrides: DemoExpansionOverrides
+
+
+class DemoExpansionManifest(BaseModel):
+    model_config = _MODEL_CONFIG
+
+    schema_version: Literal["3.0.0"]
+    dataset_id: Literal["realistic-internal-demo-v3"]
+    base_dataset_id: Literal["realistic-internal-demo-v2"]
+    base_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    tenant_slug: Literal["csight"]
+    selection: DemoSelection
+    boundaries: DemoBoundaries
+    narrative_contract: DemoNarrativeContract
+    cases: tuple[DemoExpansionCase, ...]
+
+    @model_validator(mode="after")
+    def require_expansion_pack(self) -> Self:
+        if self.narrative_contract.revision != "CLOSED_SET_EXPANSION_R3":
+            raise ValueError("expansion narrative revision drifted")
+        if len(self.cases) != 10:
+            raise ValueError("expansion pack must contain exactly ten cases")
+        if len({item.demo_id for item in self.cases}) != len(self.cases):
+            raise ValueError("expansion demo identifiers must be unique")
+        if len({item.base_demo_id for item in self.cases}) != len(self.cases):
+            raise ValueError("expansion base templates must be used once")
         return self
 
 
@@ -307,14 +439,103 @@ class ResolvedDemoSource:
     source_metadata: Mapping[str, object]
 
 
+def _materialize_expansion_manifest(expansion: DemoExpansionManifest) -> DemoManifest:
+    if (
+        hashlib.sha256(DEFAULT_MANIFEST_V2.read_bytes()).hexdigest()
+        != expansion.base_manifest_sha256
+    ):
+        raise RealisticDemoSeedFailure("v3 expansion base manifest hash drifted")
+    try:
+        base = DemoManifest.model_validate_json(DEFAULT_MANIFEST_V2.read_text(encoding="utf-8"))
+    except ValidationError as error:
+        raise RealisticDemoSeedFailure("v3 expansion base manifest is invalid") from error
+    base_cases = {item.demo_id: item for item in base.cases}
+    materialized: list[DemoCase] = []
+    for item in expansion.cases:
+        template = base_cases.get(item.base_demo_id)
+        if template is None or template.source.kind != item.source.kind:
+            raise RealisticDemoSeedFailure("v3 expansion template kind is invalid")
+        overrides = item.overrides
+        payload = template.case_input.model_dump(mode="json")
+        attributes = cast(dict[str, object], payload["attributes"])
+        context = cast(dict[str, object], attributes["synthetic_commerce_context"])
+        order = cast(dict[str, object], context["order"])
+        delivery = cast(dict[str, object], context["delivery"])
+        paid_amount = overrides.unit_price + overrides.shipping_fee - overrides.discount_amount
+        order.update(
+            {
+                "product_display_name": overrides.product_display_name,
+                "sku": overrides.synthetic_sku,
+                "quantity": 1,
+                "unit_price": format(overrides.unit_price, "f"),
+                "merchandise_amount": format(overrides.unit_price, "f"),
+                "shipping_fee": format(overrides.shipping_fee, "f"),
+                "discount_amount": format(overrides.discount_amount, "f"),
+                "paid_amount": format(paid_amount, "f"),
+            }
+        )
+        if overrides.external_action_input_mode == "QUANTITY_AND_INHERITED_ADDRESS":
+            external_action_input: dict[str, object] = {
+                "quantity": 1,
+                "shipping_address_ref": delivery["shipping_address_ref"],
+            }
+        elif overrides.external_action_input_mode == "REFUND_PAID_AMOUNT":
+            external_action_input = {
+                "amount": format(paid_amount, "f"),
+                "currency": "KRW",
+            }
+        else:
+            external_action_input = {}
+        attributes.update(
+            {
+                "demo_image_observation": overrides.image_observation,
+                "declared_safety_risk": overrides.declared_safety_risk,
+                "external_action_input": external_action_input,
+            }
+        )
+        payload.update(
+            {
+                "order_ref": overrides.order_ref,
+                "product_ref": overrides.product_ref,
+                "customer_message": overrides.customer_message,
+                "requested_action": overrides.requested_action,
+                "attributes": attributes,
+            }
+        )
+        materialized.append(
+            DemoCase.model_validate(
+                {
+                    "demo_id": item.demo_id,
+                    "source": item.source.model_dump(mode="json"),
+                    "case_input": payload,
+                }
+            )
+        )
+    return DemoManifest.model_validate(
+        {
+            "schema_version": expansion.schema_version,
+            "dataset_id": expansion.dataset_id,
+            "tenant_slug": expansion.tenant_slug,
+            "selection": expansion.selection.model_dump(mode="json"),
+            "boundaries": expansion.boundaries.model_dump(mode="json"),
+            "narrative_contract": expansion.narrative_contract.model_dump(mode="json"),
+            "cases": [item.model_dump(mode="json") for item in materialized],
+        }
+    )
+
+
 def load_manifest(path: Path) -> DemoManifest:
     """Load the committed input contract as data, never as executable instructions."""
 
     if path.is_symlink() or not path.is_file():
         raise RealisticDemoSeedFailure("demo manifest must be a regular non-symlink file")
     try:
-        return DemoManifest.model_validate_json(path.read_text(encoding="utf-8"))
-    except ValidationError as error:
+        content = path.read_text(encoding="utf-8")
+        raw = json.loads(content)
+        if isinstance(raw, dict) and raw.get("dataset_id") == DATASET_ID_V3:
+            return _materialize_expansion_manifest(DemoExpansionManifest.model_validate(raw))
+        return DemoManifest.model_validate(raw)
+    except (json.JSONDecodeError, ValidationError) as error:
         raise RealisticDemoSeedFailure("demo manifest failed its frozen 6:4 contract") from error
 
 
@@ -322,11 +543,64 @@ def _manifest_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def validate_closed_set_sources(
+    manifest: DemoManifest,
+    sources: Sequence[ResolvedDemoSource],
+    registry: PocClosedSetRegistry,
+) -> dict[str, object]:
+    """Bind the closed-set registry to the frozen manifest and vetted source annotations."""
+
+    if manifest.dataset_id != registry.dataset_id:
+        raise RealisticDemoSeedFailure("closed-set registry and demo dataset do not match")
+    assignments = {item.demo_id: item for item in registry.assignments}
+    if set(assignments) != {item.demo_id for item in manifest.cases}:
+        raise RealisticDemoSeedFailure("closed-set registry does not cover the frozen demo cases")
+    for source in sources:
+        definition = source.definition
+        assignment = assignments[definition.demo_id]
+        if (
+            assignment.product_ref != definition.case_input.product_ref
+            or assignment.source_kind is not PocSourceKind(definition.source.kind)
+            or assignment.source_rank != definition.source.rank
+            or assignment.image_sha256 != source.image_sha256
+        ):
+            raise RealisticDemoSeedFailure("closed-set assignment does not match source identity")
+        raw_labels = source.source_metadata.get("defect_annotations_not_model_predictions", [])
+        if not isinstance(raw_labels, list) or any(
+            not isinstance(item, str) for item in raw_labels
+        ):
+            raise RealisticDemoSeedFailure("closed-set source annotations are malformed")
+        if tuple(raw_labels) != assignment.source_defect_labels:
+            raise RealisticDemoSeedFailure(
+                "closed-set defect groups do not match the vetted source annotations"
+            )
+    assigned_product_classes = sorted({item.product_class.value for item in registry.assignments})
+    assigned_defect_groups = sorted(
+        {group.value for item in registry.assignments for group in item.defect_groups}
+    )
+    return {
+        "schema_version": registry.schema_version,
+        "registry_assignment_count": len(registry.assignments),
+        "configured_product_class_count": len(registry.product_classes),
+        "configured_defect_group_count": len(registry.defect_groups),
+        "represented_product_classes": assigned_product_classes,
+        "represented_defect_groups": assigned_defect_groups,
+        "unrepresented_product_classes": sorted(
+            {item.code for item in registry.product_classes} - set(assigned_product_classes)
+        ),
+        "unrepresented_defect_groups": sorted(
+            {item.code for item in registry.defect_groups} - set(assigned_defect_groups)
+        ),
+    }
+
+
 def default_output_for_manifest(manifest: DemoManifest) -> Path:
     """Keep versioned local reports separate even when --output is omitted."""
 
     if manifest.dataset_id == DATASET_ID_V2:
         return DEFAULT_OUTPUT_V2
+    if manifest.dataset_id == DATASET_ID_V3:
+        return DEFAULT_OUTPUT_V3
     return DEFAULT_OUTPUT_V1
 
 
@@ -334,8 +608,8 @@ def resolve_output_path(manifest: DemoManifest, requested: Path | None) -> Path:
     expected = default_output_for_manifest(manifest)
     if requested is None:
         return expected
-    other_default = DEFAULT_OUTPUT_V1 if expected == DEFAULT_OUTPUT_V2 else DEFAULT_OUTPUT_V2
-    if requested.resolve() == other_default.resolve():
+    other_defaults = {DEFAULT_OUTPUT_V1, DEFAULT_OUTPUT_V2, DEFAULT_OUTPUT_V3} - {expected}
+    if requested.resolve() in {item.resolve() for item in other_defaults}:
         raise RealisticDemoSeedFailure("a versioned demo cannot overwrite another version's report")
     return requested
 
@@ -344,7 +618,7 @@ def build_seed_idempotency_key(
     manifest: DemoManifest,
     definition: DemoCase,
     *,
-    operation: Literal["case", "analysis"],
+    operation: Literal["case", "analysis", "analysis-retry-1", "analysis-retry-2"],
 ) -> str:
     """Derive a stable key whose namespace is the immutable dataset version."""
 
@@ -496,7 +770,11 @@ def resolve_demo_sources(
             }
         else:
             normal = normals.get(source.rank)
-            if normal is None or normal.image_sha256 != source.image_sha256:
+            if (
+                normal is None
+                or normal.image_sha256 != source.image_sha256
+                or source.rank not in SAFE_INTERNAL_DEMO_RANKS
+            ):
                 raise RealisticDemoSeedFailure(
                     f"normal-reference rank {source.rank} does not match the vetted source"
                 )
@@ -807,8 +1085,6 @@ def _wait_for_analysis(
         run = _mapping(detail.get("run"), label="Analysis run")
         status = run.get("status")
         if status in TERMINAL_ANALYSIS_STATUSES:
-            if status != "SUCCEEDED":
-                raise RealisticDemoSeedFailure(f"multimodal analysis finished as {status}")
             return detail
         time.sleep(0.5)
     raise RealisticDemoSeedFailure("multimodal analysis did not finish before timeout")
@@ -942,14 +1218,19 @@ def _canonical_hash(value: Mapping[str, object]) -> str:
 def build_case_attributes(manifest: DemoManifest, source: ResolvedDemoSource) -> dict[str, object]:
     definition = source.definition
     attributes = dict(definition.case_input.attributes)
-    is_v2 = manifest.dataset_id == DATASET_ID_V2
+    provenance_version = {
+        DATASET_ID_V1: "1.0",
+        DATASET_ID_V2: "2.0",
+        DATASET_ID_V3: "3.0",
+    }[manifest.dataset_id]
+    scenario_scope = {
+        DATASET_ID_V1: "INTERNAL_CURATED_6_DEFECT_4_BELOW_THRESHOLD",
+        DATASET_ID_V2: "INTERNAL_CURATED_ECOMMERCE_INQUIRY_6_DEFECT_4_BELOW_THRESHOLD",
+        DATASET_ID_V3: "INTERNAL_CURATED_ECOMMERCE_EXPANSION_12_DEFECT_8_REFERENCE_TOTAL",
+    }[manifest.dataset_id]
     attributes["realistic_demo"] = {
-        "schema_version": "2.0" if is_v2 else "1.0",
-        "scenario_scope": (
-            "INTERNAL_CURATED_ECOMMERCE_INQUIRY_6_DEFECT_4_BELOW_THRESHOLD"
-            if is_v2
-            else "INTERNAL_CURATED_6_DEFECT_4_BELOW_THRESHOLD"
-        ),
+        "schema_version": provenance_version,
+        "scenario_scope": scenario_scope,
         "dataset_id": manifest.dataset_id,
         "narrative_revision": (
             manifest.narrative_contract.revision
@@ -983,13 +1264,21 @@ def seed_realistic_demo(
     actor: ActorIdentity,
     engine: Engine,
     timeout_seconds: float,
+    closed_set_registry: PocClosedSetRegistry | None = None,
+    closed_set_registry_sha256: str | None = None,
 ) -> dict[str, object]:
     seeded: list[Mapping[str, object]] = []
     created_cases = 0
     uploaded_evidence = 0
-    created_analyses = 0
+    created_analysis_cases = 0
+    created_analysis_runs = 0
     boundary_totals_before = {key: 0 for key in BOUNDARY_COUNT_KEYS}
     boundary_totals_after = {key: 0 for key in BOUNDARY_COUNT_KEYS}
+    closed_set_assignments = (
+        {item.demo_id: item for item in closed_set_registry.assignments}
+        if closed_set_registry is not None
+        else {}
+    )
     for source in sources:
         definition = source.definition
         case_input = definition.case_input
@@ -1033,32 +1322,48 @@ def seed_realistic_demo(
         )
         uploaded_evidence += not evidence_replayed
         evidence_id = required_string(evidence, "evidence_id")
-        analysis_status, started = json_request(
-            method="POST",
-            url=f"{core_base_url}/api/v1/cases/{case_id}/analysis-runs",
-            headers={
-                **authorization,
-                "Idempotency-Key": build_seed_idempotency_key(
-                    manifest,
-                    definition,
-                    operation="analysis",
-                ),
-            },
-            body={
-                "pipeline": "product_defect_multimodal_analysis",
-                "pipeline_version": "1.0.0",
-            },
-            expected=frozenset({200, 202}),
-        )
-        created_analyses += analysis_status == 202
-        analysis_run_id = required_string(started, "analysis_run_id")
-        detail = _wait_for_analysis(
-            core_base_url=core_base_url,
-            case_id=case_id,
-            analysis_run_id=analysis_run_id,
-            authorization=authorization,
-            timeout_seconds=timeout_seconds,
-        )
+        detail: Mapping[str, object] = {}
+        analysis_run_id = ""
+        analysis_status = 0
+        analysis_created_for_case = False
+        operations = ("analysis", "analysis-retry-1", "analysis-retry-2")
+        for attempt_index, operation in enumerate(operations):
+            analysis_status, started = json_request(
+                method="POST",
+                url=f"{core_base_url}/api/v1/cases/{case_id}/analysis-runs",
+                headers={
+                    **authorization,
+                    "Idempotency-Key": build_seed_idempotency_key(
+                        manifest,
+                        definition,
+                        operation=operation,
+                    ),
+                },
+                body={
+                    "pipeline": "product_defect_multimodal_analysis",
+                    "pipeline_version": "1.0.0",
+                },
+                expected=frozenset({200, 202}),
+            )
+            created_analysis_runs += analysis_status == 202
+            analysis_created_for_case = analysis_created_for_case or analysis_status == 202
+            analysis_run_id = required_string(started, "analysis_run_id")
+            detail = _wait_for_analysis(
+                core_base_url=core_base_url,
+                case_id=case_id,
+                analysis_run_id=analysis_run_id,
+                authorization=authorization,
+                timeout_seconds=timeout_seconds,
+            )
+            run = _mapping(detail.get("run"), label="Analysis run")
+            status = run.get("status")
+            if status == "SUCCEEDED":
+                break
+            if attempt_index == len(operations) - 1:
+                raise RealisticDemoSeedFailure(
+                    f"multimodal analysis finished as {status} after two fixed retries"
+                )
+        created_analysis_cases += analysis_created_for_case
         vision_records = _records(detail.get("vision_results"), label="Vision results")
         if len(vision_records) != 1:
             raise RealisticDemoSeedFailure("Core did not persist exactly one Vision result")
@@ -1067,6 +1372,17 @@ def seed_realistic_demo(
             result,
             expected_outcome=definition.source.expected_e3_outcome,
         )
+        closed_set_admission = None
+        assignment = closed_set_assignments.get(definition.demo_id)
+        if closed_set_registry is not None:
+            if assignment is None:
+                raise RealisticDemoSeedFailure("closed-set assignment disappeared during seeding")
+            closed_set_admission = assess_poc_admission(
+                assignment,
+                score=score,
+                outcome=outcome,
+                gate_version=closed_set_registry.schema_version,
+            )
         boundary_counts_after = read_case_boundary_counts(
             engine,
             tenant_id=actor.tenant_id,
@@ -1100,6 +1416,20 @@ def seed_realistic_demo(
                 "score": score,
                 "threshold": EXPECTED_THRESHOLD,
                 "outcome": outcome,
+                "poc_closed_set": (
+                    {
+                        "schema_version": closed_set_admission.gate_version,
+                        "product_class": assignment.product_class.value,
+                        "defect_groups": [group.value for group in assignment.defect_groups],
+                        "source_defect_labels_not_model_predictions": list(
+                            assignment.source_defect_labels
+                        ),
+                        "admission_tier": closed_set_admission.tier,
+                        "admitted": closed_set_admission.admitted,
+                    }
+                    if assignment is not None and closed_set_admission is not None
+                    else None
+                ),
                 "localized_detection_count": 0,
                 "policy_decision_action_counts_before": dict(boundary_counts_before),
                 "policy_decision_action_counts_after": dict(boundary_counts_after),
@@ -1111,7 +1441,15 @@ def seed_realistic_demo(
         "schema_version": manifest.schema_version,
         "report_kind": "REALISTIC_INTERNAL_DEMO_SEED",
         "created_at": datetime.now(UTC).isoformat(),
-        "verdict": "REALISTIC_INTERNAL_DEMO_10_CASES_READY",
+        "verdict": (
+            "REALISTIC_INTERNAL_DEMO_20_CASES_TOTAL_READY"
+            if manifest.dataset_id == DATASET_ID_V3
+            else "REALISTIC_INTERNAL_DEMO_10_CASES_READY"
+        ),
+        "pack_case_count": len(seeded),
+        "cumulative_active_demo_case_count": (
+            20 if manifest.dataset_id == DATASET_ID_V3 else len(seeded)
+        ),
         "dataset_id": manifest.dataset_id,
         "tenant_slug": manifest.tenant_slug,
         "actor": {
@@ -1138,6 +1476,21 @@ def seed_realistic_demo(
             ],
             "raw_images_copied_to_repository_or_web_static": False,
         },
+        "poc_closed_set": (
+            {
+                "schema_version": closed_set_registry.schema_version,
+                "registry_sha256": closed_set_registry_sha256,
+                "runtime_threshold_unchanged": closed_set_registry.e3_runtime_threshold,
+                "defect_admission_min_score": closed_set_registry.defect_admission_min_score,
+                "reference_admission_max_score": closed_set_registry.reference_admission_max_score,
+                "gray_zone_disposition": closed_set_registry.gray_zone_disposition,
+                "qwen_product_role": closed_set_registry.qwen_product_role,
+                "admitted_count": len(seeded),
+                "performance_evaluation_supported": False,
+            }
+            if closed_set_registry is not None
+            else None
+        ),
         "e3_runtime": {
             "model_name": e3_health.get("model_name"),
             "model_version": e3_health.get("model_version"),
@@ -1151,8 +1504,9 @@ def seed_realistic_demo(
             "replayed_case_count": len(seeded) - created_cases,
             "uploaded_evidence_count": uploaded_evidence,
             "reused_evidence_count": len(seeded) - uploaded_evidence,
-            "created_analysis_count": created_analyses,
-            "replayed_analysis_count": len(seeded) - created_analyses,
+            "created_analysis_count": created_analysis_cases,
+            "replayed_analysis_count": len(seeded) - created_analysis_cases,
+            "created_analysis_run_count": created_analysis_runs,
         },
         "claim_boundary": {
             "allowed": [
@@ -1188,6 +1542,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--top100-source", type=Path, required=True)
     parser.add_argument("--normal-source", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--closed-set-registry", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument("--core-base-url", default="http://127.0.0.1:8000")
@@ -1216,6 +1571,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             defect_package=defect_package,
             normal_reference=normal_reference,
         )
+        closed_set_registry = None
+        closed_set_registry_path = arguments.closed_set_registry
+        if manifest.dataset_id in {DATASET_ID_V2, DATASET_ID_V3}:
+            closed_set_registry_path = closed_set_registry_path or (
+                DEFAULT_CLOSED_SET_REGISTRY_V2
+                if manifest.dataset_id == DATASET_ID_V3
+                else DEFAULT_CLOSED_SET_REGISTRY
+            )
+            closed_set_registry = load_poc_closed_set_registry(closed_set_registry_path)
+            validate_closed_set_sources(manifest, sources, closed_set_registry)
+        elif closed_set_registry_path is not None:
+            raise RealisticDemoSeedFailure(
+                "closed-set registry is supported only by ecommerce demos"
+            )
         e3_health = validate_e3_health(vision_base_url)
         engine = get_engine(settings)
         actor = resolve_actor(
@@ -1249,6 +1618,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             actor=actor,
             engine=engine,
             timeout_seconds=arguments.timeout_seconds,
+            closed_set_registry=closed_set_registry,
+            closed_set_registry_sha256=(
+                _manifest_sha256(closed_set_registry_path)
+                if closed_set_registry_path is not None
+                else None
+            ),
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
@@ -1280,6 +1655,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ScenarioVisionSmokeFailure,
         Top100ReplayFailure,
         NormalReferenceFailure,
+        PocClosedSetError,
         RealisticDemoSeedFailure,
     ) as error:
         print(f"Realistic demo seed failed: {error}", file=sys.stderr)

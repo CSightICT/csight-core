@@ -24,10 +24,11 @@ REALISTIC_DEMO_NORMAL_SOURCE ?=
 REALISTIC_DEMO_OUTPUT ?= local-data/realistic-internal-demo-v1/seed_report.json
 REALISTIC_DEMO_ACTOR_EMAIL ?= csight@csight.demo
 REALISTIC_DEMO_V2_MANIFEST ?= evaluation/realistic_internal_demo_v2/manifest.json
+REALISTIC_DEMO_V3_MANIFEST ?= evaluation/realistic_internal_demo_v3/manifest.json
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision demo-scenario-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e setup-vision-e3 start-vision-e3 stop-vision-e3 health-vision-e3 qualify-vision-e3 test-vision-e3 up-e3-scenario-poc smoke-e3-scenario-vision replay-e3-top100 seed-realistic-poc-demo seed-realistic-poc-demo-v2
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision demo-scenario-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e setup-vision-e3 start-vision-e3 stop-vision-e3 health-vision-e3 qualify-vision-e3 test-vision-e3 up-e3-scenario-poc smoke-e3-scenario-vision replay-e3-top100 seed-realistic-poc-demo seed-realistic-poc-demo-v2 seed-realistic-poc-demo-v3
 .PHONY: prepare-csight-policy-runtime
 
 help:
@@ -100,6 +101,7 @@ help:
 	@echo "  make replay-e3-top100 E3_TOP100_PACKAGE=...  Replay selected positives through E3/Core"
 	@echo "  make seed-realistic-poc-demo ...  Reproduce the preserved v1 customer-case demo"
 	@echo "  make seed-realistic-poc-demo-v2 ...  Seed the long-inquiry ecommerce demo"
+	@echo "  make seed-realistic-poc-demo-v3 ...  Add ten closed-set ecommerce demo cases"
 
 up:
 	$(COMPOSE_CMD) up --build --detach --wait
@@ -209,6 +211,16 @@ seed-realistic-poc-demo-v2:
 		--top100-source "$(REALISTIC_DEMO_TOP100_SOURCE)" \
 		--normal-source "$(REALISTIC_DEMO_NORMAL_SOURCE)" \
 		--manifest "$(REALISTIC_DEMO_V2_MANIFEST)" \
+		--actor-email "$(REALISTIC_DEMO_ACTOR_EMAIL)" \
+		--env-file "$(ENV_FILE)"
+
+seed-realistic-poc-demo-v3:
+	@test -n "$(REALISTIC_DEMO_TOP100_SOURCE)" || (echo "REALISTIC_DEMO_TOP100_SOURCE is required" >&2; exit 2)
+	@test -n "$(REALISTIC_DEMO_NORMAL_SOURCE)" || (echo "REALISTIC_DEMO_NORMAL_SOURCE is required" >&2; exit 2)
+	$(UV) run python scripts/seed_realistic_poc_demo.py \
+		--top100-source "$(REALISTIC_DEMO_TOP100_SOURCE)" \
+		--normal-source "$(REALISTIC_DEMO_NORMAL_SOURCE)" \
+		--manifest "$(REALISTIC_DEMO_V3_MANIFEST)" \
 		--actor-email "$(REALISTIC_DEMO_ACTOR_EMAIL)" \
 		--env-file "$(ENV_FILE)"
 

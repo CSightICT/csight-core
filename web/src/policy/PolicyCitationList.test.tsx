@@ -23,7 +23,7 @@ describe("PolicyCitationList", () => {
     expect(screen.getByText(citation.title)).toBeVisible();
     expect(screen.getByText(citation.text)).toBeVisible();
     expect(screen.getByText(`문서 버전 ${citation.document_version}`)).toBeVisible();
-    expect(screen.getByTestId("synthetic-policy-badge")).toHaveTextContent("가상 사내 정책 · PoC 전용");
+    expect(screen.getByTestId("synthetic-policy-badge")).toHaveTextContent("사내 정책 참고 자료");
     expect(screen.getByText(/그 자체로 승인·환불·교환 결정을 만들지 않습니다/)).toBeVisible();
   });
 });

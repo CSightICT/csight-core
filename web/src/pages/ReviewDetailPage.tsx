@@ -7,6 +7,10 @@ import { ApiError, api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { Card, DefinitionList, Loading, Notice, PageHeader, formatDate, friendlyError, shortId, textValue } from "../components/Ui";
 import { StatusBadge } from "../components/StatusBadge";
+import { readSyntheticCommerceContext } from "../commerce/syntheticCommerceContext";
+import { demoProductDisplayName } from "../demo/productScenarioCatalog";
+import { businessLabel, fieldLabel } from "../presentation/businessLabels";
+import { qualificationPresentation } from "../presentation/reviewPresentation";
 import { assessQuickReview, quickResolveInput, reviewBasisOptions, type BasisOption, type QuickReviewVerdict } from "../review/quickReview";
 
 const decisions = ["APPROVE_REFUND", "APPROVE_EXCHANGE", "APPROVE_RESHIPMENT", "APPROVE_REPAIR", "REJECT_REQUEST", "PROVIDE_INFORMATION", "NO_ACTION"];
@@ -21,6 +25,12 @@ export function ReviewDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [awaitingReportCaseId, setAwaitingReportCaseId] = useState<string | null>(null);
   const detail = useQuery({ queryKey: ["review", taskId], queryFn: () => api.getReviewTask(taskId), enabled: Boolean(taskId) });
+  const reviewCase = useQuery({
+    queryKey: ["case", detail.data?.task.case_id],
+    queryFn: () => api.getCase(detail.data!.task.case_id),
+    enabled: Boolean(detail.data?.task.case_id),
+    retry: false,
+  });
   const report = useQuery({
     queryKey: ["report", awaitingReportCaseId],
     queryFn: () => api.getReport(awaitingReportCaseId as string),
@@ -89,6 +99,10 @@ export function ReviewDetailPage() {
   if (detail.isLoading) return <div className="page"><Loading label="검토 패킷의 무결성을 확인하는 중" /></div>;
   if (detail.error || !detail.data) return <div className="page"><div className="error-panel" role="alert">{friendlyError(detail.error)}</div></div>;
   const { task, packet } = detail.data;
+  const commerce = readSyntheticCommerceContext(reviewCase.data?.attributes);
+  const productName = commerce?.order.productDisplayName
+    ?? (reviewCase.data ? demoProductDisplayName(reviewCase.data.product_ref) : undefined)
+    ?? "상품명 확인 중";
   const adminOnlyTask = ["SAFETY_REVIEW", "MANAGER_REVIEW", "POLICY_EXCEPTION_REVIEW"].includes(task.task_type);
   const adminOnlyBlocked = adminOnlyTask && !hasRole("ADMIN");
   const canClaim = !adminOnlyBlocked && (task.status === "PENDING" || (task.status === "ESCALATED" && hasRole("ADMIN")));
@@ -127,24 +141,26 @@ export function ReviewDetailPage() {
   }
 
   return <div className="page review-detail-page">
-    <PageHeader eyebrow={`Review · ${shortId(task.id)}`} title="최종 결정 검토" description={`Case ${shortId(task.case_id)} · 패킷 버전 ${task.version}`}
+    <PageHeader eyebrow={`최종 결정 검토 · ${shortId(task.id)}`} title={productName} description={`문의 번호 ${shortId(task.case_id)} · ${businessLabel(task.task_type)} · 검토 자료 버전 ${task.version}`}
       actions={<><Link className="button button-ghost" to="/reviews"><ArrowLeft size={18} />검토함</Link><StatusBadge status={task.status} /></>} />
     {actionError && <div className="inline-alert inline-alert-danger" role="alert">{actionError}</div>}
-    {adminOnlyBlocked && <Notice tone="danger" title="관리자 전용 검토"><span>Safety·Manager·Policy Exception 검토의 최종 결정은 ADMIN만 기록할 수 있습니다. 검토자는 근거를 확인하고 관리자에게 이관할 수 있습니다.</span></Notice>}
+    {adminOnlyBlocked && <Notice tone="danger" title="관리자 전용 검토"><span>안전·관리자·정책 예외 검토의 최종 결정은 관리자만 기록할 수 있습니다. 담당자는 근거를 확인한 뒤 관리자에게 이관할 수 있습니다.</span></Notice>}
     <div className="review-layout">
       <div className="review-body">
         <div className="tabs" role="tablist" aria-label="검토 자료">
           {(["summary", "rules", "citations", "history"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} className={tab === item ? "tab-active" : ""} onClick={() => setTab(item)}>{{ summary: "요약", rules: "정책 규칙", citations: "인용 근거", history: "기록" }[item]}</button>)}
         </div>
-        {tab === "summary" && <Card title="검토 패킷" actions={<span className="integrity-badge"><LockKeyhole size={14} />immutable snapshot</span>}>
+        {tab === "summary" && <Card title="검토 자료" actions={<span className="integrity-badge"><LockKeyhole size={14} />변경 방지 기록</span>}>
           <DefinitionList items={[
-            { label: "작업 유형", value: task.task_type }, { label: "우선순위", value: task.priority },
-            { label: "정책 평가", value: shortId(task.policy_evaluation_run_id) },
-            { label: "매핑 규칙", value: `${task.mapping_rule_name} · ${task.mapping_rule_version}` },
+            { label: "작업 유형", value: businessLabel(task.task_type) }, { label: "우선순위", value: businessLabel(task.priority) },
             { label: "생성", value: formatDate(task.created_at) },
           ]} />
           <PacketSummary packet={packet} />
-          {detail.data.grounded_explanation && <div className="explanation-box"><MessageSquareWarning size={19} /><div><strong>Grounded explanation</strong><p>{textValue(detail.data.grounded_explanation.explanation ?? detail.data.grounded_explanation.summary ?? detail.data.grounded_explanation)}</p></div></div>}
+          {detail.data.grounded_explanation && <div className="explanation-box"><MessageSquareWarning size={19} /><div><strong>정책 근거 확인 요약</strong><span>담당자 판단 참고</span><p>{textValue(detail.data.grounded_explanation.explanation ?? detail.data.grounded_explanation.summary ?? detail.data.grounded_explanation)}</p></div></div>}
+          <details className="review-technical-details"><summary>기술 정보 보기</summary><DefinitionList items={[
+            { label: "정책 평가 번호", value: shortId(task.policy_evaluation_run_id) },
+            { label: "검토 기준 버전", value: `${task.mapping_rule_name} · ${task.mapping_rule_version}` },
+          ]} /></details>
         </Card>}
         {tab === "rules" && <Card title="정책 규칙 결과" description="최종 결정은 이 스냅샷의 규칙 결과를 근거로 선택합니다."><RecordList items={detail.data.rule_results} icon={<Gavel size={17} />} empty="규칙 결과가 없습니다." /></Card>}
         {tab === "citations" && <Card title="Top-3 인용 근거" description="정책 문서 버전과 조항을 함께 확인하세요."><RecordList items={detail.data.citation_items} icon={<FileText size={17} />} empty="인용 근거가 없습니다." /></Card>}
@@ -152,9 +168,9 @@ export function ReviewDetailPage() {
       </div>
       <aside className="decision-panel">
         <Card title="검토 작업">
-          {task.status === "RESOLVED" ? <><Notice tone="success" title="결정이 고정되었습니다"><span>기존 결정은 변경하지 않습니다. 다른 결정이 발견되면 자동 대체하지 않고 수동 후속 조치로 전환됩니다.</span></Notice><DefinitionList items={Object.entries(detail.data.decision ?? {}).slice(0, 6).map(([label, value]) => ({ label, value: textValue(value) }))} /><Link className="button button-primary full-button" to={`/cases/${task.case_id}/report`}><FileCheck2 size={18} />최종 검토 문서 보기</Link><Link className="button button-ghost full-button" to={`/cases/${task.case_id}`}>처리 결과 확인</Link></> : <>
+          {task.status === "RESOLVED" ? <><Notice tone="success" title="결정이 고정되었습니다"><span>기존 결정은 변경하지 않습니다. 다른 결정이 발견되면 자동 대체하지 않고 수동 후속 조치로 전환됩니다.</span></Notice><DefinitionList items={Object.entries(detail.data.decision ?? {}).slice(0, 6).map(([label, value]) => ({ label: fieldLabel(label), value: Array.isArray(value) ? value.map(businessLabel).join(", ") : businessLabel(value) }))} /><Link className="button button-primary full-button" to={`/cases/${task.case_id}/report`}><FileCheck2 size={18} />최종 검토 문서 보기</Link><Link className="button button-ghost full-button" to={`/cases/${task.case_id}`}>처리 결과 확인</Link></> : <>
             {canQuickReview && quickReview && <QuickReviewPanel assessment={quickReview} pending={quickAction.isPending || Boolean(awaitingReportCaseId)} onVerdict={(verdict) => quickAction.mutate(verdict)} />}
-            {awaitingReportCaseId && <Notice tone="success" title="결정 기록 완료 · 문서 생성 중"><span>Resolution과 DRY-RUN 처리 결과를 반영한 검토 문서가 준비되면 자동으로 열립니다.</span></Notice>}
+            {awaitingReportCaseId && <Notice tone="success" title="결정 기록 완료 · 문서 생성 중"><span>최종 결정과 처리 사전 확인 결과를 반영한 검토 문서가 준비되면 자동으로 열립니다.</span></Notice>}
             {canClaim && !canQuickReview && <button className="button button-primary full-button" disabled={action.isPending} type="button" onClick={() => simpleAction("claim", {})}><UserCheck size={18} />내가 검토하기</button>}
             {task.status === "WAITING_FOR_EVIDENCE" && <button className="button button-primary full-button" disabled={action.isPending} type="button" onClick={() => simpleAction("resume", { rationale: "추가 자료가 제출되어 검토를 재개합니다." })}>검토 재개</button>}
             {canAct && !adminOnlyBlocked && <details className="manual-review-details"><summary>상세 결정 또는 자료 요청</summary><DecisionForms basisOptions={basisOptions} onEvidence={requestEvidence} onResolve={resolve} pending={action.isPending} /></details>}
@@ -175,7 +191,8 @@ export function ReviewDetailPage() {
 function PacketSummary({ packet }: { packet: Record<string, unknown> }) {
   const recommendation = packet.policy_summary_status ?? packet.recommendation ?? packet.policy_recommendation ?? packet.summary_status;
   const qualification = packet.qualification_snapshot ?? packet.input_qualification ?? packet.model_qualification;
-  return <div className="packet-highlight"><div><span>정책 권고</span><strong>{textValue(recommendation)}</strong></div><div><span>입력 qualification</span><strong>{textValue(qualification)}</strong></div></div>;
+  const qualificationItems = qualificationPresentation(qualification);
+  return <div className="packet-highlight"><div className="policy-recommendation"><span>정책 권고</span><strong>{businessLabel(recommendation)}</strong><small>정책은 참고 기준이며 최종 결정은 담당자가 기록합니다.</small></div><div><span>분석 확인 상태</span><ul className="qualification-list">{qualificationItems.map((item) => <li key={item.label}><span>{item.label}</span><strong className={`qualification-${item.tone}`}>{item.status}</strong></li>)}</ul></div></div>;
 }
 
 function QuickReviewPanel({ assessment, pending, onVerdict }: {
@@ -186,8 +203,8 @@ function QuickReviewPanel({ assessment, pending, onVerdict }: {
   const percent = Math.round(assessment.score * 100);
   const threshold = Math.round(assessment.threshold * 100);
   return <section className="quick-review-panel" aria-labelledby="quick-review-title" data-testid="quick-review-panel">
-    <div className="quick-review-head"><div><p className="eyebrow">PoC 빠른 검토</p><h3 id="quick-review-title">허용 여부만 선택하세요</h3></div><span className="readiness-score">준비도 {percent}%</span></div>
-    <p>정책 근거는 자동 첨부되고, 결정 기록부터 DRY-RUN 및 최종 검토 문서 생성까지 이어집니다.</p>
+    <div className="quick-review-head"><div><p className="eyebrow">빠른 검토</p><h3 id="quick-review-title">허용 여부만 선택하세요</h3></div><span className="readiness-score">준비도 {percent}%</span></div>
+    <p>정책 근거는 자동 첨부되고, 결정 기록부터 처리 사전 확인 및 최종 검토 문서 생성까지 이어집니다.</p>
     <div className="quick-review-meter"><span style={{ width: `${percent}%` }} /><i style={{ left: `${threshold}%` }} /></div>
     <small>빠른 검토 기준 {threshold}% · 모델 정확도가 아닌 정책·근거·입력 준비도입니다.</small>
     <div className="quick-verdict-actions">
@@ -214,8 +231,8 @@ function DecisionForms({ basisOptions, onEvidence, onResolve, pending }: {
   return <div className="decision-forms">
     <div className="segmented"><button type="button" className={mode === "resolve" ? "active" : ""} onClick={() => setMode("resolve")}>결정</button><button type="button" className={mode === "evidence" ? "active" : ""} onClick={() => setMode("evidence")}>자료 요청</button></div>
     {mode === "resolve" ? <form onSubmit={onResolve} data-testid="resolve-form">
-      <label>최종 결정<select name="decision" required>{decisions.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
-      <label>결정 사유<select name="reason" required>{reasons.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
+      <label>최종 결정<select name="decision" required>{decisions.map((item) => <option value={item} key={item}>{businessLabel(item)}</option>)}</select></label>
+      <label>결정 사유<select name="reason" required>{reasons.map((item) => <option value={item} key={item}>{businessLabel(item === "OTHER" ? "OTHER_REASON" : item)}</option>)}</select></label>
       <fieldset><legend>결정 근거 <span>정책 규칙 또는 인용 하나 이상</span></legend>{basisOptions.length ? basisOptions.map((option, index) => <label className="check-row" key={`${option.type}-${option.reference_id}`}><input type="checkbox" name="basis" value={index} /><span>{option.label}</span></label>) : <p className="field-help">선택 가능한 정책 근거가 없습니다. 패킷을 다시 확인하세요.</p>}</fieldset>
       <label>판단 근거 설명<textarea name="rationale" minLength={10} maxLength={2000} rows={5} required placeholder="정책 조항과 증거를 바탕으로 판단 이유를 10자 이상 기록하세요." /></label>
       <button className="button button-primary full-button" type="submit" disabled={pending || !basisOptions.some((option) => option.type === "POLICY_RULE_RESULT" || option.type === "POLICY_CITATION")}><CheckCircle2 size={18} />결정 확정</button>

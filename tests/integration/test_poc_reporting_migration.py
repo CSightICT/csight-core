@@ -24,7 +24,7 @@ pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[2]
 REVISION_0013 = "20260827_0013_case_resolution_external_action"
 REVISION_0014 = "20260827_0014_review_report_poc_metrics"
-REVISION_HEAD = "20260827_0015_vision_image_assessment"
+REVISION_HEAD = "20260828_0016_communication_learning_assets"
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,5 +180,16 @@ def test_review_report_migration_round_trip_and_drift(
     alembic_command.upgrade(config, REVISION_0014)
     alembic_command.upgrade(config, REVISION_HEAD)
     alembic_command.check(config)
+    schema = inspect(engine)
+    assert "customer_communication_simulations" in schema.get_table_names()
+    assert "case_learning_assets" in schema.get_table_names()
+    assert {
+        "ck_customer_communication_simulations_no_external_effects",
+        "uq_customer_communication_simulations_report_template",
+    } <= _constraints(engine, "customer_communication_simulations")
+    assert {
+        "ck_case_learning_assets_snapshots_object",
+        "uq_case_learning_assets_report_schema",
+    } <= _constraints(engine, "case_learning_assets")
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == REVISION_HEAD

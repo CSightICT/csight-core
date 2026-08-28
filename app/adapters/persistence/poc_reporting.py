@@ -14,9 +14,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.adapters.persistence.human_review import verify_human_decision_integrity
 from app.adapters.persistence.models import (
     AnalysisRunModel,
+    CaseLearningAssetModel,
     CaseModel,
     CaseResolutionEventModel,
     CaseResolutionModel,
+    CustomerCommunicationSimulationModel,
     ExternalActionIntentModel,
     ExternalActionSimulationResultModel,
     HumanReviewActionModel,
@@ -36,8 +38,20 @@ from app.platform.case_resolution import (
     action_intent_hash_payload,
     canonical_hash,
 )
+from app.platform.commerce_context import synthetic_commerce_snapshot
 from app.platform.human_review import ReviewPacketIntegrityError
-from app.platform.poc_reporting import MetricUnit, PocMetric, PocSummary, ReviewReport
+from app.platform.poc_reporting import (
+    DATA_ASSET_BASELINE_MINIMUM,
+    DATA_ASSET_DRIFT_MINIMUM,
+    CaseLearningAsset,
+    CustomerCommunicationNotAvailableError,
+    CustomerCommunicationSimulation,
+    DataAssetSummary,
+    MetricUnit,
+    PocMetric,
+    PocSummary,
+    ReviewReport,
+)
 
 _TERMINAL_RESOLUTION_STATUSES = frozenset(
     {
@@ -107,6 +121,104 @@ class SQLAlchemyPocReportingRepository:
             analysis_failure_rate=analysis_failure,
             analysis_partial_success_rate=analysis_partial,
         )
+
+    def create_customer_communication(
+        self, *, tenant_id: str, case_id: str, created_by: str
+    ) -> CustomerCommunicationSimulation:
+        tenant_uuid = _optional_uuid(tenant_id)
+        case_uuid = _optional_uuid(case_id)
+        actor_uuid = _optional_uuid(created_by)
+        if tenant_uuid is None or case_uuid is None or actor_uuid is None:
+            raise CustomerCommunicationNotAvailableError()
+        with self._factory.begin() as session:
+            report_row = session.scalar(
+                select(ReviewReportModel)
+                .where(
+                    ReviewReportModel.tenant_id == tenant_uuid,
+                    ReviewReportModel.case_id == case_uuid,
+                )
+                .order_by(
+                    ReviewReportModel.resolution_version.desc(),
+                    ReviewReportModel.generated_at.desc(),
+                    ReviewReportModel.id.desc(),
+                )
+                .limit(1)
+            )
+            if report_row is None:
+                raise CustomerCommunicationNotAvailableError()
+            existing = session.scalar(
+                select(CustomerCommunicationSimulationModel).where(
+                    CustomerCommunicationSimulationModel.tenant_id == tenant_uuid,
+                    CustomerCommunicationSimulationModel.review_report_id == report_row.id,
+                    CustomerCommunicationSimulationModel.channel == "EMAIL",
+                    CustomerCommunicationSimulationModel.template_name == "customer_outcome_email",
+                    CustomerCommunicationSimulationModel.template_version == "1.1.0",
+                )
+            )
+            if existing is not None:
+                return _to_customer_communication(existing)
+            communication = _build_customer_communication(
+                _to_review_report(report_row), created_by=created_by
+            )
+            model = CustomerCommunicationSimulationModel(
+                id=UUID(communication.communication_id),
+                tenant_id=tenant_uuid,
+                case_id=case_uuid,
+                review_report_id=report_row.id,
+                schema_version=communication.schema_version,
+                channel=communication.channel,
+                template_name=communication.template_name,
+                template_version=communication.template_version,
+                recipient_label=communication.recipient_label,
+                subject=communication.subject,
+                body=communication.body,
+                delivery_status=communication.delivery_status,
+                side_effects_performed=communication.side_effects_performed,
+                created_by=actor_uuid,
+                created_at=communication.created_at,
+                content_hash=communication.content_hash,
+            )
+            session.add(model)
+            session.flush()
+            return _to_customer_communication(model)
+
+    def list_customer_communications(
+        self, *, tenant_id: str, case_id: str
+    ) -> tuple[CustomerCommunicationSimulation, ...]:
+        tenant_uuid = _optional_uuid(tenant_id)
+        case_uuid = _optional_uuid(case_id)
+        if tenant_uuid is None or case_uuid is None:
+            return ()
+        with self._factory() as session:
+            rows = session.scalars(
+                select(CustomerCommunicationSimulationModel)
+                .where(
+                    CustomerCommunicationSimulationModel.tenant_id == tenant_uuid,
+                    CustomerCommunicationSimulationModel.case_id == case_uuid,
+                )
+                .order_by(
+                    CustomerCommunicationSimulationModel.created_at.desc(),
+                    CustomerCommunicationSimulationModel.id.desc(),
+                )
+            )
+            return tuple(_to_customer_communication(row) for row in rows)
+
+    def get_data_asset_summary(self, *, tenant_id: str) -> DataAssetSummary:
+        tenant_uuid = _optional_uuid(tenant_id)
+        if tenant_uuid is None:
+            return _data_asset_summary(())
+        with self._factory() as session:
+            rows = tuple(
+                session.scalars(
+                    select(CaseLearningAssetModel)
+                    .where(CaseLearningAssetModel.tenant_id == tenant_uuid)
+                    .order_by(
+                        CaseLearningAssetModel.created_at.desc(),
+                        CaseLearningAssetModel.id.desc(),
+                    )
+                )
+            )
+        return _data_asset_summary(tuple(_to_case_learning_asset(row) for row in rows))
 
 
 def create_review_report_for_terminal_transition(
@@ -295,6 +407,18 @@ def create_review_report_for_terminal_transition(
                 source_failure="SIMULATION_RESULT_INTEGRITY_FAILED",
             )
 
+    commerce_snapshot = synthetic_commerce_snapshot(case_row.attributes)
+    case_snapshot: dict[str, JsonValue] = {
+        "case_id": str(case_row.id),
+        "status": case_row.status,
+        "order_ref": case_row.order_ref,
+        "product_ref": case_row.product_ref,
+        "requested_action": case_row.requested_action,
+        "created_at": _iso(case_row.created_at),
+    }
+    if commerce_snapshot is not None:
+        case_snapshot["synthetic_commerce_context"] = cast(dict[str, JsonValue], commerce_snapshot)
+
     report = ReviewReport.create(
         report_id=str(uuid4()),
         tenant_id=str(resolution.tenant_id),
@@ -302,14 +426,7 @@ def create_review_report_for_terminal_transition(
         resolution_id=str(resolution.id),
         resolution_version=resolution.version,
         terminal_event_id=str(terminal_event.id),
-        case_snapshot={
-            "case_id": str(case_row.id),
-            "status": case_row.status,
-            "order_ref": case_row.order_ref,
-            "product_ref": case_row.product_ref,
-            "requested_action": case_row.requested_action,
-            "created_at": _iso(case_row.created_at),
-        },
+        case_snapshot=case_snapshot,
         analysis_snapshot={
             "analysis_run_id": str(analysis.id),
             "pipeline_name": analysis.pipeline_name,
@@ -373,7 +490,11 @@ def create_review_report_for_terminal_transition(
         dry_run_snapshot=_dry_run_snapshot(intent, result),
         qualification_snapshot=cast(dict[str, JsonValue], packet.qualification_snapshot),
         data_scope={
-            "case_data_scope": "NOT_ATTESTED",
+            "case_data_scope": (
+                "SYNTHETIC_DEMO_ONLY" if commerce_snapshot is not None else "NOT_ATTESTED"
+            ),
+            "commerce_context_included": commerce_snapshot is not None,
+            "direct_contact_values_included": False,
             "policy_source_type": rule_set.source_type,
             "qualification_source": "review_packet/1.0.0",
             "report_generation": "STRUCTURED_DATABASE_SNAPSHOT",
@@ -402,6 +523,84 @@ def _add_review_report(session: Session, report: ReviewReport) -> ReviewReportMo
         data_scope=report.data_scope,
         generated_at=report.generated_at,
         content_hash=report.content_hash,
+    )
+    session.add(model)
+    session.flush()
+    if report.data_scope.get("report_generation") != "DEGRADED_INTEGRITY_FAILURE_SNAPSHOT":
+        _add_case_learning_asset(session, report)
+    return model
+
+
+def _add_case_learning_asset(session: Session, report: ReviewReport) -> CaseLearningAssetModel:
+    commerce = _record(report.case_snapshot.get("synthetic_commerce_context"))
+    customer = _record(commerce.get("customer"))
+    customer_id = _string(customer.get("customer_id") or customer.get("customerId"))
+    subject_pseudonym = (
+        canonical_hash({"tenant_id": report.tenant_id, "customer_id": customer_id})
+        if customer_id
+        else None
+    )
+    intent = _record(report.dry_run_snapshot.get("intent"))
+    result = _record(report.dry_run_snapshot.get("result"))
+    qualification = _record(report.qualification_snapshot)
+    vision = _record(
+        qualification.get("vision")
+        or qualification.get("vision_model")
+        or qualification.get("model")
+    )
+    asset = CaseLearningAsset.create(
+        asset_id=str(uuid4()),
+        tenant_id=report.tenant_id,
+        case_id=report.case_id,
+        review_report_id=report.report_id,
+        subject_pseudonym=subject_pseudonym,
+        feature_snapshot={
+            "product_ref": report.case_snapshot.get("product_ref"),
+            "requested_action": report.case_snapshot.get("requested_action"),
+            "analysis_status": report.analysis_snapshot.get("status"),
+            "policy_summary_status": report.policy_snapshot.get("summary_status"),
+        },
+        label_snapshot={
+            "human_decision": report.review_snapshot.get("decision_type"),
+            "resolution_status": report.resolution_snapshot.get("status"),
+            "action_type": intent.get("action_type"),
+            "simulation_outcome": result.get("outcome"),
+        },
+        version_snapshot={
+            "analysis_pipeline": report.analysis_snapshot.get("pipeline_name"),
+            "analysis_pipeline_version": report.analysis_snapshot.get("pipeline_version"),
+            "policy_rule_set_version": report.policy_snapshot.get("rule_set_version"),
+            "policy_rule_set_hash": report.policy_snapshot.get("rule_set_hash"),
+            "vision_model": vision.get("model_name") or vision.get("name"),
+            "vision_model_version": vision.get("model_version") or vision.get("version"),
+            "decision_schema_version": report.review_snapshot.get("decision_schema_version"),
+            "resolution_mapping_version": report.resolution_snapshot.get("mapping_version"),
+            "report_schema_version": report.schema_version,
+        },
+        privacy_scope={
+            "tenant_scoped": True,
+            "append_only": True,
+            "raw_customer_message_included": False,
+            "direct_contact_values_included": False,
+            "postal_address_included": False,
+            "human_rationale_included": False,
+            "source_report_hash": report.content_hash,
+        },
+        created_at=report.generated_at,
+    )
+    model = CaseLearningAssetModel(
+        id=UUID(asset.asset_id),
+        tenant_id=UUID(asset.tenant_id),
+        case_id=UUID(asset.case_id),
+        review_report_id=UUID(asset.review_report_id),
+        schema_version=asset.schema_version,
+        subject_pseudonym=asset.subject_pseudonym,
+        feature_snapshot=asset.feature_snapshot,
+        label_snapshot=asset.label_snapshot,
+        version_snapshot=asset.version_snapshot,
+        privacy_scope=asset.privacy_scope,
+        created_at=asset.created_at,
+        content_hash=asset.content_hash,
     )
     session.add(model)
     session.flush()
@@ -747,6 +946,180 @@ def _to_review_report(row: ReviewReportModel) -> ReviewReport:
             "content_hash": row.content_hash,
         }
     )
+
+
+def _build_customer_communication(
+    report: ReviewReport, *, created_by: str
+) -> CustomerCommunicationSimulation:
+    commerce = _record(report.case_snapshot.get("synthetic_commerce_context"))
+    customer = _record(commerce.get("customer"))
+    order = _record(commerce.get("order"))
+    intent = _record(report.dry_run_snapshot.get("intent"))
+    decision = _string(report.review_snapshot.get("decision_type"))
+    status = _string(report.resolution_snapshot.get("status"))
+    customer_name = _string(customer.get("display_name"))
+    phone = _string(customer.get("phone_masked"))
+    recipient_label = f"{customer_name} 고객님" if customer_name else "고객님"
+    if phone:
+        recipient_label = f"{recipient_label} · {phone}"
+    product_name = _string(order.get("product_display_name")) or _string(
+        report.case_snapshot.get("product_ref")
+    )
+    order_ref = _string(report.case_snapshot.get("order_ref")) or "주문번호 미기록"
+    amount = _string(intent.get("amount"))
+    currency = _string(intent.get("currency"))
+    amount_label = _money_label(amount, currency)
+    if decision == "APPROVE_REFUND" and status == "ACTION_DRY_RUN_VALIDATED":
+        outcome_line = f"담당자 검토 결과 {amount_label} 환불 승인으로 처리되었습니다."
+        next_line = "실제 서비스에서는 원결제수단 환급 절차와 고객 통지가 이어집니다."
+        subject = f"[CSight] {order_ref} 환불 승인 안내"
+    elif decision == "APPROVE_REFUND" and status == "ACTION_NEEDS_INPUT":
+        outcome_line = "담당자가 환불 요청을 승인했지만 안전한 처리를 위한 정보 확인이 필요합니다."
+        next_line = "필수 정보가 확인되기 전에는 환불 요청이나 결제 취소가 생성되지 않습니다."
+        subject = f"[CSight] {order_ref} 환불 처리 정보 확인 안내"
+    elif decision == "APPROVE_REFUND" and status == "ACTION_DRY_RUN_FAILED":
+        outcome_line = "환불 요청은 승인되었으나 외부 요청 사전 확인을 완료하지 못했습니다."
+        next_line = "담당자가 처리 정보를 다시 확인한 후 후속 안내를 드립니다."
+        subject = f"[CSight] {order_ref} 환불 처리 확인 안내"
+    elif decision == "REJECT_REQUEST":
+        outcome_line = "담당자 검토 결과 요청을 승인하기 어려운 것으로 처리되었습니다."
+        next_line = "상세 사유와 추가 문의 방법은 상담 내역에서 확인해 주세요."
+        subject = f"[CSight] {order_ref} 문의 처리 결과 안내"
+    else:
+        outcome_line = "담당자 검토 결과가 확정되어 처리 내용을 안내드립니다."
+        next_line = "상세 처리 내용은 상담 내역에서 확인해 주세요."
+        subject = f"[CSight] {order_ref} 문의 처리 결과 안내"
+    body = "\n".join(
+        (
+            f"{customer_name + ' 고객님' if customer_name else '고객님'}, 안녕하세요.",
+            "",
+            f"주문 {order_ref}의 {product_name or '상품'} 관련 문의가 처리되었습니다.",
+            outcome_line,
+            next_line,
+            "",
+            "이 안내 메일은 외부 메일 시스템에 전송되지 않은 내부 확인본입니다.",
+            "실제 메일 전송, 결제 취소 또는 환급은 수행되지 않았습니다.",
+            "",
+            "CSight 고객지원팀",
+        )
+    )
+    return CustomerCommunicationSimulation.create(
+        communication_id=str(uuid4()),
+        tenant_id=report.tenant_id,
+        case_id=report.case_id,
+        review_report_id=report.report_id,
+        recipient_label=recipient_label,
+        subject=subject,
+        body=body,
+        created_by=created_by,
+        created_at=datetime.now(UTC),
+    )
+
+
+def _to_customer_communication(
+    row: CustomerCommunicationSimulationModel,
+) -> CustomerCommunicationSimulation:
+    return CustomerCommunicationSimulation.model_validate(
+        {
+            "schema_version": row.schema_version,
+            "communication_id": str(row.id),
+            "tenant_id": str(row.tenant_id),
+            "case_id": str(row.case_id),
+            "review_report_id": str(row.review_report_id),
+            "channel": row.channel,
+            "template_name": row.template_name,
+            "template_version": row.template_version,
+            "recipient_label": row.recipient_label,
+            "subject": row.subject,
+            "body": row.body,
+            "delivery_status": row.delivery_status,
+            "side_effects_performed": row.side_effects_performed,
+            "created_by": str(row.created_by),
+            "created_at": row.created_at,
+            "content_hash": row.content_hash,
+        }
+    )
+
+
+def _to_case_learning_asset(row: CaseLearningAssetModel) -> CaseLearningAsset:
+    return CaseLearningAsset.model_validate(
+        {
+            "schema_version": row.schema_version,
+            "asset_id": str(row.id),
+            "tenant_id": str(row.tenant_id),
+            "case_id": str(row.case_id),
+            "review_report_id": str(row.review_report_id),
+            "subject_pseudonym": row.subject_pseudonym,
+            "feature_snapshot": row.feature_snapshot,
+            "label_snapshot": row.label_snapshot,
+            "version_snapshot": row.version_snapshot,
+            "privacy_scope": row.privacy_scope,
+            "created_at": row.created_at,
+            "content_hash": row.content_hash,
+        }
+    )
+
+
+def _data_asset_summary(records: tuple[CaseLearningAsset, ...]) -> DataAssetSummary:
+    total = len(records)
+    if total < DATA_ASSET_BASELINE_MINIMUM:
+        readiness = "COLLECTING_BASELINE"
+    elif total < DATA_ASSET_DRIFT_MINIMUM:
+        readiness = "COLLECTING_COMPARISON"
+    else:
+        readiness = "READY_FOR_DRIFT_REVIEW"
+
+    def distribution(section: str, key: str) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for record in records:
+            source = getattr(record, section)
+            value = _string(source.get(key)) or "미기록"
+            counts[value] = counts.get(value, 0) + 1
+        return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+    model_distribution: dict[str, int] = {}
+    for record in records:
+        model = _string(record.version_snapshot.get("vision_model")) or "미기록"
+        version = _string(record.version_snapshot.get("vision_model_version"))
+        label = f"{model} · {version}" if version else model
+        model_distribution[label] = model_distribution.get(label, 0) + 1
+    return DataAssetSummary(
+        generated_at=datetime.now(UTC),
+        total_records=total,
+        readiness_status=readiness,
+        drift_evaluation_available=total >= DATA_ASSET_DRIFT_MINIMUM,
+        decision_distribution=distribution("label_snapshot", "human_decision"),
+        resolution_distribution=distribution("label_snapshot", "resolution_status"),
+        product_distribution=distribution("feature_snapshot", "product_ref"),
+        model_version_distribution=dict(
+            sorted(model_distribution.items(), key=lambda item: (-item[1], item[0]))
+        ),
+        policy_version_distribution=distribution("version_snapshot", "policy_rule_set_version"),
+        recent_records=records[:20],
+    )
+
+
+def _record(value: object) -> dict[str, object]:
+    return value if isinstance(value, dict) else {}
+
+
+def _string(value: object) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return str(value)
+    return ""
+
+
+def _money_label(amount: str, currency: str) -> str:
+    if not amount or not currency:
+        return "금액 확인 후"
+    try:
+        if currency == "KRW":
+            return f"{int(Decimal(amount)):,}원"
+    except (ValueError, ArithmeticError):
+        pass
+    return f"{amount} {currency}"
 
 
 def _empty_summary() -> PocSummary:

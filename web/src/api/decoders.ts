@@ -5,7 +5,9 @@ import type {
   AnalysisRun,
   CaseDetail,
   CasePage,
+  CustomerCommunicationSimulation,
   CurrentUser,
+  DataAssetSummary,
   EvidenceAccessUrl,
   ExternalActionIntent,
   ExternalActionIntentDetail,
@@ -225,3 +227,31 @@ export const decodePocSummary = (value: unknown): PocSummary => z.object({
   action_input_missing_rate: metricSchema, dry_run_success_rate: metricSchema,
   analysis_failure_rate: metricSchema, analysis_partial_success_rate: metricSchema,
 }).parse(value) as PocSummary;
+
+const customerCommunicationSchema = z.object({
+  schema_version: z.string(), communication_id: z.string(), case_id: z.string(), review_report_id: z.string(),
+  channel: z.string(), template_name: z.string(), template_version: z.string(), recipient_label: z.string(),
+  subject: z.string(), body: z.string(), delivery_status: z.string(), side_effects_performed: z.boolean(),
+  created_at: z.string(), content_hash: z.string(),
+});
+export const decodeCustomerCommunication = (value: unknown): CustomerCommunicationSimulation =>
+  customerCommunicationSchema.parse(value) as CustomerCommunicationSimulation;
+export const decodeCustomerCommunications = (value: unknown): CustomerCommunicationSimulation[] =>
+  z.array(customerCommunicationSchema).parse(value) as CustomerCommunicationSimulation[];
+
+const learningAssetSchema = z.object({
+  schema_version: z.string(), asset_id: z.string(), case_id: z.string(), review_report_id: z.string(),
+  feature_snapshot: record, label_snapshot: record, version_snapshot: record, privacy_scope: record,
+  created_at: z.string(), content_hash: z.string(),
+});
+export const decodeDataAssetSummary = (value: unknown): DataAssetSummary => z.object({
+  schema_version: z.string(), generated_at: z.string(), total_records: z.number().int().nonnegative(),
+  baseline_minimum: z.number().int().positive(), drift_review_minimum: z.number().int().positive(),
+  readiness_status: z.string(), drift_evaluation_available: z.boolean(),
+  decision_distribution: z.record(z.string(), z.number().int().nonnegative()),
+  resolution_distribution: z.record(z.string(), z.number().int().nonnegative()),
+  product_distribution: z.record(z.string(), z.number().int().nonnegative()),
+  model_version_distribution: z.record(z.string(), z.number().int().nonnegative()),
+  policy_version_distribution: z.record(z.string(), z.number().int().nonnegative()),
+  recent_records: z.array(learningAssetSchema),
+}).parse(value) as DataAssetSummary;

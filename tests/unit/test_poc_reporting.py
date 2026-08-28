@@ -11,10 +11,19 @@ from sqlalchemy import CheckConstraint, ForeignKeyConstraint, Table, UniqueConst
 
 from app.adapters.persistence.models import (
     PERSISTENCE_MODELS,
+    CaseLearningAssetModel,
     CaseResolutionEventModel,
+    CustomerCommunicationSimulationModel,
     ReviewReportModel,
 )
-from app.platform.poc_reporting import MetricUnit, PocMetric, ReviewReport
+from app.platform.poc_reporting import (
+    CaseLearningAsset,
+    CustomerCommunicationSimulation,
+    MetricUnit,
+    PocMetric,
+    ReviewReport,
+    canonical_json_hash,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -118,3 +127,68 @@ def test_review_report_mapping_matches_typed_event_identity_and_immutability_gua
         event_constraints["uq_case_resolution_events_tenant_case_resolution_id"],
         UniqueConstraint,
     )
+
+
+def test_customer_communication_is_hashed_and_can_never_claim_delivery() -> None:
+    simulation = CustomerCommunicationSimulation.create(
+        communication_id="communication-1",
+        tenant_id="tenant-1",
+        case_id="case-1",
+        review_report_id="report-1",
+        recipient_label="김하늘 고객님 · 010-****-4821",
+        subject="환불 승인 안내",
+        body="실제 발송하지 않는 시뮬레이션입니다.",
+        created_by="reviewer-1",
+        created_at=datetime(2026, 8, 28, tzinfo=UTC),
+    )
+    assert simulation.delivery_status == "SIMULATED_NOT_SENT"
+    assert simulation.side_effects_performed is False
+    assert len(simulation.content_hash) == 64
+
+    legacy = simulation.model_dump(mode="json", exclude={"content_hash"})
+    legacy["template_version"] = "1.0.0"
+    assert (
+        CustomerCommunicationSimulation.model_validate(
+            {**legacy, "content_hash": canonical_json_hash(legacy)}
+        ).template_version
+        == "1.0.0"
+    )
+
+
+def test_case_learning_asset_excludes_pii_by_contract() -> None:
+    asset = CaseLearningAsset.create(
+        asset_id="asset-1",
+        tenant_id="tenant-1",
+        case_id="case-1",
+        review_report_id="report-1",
+        subject_pseudonym="a" * 64,
+        feature_snapshot={"product_ref": "SKU-1"},
+        label_snapshot={"human_decision": "APPROVE_REFUND"},
+        version_snapshot={"policy_rule_set_version": "1.0.0"},
+        privacy_scope={
+            "raw_customer_message_included": False,
+            "direct_contact_values_included": False,
+        },
+        created_at=datetime(2026, 8, 28, tzinfo=UTC),
+    )
+    encoded = asset.model_dump_json()
+    assert "phone" not in encoded
+    assert "address" not in encoded
+
+
+def test_communication_and_learning_mappings_enforce_immutable_safety_boundaries() -> None:
+    assert CustomerCommunicationSimulationModel in PERSISTENCE_MODELS
+    assert CaseLearningAssetModel in PERSISTENCE_MODELS
+    communication_constraints = {
+        str(item.name): item
+        for item in cast(Table, CustomerCommunicationSimulationModel.__table__).constraints
+    }
+    asset_constraints = {
+        str(item.name): item for item in cast(Table, CaseLearningAssetModel.__table__).constraints
+    }
+    no_effects = communication_constraints[
+        "ck_customer_communication_simulations_no_external_effects"
+    ]
+    assert isinstance(no_effects, CheckConstraint)
+    assert "side_effects_performed = false" in str(no_effects.sqltext)  # pyright: ignore[reportAttributeAccessIssue]
+    assert isinstance(asset_constraints["uq_case_learning_assets_report_schema"], UniqueConstraint)

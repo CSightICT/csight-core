@@ -10,6 +10,8 @@ from app.interface.http.dependencies import (
     provide_poc_reporting_services,
 )
 from app.interface.http.poc_reporting_schemas import (
+    CustomerCommunicationResponse,
+    DataAssetSummaryResponse,
     PocSummaryResponse,
     ReviewReportResponse,
 )
@@ -57,6 +59,62 @@ def get_poc_summary(
     summary = services.get_poc_summary.execute(principal=principal)
     _no_store(response)
     return PocSummaryResponse.from_summary(summary)
+
+
+@router.post(
+    "/api/v1/cases/{case_id}/communication-simulations",
+    response_model=CustomerCommunicationResponse,
+)
+def create_customer_communication_simulation(
+    case_id: UUID,
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[
+        PocReportingServiceContainer,
+        Depends(provide_poc_reporting_services),
+    ],
+) -> CustomerCommunicationResponse:
+    simulation = services.create_customer_communication.execute(
+        principal=principal,
+        case_id=str(case_id),
+    )
+    _no_store(response)
+    return CustomerCommunicationResponse.from_simulation(simulation)
+
+
+@router.get(
+    "/api/v1/cases/{case_id}/communication-simulations",
+    response_model=list[CustomerCommunicationResponse],
+)
+def list_customer_communication_simulations(
+    case_id: UUID,
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[
+        PocReportingServiceContainer,
+        Depends(provide_poc_reporting_services),
+    ],
+) -> list[CustomerCommunicationResponse]:
+    simulations = services.list_customer_communications.execute(
+        principal=principal,
+        case_id=str(case_id),
+    )
+    _no_store(response)
+    return [CustomerCommunicationResponse.from_simulation(item) for item in simulations]
+
+
+@router.get("/api/v1/data-assets/summary", response_model=DataAssetSummaryResponse)
+def get_data_asset_summary(
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[
+        PocReportingServiceContainer,
+        Depends(provide_poc_reporting_services),
+    ],
+) -> DataAssetSummaryResponse:
+    summary = services.get_data_asset_summary.execute(principal=principal)
+    _no_store(response)
+    return DataAssetSummaryResponse.from_summary(summary)
 
 
 __all__ = ["router"]

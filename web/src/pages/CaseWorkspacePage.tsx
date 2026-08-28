@@ -9,12 +9,16 @@ import { Link, useParams } from "react-router-dom";
 import { findLatestCaseAnalysisRuns, findLatestPolicyRunSet } from "../analysis/runRecovery";
 import { ApiError, api } from "../api/client";
 import { EvidencePreview } from "../evidence/EvidencePreview";
+import { demoProductDisplayName, demoProductScenario, formatSyntheticPriceBand } from "../demo/productScenarioCatalog";
+import { businessLabel, operationalReference } from "../presentation/businessLabels";
+import { demoPocClosedSet } from "../demo/pocClosedSetCatalog";
 import { PolicyCitationList } from "../policy/PolicyCitationList";
 import { DemoProvenance, readDemoImageObservation, readDemoProvenance } from "../provenance/DemoProvenance";
 import type { WorkflowProgress } from "../workflow/runPolicyWorkflow";
 import { runPolicyWorkflow } from "../workflow/runPolicyWorkflow";
 import { Card, DefinitionList, EmptyState, Loading, Notice, PageHeader, StepRow, formatDate, friendlyError, shortId, textValue } from "../components/Ui";
 import { StatusBadge } from "../components/StatusBadge";
+import { formatCommerceMoney, readSyntheticCommerceContext } from "../commerce/syntheticCommerceContext";
 import { resetFailedTextCheckpoint, resetFailedVisionCheckpoint } from "../recovery/failedRunReset";
 import { checkpointStore, newOpaqueKey } from "../recovery/workflowCheckpoint";
 import { describeVisionQualification, formatVisionProbability, readBinaryVisionAssessments } from "../vision/imageAssessment";
@@ -304,7 +308,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
     event.target.value = "";
   }
 
-  if (caseQuery.isLoading) return <div className="page"><Loading label="케이스 작업 공간을 준비하는 중" /></div>;
+  if (caseQuery.isLoading) return <div className="page"><Loading label="문의 작업 공간을 준비하는 중" /></div>;
   if (caseQuery.error || !caseQuery.data) return <div className="page"><div className="error-panel" role="alert">{friendlyError(caseQuery.error)}</div></div>;
   const item = caseQuery.data;
   const review = policyEvaluationRunId
@@ -338,8 +342,11 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
   const guidanceLabel = policyGuidanceLabel(policyQuery.data?.run.summary_status, Boolean(review));
   const demoProvenance = readDemoProvenance(item.attributes);
   const isFictionalInquiryV2 = demoProvenance?.status === "VALID"
-    && demoProvenance.schemaVersion === "2.0";
+    && (demoProvenance.schemaVersion === "2.0" || demoProvenance.schemaVersion === "3.0");
   const demoImageObservation = readDemoImageObservation(item.attributes);
+  const demoProduct = demoProductScenario(item.product_ref);
+  const pocClosedSet = demoPocClosedSet(item.product_ref);
+  const commerceContext = readSyntheticCommerceContext(item.attributes);
   const workflowDisabled = running || textRetrying || textRunFailed || textRecoveryPending
     || textRecoveryBlocked || policyRecoveryPending || policyRecoveryBlocked;
   const workflowLabel = running
@@ -373,7 +380,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
   const focusDescription = reviewNeedsAction
     ? "AI와 정책 결과는 참고 자료입니다. 고객에게 적용할 최종 결정은 담당자가 직접 확인하고 기록합니다."
     : resolutionReady
-      ? "사람이 기록한 결정과 모의 실행 결과를 확인할 수 있습니다. 실제 환불·교환 처리는 실행되지 않습니다."
+      ? "담당자가 기록한 결정과 처리 사전 확인 결과를 확인할 수 있습니다. 실제 환불·교환 처리는 실행되지 않습니다."
       : textRunFailed
         ? "완료된 이미지 결과는 유지하고 실패한 문의 분석 단계만 새로 실행합니다."
         : policyEvaluationRunId
@@ -385,7 +392,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
               : "문의 내용과 첨부 사진을 확인한 뒤 정책 근거와 담당자 검토 작업을 준비합니다.";
 
   return <div className="page workspace-page">
-    <PageHeader eyebrow={`Case · ${shortId(caseId)}`} title={item.order_ref} description={`${item.product_ref} · ${formatDate(item.created_at)} 접수`}
+    <PageHeader eyebrow={`문의 번호 · ${shortId(caseId)}`} title={commerceContext?.order.productDisplayName ?? demoProductDisplayName(item.product_ref) ?? `${operationalReference(item.product_ref)} 상품`} description={`주문 번호 ${item.order_ref} · 상품 번호 ${operationalReference(commerceContext?.order.sku ?? demoProduct?.syntheticSku ?? item.product_ref)} · ${formatDate(item.created_at)} 접수`}
       actions={<><Link className="button button-ghost" to="/cases"><ArrowLeft size={18} />목록</Link><StatusBadge status={item.status} /></>} />
 
     {recoveryBlocked && <div className="inline-alert inline-alert-danger run-recovery-alert" role="alert">
@@ -403,7 +410,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
         <p className="eyebrow">지금 할 일</p>
         <h2 id="operator-focus-title">{focusTitle}</h2>
         <p>{focusDescription}</p>
-        <div className="operator-progress" aria-label="케이스 처리 단계">
+        <div className="operator-progress" aria-label="문의 처리 단계">
           <span className="operator-progress-done">문의 접수</span>
           <span className={item.evidence.length > 0 ? "operator-progress-done" : ""}>사진 확인</span>
           <span className={policyEvaluationRunId ? "operator-progress-done" : activePolicyRunStatus ? "operator-progress-active" : ""}>정책 검토</span>
@@ -431,14 +438,55 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
           <span className="review-step-number" aria-hidden="true">1</span>
           <div><h2 id="inquiry-column-title">문의 내용</h2><p>고객이 접수한 요청과 주문 정보</p></div>
           <div className="inquiry-header-badges">
-            {isFictionalInquiryV2 && <span className="fictional-inquiry-badge" data-testid="fictional-inquiry-badge">가상 문의 · PoC</span>}
-            <span className="request-pill">{item.requested_action}</span>
+            {isFictionalInquiryV2 && <span className="fictional-inquiry-badge" data-testid="fictional-inquiry-badge">온라인 접수</span>}
+            <span className="request-pill">{businessLabel(item.requested_action)}</span>
           </div>
         </header>
         <p className="customer-message">{item.customer_message}</p>
+        {commerceContext && <aside className="commerce-context-card" data-testid="commerce-context-card">
+          <div className="commerce-context-heading">
+            <div><span className="fictional-product-badge">고객 정보</span><h3>{commerceContext.customer.displayName}</h3><p>{commerceContext.customer.customerId} · {commerceContext.customer.membershipTier}</p></div>
+            <strong>{formatCommerceMoney(commerceContext.order.paidAmount, commerceContext.order.currency)}</strong>
+          </div>
+          <div className="commerce-context-groups">
+            <DefinitionList items={[
+              { label: "연락처", value: commerceContext.customer.phoneMasked },
+              { label: "구매 채널", value: commerceContext.order.salesChannel },
+              { label: "판매자", value: commerceContext.order.sellerName },
+              { label: "결제 수단", value: commerceContext.order.paymentMethodMasked },
+            ]} />
+            <DefinitionList items={[
+              { label: "수령인", value: commerceContext.delivery.recipient },
+              { label: "배송지", value: `[${commerceContext.delivery.postalCode}] ${commerceContext.delivery.addressLine1} ${commerceContext.delivery.addressLine2}` },
+              { label: "배송사 / 운송장", value: `${commerceContext.delivery.carrier} · ${commerceContext.delivery.trackingNumberMasked}` },
+              { label: "배송 완료", value: formatDate(commerceContext.delivery.deliveredAt) },
+            ]} />
+          </div>
+          <small>화면 표시용 고객 정보이며 실제 고객 정보가 아닙니다.</small>
+        </aside>}
+        {demoProduct && <aside className="fictional-product-card" data-testid="fictional-product-card">
+          <div className="fictional-product-heading">
+            <div>
+              <span className="fictional-product-badge">상품 정보</span>
+              <h3>{demoProduct.displayName}</h3>
+              <p>{demoProduct.productFamily}</p>
+            </div>
+            <strong>{formatSyntheticPriceBand(demoProduct)}</strong>
+          </div>
+          <DefinitionList items={[
+            { label: "SKU", value: operationalReference(demoProduct.syntheticSku) },
+            ...(pocClosedSet ? [
+              { label: "상품군", value: pocClosedSet.productClassLabel },
+              { label: "결함 시나리오", value: pocClosedSet.defectGroupLabels.length > 0 ? pocClosedSet.defectGroupLabels.join(" · ") : "지정 없음 · 저점수 참고" },
+              { label: "데이터 사용 기준", value: `${pocClosedSet.admissionLabel} · ${pocClosedSet.admissionDescription}` },
+            ] : []),
+            { label: "문의 목적", value: demoProduct.inquiryPurpose },
+            { label: "가격 기준", value: "화면 표시용 가격대 · 실제 판매가/환불 금액 아님" },
+          ]} />
+        </aside>}
         <DefinitionList items={[
           { label: "주문 번호", value: item.order_ref },
-          { label: "상품 / SKU", value: item.product_ref },
+          { label: "상품 / SKU", value: operationalReference(commerceContext?.order.sku ?? demoProduct?.syntheticSku ?? item.product_ref) },
           { label: "접수 시각", value: formatDate(item.created_at) },
           { label: "첨부 이미지", value: `${item.evidence.length}장` },
         ]} />
@@ -507,7 +555,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
         <div className="policy-guidance-card" data-testid="policy-guidance">
           <span>현재 권고</span>
           {(groundingQuery.data?.citation_pack.citations.length ?? 0) === 0
-            && <span className="synthetic-policy-badge">가상 사내 정책 · PoC 전용</span>}
+            && <span className="synthetic-policy-badge">사내 정책 참고 자료</span>}
           <strong>{guidanceLabel}</strong>
           <p>정책 결과는 참고 권고입니다. 승인·반품·교환·환불은 담당자가 확인한 뒤 결정합니다.</p>
           {policyQuery.data?.run.summary_status && <StatusBadge status={policyQuery.data.run.summary_status} subtle />}
@@ -552,7 +600,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
         </div>
       </details>
       <details className="workspace-support-details resolution-details" id="resolution-details">
-        <summary><span><ShieldCheck size={18} />결정 이후 · Resolution 및 DRY-RUN</span><small>사람 결정 전에는 실행되지 않음</small></summary>
+        <summary><span><ShieldCheck size={18} />결정 이후 · 처리 결과 확인</span><small>사람 결정 전에는 실행되지 않음</small></summary>
         <div className="workspace-support-content">
           <ResolutionPanel caseId={caseId} resolutionQuery={resolutionQuery} eventsQuery={eventsQuery} intentsQuery={intentsQuery} intentDetailQuery={intentDetailQuery} />
         </div>
@@ -631,7 +679,7 @@ function VisionResult({ detail }: { detail: Awaited<ReturnType<typeof api.getAna
       <details className="supporting-details vision-run-details"><summary>모델 및 검증 범위</summary>
         <span className={`vision-identity-badge ${assessment.isExactE3Identity ? "vision-identity-exact" : ""}`}>{assessment.isExactE3Identity ? "E3 Runtime identity 일치" : "일반 Binary Vision 계약"}</span>
         <p className="muted-copy">{assessment.qualification === "SYNTHETIC_MOCK"
-          ? "현재 결과는 이진 계약을 검증하는 합성 Mock 실행이며 실제 E3 checkpoint 추론이 아닙니다."
+          ? "현재 결과는 연결 확인용 참고 분석이며 실제 운영 모델 결과가 아닙니다."
           : assessment.qualification === "REMOTE_UNQUALIFIED"
             ? assessment.isExactE3Identity
               ? "고정된 E3 Runtime identity와 일치하지만 제품 적격성은 별도 external gate 증거로 확인해야 합니다."
@@ -671,20 +719,20 @@ function ResolutionPanel({ caseId, resolutionQuery, eventsQuery, intentsQuery, i
   const attempts = intentDetailQuery.data?.attempts.length ?? 0;
   const results = intentDetailQuery.data?.results.length ?? 0;
   const sideEffects = intentDetailQuery.data?.results.some((result) => result.side_effects_performed === true) ?? false;
-  return <Card title="Resolution · DRY-RUN" description="사람의 결정과 외부 조치 시뮬레이션은 Case 상태와 별도로 기록됩니다." className="spaced-card"
-    actions={<button className="icon-button" type="button" aria-label="Resolution 새로고침" onClick={() => { resolutionQuery.refetch(); eventsQuery.refetch(); intentsQuery.refetch(); intentDetailQuery.refetch(); }}><RefreshCw size={18} /></button>}>
-    {resolutionQuery.isLoading ? <Loading label="Resolution을 확인하는 중" /> : unavailable ? <EmptyState title="아직 Resolution이 없습니다"><span>검토자가 최종 결정을 기록하면 안전한 Resolution 흐름이 시작됩니다.</span></EmptyState> : resolutionQuery.error ? <div className="inline-alert inline-alert-danger" role="alert">{friendlyError(resolutionQuery.error)}</div> : <>
-      <div className="resolution-hero" data-testid="resolution-status"><span className="resolution-icon">{status === "ACTION_NEEDS_INPUT" ? <ShieldAlert /> : <ShieldCheck />}</span><div><p className="eyebrow">현재 단계</p><h3>{status ?? "DECISION_RECORDED"}</h3></div>{status && <StatusBadge status={status} />}</div>
+  return <Card title="최종 결정 · 처리 사전 확인" description="담당자 결정과 외부 시스템 반영 전 확인 결과는 문의 상태와 별도로 기록됩니다." className="spaced-card"
+    actions={<button className="icon-button" type="button" aria-label="처리 결과 새로고침" onClick={() => { resolutionQuery.refetch(); eventsQuery.refetch(); intentsQuery.refetch(); intentDetailQuery.refetch(); }}><RefreshCw size={18} /></button>}>
+    {resolutionQuery.isLoading ? <Loading label="처리 결과를 확인하는 중" /> : unavailable ? <EmptyState title="아직 처리 결과가 없습니다"><span>검토자가 최종 결정을 기록하면 안전한 처리 흐름이 시작됩니다.</span></EmptyState> : resolutionQuery.error ? <div className="inline-alert inline-alert-danger" role="alert">{friendlyError(resolutionQuery.error)}</div> : <>
+      <div className="resolution-hero" data-testid="resolution-status"><span className="resolution-icon">{status === "ACTION_NEEDS_INPUT" ? <ShieldAlert /> : <ShieldCheck />}</span><div><p className="eyebrow">현재 단계</p><h3>{businessLabel(status ?? "DECISION_RECORDED")}</h3></div>{status && <StatusBadge status={status} />}</div>
       {status === "ACTION_NEEDS_INPUT" && <Notice tone="warning" title="외부 조치 입력이 부족합니다"><span>입력 보완 기능은 5C 범위에 포함되지 않습니다. Command·Attempt·Result를 만들지 않고 안전하게 보류합니다.</span></Notice>}
       <DefinitionList items={[
-        { label: "결정 ID", value: textValue(resolutionQuery.data?.source_human_decision_id) },
-        { label: "Action Intent", value: intent ? textValue(intent.action_type) : "0개" },
-        { label: "Simulation Attempt", value: attempts },
-        { label: "Simulation Result", value: results },
+        { label: "결정 번호", value: textValue(resolutionQuery.data?.source_human_decision_id) },
+        { label: "처리 요청", value: intent ? businessLabel(intent.action_type) : "0개" },
+        { label: "사전 확인 시도", value: attempts },
+        { label: "사전 확인 결과", value: results },
         { label: "실제 부작용", value: sideEffects ? "발생" : "없음" },
       ]} />
-      {intent && <Notice tone="success" title="DRY-RUN 전용"><span>네트워크를 사용하지 않는 결정론적 시뮬레이션입니다. LIVE 요청은 항상 차단되고 side_effects_performed=false여야 합니다.</span></Notice>}
-      <div className="card-footer-actions"><span>{eventsQuery.data?.length ?? 0}개 append-only 이벤트</span><Link className="button button-secondary" to={`/cases/${caseId}/report`}><FileText size={17} />최종 보고서</Link></div>
+      {intent && <Notice tone="success" title="외부 시스템 미반영"><span>현재 단계는 외부 시스템에 연결하지 않고 요청 형식만 확인합니다. 실제 환불·교환 요청은 전송되지 않습니다.</span></Notice>}
+      <div className="card-footer-actions"><span>변경 이력 {eventsQuery.data?.length ?? 0}건</span><Link className="button button-secondary" to={`/cases/${caseId}/report`}><FileText size={17} />최종 보고서</Link></div>
     </>}
   </Card>;
 }

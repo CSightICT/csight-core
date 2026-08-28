@@ -3,7 +3,10 @@ import {
   decodeAnalysisRun,
   decodeCaseDetail,
   decodeCasePage,
+  decodeCustomerCommunication,
+  decodeCustomerCommunications,
   decodeCurrentUser,
+  decodeDataAssetSummary,
   decodeEvidenceAccessUrl,
   decodeGroundingDetail,
   decodeGroundingRuns,
@@ -27,7 +30,9 @@ import type {
   ApiProblem,
   CaseDetail,
   CasePage,
+  CustomerCommunicationSimulation,
   CurrentUser,
+  DataAssetSummary,
   Evidence,
   EvidenceAccessUrl,
   ExternalActionIntent,
@@ -300,5 +305,14 @@ export const api = {
   },
   async getMetrics(): Promise<PocSummary> {
     return decodePocSummary(await request("/api/v1/metrics/poc-summary"));
+  },
+  async createCustomerCommunication(caseId: string): Promise<CustomerCommunicationSimulation> {
+    return decodeCustomerCommunication(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/communication-simulations`, { method: "POST" }));
+  },
+  async listCustomerCommunications(caseId: string): Promise<CustomerCommunicationSimulation[]> {
+    return decodeCustomerCommunications(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/communication-simulations`));
+  },
+  async getDataAssetSummary(): Promise<DataAssetSummary> {
+    return decodeDataAssetSummary(await request("/api/v1/data-assets/summary"));
   },
 };

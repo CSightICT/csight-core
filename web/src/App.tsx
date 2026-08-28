@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthProvider";
 import { AppShell } from "./components/AppShell";
 import { CaseWorkspacePage } from "./pages/CaseWorkspacePage";
 import { CasesPage } from "./pages/CasesPage";
+import { DataAssetsPage } from "./pages/DataAssetsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MetricsPage } from "./pages/MetricsPage";
 import { NewCasePage } from "./pages/NewCasePage";
@@ -28,6 +29,7 @@ export function App() {
       <Route path="/reviews" element={<ReviewsPage />} />
       <Route path="/reviews/:taskId" element={<ReviewDetailPage />} />
       <Route path="/metrics" element={<MetricsPage />} />
+      <Route path="/data-assets" element={<DataAssetsPage />} />
       <Route path="/cases/:caseId/report" element={<ReportPage />} />
       <Route path="/cases/:caseId/report/print" element={<ReportPage print />} />
     </Route>

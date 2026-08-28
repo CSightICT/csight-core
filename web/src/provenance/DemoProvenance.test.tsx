@@ -50,11 +50,44 @@ describe("internal demo provenance", () => {
     };
     render(<DemoProvenance attributes={attributes} />);
 
-    expect(screen.getByText("가상 이커머스 문의 v2")).toBeVisible();
+    expect(screen.getByText("이커머스 상품 문의 v2")).toBeVisible();
     expect(screen.getByText("재사용 권리 미확인")).toBeVisible();
     expect(screen.getByText("Vision은 정책 판단 입력과 연결되지 않음")).toBeVisible();
     expect(readDemoProvenance(attributes)?.schemaVersion).toBe("2.0");
     expect(readDemoImageObservation(attributes)).toBe("뚜껑 결합부의 균열과 가장자리 파손이 보입니다.");
+  });
+
+  it("accepts the commerce-context R2 revision without weakening provenance checks", () => {
+    const provenance = readDemoProvenance({ realistic_demo: {
+      ...valid,
+      schema_version: "2.0",
+      dataset_id: "realistic-internal-demo-v2",
+      scenario_scope: "INTERNAL_CURATED_ECOMMERCE_INQUIRY_6_DEFECT_4_BELOW_THRESHOLD",
+      narrative_revision: "COMMERCE_CONTEXT_R2",
+    } });
+
+    expect(provenance).toMatchObject({ status: "VALID", schemaVersion: "2.0" });
+  });
+
+  it("accepts the twenty-case expansion contract and image observation boundary", () => {
+    const attributes = {
+      realistic_demo: {
+        ...valid,
+        schema_version: "3.0",
+        dataset_id: "realistic-internal-demo-v3",
+        scenario_scope: "INTERNAL_CURATED_ECOMMERCE_EXPANSION_12_DEFECT_8_REFERENCE_TOTAL",
+        narrative_revision: "CLOSED_SET_EXPANSION_R3",
+      },
+      demo_image_observation: "튜브형 용기와 마개가 떨어져 보입니다.",
+      demo_claim_boundary: "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+    };
+
+    expect(readDemoProvenance(attributes)).toMatchObject({
+      status: "VALID",
+      schemaVersion: "3.0",
+      scenarioLabel: "이커머스 상품 문의 확장 v3",
+    });
+    expect(readDemoImageObservation(attributes)).toBe("튜브형 용기와 마개가 떨어져 보입니다.");
   });
 
   it("fails closed when the image observation boundary is absent or malformed", () => {
@@ -80,7 +113,7 @@ describe("internal demo provenance", () => {
     const unexpected = "UNEXPECTED-SECRET-LIKE-VALUE";
     render(<DemoProvenance attributes={{ realistic_demo: { ...valid, rights_status: unexpected } }} />);
 
-    expect(screen.getByTestId("demo-provenance-unknown")).toHaveTextContent("출처 상태 UNKNOWN");
+    expect(screen.getByTestId("demo-provenance-unknown")).toHaveTextContent("데이터 출처 상태 확인 필요");
     expect(document.body).not.toHaveTextContent(unexpected);
     expect(document.body).not.toHaveTextContent("Vision은 정책 판단 입력과 연결되지 않음");
   });

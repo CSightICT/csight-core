@@ -7,7 +7,14 @@ from datetime import UTC, datetime
 import pytest
 
 from app.application.poc_reporting import GetCaseReviewReport, GetPocSummary
-from app.platform.poc_reporting import MetricUnit, PocMetric, PocSummary, ReviewReport
+from app.platform.poc_reporting import (
+    CustomerCommunicationSimulation,
+    DataAssetSummary,
+    MetricUnit,
+    PocMetric,
+    PocSummary,
+    ReviewReport,
+)
 from app.platform.tenant import Principal, Role
 
 pytestmark = pytest.mark.unit
@@ -56,6 +63,19 @@ class _Repository:
             analysis_failure_rate=empty,
             analysis_partial_success_rate=empty,
         )
+
+    def create_customer_communication(
+        self, *, tenant_id: str, case_id: str, created_by: str
+    ) -> CustomerCommunicationSimulation:
+        raise NotImplementedError
+
+    def list_customer_communications(
+        self, *, tenant_id: str, case_id: str
+    ) -> tuple[CustomerCommunicationSimulation, ...]:
+        return ()
+
+    def get_data_asset_summary(self, *, tenant_id: str) -> DataAssetSummary:
+        raise NotImplementedError
 
 
 def _principal(role: Role) -> Principal:

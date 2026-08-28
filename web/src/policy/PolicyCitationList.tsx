@@ -8,7 +8,7 @@ export function PolicyCitationList({ citations }: { citations: PolicyCitationSna
     <div className="policy-citation-pack-heading">
       <BookOpenText aria-hidden="true" size={18} />
       <div><strong>고정된 정책 근거</strong><span>인용 당시 제목·본문·문서 버전</span></div>
-      <span className="synthetic-policy-badge" data-testid="synthetic-policy-badge">가상 사내 정책 · PoC 전용</span>
+      <span className="synthetic-policy-badge" data-testid="synthetic-policy-badge">사내 정책 참고 자료</span>
     </div>
     <ol className="policy-citation-list">
       {citations.map((citation) => <li key={citation.citation_id}>

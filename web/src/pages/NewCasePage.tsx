@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { Card, Notice, PageHeader, friendlyError } from "../components/Ui";
 import { newOpaqueKey } from "../recovery/workflowCheckpoint";
+import { businessLabel } from "../presentation/businessLabels";
 
 const ACTIONS = ["UNSPECIFIED", "REFUND", "EXCHANGE", "RETURN", "REPAIR", "INFORMATION", "OTHER"] as const;
 
@@ -52,7 +53,7 @@ export function NewCasePage() {
 
   const showsExternal = ["REFUND", "EXCHANGE", "REPAIR"].includes(action);
   return <div className="page page-narrow">
-    <PageHeader eyebrow="New case" title="새 상담 케이스" description="고객이 제공한 내용만 입력합니다. 없는 값을 추정하거나 자동으로 채우지 않습니다."
+    <PageHeader eyebrow="새 문의 등록" title="상품 문의 접수" description="고객이 제공한 내용만 입력합니다. 없는 값을 추정하거나 자동으로 채우지 않습니다."
       actions={<Link className="button button-ghost" to="/cases"><ArrowLeft size={18} />목록</Link>} />
     <form onSubmit={submit}>
       <Card title="기본 정보" description="주문과 상품을 식별하는 내부 참조값입니다.">
@@ -60,11 +61,11 @@ export function NewCasePage() {
           <label>주문 참조<input name="order_ref" required maxLength={200} placeholder="ORD-2026-00142" /></label>
           <label>상품 참조<input name="product_ref" required maxLength={200} placeholder="SKU-A100" /></label>
           <label className="full-field">고객 문의<textarea name="customer_message" required maxLength={20000} rows={6} placeholder="고객이 전달한 현상과 요청을 원문에 가깝게 입력하세요." /></label>
-          <label>요청 유형<select name="requested_action" value={action} onChange={(event) => setAction(event.target.value as typeof action)}>{ACTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label>요청 유형<select name="requested_action" value={action} onChange={(event) => setAction(event.target.value as typeof action)}>{ACTIONS.map((item) => <option key={item} value={item}>{businessLabel(item)}</option>)}</select></label>
         </div>
       </Card>
       {showsExternal && <Card title="외부 조치 입력" description="5C에서는 이 화면에서 최초 입력만 받으며, 누락 시 보류됩니다." className="spaced-card">
-        <Notice title="안전한 입력 원칙"><span>금액·통화·수량·배송지 참조는 문의 내용이나 AI 설명에서 추정하지 않습니다. 비워두면 <strong>ACTION_NEEDS_INPUT</strong>으로 표시되고 모의 실행을 만들지 않습니다.</span></Notice>
+        <Notice title="안전한 입력 원칙"><span>금액·통화·수량·배송지 참조는 문의 내용이나 AI 설명에서 추정하지 않습니다. 비워두면 <strong>처리 정보 보완 필요</strong>로 표시되고 외부 처리 사전 확인을 시작하지 않습니다.</span></Notice>
         <div className="form-grid action-fields">
           {action === "REFUND" && <>
             <label>환불 금액<input name="amount" type="text" inputMode="decimal" maxLength={20} pattern="[0-9]{1,15}(\.[0-9]{1,4})?" placeholder="예: 48000.00" /></label>
@@ -76,7 +77,7 @@ export function NewCasePage() {
         <p className="field-help"><Info size={15} /> 주문 참조와 상품 참조는 위 기본 정보 값을 그대로 사용합니다. 중첩 객체나 추가 필드는 전송하지 않습니다.</p>
       </Card>}
       {error && <div className="inline-alert inline-alert-danger form-error" role="alert">{error}</div>}
-      <div className="form-actions"><Link className="button button-secondary" to="/cases">취소</Link><button className="button button-primary button-large" disabled={submitting} type="submit">{submitting ? "등록 중…" : "케이스 등록"}<ArrowRight size={18} /></button></div>
+      <div className="form-actions"><Link className="button button-secondary" to="/cases">취소</Link><button className="button button-primary button-large" disabled={submitting} type="submit">{submitting ? "등록 중…" : "문의 등록"}<ArrowRight size={18} /></button></div>
     </form>
   </div>;
 }

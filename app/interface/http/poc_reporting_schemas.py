@@ -7,7 +7,15 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.platform.case.models import JsonValue
-from app.platform.poc_reporting import MetricUnit, PocMetric, PocSummary, ReviewReport
+from app.platform.poc_reporting import (
+    CaseLearningAsset,
+    CustomerCommunicationSimulation,
+    DataAssetSummary,
+    MetricUnit,
+    PocMetric,
+    PocSummary,
+    ReviewReport,
+)
 
 
 class _Schema(BaseModel):
@@ -83,4 +91,76 @@ class PocSummaryResponse(_Schema):
         )
 
 
-__all__ = ["PocMetricResponse", "PocSummaryResponse", "ReviewReportResponse"]
+class CustomerCommunicationResponse(_Schema):
+    schema_version: str
+    communication_id: str
+    case_id: str
+    review_report_id: str
+    channel: str
+    template_name: str
+    template_version: str
+    recipient_label: str
+    subject: str
+    body: str
+    delivery_status: str
+    side_effects_performed: bool
+    created_at: datetime
+    content_hash: str
+
+    @classmethod
+    def from_simulation(
+        cls, simulation: CustomerCommunicationSimulation
+    ) -> CustomerCommunicationResponse:
+        return cls(**simulation.model_dump(exclude={"tenant_id", "created_by"}))
+
+
+class CaseLearningAssetResponse(_Schema):
+    schema_version: str
+    asset_id: str
+    case_id: str
+    review_report_id: str
+    feature_snapshot: dict[str, JsonValue]
+    label_snapshot: dict[str, JsonValue]
+    version_snapshot: dict[str, JsonValue]
+    privacy_scope: dict[str, JsonValue]
+    created_at: datetime
+    content_hash: str
+
+    @classmethod
+    def from_asset(cls, asset: CaseLearningAsset) -> CaseLearningAssetResponse:
+        return cls(**asset.model_dump(exclude={"tenant_id", "subject_pseudonym"}))
+
+
+class DataAssetSummaryResponse(_Schema):
+    schema_version: str
+    generated_at: datetime
+    total_records: int
+    baseline_minimum: int
+    drift_review_minimum: int
+    readiness_status: str
+    drift_evaluation_available: bool
+    decision_distribution: dict[str, int]
+    resolution_distribution: dict[str, int]
+    product_distribution: dict[str, int]
+    model_version_distribution: dict[str, int]
+    policy_version_distribution: dict[str, int]
+    recent_records: list[CaseLearningAssetResponse]
+
+    @classmethod
+    def from_summary(cls, summary: DataAssetSummary) -> DataAssetSummaryResponse:
+        return cls(
+            **summary.model_dump(exclude={"recent_records"}),
+            recent_records=[
+                CaseLearningAssetResponse.from_asset(item) for item in summary.recent_records
+            ],
+        )
+
+
+__all__ = [
+    "CaseLearningAssetResponse",
+    "CustomerCommunicationResponse",
+    "DataAssetSummaryResponse",
+    "PocMetricResponse",
+    "PocSummaryResponse",
+    "ReviewReportResponse",
+]

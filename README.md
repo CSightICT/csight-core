@@ -23,8 +23,13 @@ immutable Review Report를 만들며 콘솔은 분자·분모·표본 수가 있
 실제 기업 정책·Case·제품별 Vision qualification·개인정보 승인·Shadow Mode 증거가 없으므로
 현재 판정은 **합성 데이터·실제 E3 내부 기술 시뮬레이션 데모**이며 실제 고객 PoC 성능이나
 ROI를 주장하지 않습니다.
+현재 이커머스 데모 이미지는 `poc_closed_set/1.0.0`의 사람 승인 Allowlist를 사용합니다.
+상품군 4개·결함군 3개를 정의하고, 결함 후보 E3 `>= 0.95`, 사람 확인 저점수 참고
+E3 `<= 0.10`만 선별 데모에 채택합니다. 이는 운영 임계치 변경이나 성능평가가 아닙니다.
 설계 문서, Accepted ADR과 SVG 자산은
 [`CSight_project_docs/`](CSight_project_docs/)에서 함께 관리합니다.
+모델 중심 기술 검증에서 상담원 중심 운영형 제품으로 이동한 이유와 현재 경계는
+[`제품 방향 전환 기록`](docs/product/PRODUCT_DIRECTION_EVOLUTION_2026-08-28.md)에 정리했습니다.
 
 ## 빠른 시작
 
@@ -379,12 +384,20 @@ recall, specificity, FPR, calibration 또는 HDP-100 제품 qualification으로 
 참조한다.
 
 실사용 화면용 내부 데모 v2는 결함 선별 표본 6장과 사용자 제공 정상 참고 4장을 `6:4`로 섞어
-4문장짜리 가상 이커머스 문의 10건으로 만든다. 각 문의는 사진과 다시 대조한
-`VISUAL_ALIGNED_R1`이며, 사진에 보이지 않는 작동·누수·주문수량·옵션은 고객 진술로만
-표시한다. 정상 참고 폴더는 전수 SHA·decode 검사와 실제 E3 재생을 거치지만,
+4문장짜리 가상 이커머스 문의 10건으로 만든다. 각 문의는 사진과 다시 대조하고 합성 고객·주문·
+결제·배송 스냅샷을 저장한 `COMMERCE_CONTEXT_R2_E3`이며, 사진에 보이지 않는 작동·누수·
+주문수량·옵션은 고객 진술로만 표시한다. 마스킹 연락처·결제수단·운송장과 `데모/가상` 주소만
+사용하며 실제 개인정보를 포함하지 않는다. 정상 참고 폴더는 전수 SHA·decode 검사와 실제 E3
+재생을 거치지만,
 사용자 진술 외 독립 Gold가 없으므로 결과를 정상 확인이나 성능지표로 부르지 않는다. 원본은 모두
 Private Evidence에만 저장하고, Web은 인증된 same-origin content API로 크기·SHA가 검증된 이미지
 Blob을 표시한다.
+
+확장 v3 팩은 기존 10건을 변경하지 않고 결함 후보 6건과 사람 확인 저점수 참고 4건을 추가한다.
+현재 닫힌 내부 시연 범위는 총 20건(12:8)이며 네 상품군을 모두 표현한다. 이는 상품군별 성능이나
+정상 판별 정확도를 검증했다는 뜻이 아니다. 상세 계약은
+[`evaluation/realistic_internal_demo_v3/README.md`](evaluation/realistic_internal_demo_v3/README.md)를
+참조한다.
 
 ```bash
 make seed-realistic-poc-demo-v2 \

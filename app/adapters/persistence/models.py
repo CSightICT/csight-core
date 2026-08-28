@@ -3866,6 +3866,115 @@ class ReviewReportModel(Base):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class CustomerCommunicationSimulationModel(Base):
+    __tablename__ = "customer_communication_simulations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "review_report_id"),
+            ("review_reports.tenant_id", "review_reports.id"),
+            name="fk_customer_communication_simulations_report",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "schema_version = 'customer_communication_simulation/1.0.0'",
+            name="schema_version_supported",
+        ),
+        CheckConstraint("channel = 'EMAIL'", name="channel_email_only"),
+        CheckConstraint(
+            "delivery_status = 'SIMULATED_NOT_SENT' AND side_effects_performed = false",
+            name="no_external_effects",
+        ),
+        CheckConstraint("content_hash ~ '^[0-9a-f]{64}$'", name="content_hash_valid"),
+        UniqueConstraint("tenant_id", "id", name="uq_customer_communication_simulations_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "review_report_id",
+            "channel",
+            "template_name",
+            "template_version",
+            name="uq_customer_communication_simulations_report_template",
+        ),
+        Index(
+            "ix_customer_communication_simulations_case_latest",
+            "tenant_id",
+            "case_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    review_report_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)
+    template_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    template_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    recipient_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    delivery_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    side_effects_performed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class CaseLearningAssetModel(Base):
+    __tablename__ = "case_learning_assets"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "review_report_id"),
+            ("review_reports.tenant_id", "review_reports.id"),
+            name="fk_case_learning_assets_report",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "schema_version = 'case_learning_asset/1.0.0'",
+            name="schema_version_supported",
+        ),
+        CheckConstraint(
+            "subject_pseudonym IS NULL OR subject_pseudonym ~ '^[0-9a-f]{64}$'",
+            name="subject_pseudonym_valid",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(feature_snapshot) = 'object' "
+            "AND jsonb_typeof(label_snapshot) = 'object' "
+            "AND jsonb_typeof(version_snapshot) = 'object' "
+            "AND jsonb_typeof(privacy_scope) = 'object'",
+            name="snapshots_object",
+        ),
+        CheckConstraint("content_hash ~ '^[0-9a-f]{64}$'", name="content_hash_valid"),
+        UniqueConstraint("tenant_id", "id", name="uq_case_learning_assets_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "review_report_id",
+            "schema_version",
+            name="uq_case_learning_assets_report_schema",
+        ),
+        Index(
+            "ix_case_learning_assets_tenant_created",
+            "tenant_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    review_report_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject_pseudonym: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    feature_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    label_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    version_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    privacy_scope: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
@@ -3930,4 +4039,6 @@ PERSISTENCE_MODELS = (
     ExternalActionSimulationAttemptModel,
     ExternalActionSimulationResultModel,
     ReviewReportModel,
+    CustomerCommunicationSimulationModel,
+    CaseLearningAssetModel,
 )

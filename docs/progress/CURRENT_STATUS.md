@@ -12,14 +12,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 5C 내부 데모 PASS; 실제 E3 Runtime·R1 가상 문의 10건·CSight Commerce 가상 정책 `2.0.1`·상담원 중심 Workspace·`이어하기` 422 복구·사람 확정형 0.70 빠른 검토/자동 문서 흐름·환불 처리 확인서 종합 회귀 PASS |
-| 진행 중 작업 | 대표 3건은 Human Review `PENDING`; 실제 Human Decision 생성은 사용자 클릭 전 0. E3/backend·상담원 Web·상태 문서를 원격 PoC에 fast-forward 백업했고 CI Run #108 PASS. PR·`develop/main` 병합은 보류하며 공개 공유 Gate는 BLOCKED |
+| 현재 완료 단계 | Sprint 5C 내부 데모 PASS; 실제 E3 Runtime·현실형 가상 문의/Commerce Context·사람 확정형 빠른 검토·환불 확인서·자연어 업무 UI·고객 안내 메일 시뮬레이션·tenant 비식별 데이터 자산 원장 종합 회귀 PASS |
+| 진행 중 작업 | 기존 10건을 보존한 `poc_closed_set/2.0.0` 확장 팩 10건을 추가해 현재 시연 범위를 결함 후보 12·사람 확인 저점수 참고 8의 총 20건으로 늘렸다. 상품군 4/4·결함군 3/3을 표현하지만 클래스별 성능평가가 아니다. 다음은 인증 상담원 검토와 20건 연속 운영 측정이다. |
 | 마지막 갱신일 | 2026-08-28, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
 | 원격 저장소 | `CSightICT/csight-core` — Private, E3/backend `0f4de4b`, 상담원 Web `b3e09cf`, 현실형 PoC handoff `81b6e20`을 `origin/feature/scenario-poc-hard-plastic`에 fast-forward 백업; PR 없음 |
-| 로컬 Git | `feature/scenario-poc-hard-plastic`; HEAD·원격 PoC `81b6e207e1a593c2f3f3f44cc2fde441a49498c1` 동기화 후 이 CI closeout 원장만 수정 중. 사용자 소유 미추적 문서 3개는 보존 |
-| 마지막 검증 관측 | 2026-08-28 14:36 KST, Ruff·Format 384·Pyright 0; 기본 658 PASS, Integration 54 PASS/외부 GPU 5 Skip, Vision E3 5 PASS; Web lint·typecheck·OpenAPI sync·build, Vitest 17 files/49 tests, Playwright 5 PASS. DB Head `0015`, drift 없음, Core 7 healthy, API ready·local/public Login HTTP 200; 인증 Human Decision 클릭은 미실행 |
-| 마지막 GitHub 관측 | 2026-08-28 14:39 KST, 원격 PoC `81b6e207e1a593c2f3f3f44cc2fde441a49498c1`, GitHub Actions CI Run #108 PASS. 원격 7 branches와 `poc/mvp/final` 명명 branch·tag 0, PR·`develop/main` 병합 없음 |
+| 로컬 Git | `feature/scenario-poc-hard-plastic`; HEAD·원격 PoC `dfaa3731519b2dadc3941a162a46cb2aa00694a3` 동기화. 이후 가상 상품 카탈로그와 Commerce Context R2·Web·문서는 로컬 미Commit·미Push이며 사용자 소유 미추적 문서 3개 보존 |
+| 마지막 검증 관측 | 2026-08-28 22:29 KST, 상담·검토·지표·보고서·메일 화면에서 `PoC/모의/시뮬레이션/DRY-RUN/Mock/데모/시연` 개발 문구를 운영형 표현으로 교체. 기존 기록은 표시 단계에서 정리하고 신규 메일 본문도 같은 계약을 적용. 외부 결제·메일 시스템 미반영 문구와 실행 차단은 유지. Web lint·typecheck·OpenAPI sync·24 files/63 tests·build PASS, 관련 Backend 15 tests와 Ruff·Format PASS. local/public JS `index-BdA6eGFX.js`, CSS `index-CWAdx66O.css` 일치, Core 7개 서비스 healthy. |
+| 마지막 GitHub 관측 | 2026-08-28 14:42 KST, 원격 PoC `dfaa3731519b2dadc3941a162a46cb2aa00694a3`, GitHub Actions CI Run #109와 두 Job PASS. 이후 가상 상품/가격 카탈로그는 원격 미반영, PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -94,18 +94,29 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Sprint 5C Resolution·Action Contract | PASS | Case와 분리된 projection/event, mapping 1.0.0, explicit input only, immutable Intent |
 | Sprint 5C DRY-RUN Reliability | PASS | 두 durable outbox, worker fencing, deterministic network-free simulation, `LIVE` fail-closed |
 | Sprint 5C Report·KPI | PASS | content-hashed `review_report/1.0.0`, tenant KPI numerator/denominator/sample count |
+| Sprint 5C Customer Communication | PASS_WITH_SCOPE | immutable EMAIL simulation v1.1, 실제 SMTP/통지 0, `side_effects_performed=false`; terminal Report 필요 |
+| Sprint 5C Tenant Data Asset | PASS_WITH_SCOPE | terminal Report와 같은 transaction에서 PII 원문 제외 append-only asset 자동 적재; 30/60건 기준선 Gate |
 | Sprint 5C React Console | PASS | OpenAPI 기반 상담원 화면과 5개 fixture-driven Playwright 시나리오; 3–5는 live causal E2E 아님 |
-| Sprint 5C Migration·Live | PASS | Head `0014`, drift 0, 7 services healthy, 8 queues 정상, live validated·broker recovery |
+| Sprint 5C Migration·Live | PASS | Head `0016`, 기존 Report backfill, drift 0, Core runtime healthy, Remote E3 설정 보존 |
 | Sprint 5C Git Handoff | PASS | `0a5f529 feat: add case resolution and PoC console`, 원격 5C 기능 브랜치 백업 완료; PR 없음 |
 | HDP-100 합성 Scenario Pack | OFFLINE_READY | fictional product, 36 synthetic Case/Gold, 10 clause/7 rule, 5 demo, acceptance 9/9 |
 | E3 보고서 지표 | REPORTED_NOT_REPRODUCED | AP 0.884863, AUROC 0.931604, threshold 0.8984375는 담당자 보고 수치; CSight 재현 아님 |
 | Binary Vision Runtime | ACTUAL_E3_INTERNAL | image-level any-defect E3 score와 threshold 해석을 실제 checkpoint로 live 연결; Mock 기본값은 회귀용으로 유지 |
 | 실제 E3 Runtime | PASS_WITH_SCOPE | exact E3 SHA/size/schema, offline strict load, loopback HTTP, MPS forward와 Core append-only 저장 통과; 합성 연결 증거만 해당 |
 | E3 Top-100 Positive Replay | PASS_WITH_SCOPE | selected-correct defect 100/normal 0 전수 forward와 hard-plastic Core 6건 통과; 연결 재현 증거이며 성능평가·제품 qualification 아님 |
+| Kaputt Qwen VLM Offline Enrichment | BLOCKED | Query Crop+동일 상품 Reference Crop+비교 Prompt 4/4 기술 성공·민감 패턴 0; 상품 유형 1/4·defect-positive 0/2로 전체 Batch 품질 Gate FAIL, 공식 Label/E3 대체 금지 |
+| Kaputt Qwen Product Metadata 30 | BLOCKED | 분리 schema로 30/30 성공·specific generic name 25·uncertain 5·금지/민감 필드 0. taxonomy 공백과 Human Gold 부재로 자동 Catalog 적용 전 사람 검수 필요 |
 | Vision Assessment Migration | PASS | DB Head `0015`, migration lifecycle·drift와 append-only assessment persistence 통과 |
 | Parallel Text/Vision Join | PASS | parent `FOR UPDATE` 직렬화와 terminal redelivery reconciliation; 새 live Run과 기존 orphan 복구 통과 |
 | HDP-100 Git Handoff | PASS | 기능 `dfd6db2`, closeout `5c152fd`; local HEAD와 동일 원격 기능 브랜치 SHA 확인, PR·`develop` 병합 미실행 |
 | R1 Visual-Aligned Inquiry Demo | PASS | 이미지 관찰과 고객 진술을 분리한 4~5문장 가상 문의 10건; 결함 후보 6·기준 미만 참고 4, seed/replay와 private Evidence SHA 검증 |
+| R1 Fictional Product Catalog | PASS | 검증된 사진 10장에 표시 전용 가상 상품명·SKU·KRW 가격대·문의 목적을 매핑; 목록 검색/표시와 상세 상품 카드 적용, 실제 판매가·환불 입력 추론 0 |
+| R2 Synthetic Commerce Context | PASS | `synthetic_commerce_context/1.0.0` 고객·주문·결제·배송 스냅샷 10건 DB 저장; 연락처/결제/운송장 마스킹, 가상 주소 표시, 환불 2건 결제금액=명시 환불액, Action 추론 0 |
+| R3 Closed-set Demo Expansion | PASS_WITH_SCOPE | 기존 10건을 변경하지 않고 10건 추가, 최신 시연 팩 20건=결함 후보 12+사람 확인 저점수 참고 8. 실제 E3 성공·재실행 멱등성·Private Evidence integrity 통과, 상품군 4/4 표현. 성능평가·정상 확정·실제 Action 아님 |
+| Korean Business-language Console | PASS_WITH_SCOPE | 문의 목록·상세·검토 대기함·검토 상세를 한글 상품명 우선으로 표시하고 현재 DB 상품 참조 49종에 표시 전용 이름 적용. 요청 유형·검토 유형·우선순위·페이지 제목·모의 처리 문구도 한글화. 식별용 주문/SKU와 API 값은 보존, 인증 화면 수동 육안 확인은 미실행 |
+| Review Decision Workspace Readability | PASS_WITH_SCOPE | 허용/비허용 상세 화면을 최대 1540px, 결정 패널 460px 이상, 선택 버튼 90px로 확대하고 데스크톱 밀도·태블릿 한 열·모바일 보정을 적용. 인증 브라우저 육안 확인은 미실행 |
+| Operator-friendly Policy Summary | PASS_WITH_SCOPE | 원본 정책 enum·qualification JSON·모델 식별자를 첫 화면에서 제거하고 정책 권고, 문의/이미지 분석, 일치 확인, 근거 정합성을 자연어 상태로 표시. 원본 API/DB snapshot은 불변 보존 |
+| Operational-language Console | PASS_WITH_SCOPE | 화면과 출력 문서의 개발·검증 용어를 상담 업무 표현으로 교체하고 기존 `DEMO` 식별자·주소는 표시 단계에서 정리. 외부 결제·메일 시스템 미연결과 실제 처리 0 경계는 명시적으로 유지. 인증 화면 수동 육안 확인은 미실행 |
 | R1 Three-Column Console | PASS | 문의 내용·이미지 근거·정책 기반 권고 3열, legacy v2 숨김·R1 fail-closed 표시, 하단 운영 상세 접기 |
 | R1 Consultant Workspace Simplification | PASS | `지금 할 일` 단일 CTA·4단계 진행 표시·문의/이미지+정책 2열 본문·기술 정보 접기, 데스크톱 inert X 제거 |
 | R1 Continue Policy-Date Recovery | PASS | 업무 시간대 `Asia/Seoul` 기준일 계산으로 UTC/KST 효력일 422 해소; API `{error}` 계약의 코드·메시지를 UI에 그대로 표시 |
@@ -708,6 +719,20 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-28 | Refund Processing Confirmation UI | PASS | Shopify·Stripe·국내 전자상거래법 공식 자료의 공통 운영 필드를 참고해 특정 기업 복제 없이 구현. typecheck·lint·build PASS, Vitest 17 files/49 tests, Playwright fixture 5 PASS, 1440px full-page visual QA PASS |
 | 2026-08-28 | Refund Confirmation Runtime Surface | PASS | 14:04 KST Web/API rebuild 후 DB Head `0015`, Core 7 services healthy, API readiness OK, local/public Login HTTP 200; 실제 Human Decision·환불 실행은 NOT_RUN |
 | 2026-08-28 | GitHub Branch Stage Audit | PASS | 원격 7 branches. PoC `5c152fd`는 main/develop보다 21 commits, Sprint 5C보다 2 commits ahead이고 latest CI success. Vision `3e2d596`은 PoC와 55/21 diverged, latest CI success·Draft PR #4. PR #2 open, PoC PR·release tag 없음 |
+| 2026-08-28 | Natural UI·Communication·Data Assets | PASS_WITH_SCOPE | 자연어 decision/status UI, terminal Report 기반 EMAIL simulation v1.1, tenant append-only allowlist asset. 기본 672 PASS, 격리 Migration 2 PASS, Web 57 PASS, Head 0016, live side effects 0 |
+| 2026-08-28 | Runtime Memory Ready Baseline | PASS | 16:28 KST 단일 시점: CSight 귀속 약 4.21 GiB/32 GiB(13.16%), Vision 1,570 MiB, Embedding 1,732.5 MiB, Docker Core 961.95 MiB, tunnel 48.42 MiB. memory-pressure 여유 80%, swap-in/out 0; Case batch/동시 부하는 미실행 |
+| 2026-08-28 | Kaputt Local Source Audit | PASS | 4090 Node `/home/data/datasets/kaputt` 406 GiB, extracted 101 GiB. Query image train 85,326·validation 4,874·test 10,067로 Parquet 행과 일치; `plastic_hard` 10,095, defect 1,323·negative 8,772 |
+| 2026-08-28 | Qwen3.8 VLM Offline Sample | PASS | 별도 native VLM endpoint가 RTX 4090에서 healthy, prompt 1.2.0 균형 표본 4/4 schema success·요청 9.3–10.8초·민감 패턴 0. 사람 점검 상품 유형 유용성 1/4, defect positive 두 건 모두 `UNCERTAIN`; 전체 Batch 미실행 |
+| 2026-08-28 | Qwen3.8 VLM Resource Recovery | PASS | 결과 SHA-256 `390f7d32a1b9a689d4071c59d2e8c0493851c7ea5ea3659f9af7ab58913b0d57`; append-only sample을 private derived 경로에 보존하고 전용 Container exit 0, GPU 22,365→95 MiB |
+| 2026-08-28 | Qwen Query+Reference+Prompt Contract | PASS | 동일 `item_identifier`의 Query/Reference Crop 4쌍 선택 추출, vLLM image 2개 제한과 schema 2.0.0 적용. prompt 2.0.1 4/4 구조 성공·민감 패턴 0·결과 SHA `159f5ded7eb9559d5b322ca9d24d48cfc117ed4c94a922f89c7145cb8bac3811` |
+| 2026-08-28 | Qwen Paired Label Quality Gate | FAIL | 사람 점검 상품 유형 유용성 1/4, 공식 defect-positive 탐지 0/2. 10,095건 전체 Batch를 중단하고 Qwen을 결함 Label/E3 대체 경로에서 제외 |
+| 2026-08-28 | Qwen3.8 VLM Runtime Restart | PASS | 18:42 KST 전용 Container healthy, 인증 model API 200·exact served identity 확인. RTX 4090 21,511/24,564 MiB, utilization 0%, 39°C; Tailscale private `:18001` |
+| 2026-08-28 | Kaputt Paired 30 Crop Preparation | PASS | deterministic defect 15/negative 15; Query Crop 30·same-item Reference Crop unique 28 준비. 31.6/41.6 GiB archive에서 missing 26/24만 선택 추출 |
+| 2026-08-28 | Qwen Paired Defect 30 | FAIL | 30/30 schema success지만 UNCERTAIN 26, TP/FP/TN/FN 0/2/0/2, coverage 13.3%. 공식 Label/E3 대체 불가, 결과 SHA `e53a516b8ffb5400def2f490f3376716e18d89e2029670e6782a14f408deb2a6` |
+| 2026-08-28 | Qwen Product Metadata 30 | PASS | 결함 필드 없는 별도 schema 30/30 success, specific name 25·uncertain 5, 금지 필드·민감 패턴 0, p50 8.5초·p95 10.0초, SHA `7ddc9197c957f9e81b5560476a789f06d555e346ff8dc0df734c076abfef846a` |
+| 2026-08-28 | Qwen Product Taxonomy Gate | FAIL | Contact Sheet에서 supplement/cleaning-chemical/pet category 공백과 mismatch 확인. Human Gold 없이 25/30 specificity를 accuracy로 해석하거나 Catalog에 자동 반영하지 않음 |
+| 2026-08-28 | PoC Closed-set Registry v1 | PASS_WITH_SCOPE | 상품군 4·결함군 3, 사람 승인 SHA Allowlist 10건. 실제 source identity/label 10/10 PASS, E3 채택 margin defect>=0.95/reference<=0.10. 현재 상품군 2/4·결함군 3/3 표현, 성능평가 아님 |
+| 2026-08-28 | PoC Closed-set Registry v2 Expansion | PASS_WITH_SCOPE | 새 SHA Allowlist 10건을 실제 source와 대조하고 E3 채택 10/10. v1+v2 최신 팩은 20건(12:8), 상품군 4/4·결함군 3/3 표현. v3 seed/replay와 workflow boundary 0 통과, 클래스별 정확도 평가는 아님 |
 
 ## 8. 미해결 사항과 사용자 결정
 
@@ -728,9 +753,17 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 사용자 제공 정상 참고 폴더 77장은 실제 E3에서 모두 frozen threshold 미만이었고 그중 4장을
   현실형 내부 데모에 섞었다. 그러나 정상 label의 근거는 사용자 진술뿐이고 무작위 표본·독립 Gold·
   license·원소유자·dataset revision이 없으므로 specificity/FPR 또는 `정상 확인` 근거가 아니다.
-- 현실형 10건의 6:4는 화면 시연을 위해 의도적으로 고른 비율이다. 결함 6장은 selected-correct
-  positive, 정상 참고 4장은 낮은 score의 pixel-reviewed allowlist이므로 실제 발생률·정확도·비교
+- 현실형 최신 20건의 12:8은 화면 시연을 위해 의도적으로 고른 비율이다. 결함 12장은 selected-correct
+  positive, 저점수 참고 8장은 낮은 score의 pixel-reviewed allowlist이므로 실제 발생률·정확도·비교
   성능으로 해석하지 않는다. raw image는 private Evidence에만 저장하고 Git·공개 Web static에 복사하지 않는다.
+- `poc_closed_set/2.0.0` 확장으로 네 상품군을 모두 화면에 표현하지만 표본 수가 작고 선별 편향이
+  있으므로 상품군별 정확도·대표성 검증이 아니다. 세 결함군은 원천 multi-label로 나타나며 E3 결함 유형 예측 증거가 아니다.
+  E3 `0.95/0.10`은 선별 여유폭이고 운영 threshold `0.8984375`를 변경하지 않는다.
+- 가상 상품명·SKU·가격대 20건은 사진의 일반 외관과 기존 문의를 연결한 표시 전용 합성 카탈로그다.
+  실제 상품 식별·시장조사·판매가·환불 금액이 아니며 LLM·Policy·Resolution·External Action 입력으로
+  사용하지 않는다. 카탈로그에 없는 Case는 상품을 추정하지 않고 기존 `product_ref`만 표시한다.
+- 새 10장은 사진별 제품군 육안 매칭, 개인 이름이 보이는 rank 61과 모호한 rank 56 제외,
+  SHA/권리 경계와 E3 결과 고정을 거쳐 active catalog에 추가했다. 추가 확장은 같은 승인 절차를 반복한다.
 - 실제 E3 결과는 `attributes.realistic_demo.policy_input_linkage=NOT_LINKED_TO_POLICY_INPUT`으로
   고정했다. 대표 3건의 Text/검색/Grounding/Policy/Human Review는 실제 비동기 경로를 통과했지만
   정책 판단이 Vision score를 사용했다는 뜻이 아니며, Review Packet이 최종 근거 snapshot이다.
@@ -751,11 +784,25 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - Kaputt 기반 E3는 교육·과학적 CV 연구 범위의 비상업 합성 기술 데모로만 사용한다. 사용자
   지시에 따라 Web 콘솔은 현재 `doongdoong.org` 공개 터널에 연결됐지만 E3 endpoint 자체는
   loopback에 남아 있다. 실제 데이터 업로드, 고객·상업 파일럿과 성능 홍보는 권리·법률 승인 전 차단한다.
+- 공식 Kaputt Query 이미지는 이미 전량 추출돼 있고 Reference image/crop/mask는 압축 archive에
+  있다. 동일 `item_identifier`의 Query/Reference Crop 4쌍을 선택 추출해 사진 2장+비교 Prompt로
+  재검증했지만 상품 유형 유용성 1/4, 공식 defect-positive 탐지 0/2였다. 공식 defect label/E3를
+  대체하거나 10,095건 전체를 자동 라벨링하지 않으며, Qwen derived label은 선택적 후보 데이터로만
+  취급한다.
+- 후속 paired 30건에서도 generic VLM 결함 task는 coverage 13.3%, TP 0이어서 품질 실패가
+  확정됐다. 분리한 상품 메타데이터 task는 특정 generic name을 25/30 제안했지만 이는 specificity이지
+  정확도가 아니다. 현재 category enum에 supplement, cleaning/chemical, pet-care가 없어 이름과
+  category가 어긋나는 사례가 있으며, Human Gold 검수 전 자동 catalog/시나리오 반영을 금지한다.
 - Limited PoC 승격에는 고객/상품/결함 범위, 비식별 실제 Case 30건 이상과 Human Gold,
   버전·효력일이 있는 실제 정책, 개인정보 Retention·삭제·EXIF·접근 승인, 실제 Vision qualification
   또는 명시적 제외, 실제 Qwen Extraction·Grounding 재평가와 Shadow 비교가 모두 필요하다.
 - 실제 `LIVE` 외부 실행, 환불·교환·재배송·수리·결제·CRM·고객 알림, Case Closure, Decision
   amendment, Review 단계 입력 보완, 자동 assignment/SLA, OIDC/RLS는 구현하지 않았다.
+- 고객 안내 메일은 발송 결과가 아니라 `SIMULATED_NOT_SENT` 상태의 화면·감사 기록이다. 실제 SMTP,
+  수신자 전송, 배송 성공률은 구현·검증하지 않았고 UI도 `실제 미발송`으로 고정한다.
+- 데이터 자산은 고객 문의 원문·이름·전화·주소·담당자 rationale을 제외한 allowlist다. 현재 `csight`
+  표본은 6건으로 기준선 최소 30건보다 적어 드리프트 수치를 표시하지 않는다. 30건은 기준선 준비,
+  60건은 비교 구간 준비 Gate일 뿐 실제 성능 보장을 뜻하지 않는다.
 - `csight` Admin은 사용자가 지정한 짧은 데모 Credential을 사용하며 Cloudflare Access는 없다.
   Web이 공개 터널에 연결된 현재 상태는 임시 합성 시연에만 사용하고, 외부 공유 전에는 Access를
   적용하거나 Credential을 강화해야 한다. 원장과 Git에는 비밀번호를 기록하지 않는다.
@@ -867,6 +914,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   사내 양식이다. 실제 결제업자 취소, 고객 통지, RMA·추적번호, 법정 처리기한을 기록한 증빙이 아니며,
   외부 연동 전에는 해당 항목을 `미요청/미발송/미연동`으로 유지한다. `ACTION_DRY_RUN_VALIDATED`도
   `환불 완료`가 아니라 `환불 요청 검증 완료`로만 표시한다.
+- 메모리 약 4.21 GiB는 idle/ready 단일 시점 귀속 합계다. Apple MPS는 일반 RSS 대신 physical
+  footprint를 사용했고 Docker는 cgroup 값을 사용했으므로 공유 page/cache 때문에 시스템 전체 사용량과
+  정확히 일치하지 않는다. Vision peak 2,935 MiB와 Embedding peak 1,767 MiB는 동시 peak가 아니다.
 
 ## 9. 다음 실행 항목
 
@@ -891,6 +941,15 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 실제 E3 endpoint와 immutable model/taxonomy/threshold를 연결하고 synthetic image로
   direct HTTP와 Core causal model Gate를 실행한다.
 - [ ] 제품도메인 대표 이미지와 Human Gold를 고정한 뒤 별도 product qualification을 실행한다.
+- [x] 4090 Node의 Kaputt 전체 Query 추출 상태와 `plastic_hard` 분포를 확인하고, 별도 Qwen3.8
+  VLM의 append-only 구조화 표본 4건을 실행한다.
+- [x] `plastic_hard` 표본 4건의 Query/Reference Crop을 선택 추출해 사진 2장+비교 Prompt로
+  재실행하고 상품 유형·가시 근거·defect-positive 탐지를 사람 검수한다.
+- [x] paired 30건에서 결함 비교와 상품 메타데이터 schema/prompt를 분리하고 specific name 비율,
+  금지 필드, 민감 패턴, latency와 결함 confusion/coverage를 평가한다.
+- [ ] 사람이 paired 30건의 일반 상품명·category를 Gold로 확정하고 supplement,
+  cleaning/chemical, pet-care taxonomy를 결정한 뒤 Qwen 후보의 accuracy를 계산한다. 결함 Target은
+  공식 Label/E3만 사용한다.
 - [ ] 다음 기능 Sprint에서는 먼저 Evidence Alignment 입력 계약과 Claim↔Detection matching,
   confidence calibration을 설계하고 Policy/Approval을 계속 분리한다.
 - [ ] Evidence Reconciliation·Orphan Cleanup·업로드 Idempotency와 Retention 정책을
@@ -939,6 +998,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   Text v2→RAW Top-3→Grounding→Policy→Human Review `PENDING`까지 실제 실행한다.
 - [x] R1 장문 문의 10건·3열 상담원 UI·CSight Commerce 가상 정책 8문서/52조항과 canonical
   Rule Set `2.0.1`을 구현하고 대표 수리·Safety·단순변심 3건을 Human Review까지 실제 실행한다.
+- [x] 검증된 R1 사진 10장에 표시 전용 가상 상품명·SKU·KRW 가격대·문의 목적을 매핑하고
+  Case 목록 검색/표시와 상세 상품 카드에서 실제 판매가·환불 입력이 아님을 명시한다.
+- [x] `COMMERCE_CONTEXT_R2_E3` 10건에 합성 고객 ID/이름·마스킹 연락처·주문/결제·가상 배송지와
+  운송 정보를 DB 저장하고, Case 목록/상세와 새 환불 확인서 스냅샷에 allowlist로 연결한다.
+- [ ] 추가 사진 시나리오는 개인 이름·바코드·브랜드·중복을 제외하고 사진별 제품군과 SHA를
+  검토한 뒤 별도 버전으로 확장한다. 같은 사진에 다른 상품을 임의로 중복 매핑하지 않는다.
 - [x] Case Workspace를 `지금 할 일` 단일 CTA와 2열 본문으로 단순화하고,
   데스크톱 inert X를 제거하며 UTC/KST policy-date 422와 API 오류 메시지 파싱을 수정한다.
 - [x] Review 화면에 PoC 준비도 0.70 기반 `허용/비허용` 빠른 검토를 추가하고, 인증 Human 클릭 뒤
@@ -946,6 +1011,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] `APPROVE_REFUND` 보고서를 금액·수량·처리 상태·취소 요청·고객 통지·반품 추적·정책 승인·
   감사 ID가 포함된 `환불 처리 확인서`로 분리하고 A4 인쇄, 누락값 fail-closed, 실제 환불 미실행
   표기를 검증한다.
+- [x] 내부 decision/status 코드를 자연어 업무 라벨로 표시하고 terminal Report에서 고객 안내 EMAIL
+  simulation을 생성·재열람하되 `SIMULATED_NOT_SENT`와 side effects 0을 고정한다.
+- [x] terminal Report와 같은 transaction에서 tenant별 비식별 학습 asset을 자동 적재하고, 기존
+  Report를 소급 allowlist 적재하며 데이터 자산 화면에 30/60건 기준선 준비 상태를 표시한다.
+- [ ] 실제 상담원 처리 표본이 30건에 도달하면 데이터 누락·분포·버전 구성을 검토해 기준선을 승인하고,
+  60건 전에는 드리프트 비교 수치를 생성하지 않는다.
 - [ ] 인증된 담당자가 대기 중인 비Safety 대표 Case 하나에서 실제 `허용` 또는 `비허용`을 선택하고,
   생성된 Decision·Resolution·Report를 확인한다. 이 선택은 변경 불가능한 사람의 최종 판단이다.
 - [ ] 로그인한 상담원 세션에서 기존 422 Case의 `분석 계속하기`를 한 번 누르고
@@ -969,6 +1040,10 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [ ] 공개 터널을 공유하기 전 Cloudflare Access를 적용하거나 `csight` Admin Credential을
   강화하고, 시연 종료 뒤 터널 복원·중단 여부를 결정한다.
 - [ ] Kaputt 권리 범위를 벗어나는 고객·상업 사용은 별도 법률·권리자 승인 전 차단한다.
+- [x] 내부 PoC 상품군 4개·결함군 3개와 첫 10건 SHA Allowlist를 버전 고정하고, E3 점수 margin과
+  source label·사람 승인 fail-closed Gate를 적용한다.
+- [x] 별도 `poc_closed_set/2.0.0`에 새 10건을 승인해 식품·건강보조제와 생활화학·접착제를 포함한
+  상품군 4/4를 표현하고 actual E3·멱등 재실행을 통과한다. 이는 Human Gold 성능평가가 아니다.
 - [ ] 고객 후보, 상품군 1개, 결함 유형 2~3개와 비식별 실제 Case/Human Gold 30건 이상을 확보한다.
 - [ ] 버전·효력일이 있는 실제 기업 정책과 실제 Policy/Case/User Query 분포 평가를 확보한다.
 - [ ] Retention·삭제·EXIF 제거·접근권한 승인을 받고 증거 artifact ID/hash를 Gate에 연결한다.
@@ -977,6 +1052,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [ ] 실제 목표 분포에서 Qwen3.8 Extraction·Grounding을 재평가하고 Shadow Mode Human 비교를 완료한다.
 - [ ] 모든 외부 증거와 zero-safety/clean-environment artifact가 갖춰진 뒤에만
   `make require-limited-poc`으로 `LIMITED_POC` 승격을 판정한다.
+- [ ] 대표 10 Case를 연속 처리하면서 5초 간격으로 Vision·Embedding physical footprint, Docker
+  container memory, queue depth와 실패율을 함께 기록하고 p95/peak 기준점을 추가한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -1961,3 +2038,361 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   qualification 미완료 경계와 Human-only final decision은 그대로 유지
 - 다음 작업: 이 closeout 원장 Commit의 최종 CI를 확인한 뒤, Vision Draft PR #4와의 충돌 검토 및
   거버넌스 승인 전에는 PoC PR·`develop/main` 통합을 실행하지 않음
+
+### 2026-08-28 — Fictional Product and Price Scenario Catalog
+
+- 목표: 현재 R1 사진 10건이 기술용 `product_ref` 대신 실제 이커머스 상담처럼 읽히도록
+  가상 상품명·SKU·가격대·문의 목적을 연결하되 실제 상품/가격 추론과 Action 입력을 분리
+- 비용 절감: 저비용·낮은 추론 서브에이전트는 기존 manifest 감사와 초안만 수행. 최종 매핑은
+  현재 10장 contact sheet와 source rank를 직접 대조하고 코드/안전 검증은 주 작업에서 수행
+- 구현: `web/src/demo/productScenarioCatalog.ts`에 6 defect candidate·4 below-threshold reference
+  카탈로그를 고정. 목록은 상품명 검색과 상품명·가상 SKU·가격대를 표시하고 상세는 가상 상품 배지,
+  상품군·문의 목적·`실제 판매가/환불 금액 아님` 경계를 표시
+- 안전 경계: 가격 basis는 `SYNTHETIC_DEMO_CATALOG_NOT_MARKET_RESEARCH`. representative price를
+  External Action 입력으로 사용하지 않으며 미매칭 Case는 기존 `product_ref`만 표시. 기준 미만 사진을
+  정상으로 확정하거나 실제 SKU·브랜드·판매가를 식별하지 않음
+- 문서: 현실형 v2 README에 10건 상품/가격 표와 표시·검색·비추론 계약을 추가
+- 검증: Web lint·typecheck·OpenAPI sync·production build PASS, Vitest 18 files/52 tests,
+  Playwright 5 PASS, `git diff --check` PASS. Web 재빌드 후 Core 7 healthy, API ready·Web health·
+  public Login HTTP 200, 새 Login DOM과 console warning/error 0
+- 미실행: 브라우저에 Credential을 다시 입력하지 않아 인증 Case 상세 수동 확인과 Human Decision은
+  미실행. 추가 사진 후보를 active catalog에 넣거나 원본 이미지를 Git/Web static으로 복사하지 않음
+- Git: 변경은 로컬 미Commit·미Push. 사용자 소유 미추적 문서 3개는 수정·삭제·Stage하지 않음
+- 다음 작업: 사용자가 로그인한 Case 상세에서 상품 카드가 사진/문의와 함께 보이는지 확인하고,
+  추가 사진은 PII/브랜드/바코드·권리·SHA·E3 outcome 검토 후 별도 catalog version으로 확장
+
+### 2026-08-28 — Synthetic Commerce Context and Refund Document R2
+
+- 목표: PoC Case와 환불 확인서를 실제 이커머스 운영처럼 읽히게 하되 합성 고객/거래 문맥과
+  External Action 입력을 분리
+- 계약: `synthetic_commerce_context/1.0.0`을 Case JSONB 예약 속성으로 추가. 고객 ID·이름·멤버십,
+  마스킹 전화/결제수단/운송장, 상품·판매자·결제 합계, `데모/가상` 배송지만 허용하고 금액 합계와
+  timezone을 검증. ADR-0098에 display-only/비추론 경계를 고정
+- 구현: Case 목록에 고객명·ID·결제금액, 상세에 고객/주문/배송 카드, 새 terminal Report에 검증된
+  Commerce allowlist snapshot과 `direct_contact_values_included=false`를 저장. 환불 확인서는 원 결제액,
+  명시 환불액, 마스킹 결제수단, 고객/수령인/배송지를 분리 표시
+- DB/E3: 첫 `COMMERCE_CONTEXT_R2` 시도는 Core가 Mock 설정이라 첫 Case의 provider identity에서 즉시
+  중단했고 Decision/Action 0. 해당 진단 Case는 append-only 보존하되 목록에서 제외. Core를 Remote E3로
+  복구한 `COMMERCE_CONTEXT_R2_E3`은 10 Case·10 Evidence·10 actual E3 Analysis를 신규 생성하고 모두
+  `SUCCEEDED`; Policy/Review/Decision/Action 신규 행 0. 같은 시드 재실행은 Case·Evidence·Analysis
+  10/10을 재사용하고 Private Evidence 무결성을 다시 확인
+- 금액 검증: R2 10건 모두 Commerce snapshot 존재. REFUND 2건은 결제금액/명시 환불액이 각각
+  18,900/18,900원, 15,900/15,900원. 결제금액에서 Action parameter를 추론하는 경로는 없음
+- 회귀: Ruff·Format 386·Pyright 0, 기본 664 PASS/65 deselected, 격리 Human Review→Resolution→Report
+  통합 1 PASS와 임시 DB 정리. Web lint·typecheck·OpenAPI sync·build, Vitest 19 files/55 tests,
+  Playwright 5 PASS
+- Runtime: 15:38 KST Core 7 healthy, API ready·Web health·public Login HTTP 200, API/Worker/Dispatcher
+  `VISION_PROVIDER=remote`와 E3 model/task identity 확인
+- 미실행: 인증 Human Decision 클릭, 실제 외부 환불/통지/회수, 기존 immutable Report 소급 변경,
+  Commit·Push·PR. 기존 사용자 소유 미추적 문서 3개는 보존
+- 다음 작업: 로그인한 사용자가 R2 환불 Case `...002` 또는 `...010`에서 정책 흐름을 진행하고 명시적
+  허용/비허용을 선택한 뒤, 새 immutable 환불 확인서에 고객·결제·배송 스냅샷이 표시되는지 확인
+
+### 2026-08-28 — Natural Business UI, Customer Communication, and Tenant Data Assets
+
+- 목표: 내부 enum을 상담원이 읽는 자연어로 바꾸고, 최종 처리 뒤 고객 안내 메일이 어떻게 보이는지
+  실제 발송 없이 시연하며, 향후 drift 기준선을 위한 고객사 소유 데이터 축적 경로를 추가
+- UI: `APPROVE_REFUND`, `ACTION_NEEDS_INPUT` 같은 코드는 `환불 승인`, `처리 정보 보완 필요`를
+  주 라벨로 표시. 상세 결정 select·완료 요약·Resolution·환불 확인서에도 같은 업무 용어를 적용
+- Communication: terminal `review_report/1.0.0`만 근거로 immutable EMAIL simulation v1.1을 생성.
+  환불 검증 완료·입력 보완·검증 실패를 구분한 제목/본문을 만들고 `SIMULATED_NOT_SENT`,
+  `side_effects_performed=false`를 DB check와 UI에 고정. 기존 v1.0 기록도 append-only 조회 호환
+- Data asset: `case_learning_asset/1.0.0`을 terminal Report 생성 transaction에 자동 적재. 상품/요청,
+  사람 결정, Resolution/Simulation 결과, 모델·정책·pipeline 버전만 allowlist하고 고객 원문·직접
+  연락처·주소·담당자 rationale는 제외. 기존 Report는 Migration에서 같은 계약으로 소급 적재
+- Drift Gate: tenant별 30건 전 `기준 데이터 수집 중`, 30~59건 `비교 데이터 수집 중`, 60건부터
+  `드리프트 점검 준비 완료`. 현재 `csight` 6건으로 수치 판단을 보류하고 분포·버전 현황만 표시
+- DB/API: additive `20260828_0016_communication_learning_assets`, Communication POST/GET와
+  `/api/v1/data-assets/summary` no-store tenant API. 현재 DB Head `0016`, 기존 Report 9건 중 무결성
+  정상 9건을 전체 tenant asset으로 backfill했고 `csight` 조회는 6건
+- 검증: Ruff·Format 313·Pyright 0, 기본 672 PASS/59 deselected·6 external Skip, disposable
+  PostgreSQL Migration 2 PASS/DB 제거. Web TypeScript·ESLint·OpenAPI sync·production build,
+  Vitest 21 files/57 tests PASS. 배포 Login DOM·button 확인
+- Runtime: 16:02 KST API/Worker/Dispatcher/Web healthy, PostgreSQL/RabbitMQ/MinIO ready. Core의
+  Remote E3 model/revision/threshold identity를 rebuild 뒤에도 확인. live mail v1.1 생성·v1.0/v1.1
+  재조회, 모든 상태 `SIMULATED_NOT_SENT`, side effects 0
+- 미실행: 실제 SMTP, 외부 고객 통지, 환불/결제 취소, 새 Human Decision, Commit·Push·PR.
+  사용자 소유 미추적 문서 3개는 수정·삭제·Stage하지 않음
+- 다음 작업: 사용자가 새 R2 환불 Case를 사람 판단으로 처리한 뒤 새 환불 확인서와 안내 메일을
+  함께 확인하고, 표본 30건 도달 시 allowlist 누락·분포·버전 기준선을 사람 승인으로 고정
+
+### 2026-08-28 — Runtime Memory Ready Baseline
+
+- 목표: 현재 로컬 PoC가 차지하는 메모리를 Docker Core와 host MPS 모델 서비스로 분리해 운영
+  기준점으로 고정
+- 측정: 16:28 KST, 호스트 32 GiB. Vision E3 physical footprint 1,570 MiB, Embedding endpoint와
+  helper 1,732.5 MiB, Docker Core 7개 961.95 MiB, Cloudflare tunnel 48.42 MiB
+- 합계: CSight 귀속 약 4,312.87 MiB/4.21 GiB, 호스트의 약 13.16%. Vision·Embedding 두 모델이
+  76.6%, Docker Core가 22.3%, tunnel이 1.1%
+- Docker 상세: Worker 258.7, MinIO 153.2, PostgreSQL 149.3, API 141.9, RabbitMQ 131.9,
+  Dispatcher 117.8, Web 9.152 MiB
+- 상태: Core 7개, Vision E3, Embedding healthy. Reranker·Local LLM은 미실행이라 0 MiB.
+  memory-pressure 여유 지표 80%, 측정 시 swap-in/out 0
+- 경계: idle/ready 단일 시점이며 모델은 MPS physical footprint, Docker는 cgroup, 작은 host
+  process는 RSS를 사용했다. 공유 page/cache와 Docker VM accounting 때문에 시스템 전체 resident
+  memory와 정확히 일치하지 않음
+- 문서: `docs/progress/MEMORY_USAGE_BASELINE.md`에 측정 계약, 모듈별 표, 개별 peak와 다음 부하
+  측정 순서를 기록
+- 검증: 두 모델 health, Core 7 healthy, 산술 합계·비중 재계산, `git diff --check` PASS
+- 미실행: 대표 10 Case 연속 부하, 동시 사용자, queue backlog, Reranker·Local LLM 추가 적재,
+  Commit·Push·PR
+- 다음 작업: 대표 10 Case 처리 중 5초 간격 current/peak와 queue depth·실패율을 함께 기록해
+  p95/peak 운영 기준점을 append-only로 추가
+
+### 2026-08-28 — Kaputt Source Recovery and Qwen3.8 VLM Sample Qualification
+
+- 목표: 4090 Node에 이미 받은 Kaputt 원본을 재사용하고, 기존 text-only Qwen 경계를 보존한 채
+  경질 플라스틱 상품 메타데이터의 offline 후보 라벨링·구조화 가능성을 확인
+- Source: `/home/data/datasets/kaputt/extracted`에 Query 이미지 100,267장이 Parquet 행과 정확히
+  일치. `plastic_hard`는 10,095건이며 defect 1,323·negative 8,772. Reference image/crop/mask는
+  parent의 공식 archive에는 있으나 전량 추출되지 않음
+- 구현: 별도 `csight-qwen3.8-27b-vlm` compose, strict JSON schema·deterministic balanced sampling·
+  source SHA/model+prompt+preprocess provenance·append-only success/failure 기록 Script, ADR-0099와
+  data contract 문서 추가. 실패 기록은 보존하되 성공 전에는 재시도할 수 있게 수정
+- Runtime: pinned native VLM을 RTX 4090에 별도 private port로 적재. 첫 0.98 reservation은 가용
+  VRAM 경계에서 fail-closed하여 0.95로 낮췄고, 이후 healthy. 기존 ADR-0012 text-only endpoint와
+  Core provider는 변경하지 않음
+- 표본: prompt 1.2.0으로 test의 defect 2·negative 2를 처리해 4/4 schema success, 9.3–10.8초/건,
+  generic-only·중복 defect 0·민감 패턴 0. 사람 점검에서 사탕 용기 1건만 유용했고 머핀 트레이·
+  바디케어 용기·접착제 용기 3건은 `UNCERTAIN`; defect-positive 두 건도 기준 비교 없이는 보류
+- 판정: Pipeline 기술 검증은 PASS, label quality는 `QUALIFIED_WITH_LIMITATIONS`. 전체 10,095건
+  Batch를 실행하지 않고 paired Reference 30건 Human spot-check를 다음 Gate로 설정
+- 보존/정리: private derived JSONL SHA-256
+  `390f7d32a1b9a689d4071c59d2e8c0493851c7ea5ea3659f9af7ab58913b0d57`; 전용 VLM Container를
+  exit 0으로 중지해 GPU 22,365 MiB에서 95 MiB로 회수. 최초 탐색 중 받은 중복 sample 1.1 GiB는
+  `/home/user/csight-kaputt-vlm/kdd-5305ccf`에 남겼으며 삭제는 사용자 승인 전 미실행
+- 검증: targeted Ruff·Format PASS, Pyright 0, pytest 4 PASS, compose/runtime health·model identity,
+  output schema/민감 패턴/사람 이미지 점검 PASS. 전체 Backend/Web 회귀는 이번 독립 offline 도구
+  변경에서 재실행하지 않음
+- Git safety: Commit·Push·PR 없음. 사용자 소유 미추적 문서 3개는 수정·삭제·Stage하지 않음
+- 다음 작업: 공식 Reference archive에서 위 30건의 대응 image/crop만 선택 추출하고 Query↔Reference
+  pair manifest를 만든 뒤 Qwen 결과를 사람 검수해 full-batch 실행 여부를 결정
+
+### 2026-08-28 — Qwen Query+Reference Images and Comparison Prompt Correction
+
+- 정정: 직전 실행도 Query 사진+Prompt를 함께 보냈지만 기준 사진이 없었다. 사용자 지적에 따라
+  입력 계약을 Query Crop 1장+동일 `item_identifier` Reference Crop 1장+역할이 명시된 비교 Prompt로
+  수정하고 schema를 `kaputt_vlm_enrichment/2.0.0`, prompt를 `2.0.1`로 갱신
+- Data: 공식 31.6 GiB Query Crop과 41.6 GiB Reference Crop archive 전체를 풀지 않고 test 표본에
+  필요한 각 4장만 선택 추출. Query/Reference 상대경로·SHA·preprocess와 full Query context 경로를
+  append-only 결과에 보존
+- Runtime: 별도 VLM의 prompt당 image 제한을 1→2로 변경하고 pinned model/revision은 유지. 기존
+  Core text-only Qwen·E3·DB·Human Review는 변경하지 않음
+- 실행: defect 2·negative 2 paired 표본 4/4 strict schema success, 9.6–12.0초/쌍,
+  `QUERY_PLUS_REFERENCE` 4/4, 민감 패턴 0. 결과 SHA-256
+  `159f5ded7eb9559d5b322ca9d24d48cfc117ed4c94a922f89c7145cb8bac3811`
+- 품질 판정: 상품 유형 유용성 1/4, 공식 defect-positive 탐지 0/2로 FAIL. 사진+Prompt 전달 경로는
+  동작하지만 Qwen3.8 generic VLM을 Kaputt defect labeler나 E3 대체로 사용하지 않음. 공식 Label은
+  Ground Truth, E3는 결함 Vision, Qwen은 선택적 상품 설명 후보로 분리
+- 자원: private derived JSONL을 보존하고 전용 Container exit 0, GPU 95 MiB로 회수
+- 검증: targeted Ruff·Format PASS, Pyright 0, pytest 5 PASS, Compose config PASS, live paired
+  4건·schema/provenance/민감 패턴·사람 이미지 대조. 전체 Backend/Web 회귀는 미실행
+- Git safety: Commit·Push·PR 없음. 사용자 소유 미추적 문서 3개는 수정·삭제·Stage하지 않음
+- 다음 작업: 상품 메타데이터가 필요하면 사람이 일반 상품 유형을 붙인 paired 30건에서 Qwen 보조
+  유용성을 따로 평가하고, 결함 Target은 공식 Label/E3에 고정
+
+### 2026-08-28 — Qwen3.8 Paired VLM Runtime Restart
+
+- 사용자 지시로 전용 `csight-kaputt-vlm-qwen38-vlm-1` Container를 다시 시작
+- 18:42 KST health `healthy`, 인증 `/v1/models` HTTP 200, served identity
+  `csight-qwen3.8-27b-vlm` 확인
+- RTX 4090 24,564 MiB 중 21,511 MiB 사용, idle utilization 0%, 39°C
+- Query Crop+Reference Crop+Prompt용 image 2개 계약과 private Tailscale bind `:18001` 유지
+- 실제 추가 Batch·DB/API 변경·Commit·Push·PR은 실행하지 않음. 품질 Gate FAIL과 공식 Label/E3
+  경계는 그대로 유지
+- 다음 작업: 승인된 소량 paired metadata 작업만 실행하고, full 10,095건 Batch는 별도 품질 승인 전 금지
+
+### 2026-08-28 — Kaputt Paired 30 Qualification and Product Metadata Split
+
+- 범위: 사용자 `진행해` 지시에 따라 full 10,095건 대신 deterministic paired 30건을 defect 15·
+  negative 15로 고정. 기존 4쌍 재사용 후 Query Crop 26장·Reference Crop 24장만 공식 archive에서
+  선택 추출해 Query 30/30·unique Reference 28/28 준비
+- 결함 task: Query Crop+same-item Reference Crop+prompt 30/30 schema success, 실패 0. 그러나
+  `UNCERTAIN` 26, `NO_VISIBLE_DEFECT` 2, `VISIBLE_DEFECT` 2. 공식 label 대비 TP/FP/TN/FN
+  0/2/0/2, positive/negative abstain 각 13, coverage 13.3%로 품질 FAIL
+- 결함 판정: detached pump를 관찰하고도 no-defect로 냈고 정상 보충제 용기 두 건은 viewpoint를
+  deformation으로 오판. prompt의 관점 차이 금지에도 generic Qwen VLM은 E3/공식 label 대체 불가
+- Product 분리: `kaputt_product_metadata/1.0.0`에는 name/category/form/use/usability/evidence만 두고
+  condition·defect·price·refund·brand/SKU·business action을 제거. official defect label은 provenance에만
+  보존하고 prompt 입력에서 제외
+- Product 결과: 30/30 strict schema success·실패 0, specific generic name 25·uncertain 5,
+  generic-only/paired 30, 금지 필드·email/phone/currency/long-number 0. latency min 7.4초, p50 8.5초,
+  p95 10.0초, max 10.0초
+- Visual QA: 임시 5x6 Contact Sheet로 이름 후보를 대조. 머핀 팬·로션·접착제·샴푸/세정 용기 등은
+  유용한 후보였으나 supplement/cleaning-chemical/pet-care enum 부재로 category mismatch가 존재.
+  25/30은 specificity이며 Human Gold accuracy가 아님
+- Artifact: defect result SHA `e53a516b8ffb5400def2f490f3376716e18d89e2029670e6782a14f408deb2a6`,
+  product result SHA `7ddc9197c957f9e81b5560476a789f06d555e346ff8dc0df734c076abfef846a`를 private
+  `/home/data/datasets/kaputt/derived/csight-qwen38/`에 append-only 보존
+- 검증: targeted Ruff·Format PASS, Pyright 0, pytest 6 PASS, remote Pydantic 30/30 재검증,
+  provenance/task/금지 필드/민감 패턴/Contact Sheet 확인. 전체 Backend/Web 회귀는 미실행
+- Runtime: 19:34 KST VLM healthy, GPU 22,731/24,564 MiB, idle 0%, 40°C. 사용자 재기동 지시에
+  따라 Container를 중지하지 않고 유지
+- Git safety: Commit·Push·PR·현재 PoC Catalog 자동 반영 없음. 사용자 소유 미추적 문서 3개 보존
+- 다음 작업: 사람이 30건 product name/category Gold를 확정하고 taxonomy를 승인한 뒤 accuracy를
+  계산하며, full Batch 또는 PoC Catalog 반영은 그 이후 별도 결정
+
+### 2026-08-28 — Curated PoC Closed-set v1
+
+- 목표: PoC/MVP 시연 범위를 열린 상품·결함 추론 대신 승인된 상품군 4개·결함군 3개와 점수
+  구간으로 고정하고, 해당 조건을 통과한 데이터만 내부 데모에 채택
+- 계약: `poc_closed_set/1.0.0`, 상품군은 뷰티·개인관리/식품·건강보조제/생활화학·접착제/
+  주방·수납, 결함군은 개봉·분해/변형·파손/표면 손상·누액. E3 runtime threshold
+  `0.8984375`는 유지하고 선별 margin만 defect `>=0.95`, reference `<=0.10`으로 설정
+- 구현: `app/platform/poc_demo_selection.py`의 기술 독립 registry validator와 admission Gate,
+  `evaluation/poc_closed_set_v1/registry.json` 10건 SHA Allowlist, v2 seed source identity·원천 label·
+  E3 결과 fail-closed, seed report의 class/admission provenance를 추가
+- UI: Case 상세 가상 상품 카드에 `PoC 상품군`, 자연어 `결함 시나리오`, `데이터 사용 기준`을 표시.
+  저점수 참고는 `정상`이 아니라 `사람 확인 저점수 참고`로 명시
+- 실제 coverage: 기존 10건은 상품군 2/4(`PERSONAL_CARE_CONTAINER`,
+  `KITCHEN_OR_STORAGE_ITEM`)와 결함군 3/3을 표현. 나머지 상품군 두 개는 사진이 없어 미검증이며
+  Qwen은 후보 제안만 하고 자동 승인·결함 분류에 사용하지 않음
+- 검증: 실제 Top-100 package와 normal reference로 identity/rank/SHA/source label 10/10 PASS.
+  기존 actual E3 seed 원장의 10건도 새 Gate 10/10 채택, defect 최저 0.9985969·reference 최고
+  0.00006098로 각각 0.95/0.10 margin을 통과.
+  Ruff PASS, Format 392, Pyright 0, 기본 682 PASS/65 deselected, closed-set 포함 targeted 25 PASS,
+  Qwen 보조 도구 6 PASS. Web lint·typecheck·OpenAPI sync·22 files/60 tests·production build PASS,
+  `git diff --check` PASS
+- Runtime: 20:08 KST Web/API 재배포 뒤 Core 7 healthy, local Web/API health PASS, public Login DOM과
+  console error 0. 인증 정보는 입력하지 않아 실제 Case 상세 화면과 live E3 seed 재실행은 미실행
+- 안전: E3가 결함 유형을 예측하거나 저점수를 정상 확정한다는 주장 0, 실제 Decision/Action/메일
+  발송 0. Commit·Push·PR 없음, 사용자 소유 미추적 문서는 수정·삭제·Stage하지 않음
+- 다음 작업: 빈 상품군 두 개의 후보를 각 3~5장 확보해 사람 검수·권리·SHA·E3 score를 승인한 뒤
+  `poc_closed_set` 새 버전에 추가하고, MVP 평가는 선별 표본과 분리된 Human Gold로 수행
+
+### 2026-08-28 — Curated PoC 20-case Expansion
+
+- 목표: 기존 최신 10건을 수정하지 않고 서로 다른 이미지·주문·문의 10건을 추가해 내부 시연
+  범위를 결함 후보 12건과 사람 확인 저점수 참고 8건, 총 20건으로 확장
+- 데이터: 결함 rank 1/9/22/31/73/79와 저점수 참고 rank 1/20/65/67을 사람 육안 대조하고
+  exact SHA Allowlist로 고정. 개인 이름이 보이는 defect rank 61과 모호한 rank 56은 제외
+- 계약: `realistic-internal-demo-v3`, `CLOSED_SET_EXPANSION_R3`,
+  `poc_closed_set/2.0.0`. 기존 v2 10건과 registry v1은 불변이며 두 팩 합계로 상품군 4/4,
+  원천 결함군 3/3을 표현. E3 운영 threshold `0.8984375`, 선별 margin `0.95/0.10` 유지
+- Runtime: 최초 1건에서 API가 Mock snapshot, Worker가 Remote E3 snapshot인 설정 불일치를 발견.
+  실패 Run 두 개는 삭제하지 않고 append-only 보존하고 API를 Worker와 같은 actual E3 identity로
+  재구성. 고정 retry-2에서 성공한 뒤 새 10건 최신 Analysis `SUCCEEDED` 10/10
+- 멱등성: 첫 완주에서 Case 9 생성/1 재사용, Evidence 9 업로드/1 재사용, 성공 Analysis 10 생성.
+  즉시 재실행은 Case·Evidence·Analysis 10/10 재사용, Private Evidence integrity 10/10
+- 안전: seed 전후 Policy Retrieval·Grounding·Policy Evaluation·Human Review·Resolution·Intent·
+  Simulation Attempt/Result 모두 0. 저점수=정상 주장, 모델 결함 유형 예측, 실제 Decision·Action·메일 0
+- UI: 20개 가상 상품/가격대와 closed-set 자연어 label 추가, provenance schema 3.0 fail-closed,
+  상담 목록은 오래된 R1 중복을 숨기고 최신 R2 10건+R3 10건을 활성화. Web 재배포 후 local/public
+  asset `index-CJlif6d0.js` 일치와 `/web-health` PASS
+- 검증: Ruff·Format PASS, Pyright 0, targeted backend 35 PASS, 기본 686 PASS/65 Skip,
+  Web lint·22 files/62 tests·production build PASS, v3 seed report replay hash
+  `dc9bedb9b5de24a3a49c681b5d519024c6f52fd7791934d536d3a4879a78c8fb`, `git diff --check` PASS
+- 범위: 클래스 표현은 정확도·calibration·시장 분포 평가가 아니다. 원본 재배포 권리는 미확인이고
+  내부 합성 기술 시연만 허용. Commit·Push·PR 없음, 사용자 소유 미추적 문서 보존
+- 다음 작업: 인증 상담원으로 새 상품군 대표 Case를 한 건씩 열어 표시와 Human Review 흐름을
+  수동 확인하고, 20건 연속 처리의 메모리·queue·실패율 기준선을 별도로 기록
+
+### 2026-08-28 — Korean Product-first Inquiry Console
+
+- 목표: 상담 목록의 `case-primary`·`case-action` 영역과 상세 화면에서 내부 영문 코드보다 한글
+  상품명과 자연어 업무 표현을 우선해 실제 상담원이 빠르게 읽을 수 있도록 정리
+- 목록: `Case desk/상담 케이스`를 `문의 목록/접수된 문의`로 바꾸고, 활성 20건은 주문번호 대신
+  `플랫케이스 오거나이저 2P` 같은 가상 상품명을 제목으로 표시. 주문번호·상품번호·가격대는
+  한글 label이 붙은 보조 정보로 이동
+- 업무값: `EXCHANGE/REFUND/RETURN/REPAIR/INFORMATION/OTHER/UNSPECIFIED`를
+  교환/환불/반품/수리/정보 안내/기타 문의/아직 정하지 않음으로 표시. 검토 유형·우선순위·필터도
+  일반 정책 검토/안전 검토/보통/긴급 등으로 변환하며 API 저장값은 변경하지 않음
+- 상세/등록/보고서: 상세 제목을 상품명 우선으로 통일하고 문의 번호·주문 번호·상품 번호를 분리.
+  새 문의 select와 버튼, 검토함, 데이터 자산, 운영 지표, 보고서의 영문 eyebrow와
+  Resolution/DRY-RUN/Case 문구를 한글 업무 표현으로 교체
+- 검증: Web ESLint PASS, TypeScript PASS, OpenAPI sync PASS, 22 files/62 tests PASS,
+  production build PASS. 검색·처리 요청·모의 실행 요약의 잔여 영문도 제거한 뒤 local/public
+  `/web-health` PASS와 배포 asset `index-BLCAsxTA.js` 일치, Core 7개 서비스 healthy
+- 범위: CSS class와 API enum은 내부 계약이므로 변경하지 않고 사용자에게 보이는 문자열만 한글화.
+  인증 정보는 입력하지 않아 실제 로그인 목록 육안 확인은 미실행. Backend·DB·Decision·Action 변경 0
+- Git safety: Commit·Push·PR 없음, 사용자 소유 미추적 문서와 원본 이미지 보존
+- 다음 작업: 기존 로그인 세션에서 활성 20건 목록과 대표 상세 1건의 한글 상품명·요청 유형을 육안 확인
+
+### 2026-08-28 — Review Queue Product-name Unification
+
+- 목표: 검토 대기함의 작업 유형 중심 제목을 문의 목록과 같은 상품명 중심 구조로 바꾸고,
+  상담 목록·상세에서 `등록 상품 문의`로 보이던 기존 시연/점검 Case도 한글 상품명으로 통일
+- 실제 범위 확인: 실행 중 DB를 읽기 전용 조회해 서로 다른 `product_ref` 49종을 확인. 최신
+  R2/R3 20종 외에 이전 V1/V2 시연 참조, Kaputt/MLX/Policy/Query 점검 참조가 남아 있었음
+- 구현: 최신 카탈로그·이전 참조 alias·내부 점검 참조를 하나의 표시 전용 resolver로 통합.
+  검토 대기함은 각 Task의 Case 상세를 tenant API로 조회해 상품명, 검토 유형, 문의 번호를 함께 표시하고
+  검토 상세 제목도 같은 resolver를 사용. 문의 목록·상세의 `등록 상품 문의` fallback 제거
+- 안전 경계: 상품명은 합성 시연용 표시 metadata일 뿐이며 이미지 라벨, Vision class, 정책 입력,
+  가격, 환불 금액, External Action parameter 또는 실제 상품 qualification에 사용하지 않음.
+  Backend·DB·Human Decision·Action 변경 0
+- 검증: Web ESLint PASS, TypeScript PASS, OpenAPI snapshot sync PASS, 23 files/61 tests PASS,
+  current DB 49 product refs mapping coverage PASS, production build PASS. minified JS 500.69 kB에 대한
+  Vite 권고 1건은 남았으나 build 실패·기능 오류는 아님. `git diff --check` PASS
+- Runtime: 21:33 KST Web 재배포, local/public `/web-health` PASS, 양쪽 asset
+  `index-DrYgNQF7.js` 일치, API/Worker/Dispatcher/Web/Postgres/RabbitMQ/MinIO 7개 healthy
+- Git safety: Commit·Push·PR 없음, 사용자 소유 미추적 문서와 원본 이미지 보존
+- 다음 작업: 기존 로그인 세션에서 문의 목록과 검토 대기함을 나란히 열어 동일 Case가 같은 상품명으로
+  보이는지 수동 확인하고, 번들 분할은 화면 기능이 더 늘기 전에 별도 최적화
+
+### 2026-08-28 — Full-width Allow/Deny Review Workspace
+
+- 목표: 담당자가 허용/비허용을 선택하는 검토 상세 화면의 과도한 바깥 여백과 작은 글자·버튼을
+  줄이고, 데스크톱 작업 공간을 실제 상담 업무 화면처럼 크게 사용
+- 레이아웃: 검토 상세만 기존 1280px에서 최대 1540px로 확장. 좌측 근거와 우측 결정 패널을
+  `1.25fr / min 460px`로 배치하고 gap 28px, Card padding 28px 적용. 1280px 이하에서는 한 열로
+  전환해 좁은 좌우 열이 생기지 않도록 함
+- 가독성: 상품명 제목, 탭, 검토 패킷 definition, 권고/qualification, 근거 기록의 글자·간격을 확대.
+  빠른 검토 panel padding 26px, 허용/비허용 버튼 높이 90px, icon 25px, 판단 설명과 준비도 badge 확대
+- 반응형: 760px 이하에서는 Card padding 18px, 빠른 검토 20px, 버튼 한 열과 header 세로 배치로
+  모바일 overflow 없이 기존 조작 흐름을 유지
+- 검증: Web ESLint PASS, TypeScript PASS, OpenAPI snapshot sync PASS, 23 files/61 tests PASS,
+  production build PASS. minified JS 500.69 kB 권고 1건은 기존과 동일하며 기능 실패 아님.
+  `git diff --check` PASS
+- Runtime: 21:45 KST Web 재배포, local/public `/web-health` PASS, 양쪽 JS
+  `index-Dxfs6VI-.js`와 CSS `index-DKhElaI1.css` 일치, Core 7개 서비스 healthy
+- Browser scope: 연결된 브라우저는 로그인 화면 상태여서 인증 정보 입력 없이 검토 상세 육안 QA는
+  실행하지 않음. CSS·component 회귀와 배포 asset까지만 현재 PASS
+- Git safety: Commit·Push·PR 없음, Backend·DB·Human Decision·Action 변경 0, 사용자 소유 문서 보존
+- 다음 작업: 사용자가 로그인한 뒤 대표 빠른 검토 1건을 열어 1440px 이상 화면에서 좌우 비율과
+  첫 화면 내 허용/비허용 버튼 노출을 확인하고 필요하면 폭을 한 차례 미세 조정
+
+### 2026-08-28 — Operator-friendly Policy and Analysis Summary
+
+- 목표: 허용/비허용 검토 첫 화면의 정책 enum, qualification JSON, 영문 기술 용어를 상담원이
+  즉시 이해할 수 있는 한글 업무 표현으로 전환
+- 정책 권고: `REQUIRES_HUMAN_REVIEW`를 `담당자 확인 후 결정 필요`로 표시하고 추가 자료 필요,
+  검토 가능, 적용 정책 없음 상태도 자연어 label로 확장. 정책은 참고이며 담당자가 최종 결정한다는
+  설명을 함께 표시
+- 분석 상태: raw JSON 대신 문의 내용 분석, 이미지 분석, 문의·이미지 일치 확인, 정책 근거 정합성
+  네 항목으로 분리. `MOCK_QUALIFIED`는 `시연용 분석 결과 준비`, `NOT_AVAILABLE`은
+  `담당자 확인 필요`로 표시하며 model family/revision은 첫 화면에서 숨김
+- 문구 정리: `Grounded explanation`을 `정책 근거 확인 요약`, `immutable snapshot`을
+  `변경 방지 기록`, 빠른 검토의 `DRY-RUN`을 `모의 처리 확인`으로 교체. 정책 평가 번호와 매핑
+  버전은 삭제하지 않고 접힌 `기술 정보 보기`로 이동
+- 안전 경계: presentation-only 변환이며 Packet/qualification snapshot/API/DB/hash와 빠른 검토
+  점수·임계치·Human Decision 조건은 변경하지 않음. Mock/미지원 범위를 실제 검증 완료로 승격하지 않음
+- 검증: Web ESLint PASS, TypeScript PASS, OpenAPI snapshot sync PASS, 24 files/63 tests PASS,
+  production build PASS. minified JS 502.99 kB 권고 1건, `git diff --check` PASS
+- Runtime: 22:09 KST Web 재배포, local/public `/web-health` PASS, 양쪽 JS
+  `index-s6FnmG0z.js`와 CSS `index-CWAdx66O.css` 일치, Core 7개 서비스 healthy
+- Git safety: Commit·Push·PR 없음, Backend·DB·Decision·Action 변경 0, 사용자 소유 문서 보존
+- 다음 작업: 인증된 검토 상세에서 네 가지 상태가 한 줄씩 읽히고 기술 JSON이 노출되지 않는지
+  육안 확인한 뒤, 규칙/인용/기록 탭의 raw key도 같은 label registry로 후속 정리
+
+### 2026-08-28 — Operational-language Console Cleanup
+
+- 목표: 상담원이 보는 화면과 출력 문서에서 `PoC`, 모의, 시뮬레이션, DRY-RUN, Mock, 데모,
+  시연 같은 개발·검증 용어를 제거하고 실제 업무 흐름에 맞는 표현으로 통일
+- 화면: 메뉴의 `PoC 지표`를 `운영 지표`, 빠른 검토와 처리 상태를 `처리 사전 확인`, 정책 자료를
+  `사내 정책 참고 자료`로 교체. 문의·고객·상품 badge도 온라인 접수/고객 정보/상품 정보로 정리
+- 문서/메일: 환불 문서는 `외부 처리 전 확인 문서`, 메일은 `안내 메일 만들기`로 전환. 신규 메일
+  제목의 개발 표식을 제거하고, 기존 불변 메일은 저장 원본을 수정하지 않은 채 표시 단계에서 같은
+  운영 문구로 정규화
+- 데이터 표시: 내부 계약의 `DEMO` 상품·고객 참조와 테스트용 주소 표식은 DB/API 값을 바꾸지 않고
+  표시 전용 상품번호·고객번호·주소로 정리. 실제 고객 데이터가 아니라는 안내는 유지
+- 안전 경계: API enum, Event, DB schema, hash snapshot, Human Decision 조건은 변경하지 않음.
+  실제 카드 취소·환급·교환·SMTP 전송은 계속 0이며 `외부 시스템 미반영`을 화면에 명시
+- 검증: Web ESLint·TypeScript·OpenAPI sync PASS, 24 files/63 tests PASS, production build PASS.
+  Backend 메일 생성 변경은 Ruff·Format과 관련 unit 15 tests PASS, `git diff --check` PASS
+- Runtime: 22:29 KST API/Web 재배포, Core 7개 서비스 healthy. local/public JS
+  `index-BdA6eGFX.js`와 CSS `index-CWAdx66O.css` 일치
+- 미해결: 연결 브라우저의 인증 상태를 사용하지 않았으므로 실제 상담 케이스·검토·인쇄 화면 수동
+  육안 확인은 미실행. 번들 500 kB 초과 권고 1건은 기능 실패가 아니며 후속 최적화 대상
+- Git safety: Commit·Push·PR 없음, 사용자 소유 미추적 문서와 원본 이미지는 수정·삭제·Stage하지 않음
+- 다음 작업: 사용자가 로그인한 상태에서 대표 환불 케이스의 상담 상세→빠른 검토→환불 확인서→안내
+  메일을 순서대로 열어 잔여 개발 문구와 실제 처리 오해 가능성이 없는지 최종 육안 확인

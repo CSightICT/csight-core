@@ -25,11 +25,12 @@ not copy the visual identity, wording, or proprietary form of a real company.
 These references explain why the document contains the following sections:
 
 1. document number and generated time;
-2. order, product, quantity, requested action, reason, amount, and currency;
-3. original-payment-method route, payment-provider cancellation request, customer notification,
+2. synthetic customer ID/name, masked phone, recipient, explicitly fictional delivery address;
+3. order, product, quantity, paid amount, explicit refund amount, currency, and masked payment method;
+4. original-payment-method route, payment-provider cancellation request, customer notification,
    return authorization, recovery/tracking, and expected date;
-4. human decision, policy version and effective date, reviewer, and event timeline; and
-5. immutable report/packet/decision/intent/result identifiers and hashes.
+5. human decision, policy version and effective date, reviewer, and event timeline; and
+6. immutable report/packet/decision/intent/result identifiers and hashes.
 
 The demo does not calculate a statutory deadline or assert legal compliance. A production rollout
 must bind the applicable jurisdiction, policy version, payment method, return condition, and actual
@@ -37,9 +38,13 @@ provider timestamps before showing a due date.
 
 ## Fail-closed rendering rules
 
-- Refund amount, currency, quantity, payment reference, and tracking values come only from the
-  immutable report snapshot. They are never inferred from a customer message, rationale, order
-  total, LLM output, or a default value.
+- Refund amount and currency come only from the immutable Action Intent copied into the report.
+  The synthetic paid amount is displayed separately for reconciliation and is never used as an
+  inference source. Quantity, masked payment context, and masked tracking values also come only
+  from the immutable report snapshot.
+- Customer, contact, payment, tracking, and address fields are included only when a validated
+  `synthetic_commerce_context/1.0.0` snapshot is present. Direct phone, card/account, and tracking
+  values are never included.
 - Missing required action inputs render as `환불 정보 보완 필요`; the document says that no
   Action Intent, Simulation Attempt, or Result was created where the database snapshot confirms it.
 - `ACTION_DRY_RUN_VALIDATED` renders as `환불 요청 검증 완료`, never `환불 완료`.
@@ -54,3 +59,4 @@ provider timestamps before showing a due date.
 - `web/src/report/refundDocument.ts` maps the immutable snapshot to display-only document fields.
 - `web/src/report/RefundConfirmation.tsx` renders the screen and printable A4-oriented document.
 - Non-refund terminal decisions continue to use the generic immutable final-review report.
+- ADR-0098 defines the synthetic-data and no-parameter-inference boundary.

@@ -250,6 +250,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cases/{case_id}/communication-simulations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Customer Communication Simulations */
+        get: operations["list_customer_communication_simulations_api_v1_cases__case_id__communication_simulations_get"];
+        put?: never;
+        /** Create Customer Communication Simulation */
+        post: operations["create_customer_communication_simulation_api_v1_cases__case_id__communication_simulations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-assets/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Data Asset Summary */
+        get: operations["get_data_asset_summary_api_v1_data_assets_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cases/{case_id}/evidence": {
         parameters: {
             query?: never;
@@ -868,6 +903,40 @@ export interface components {
             status_history: components["schemas"]["StatusHistoryResponse"][];
             latest_analysis_run?: components["schemas"]["AnalysisRunResponse"] | null;
         };
+        /** CaseLearningAssetResponse */
+        CaseLearningAssetResponse: {
+            /** Schema Version */
+            schema_version: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Case Id */
+            case_id: string;
+            /** Review Report Id */
+            review_report_id: string;
+            /** Feature Snapshot */
+            feature_snapshot: {
+                [key: string]: components["schemas"]["JsonValue-Output"];
+            };
+            /** Label Snapshot */
+            label_snapshot: {
+                [key: string]: components["schemas"]["JsonValue-Output"];
+            };
+            /** Version Snapshot */
+            version_snapshot: {
+                [key: string]: components["schemas"]["JsonValue-Output"];
+            };
+            /** Privacy Scope */
+            privacy_scope: {
+                [key: string]: components["schemas"]["JsonValue-Output"];
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Content Hash */
+            content_hash: string;
+        };
         /** CaseListResponse */
         CaseListResponse: {
             /** Items */
@@ -1034,6 +1103,82 @@ export interface components {
             display_name: string;
             /** Roles */
             roles: components["schemas"]["Role"][];
+        };
+        /** CustomerCommunicationResponse */
+        CustomerCommunicationResponse: {
+            /** Schema Version */
+            schema_version: string;
+            /** Communication Id */
+            communication_id: string;
+            /** Case Id */
+            case_id: string;
+            /** Review Report Id */
+            review_report_id: string;
+            /** Channel */
+            channel: string;
+            /** Template Name */
+            template_name: string;
+            /** Template Version */
+            template_version: string;
+            /** Recipient Label */
+            recipient_label: string;
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+            /** Delivery Status */
+            delivery_status: string;
+            /** Side Effects Performed */
+            side_effects_performed: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Content Hash */
+            content_hash: string;
+        };
+        /** DataAssetSummaryResponse */
+        DataAssetSummaryResponse: {
+            /** Schema Version */
+            schema_version: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Total Records */
+            total_records: number;
+            /** Baseline Minimum */
+            baseline_minimum: number;
+            /** Drift Review Minimum */
+            drift_review_minimum: number;
+            /** Readiness Status */
+            readiness_status: string;
+            /** Drift Evaluation Available */
+            drift_evaluation_available: boolean;
+            /** Decision Distribution */
+            decision_distribution: {
+                [key: string]: number;
+            };
+            /** Resolution Distribution */
+            resolution_distribution: {
+                [key: string]: number;
+            };
+            /** Product Distribution */
+            product_distribution: {
+                [key: string]: number;
+            };
+            /** Model Version Distribution */
+            model_version_distribution: {
+                [key: string]: number;
+            };
+            /** Policy Version Distribution */
+            policy_version_distribution: {
+                [key: string]: number;
+            };
+            /** Recent Records */
+            recent_records: components["schemas"]["CaseLearningAssetResponse"][];
         };
         /** DecisionBasisReference */
         DecisionBasisReference: {
@@ -3123,6 +3268,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PocSummaryResponse"];
+                };
+            };
+        };
+    };
+    list_customer_communication_simulations_api_v1_cases__case_id__communication_simulations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCommunicationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_customer_communication_simulation_api_v1_cases__case_id__communication_simulations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCommunicationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_data_asset_summary_api_v1_data_assets_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataAssetSummaryResponse"];
                 };
             };
         };

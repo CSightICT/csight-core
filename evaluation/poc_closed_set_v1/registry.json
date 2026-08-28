@@ -1,0 +1,34 @@
+{
+  "schema_version": "poc_closed_set/1.0.0",
+  "dataset_id": "realistic-internal-demo-v2",
+  "e3_runtime_threshold": 0.8984375,
+  "defect_admission_min_score": 0.95,
+  "reference_admission_max_score": 0.1,
+  "gray_zone_disposition": "EXCLUDE_FROM_CURATED_POC_OR_ROUTE_TO_HUMAN_REVIEW",
+  "below_threshold_means_normal": false,
+  "e3_predicts_defect_type": false,
+  "qwen_product_role": "CANDIDATE_ONLY_HUMAN_APPROVAL_REQUIRED",
+  "product_classes": [
+    {"code": "PERSONAL_CARE_CONTAINER", "label_ko": "뷰티·개인관리 용기"},
+    {"code": "FOOD_OR_SUPPLEMENT_CONTAINER", "label_ko": "식품·건강보조제 용기"},
+    {"code": "HOUSEHOLD_CHEMICAL_CONTAINER", "label_ko": "생활화학·접착제 용기"},
+    {"code": "KITCHEN_OR_STORAGE_ITEM", "label_ko": "주방·수납용 경질 플라스틱"}
+  ],
+  "defect_groups": [
+    {"code": "OPENED_OR_DISASSEMBLED", "label_ko": "개봉·분해 상태"},
+    {"code": "SHAPE_OR_STRUCTURAL_DAMAGE", "label_ko": "변형·파손"},
+    {"code": "SURFACE_DAMAGE_OR_LEAKAGE", "label_ko": "표면 손상·누액"}
+  ],
+  "assignments": [
+    {"demo_id":"REAL-DEMO-V2-DEFECT-01","product_ref":"DEMO-V2-SPRAY-CONTAINER-01","source_kind":"TOP100_SELECTED_CORRECT_DEFECT","source_rank":3,"image_sha256":"413653dc290ab8c537f5c3036da14f2ccd755297230a072ff9a266839e797a11","product_class":"PERSONAL_CARE_CONTAINER","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":["deconstruction"],"defect_groups":["OPENED_OR_DISASSEMBLED"],"defect_group_basis":"KAPUTT_SOURCE_ANNOTATION_NOT_E3_PREDICTION","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-DEFECT-02","product_ref":"DEMO-V2-FLIPTOP-CONTAINER-02","source_kind":"TOP100_SELECTED_CORRECT_DEFECT","source_rank":32,"image_sha256":"299a03e1756d7ae1c106edf3b34ff5d517077ec7b6dce03ca46cbe8d3540b3d0","product_class":"PERSONAL_CARE_CONTAINER","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":["actuation","spillage"],"defect_groups":["OPENED_OR_DISASSEMBLED","SURFACE_DAMAGE_OR_LEAKAGE"],"defect_group_basis":"KAPUTT_SOURCE_ANNOTATION_NOT_E3_PREDICTION","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-DEFECT-03","product_ref":"DEMO-V2-SPRAY-CONTAINER-03","source_kind":"TOP100_SELECTED_CORRECT_DEFECT","source_rank":54,"image_sha256":"f249bf013a12603ee0810df8c2a573cc82518a916da874de0fe13ee6048bb675","product_class":"PERSONAL_CARE_CONTAINER","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":["actuation","deconstruction"],"defect_groups":["OPENED_OR_DISASSEMBLED"],"defect_group_basis":"KAPUTT_SOURCE_ANNOTATION_NOT_E3_PREDICTION","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-DEFECT-04","product_ref":"DEMO-V2-SMALL-PUMP-CONTAINER-04","source_kind":"TOP100_SELECTED_CORRECT_DEFECT","source_rank":58,"image_sha256":"5b31bdd0ccbe342bf6a44005af61dac65c5e92d9a97374464b190ff086238564","product_class":"PERSONAL_CARE_CONTAINER","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":["actuation","deconstruction"],"defect_groups":["OPENED_OR_DISASSEMBLED"],"defect_group_basis":"KAPUTT_SOURCE_ANNOTATION_NOT_E3_PREDICTION","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-DEFECT-05","product_ref":"DEMO-V2-SPRAY-CONTAINER-05","source_kind":"TOP100_SELECTED_CORRECT_DEFECT","source_rank":78,"image_sha256":"9773ee1cf87cd3b806fcedf230f34f7777dc378836c11a35099ccd2882c11398","product_class":"PERSONAL_CARE_CONTAINER","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":["actuation","deconstruction"],"defect_groups":["OPENED_OR_DISASSEMBLED"],"defect_group_basis":"KAPUTT_SOURCE_ANNOTATION_NOT_E3_PREDICTION","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-DEFECT-06","product_ref":"DEMO-V2-NOZZLE-CONTAINER-06","source_kind":"TOP100_SELECTED_CORRECT_DEFECT","source_rank":80,"image_sha256":"953e0ad91257669b4617a1a6ac1ad52e07ab0c9cdb46eefe4e6ba2b6dd0b6282","product_class":"PERSONAL_CARE_CONTAINER","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":["actuation","deconstruction","penetration"],"defect_groups":["OPENED_OR_DISASSEMBLED","SHAPE_OR_STRUCTURAL_DAMAGE"],"defect_group_basis":"KAPUTT_SOURCE_ANNOTATION_NOT_E3_PREDICTION","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-NORMAL-01","product_ref":"DEMO-V2-PACKED-SMALL-GOODS-07","source_kind":"USER_SUPPLIED_NORMAL_REFERENCE","source_rank":2,"image_sha256":"1ecbb3c261491b1d00f4989a1622899cd77e71396f4d2f3da162c994e97c81f2","product_class":"KITCHEN_OR_STORAGE_ITEM","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":[],"defect_groups":[],"defect_group_basis":"NO_DEFECT_GROUP_LOW_SCORE_REFERENCE","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-NORMAL-02","product_ref":"DEMO-V2-PACKED-CYLINDER-GOODS-08","source_kind":"USER_SUPPLIED_NORMAL_REFERENCE","source_rank":8,"image_sha256":"88610b05723033d2e15915766a0e97eb50d8752c711bdc611818b2139a519b18","product_class":"KITCHEN_OR_STORAGE_ITEM","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":[],"defect_groups":[],"defect_group_basis":"NO_DEFECT_GROUP_LOW_SCORE_REFERENCE","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-NORMAL-03","product_ref":"DEMO-V2-PACKED-HOUSEHOLD-SET-09","source_kind":"USER_SUPPLIED_NORMAL_REFERENCE","source_rank":17,"image_sha256":"8fad11f324d8baecd7b4984c0ff488d6120274720f40a7be852830846102947b","product_class":"KITCHEN_OR_STORAGE_ITEM","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":[],"defect_groups":[],"defect_group_basis":"NO_DEFECT_GROUP_LOW_SCORE_REFERENCE","human_approved":true},
+    {"demo_id":"REAL-DEMO-V2-NORMAL-04","product_ref":"DEMO-V2-PACKED-RECTANGLE-GOODS-10","source_kind":"USER_SUPPLIED_NORMAL_REFERENCE","source_rank":23,"image_sha256":"f4935f10f5083028ed1dde3c05a6f6c81322c0e86a8eadfd418e24151014e468","product_class":"KITCHEN_OR_STORAGE_ITEM","product_class_basis":"HUMAN_APPROVED_SYNTHETIC_CATALOG","source_defect_labels":[],"defect_groups":[],"defect_group_basis":"NO_DEFECT_GROUP_LOW_SCORE_REFERENCE","human_approved":true}
+  ]
+}

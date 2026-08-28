@@ -387,6 +387,52 @@ export interface PocSummary {
   analysis_partial_success_rate: RatioMetric;
 }
 
+export interface CustomerCommunicationSimulation {
+  schema_version: string;
+  communication_id: string;
+  case_id: string;
+  review_report_id: string;
+  channel: string;
+  template_name: string;
+  template_version: string;
+  recipient_label: string;
+  subject: string;
+  body: string;
+  delivery_status: string;
+  side_effects_performed: boolean;
+  created_at: string;
+  content_hash: string;
+}
+
+export interface CaseLearningAsset {
+  schema_version: string;
+  asset_id: string;
+  case_id: string;
+  review_report_id: string;
+  feature_snapshot: Record<string, unknown>;
+  label_snapshot: Record<string, unknown>;
+  version_snapshot: Record<string, unknown>;
+  privacy_scope: Record<string, unknown>;
+  created_at: string;
+  content_hash: string;
+}
+
+export interface DataAssetSummary {
+  schema_version: string;
+  generated_at: string;
+  total_records: number;
+  baseline_minimum: number;
+  drift_review_minimum: number;
+  readiness_status: string;
+  drift_evaluation_available: boolean;
+  decision_distribution: Record<string, number>;
+  resolution_distribution: Record<string, number>;
+  product_distribution: Record<string, number>;
+  model_version_distribution: Record<string, number>;
+  policy_version_distribution: Record<string, number>;
+  recent_records: CaseLearningAsset[];
+}
+
 export interface ApiProblem {
   status: number;
   code: string;

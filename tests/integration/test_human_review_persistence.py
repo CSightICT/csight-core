@@ -439,6 +439,50 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
         pytest.skip("seeded analysis, tenants, and admin are required")
     tenant_id, case_id, analysis_id, requested_by = map(str, source)
     assert admin.tenant_id == UUID(tenant_id)
+    with factory.begin() as session:
+        case_row = session.get(CaseModel, UUID(case_id))
+        assert case_row is not None
+        case_row.attributes = {
+            **case_row.attributes,
+            "synthetic_commerce_context": {
+                "schema_version": "synthetic_commerce_context/1.0.0",
+                "data_classification": "SYNTHETIC_DEMO_ONLY",
+                "customer": {
+                    "customer_id": "CUST-DEMO-100002",
+                    "display_name": "김하늘",
+                    "phone_masked": "010-****-4821",
+                    "membership_tier": "GOLD",
+                },
+                "order": {
+                    "sales_channel": "CSight 마켓",
+                    "seller_name": "CSight 리빙",
+                    "ordered_at": "2026-08-25T01:14:00Z",
+                    "product_display_name": "화이트랩 바디 로션 300",
+                    "sku": "CS-DEMO-FLP-002",
+                    "quantity": 1,
+                    "unit_price": "18900",
+                    "merchandise_amount": "18900",
+                    "shipping_fee": "0",
+                    "discount_amount": "0",
+                    "paid_amount": "18900",
+                    "currency": "KRW",
+                    "payment_method_masked": "신용카드 **** 1042",
+                    "payment_status": "PAID",
+                },
+                "delivery": {
+                    "shipping_address_ref": "DEMO-V2-ADDR-002",
+                    "recipient": "김하늘",
+                    "phone_masked": "010-****-4821",
+                    "postal_code": "06236",
+                    "address_line1": "서울특별시 데모구 시연로 41",
+                    "address_line2": "가상아파트 203동 804호",
+                    "carrier": "CSight 로지스",
+                    "tracking_number_masked": "CSL-****-0202",
+                    "delivered_at": "2026-08-27T05:22:00Z",
+                },
+                "disclaimer": "FICTIONAL_IDENTITIES_CONTACTS_ADDRESSES_AND_TRANSACTIONS",
+            },
+        }
 
     policy_repository = SQLAlchemyPolicyEngineRepository(factory)
     policy_run, _ = policy_repository.create(
@@ -673,6 +717,10 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
     assert report is not None
     assert report.resolution_version == 4
     assert report.resolution_snapshot["status"] == "ACTION_DRY_RUN_VALIDATED"
+    commerce_snapshot = report.case_snapshot["synthetic_commerce_context"]
+    assert isinstance(commerce_snapshot, dict)
+    assert commerce_snapshot["data_classification"] == "SYNTHETIC_DEMO_ONLY"
+    assert report.data_scope["direct_contact_values_included"] is False
     report_result = report.dry_run_snapshot["result"]
     assert isinstance(report_result, dict)
     assert report_result["side_effects_performed"] is False

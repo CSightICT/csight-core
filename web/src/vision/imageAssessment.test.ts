@@ -81,7 +81,7 @@ describe("binary Vision assessment presentation", () => {
     expect(results[0]?.qualification).toBe("SYNTHETIC_MOCK");
     expect(results[1]?.qualification).toBe("REMOTE_UNQUALIFIED");
     expect(results.every((item) => item.isExactE3Identity === false)).toBe(true);
-    expect(describeVisionQualification(results[0]!.qualification)).toBe("합성 Mock · 연결 검증 전용");
+    expect(describeVisionQualification(results[0]!.qualification)).toBe("참고 분석 · 운영 모델 검증 전");
     expect(describeVisionQualification(results[1]!.qualification)).toBe("원격 추론 · 제품 적격성 미확인");
   });
 

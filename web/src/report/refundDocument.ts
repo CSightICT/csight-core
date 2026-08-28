@@ -1,4 +1,6 @@
 import type { ReviewReport } from "../api/contracts";
+import { formatCommerceMoney, readSyntheticCommerceContext } from "../commerce/syntheticCommerceContext";
+import { businessLabel } from "../presentation/businessLabels";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -15,6 +17,7 @@ export interface RefundDocumentModel {
   status: RefundDocumentStatus;
   statusLabel: string;
   amountLabel: string;
+  paidAmountLabel: string;
   quantityLabel: string;
   refundMethodLabel: string;
   refundReason: string;
@@ -35,6 +38,21 @@ export interface RefundDocumentModel {
   decisionHash: string;
   packetHash: string;
   generatedAt: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  membershipTier: string;
+  productName: string;
+  syntheticSku: string;
+  salesChannel: string;
+  sellerName: string;
+  paymentMethod: string;
+  recipient: string;
+  deliveryPhone: string;
+  shippingAddress: string;
+  carrierAndTracking: string;
+  deliveredAt: string;
+  syntheticCommerceContext: boolean;
 }
 
 function record(value: unknown): JsonRecord {
@@ -87,6 +105,7 @@ export function buildRefundDocument(report: ReviewReport): RefundDocumentModel {
   const dryRun = record(report.dry_run_snapshot);
   const intent = record(dryRun.intent ?? dryRun);
   const result = record(dryRun.result ?? dryRun);
+  const commerce = readSyntheticCommerceContext(caseSnapshot);
   const actionType = stringValue(intent, "action_type") || (stringValue(caseSnapshot, "requested_action") === "REFUND" ? "REFUND" : "");
   const decisionType = stringValue(review, "decision_type", "decision");
   const resolutionStatus = stringValue(resolution, "status");
@@ -101,10 +120,13 @@ export function buildRefundDocument(report: ReviewReport): RefundDocumentModel {
     orderRef: stringValue(caseSnapshot, "order_ref") || "주문번호 미기록",
     productRef: stringValue(caseSnapshot, "product_ref") || "상품번호 미기록",
     actionType: actionType || "REFUND",
-    decisionType: decisionType || "결정 유형 미기록",
+    decisionType: decisionType ? businessLabel(decisionType) : "결정 유형 미기록",
     resolutionStatus,
     ...refundStatus(resolutionStatus),
     amountLabel: formatAmount(amount, currency),
+    paidAmountLabel: commerce
+      ? formatCommerceMoney(commerce.order.paidAmount, commerce.order.currency)
+      : "결제 정보 미기록",
     quantityLabel: quantity ? `${quantity}개` : "수량 미기록",
     refundMethodLabel: "원결제수단 환급 예정 · 외부 연동 시 확정",
     refundReason: stringValue(review, "rationale") || "담당자 승인 근거는 고정 스냅샷을 확인하세요.",
@@ -118,12 +140,31 @@ export function buildRefundDocument(report: ReviewReport): RefundDocumentModel {
     invalidFields: stringList(resolution, "invalid_fields"),
     intentId: stringValue(intent, "intent_id") || "미생성",
     resultId: stringValue(result, "result_id") || "미생성",
-    resultOutcome: stringValue(result, "outcome") || "시뮬레이션 미수행",
+    resultOutcome: businessLabel(stringValue(result, "outcome") || "처리 사전 확인 없음"),
     sideEffectsPerformed: result.side_effects_performed === true || dryRun.side_effects_performed === true,
     reportId: report.report_id,
     reportHash: report.content_hash,
     decisionHash: stringValue(review, "decision_hash") || "미기록",
     packetHash: stringValue(review, "packet_hash") || "미기록",
     generatedAt: report.generated_at,
+    customerId: commerce?.customer.customerId ?? "고객 ID 미기록",
+    customerName: commerce?.customer.displayName ?? "고객명 미기록",
+    customerPhone: commerce?.customer.phoneMasked ?? "연락처 미기록",
+    membershipTier: commerce?.customer.membershipTier ?? "등급 미기록",
+    productName: commerce?.order.productDisplayName ?? "상품명 미기록",
+    syntheticSku: commerce?.order.sku ?? (stringValue(caseSnapshot, "product_ref") || "SKU 미기록"),
+    salesChannel: commerce?.order.salesChannel ?? "채널 미기록",
+    sellerName: commerce?.order.sellerName ?? "판매자 미기록",
+    paymentMethod: commerce?.order.paymentMethodMasked ?? "결제수단 미기록",
+    recipient: commerce?.delivery.recipient ?? "수령인 미기록",
+    deliveryPhone: commerce?.delivery.phoneMasked ?? "연락처 미기록",
+    shippingAddress: commerce
+      ? `[${commerce.delivery.postalCode}] ${commerce.delivery.addressLine1} ${commerce.delivery.addressLine2}`
+      : "배송지 미기록",
+    carrierAndTracking: commerce
+      ? `${commerce.delivery.carrier} · ${commerce.delivery.trackingNumberMasked}`
+      : "배송 정보 미기록",
+    deliveredAt: commerce?.delivery.deliveredAt ?? "",
+    syntheticCommerceContext: commerce !== null,
   };
 }

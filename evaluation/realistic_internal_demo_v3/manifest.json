@@ -1,0 +1,224 @@
+{
+  "schema_version": "3.0.0",
+  "dataset_id": "realistic-internal-demo-v3",
+  "base_dataset_id": "realistic-internal-demo-v2",
+  "base_manifest_sha256": "5239bfae0fa9be2034179327f058d4ee02d5efdfa3f8044f2c1a207baa2e1e5e",
+  "tenant_slug": "csight",
+  "selection": {
+    "total_count": 10,
+    "defect_selected_correct_count": 6,
+    "normal_reference_count": 4,
+    "defect_ranks": [1, 9, 22, 31, 73, 79],
+    "normal_reference_ranks": [1, 20, 65, 67],
+    "ratio": "6:4"
+  },
+  "boundaries": {
+    "scenario_type": "SYNTHETIC_CUSTOMER_NARRATIVE_WITH_REAL_E3_INFERENCE",
+    "policy_input_linkage": "NOT_LINKED_TO_POLICY_INPUT",
+    "final_decision_owner": "AUTHENTICATED_HUMAN_ONLY",
+    "external_action_mode": "NOT_RUN",
+    "normal_confirmation_supported": false,
+    "public_redistribution_allowed": false
+  },
+  "narrative_contract": {
+    "display_label": "문의 내용",
+    "locale": "ko-KR",
+    "commerce_context": "FICTIONAL_MULTI_SELLER_ECOMMERCE",
+    "min_sentence_count": 3,
+    "max_sentence_count": 5,
+    "real_company_affiliation_claimed": false,
+    "revision": "CLOSED_SET_EXPANSION_R3"
+  },
+  "cases": [
+    {
+      "demo_id": "REAL-DEMO-V3-DEFECT-07",
+      "base_demo_id": "REAL-DEMO-V2-DEFECT-01",
+      "source": {"kind":"TOP100_SELECTED_CORRECT_DEFECT","rank":1,"image_sha256":"da71a97b9cba54a1021d223ae0466a9db3d469968f18187bace09c8b32e91e81","source_grade":"KAPUTT_SELECTED_CORRECT_POSITIVE","expected_e3_outcome":"HIGH_CONFIDENCE_DEFECT_CANDIDATE","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-011",
+        "product_ref": "DEMO-V3-CONFECTIONERY-CONTAINER-11",
+        "customer_message": "온라인 마켓에서 파티용 캔디 혼합 상품을 주문했고 배송 상자를 받은 날 바로 개봉했습니다. 상자 안에서 원통형 보관 용기와 작은 포장 제품들이 한쪽으로 쏟아져 있었으며 뚜껑이 제대로 결합되어 있었는지는 확인하지 못했습니다. 식품은 개별 포장 상태라 먹거나 사용하지 않았고 외부 용기와 구성품을 사진으로 남겼습니다. 배송 중 용기 결합부가 풀린 것인지 확인한 뒤 같은 구성의 새 상품으로 교환해 주세요.",
+        "requested_action": "EXCHANGE",
+        "product_display_name": "스위트믹스 파티 캔디 컨테이너 1kg",
+        "synthetic_sku": "CS-DEMO-FOD-011",
+        "unit_price": "21900",
+        "shipping_fee": "0",
+        "discount_amount": "2000",
+        "image_observation": "여러 개의 개별 포장 제품과 원통형 용기가 상자 안에 흩어져 있으며 일부 구성품이 분리되어 보입니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "QUANTITY_AND_INHERITED_ADDRESS"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-DEFECT-08",
+      "base_demo_id": "REAL-DEMO-V2-DEFECT-02",
+      "source": {"kind":"TOP100_SELECTED_CORRECT_DEFECT","rank":9,"image_sha256":"43bbdd08d0d99e4f5e3284fd304d66b4597ca40abd8afeec675dbc8ba24c1cfc","source_grade":"KAPUTT_SELECTED_CORRECT_POSITIVE","expected_e3_outcome":"HIGH_CONFIDENCE_DEFECT_CANDIDATE","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-012",
+        "product_ref": "DEMO-V3-ADHESIVE-TUBE-12",
+        "customer_message": "생활용품 판매점에서 정밀 작업용 접착제를 주문했고 배송 완료 직후 포장을 개봉했습니다. 상자 안에서 튜브형 본체와 작은 마개가 서로 떨어져 있었고 밀봉 상태가 유지되었는지는 사진만으로 판단하기 어려웠습니다. 내용물이 피부에 닿을 수 있어 짜거나 사용하지 않고 별도 봉투에 넣어 보관하고 있습니다. 미개봉 정상 상품으로 보기 어렵다면 결제한 금액 전액을 환불해 주세요.",
+        "requested_action": "REFUND",
+        "product_display_name": "픽스온 정밀 접착제 50",
+        "synthetic_sku": "CS-DEMO-CHM-012",
+        "unit_price": "12900",
+        "shipping_fee": "3000",
+        "discount_amount": "0",
+        "image_observation": "녹색 표시가 있는 튜브형 용기와 작은 투명 마개가 떨어져 놓여 있으며 외부 누액은 뚜렷하지 않습니다.",
+        "declared_safety_risk": true,
+        "external_action_input_mode": "REFUND_PAID_AMOUNT"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-DEFECT-09",
+      "base_demo_id": "REAL-DEMO-V2-DEFECT-03",
+      "source": {"kind":"TOP100_SELECTED_CORRECT_DEFECT","rank":22,"image_sha256":"95e10f1a23de26d6c17ffcbbe58815e20d5e9f30f9c2fa58300bbd79bd1ce113","source_grade":"KAPUTT_SELECTED_CORRECT_POSITIVE","expected_e3_outcome":"HIGH_CONFIDENCE_DEFECT_CANDIDATE","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-013",
+        "product_ref": "DEMO-V3-HANDCREAM-TUBE-13",
+        "customer_message": "온라인 마켓에서 튜브형 핸드크림을 주문했고 배송된 상자를 집에서 개봉했습니다. 제품 본체와 흰색 마개가 분리된 채 들어 있었고 입구 주변의 밀봉 여부는 첨부 사진만으로 확인하기 어렵습니다. 위생이 걱정되어 피부에 바르거나 사용하지 않았으며 추가로 필요한 각도의 사진을 촬영할 수 있습니다. 마개나 입구 부품만 안전하게 교체할 수 있는지 먼저 확인해 주세요.",
+        "requested_action": "REPAIR",
+        "product_display_name": "프레시가든 핸드크림 80",
+        "synthetic_sku": "CS-DEMO-PCS-013",
+        "unit_price": "16900",
+        "shipping_fee": "0",
+        "discount_amount": "1000",
+        "image_observation": "흰색과 주황색 표시의 튜브형 용기 옆에 흰색 원형 마개가 분리되어 놓여 있습니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "NONE"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-DEFECT-10",
+      "base_demo_id": "REAL-DEMO-V2-DEFECT-04",
+      "source": {"kind":"TOP100_SELECTED_CORRECT_DEFECT","rank":31,"image_sha256":"788279436940882cd89d054d167c300639b1ae74d2de17aca82ac4b9f2686b0f","source_grade":"KAPUTT_SELECTED_CORRECT_POSITIVE","expected_e3_outcome":"HIGH_CONFIDENCE_DEFECT_CANDIDATE","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-014",
+        "product_ref": "DEMO-V3-WATER-TREATMENT-14",
+        "customer_message": "반려 수조 관리용 액상 제품을 온라인으로 주문했고 배송 상자를 받은 뒤 바로 개봉했습니다. 파란색 용기 본체와 주입구 부품이 떨어져 있었고 상자 바닥에 작은 조각도 보여 정상 구성인지 확신하기 어렵습니다. 수조에는 넣거나 사용하지 않았으며 다른 제품과 분리해 보관하고 있습니다. 동일한 미개봉 구성품을 확인해 누락 없이 다시 배송해 주세요.",
+        "requested_action": "OTHER",
+        "product_display_name": "아쿠아케어 수질관리제 250",
+        "synthetic_sku": "CS-DEMO-CHM-014",
+        "unit_price": "18900",
+        "shipping_fee": "3000",
+        "discount_amount": "0",
+        "image_observation": "파란색 사각 용기 본체와 작은 파란색 주입구 부품, 작은 조각 두 개가 서로 떨어져 보입니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "QUANTITY_AND_INHERITED_ADDRESS"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-DEFECT-11",
+      "base_demo_id": "REAL-DEMO-V2-DEFECT-05",
+      "source": {"kind":"TOP100_SELECTED_CORRECT_DEFECT","rank":73,"image_sha256":"dc578c44a8dd71adb7ba81e50cf72bc141296e80217ada5bf792811ac04c13ea","source_grade":"KAPUTT_SELECTED_CORRECT_POSITIVE","expected_e3_outcome":"HIGH_CONFIDENCE_DEFECT_CANDIDATE","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-015",
+        "product_ref": "DEMO-V3-MUFFIN-TRAY-15",
+        "customer_message": "홈베이킹용 미니 머핀 팬을 주문했고 배송 당일 외부 상자와 내부 포장을 개봉했습니다. 투명 덮개와 본체가 분리되어 있었고 가장자리 결합 상태가 정상인지 첨부 사진으로 먼저 확인받고 싶습니다. 음식이나 반죽을 넣어 사용하지 않았고 세척도 하지 않은 상태로 다시 포장해 두었습니다. 구성품 변형이나 파손 가능성이 있다면 미사용 하자 반품으로 접수해 주세요.",
+        "requested_action": "RETURN",
+        "product_display_name": "홈베이크 미니 머핀팬 24구",
+        "synthetic_sku": "CS-DEMO-KIT-015",
+        "unit_price": "24900",
+        "shipping_fee": "0",
+        "discount_amount": "3000",
+        "image_observation": "청록색 다구 트레이 본체와 투명한 덮개가 분리되어 상자 안에 나란히 놓여 있습니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "NONE"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-DEFECT-12",
+      "base_demo_id": "REAL-DEMO-V2-DEFECT-06",
+      "source": {"kind":"TOP100_SELECTED_CORRECT_DEFECT","rank":79,"image_sha256":"57ee601407558f686145631f1d397d04041ee819c97f8aa896f88f2e3e2112be","source_grade":"KAPUTT_SELECTED_CORRECT_POSITIVE","expected_e3_outcome":"HIGH_CONFIDENCE_DEFECT_CANDIDATE","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-016",
+        "product_ref": "DEMO-V3-CLEANER-CONTAINER-16",
+        "customer_message": "욕실 배수구 관리용 세정 제품을 주문했고 배송 상자를 개봉하자 파란색 용기와 마개가 분리되어 있었습니다. 본체가 눌렸거나 내용물이 샜는지는 사진만으로 확인되지 않지만 화학 제품이라 직접 결합하거나 사용하지 않았습니다. 주문 상세에는 완제품 한 개로 표시되어 있어 현재 구성이 정상 출고 상태인지 먼저 알고 싶습니다. 누락된 안전 마개가 있는지와 추가로 촬영할 위치를 안내해 주세요.",
+        "requested_action": "INFORMATION",
+        "product_display_name": "클린탭 배수구 세정제 300",
+        "synthetic_sku": "CS-DEMO-CHM-016",
+        "unit_price": "14900",
+        "shipping_fee": "3000",
+        "discount_amount": "0",
+        "image_observation": "파란색 표시의 용기 본체와 작은 파란색 마개가 떨어져 있으며 외부 누액은 뚜렷하지 않습니다.",
+        "declared_safety_risk": true,
+        "external_action_input_mode": "NONE"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-NORMAL-05",
+      "base_demo_id": "REAL-DEMO-V2-NORMAL-01",
+      "source": {"kind":"USER_SUPPLIED_NORMAL_REFERENCE","rank":1,"image_sha256":"aacfd69177ef689c064f53b16898bcd87a8849e1103cd3c6d23dbb79bc4f135d","source_grade":"USER_SUPPLIED_NORMAL_REFERENCE","expected_e3_outcome":"BELOW_HIGH_CONFIDENCE_THRESHOLD","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-017",
+        "product_ref": "DEMO-V3-PACKED-CABLE-17",
+        "customer_message": "온라인 마켓에서 소형 케이블 정리함을 주문했고 배송 상자의 외부 포장만 개봉했습니다. 버블랩으로 감싼 검은색 소형 물체 한 개가 들어 있었지만 포장 때문에 실제 규격과 내부 구성은 확인하지 못했습니다. 상품은 사용하거나 조립하지 않았고 주문한 대형 옵션이 맞는지 확인하려고 사진을 첨부합니다. 포장 표기와 주문 옵션이 다르다면 같은 색상의 대형 옵션으로 교환해 주세요.",
+        "requested_action": "EXCHANGE",
+        "product_display_name": "케이블큐브 미니 정리함 L",
+        "synthetic_sku": "CS-DEMO-STO-017",
+        "unit_price": "13900",
+        "shipping_fee": "3000",
+        "discount_amount": "0",
+        "image_observation": "버블랩으로 감싼 작은 검은색 물체 한 개가 보이며 실제 크기와 내부 구성은 확인되지 않습니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "QUANTITY_AND_INHERITED_ADDRESS"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-NORMAL-06",
+      "base_demo_id": "REAL-DEMO-V2-NORMAL-02",
+      "source": {"kind":"USER_SUPPLIED_NORMAL_REFERENCE","rank":20,"image_sha256":"5be18e582953c59f2256df8e2f73807c10b123acaa464320749012fee4414a0b","source_grade":"USER_SUPPLIED_NORMAL_REFERENCE","expected_e3_outcome":"BELOW_HIGH_CONFIDENCE_THRESHOLD","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-018",
+        "product_ref": "DEMO-V3-PACKED-ROLL-18",
+        "customer_message": "주방 서랍용 롤 보관 케이스를 주문했고 배송 상자를 받은 뒤 외부 포장만 개봉했습니다. 길쭉한 물체가 버블랩으로 완전히 감싸져 있어 색상과 길이, 뚜껑 구성은 사진에서 확인하기 어렵습니다. 포장을 풀거나 사용하지 않았으며 주문 뒤 설치 공간이 부족하다는 것을 알게 되었습니다. 미사용 상태의 단순 변심 반품 가능 기간과 배송비 기준을 알려 주세요.",
+        "requested_action": "RETURN",
+        "product_display_name": "슬림롤 주방 보관 케이스 45",
+        "synthetic_sku": "CS-DEMO-KIT-018",
+        "unit_price": "17900",
+        "shipping_fee": "0",
+        "discount_amount": "0",
+        "image_observation": "길쭉한 원통형 물체가 버블랩으로 완전히 포장되어 있어 색상과 결합 상태를 확인하기 어렵습니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "NONE"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-NORMAL-07",
+      "base_demo_id": "REAL-DEMO-V2-NORMAL-03",
+      "source": {"kind":"USER_SUPPLIED_NORMAL_REFERENCE","rank":65,"image_sha256":"e3f1e2d266c1a663208401fe1d86f02fd511199b100871c85cd408a1d25afc94","source_grade":"USER_SUPPLIED_NORMAL_REFERENCE","expected_e3_outcome":"BELOW_HIGH_CONFIDENCE_THRESHOLD","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-019",
+        "product_ref": "DEMO-V3-PACKED-TRAY-19",
+        "customer_message": "욕실 선반에 놓을 직사각 수납 트레이 두 개 세트를 주문했고 배송 상자를 개봉했습니다. 버블랩으로 감싼 직사각 물체 한 개만 보여 실제 수량과 내부 칸 구성을 포장 상태에서는 확인할 수 없습니다. 상품은 꺼내거나 사용하지 않았고 누락 가능성을 확인하기 위해 현재 상태를 사진으로 남겼습니다. 주문 수량이 부족하다면 동일한 트레이 한 개를 추가로 배송해 주세요.",
+        "requested_action": "OTHER",
+        "product_display_name": "클리어스택 욕실 수납 트레이 2P",
+        "synthetic_sku": "CS-DEMO-STO-019",
+        "unit_price": "19900",
+        "shipping_fee": "0",
+        "discount_amount": "1000",
+        "image_observation": "직사각형 물체 한 개가 버블랩으로 감싸져 있으며 실제 수량과 내부 칸 구성은 확인되지 않습니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "QUANTITY_AND_INHERITED_ADDRESS"
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V3-NORMAL-08",
+      "base_demo_id": "REAL-DEMO-V2-NORMAL-04",
+      "source": {"kind":"USER_SUPPLIED_NORMAL_REFERENCE","rank":67,"image_sha256":"2f046f71b8b17aef6139edb8a27a7f0efd028b063113b4a4fcd43cfffdc0e51c","source_grade":"USER_SUPPLIED_NORMAL_REFERENCE","expected_e3_outcome":"BELOW_HIGH_CONFIDENCE_THRESHOLD","rights_status":"INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED","selection_bias":"LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"},
+      "overrides": {
+        "order_ref": "DEMO-R3-ORD-20260828-020",
+        "product_ref": "DEMO-V3-PACKED-BOARD-20",
+        "customer_message": "주방 작업대에 사용할 논슬립 도마 중형을 주문했고 배송 상자를 받은 뒤 외부 포장만 개봉했습니다. 직사각형 물체가 버블랩에 감싸져 있어 실제 색상과 표면 무늬, 모서리 상태를 첨부 사진으로는 확인하기 어렵습니다. 포장을 풀거나 음식에 사용하지 않았고 주문한 색상과 다른 것 같아 그대로 보관하고 있습니다. 미사용 단순 변심 조건이 충족된다면 결제한 금액을 환불해 주세요.",
+        "requested_action": "REFUND",
+        "product_display_name": "내추럴그립 논슬립 도마 M",
+        "synthetic_sku": "CS-DEMO-KIT-020",
+        "unit_price": "15900",
+        "shipping_fee": "0",
+        "discount_amount": "0",
+        "image_observation": "직사각형 물체가 버블랩에 포장되어 있어 실제 색상과 표면, 모서리 상태를 확인하기 어렵습니다.",
+        "declared_safety_risk": false,
+        "external_action_input_mode": "REFUND_PAID_AMOUNT"
+      }
+    }
+  ]
+}

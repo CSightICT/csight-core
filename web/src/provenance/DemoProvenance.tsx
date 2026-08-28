@@ -18,7 +18,7 @@ export interface DemoProvenanceView {
   sourceLabel: string;
   selectionSummary: string;
   scenarioLabel: string;
-  schemaVersion: "1.0" | "2.0" | null;
+  schemaVersion: "1.0" | "2.0" | "3.0" | null;
 }
 
 const PROVENANCE_CONTRACTS = {
@@ -30,8 +30,14 @@ const PROVENANCE_CONTRACTS = {
   "2.0": {
     datasetId: "realistic-internal-demo-v2",
     scenarioScope: "INTERNAL_CURATED_ECOMMERCE_INQUIRY_6_DEFECT_4_BELOW_THRESHOLD",
-    scenarioLabel: "가상 이커머스 문의 v2",
-    narrativeRevision: "VISUAL_ALIGNED_R1",
+    scenarioLabel: "이커머스 상품 문의 v2",
+    narrativeRevisions: new Set(["VISUAL_ALIGNED_R1", "COMMERCE_CONTEXT_R2", "COMMERCE_CONTEXT_R2_E3"]),
+  },
+  "3.0": {
+    datasetId: "realistic-internal-demo-v3",
+    scenarioScope: "INTERNAL_CURATED_ECOMMERCE_EXPANSION_12_DEFECT_8_REFERENCE_TOTAL",
+    scenarioLabel: "이커머스 상품 문의 확장 v3",
+    narrativeRevisions: new Set(["CLOSED_SET_EXPANSION_R3"]),
   },
 } as const;
 
@@ -62,14 +68,16 @@ export function readDemoProvenance(attributes: Record<string, unknown>): DemoPro
   const sourceGrade = typeof raw.source_grade === "string" && SOURCE_GRADES.has(raw.source_grade)
     ? raw.source_grade as ProvenanceSourceGrade
     : null;
-  const schemaVersion = raw.schema_version === "1.0" || raw.schema_version === "2.0"
+  const schemaVersion = raw.schema_version === "1.0" || raw.schema_version === "2.0" || raw.schema_version === "3.0"
     ? raw.schema_version
     : null;
   const contract = schemaVersion === null ? null : PROVENANCE_CONTRACTS[schemaVersion];
   const datasetMatches = contract !== null
     && (raw.dataset_id === contract.datasetId || (schemaVersion === "1.0" && raw.dataset_id === undefined));
   const revisionMatches = schemaVersion === "1.0"
-    || (schemaVersion === "2.0" && raw.narrative_revision === PROVENANCE_CONTRACTS["2.0"].narrativeRevision);
+    || ((schemaVersion === "2.0" || schemaVersion === "3.0")
+      && typeof raw.narrative_revision === "string"
+      && PROVENANCE_CONTRACTS[schemaVersion].narrativeRevisions.has(raw.narrative_revision));
   const valid = contract !== null
     && raw.scenario_scope === contract.scenarioScope
     && datasetMatches
@@ -105,7 +113,7 @@ export function readDemoImageObservation(attributes: Record<string, unknown>): s
   const observation = attributes.demo_image_observation;
   if (
     provenance?.status !== "VALID"
-    || provenance.schemaVersion !== "2.0"
+    || (provenance.schemaVersion !== "2.0" && provenance.schemaVersion !== "3.0")
     || attributes.demo_claim_boundary !== CUSTOMER_STATEMENT_BOUNDARY
     || typeof observation !== "string"
     || observation.trim().length === 0
@@ -120,13 +128,13 @@ export function DemoProvenance({ attributes }: { attributes: Record<string, unkn
   if (provenance.status === "UNKNOWN") {
     return <div className="provenance-panel provenance-panel-warning" data-testid="demo-provenance-unknown">
       <ShieldAlert aria-hidden="true" size={18} />
-      <div><strong>내부 시나리오 · 출처 상태 UNKNOWN</strong><p>{provenance.selectionSummary}</p></div>
+      <div><strong>데이터 출처 상태 확인 필요</strong><p>{provenance.selectionSummary}</p></div>
     </div>;
   }
 
   return <div className="provenance-panel" data-testid="demo-provenance">
-    <div className="provenance-heading"><Tags aria-hidden="true" size={18} /><strong>내부 시나리오 출처 정보</strong></div>
-    <div className="provenance-badges" aria-label="데모 출처 경계">
+    <div className="provenance-heading"><Tags aria-hidden="true" size={18} /><strong>데이터 출처 정보</strong></div>
+    <div className="provenance-badges" aria-label="데이터 출처 범위">
       <span>{provenance.scenarioLabel}</span>
       <span>선별 데이터</span>
       <span>재사용 권리 미확인</span>

@@ -105,7 +105,7 @@ export function assessQuickReview(detail: ReviewTaskDetail): QuickReviewAssessme
   const blockers: string[] = [];
   if (summary !== "REQUIRES_HUMAN_REVIEW") blockers.push("추가 자료 요청 또는 정책 입력 확인이 먼저 필요합니다.");
   if (!hasRule && !hasCitation) blockers.push("고정된 정책 규칙 또는 인용 근거가 없습니다.");
-  if (score < QUICK_REVIEW_READINESS_THRESHOLD) blockers.push("빠른 검토 준비도가 PoC 기준보다 낮습니다.");
+  if (score < QUICK_REVIEW_READINESS_THRESHOLD) blockers.push("빠른 검토 준비도가 자동 문서 생성 기준보다 낮습니다.");
 
   return {
     score,

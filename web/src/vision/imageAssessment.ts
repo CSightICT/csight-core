@@ -120,7 +120,7 @@ export function formatVisionProbability(value: number): string {
 export function describeVisionQualification(
   qualification: BinaryVisionAssessmentView["qualification"],
 ): string {
-  if (qualification === "SYNTHETIC_MOCK") return "합성 Mock · 연결 검증 전용";
+  if (qualification === "SYNTHETIC_MOCK") return "참고 분석 · 운영 모델 검증 전";
   if (qualification === "REMOTE_UNQUALIFIED") return "원격 추론 · 제품 적격성 미확인";
   return "Provider 적격성 확인 불가";
 }

@@ -9,13 +9,26 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.application.poc_reporting import GetCaseReviewReport, GetPocSummary
+from app.application.poc_reporting import (
+    CreateCustomerCommunicationSimulation,
+    GetCaseReviewReport,
+    GetDataAssetSummary,
+    GetPocSummary,
+    ListCustomerCommunicationSimulations,
+)
 from app.bootstrap.settings import Settings
 from app.interface.http.poc_reporting_services import PocReportingServiceContainer
 from app.interface.http.services import Sprint1ServiceContainer
 from app.main import create_app
 from app.platform.errors import AuthenticationRequiredError
-from app.platform.poc_reporting import MetricUnit, PocMetric, PocSummary, ReviewReport
+from app.platform.poc_reporting import (
+    CustomerCommunicationSimulation,
+    DataAssetSummary,
+    MetricUnit,
+    PocMetric,
+    PocSummary,
+    ReviewReport,
+)
 from app.platform.tenant import Principal, Role
 
 pytestmark = pytest.mark.unit
@@ -29,8 +42,13 @@ class _ResolvePrincipal:
     def execute(self, token: str) -> Principal:
         if token == "viewer-token":
             tenant_id = TENANT_ID
+            role = Role.QUALITY_VIEWER
+        elif token == "reviewer-token":
+            tenant_id = TENANT_ID
+            role = Role.REVIEWER
         elif token == "other-token":
             tenant_id = OTHER_TENANT_ID
+            role = Role.QUALITY_VIEWER
         else:
             raise AuthenticationRequiredError()
         return Principal(
@@ -38,7 +56,7 @@ class _ResolvePrincipal:
             tenant_id=tenant_id,
             email="viewer@example.test",
             display_name="Viewer",
-            roles=frozenset({Role.QUALITY_VIEWER}),
+            roles=frozenset({role}),
         )
 
 
@@ -102,6 +120,40 @@ class _Repository:
             analysis_partial_success_rate=_metric(2, 10),
         )
 
+    def create_customer_communication(
+        self, *, tenant_id: str, case_id: str, created_by: str
+    ) -> CustomerCommunicationSimulation:
+        return CustomerCommunicationSimulation.create(
+            communication_id=str(uuid4()),
+            tenant_id=tenant_id,
+            case_id=case_id,
+            review_report_id=str(uuid4()),
+            recipient_label="김하늘 고객님 · 010-****-4821",
+            subject="환불 승인 안내",
+            body="실제 발송하지 않는 시뮬레이션입니다.",
+            created_by=created_by,
+            created_at=NOW,
+        )
+
+    def list_customer_communications(
+        self, *, tenant_id: str, case_id: str
+    ) -> tuple[CustomerCommunicationSimulation, ...]:
+        return ()
+
+    def get_data_asset_summary(self, *, tenant_id: str) -> DataAssetSummary:
+        return DataAssetSummary(
+            generated_at=NOW,
+            total_records=0,
+            readiness_status="COLLECTING_BASELINE",
+            drift_evaluation_available=False,
+            decision_distribution={},
+            resolution_distribution={},
+            product_distribution={},
+            model_version_distribution={},
+            policy_version_distribution={},
+            recent_records=(),
+        )
+
 
 def _client(repository: _Repository) -> TestClient:
     unused: Any = object()
@@ -120,6 +172,9 @@ def _client(repository: _Repository) -> TestClient:
     reporting = PocReportingServiceContainer(
         get_case_review_report=GetCaseReviewReport(repository),  # pyright: ignore[reportArgumentType]
         get_poc_summary=GetPocSummary(repository),  # pyright: ignore[reportArgumentType]
+        create_customer_communication=CreateCustomerCommunicationSimulation(repository),  # pyright: ignore[reportArgumentType]
+        list_customer_communications=ListCustomerCommunicationSimulations(repository),  # pyright: ignore[reportArgumentType]
+        get_data_asset_summary=GetDataAssetSummary(repository),  # pyright: ignore[reportArgumentType]
     )
     return TestClient(
         create_app(
@@ -179,3 +234,32 @@ def test_reporting_routes_require_authentication() -> None:
     client = _client(_Repository())
     assert client.get(f"/api/v1/cases/{CASE_ID}/review-report").status_code == 401
     assert client.get("/api/v1/metrics/poc-summary").status_code == 401
+
+
+def test_customer_communication_requires_reviewer_and_never_claims_delivery() -> None:
+    client = _client(_Repository())
+    viewer = client.post(
+        f"/api/v1/cases/{CASE_ID}/communication-simulations",
+        headers={"Authorization": "Bearer viewer-token"},
+    )
+    reviewer = client.post(
+        f"/api/v1/cases/{CASE_ID}/communication-simulations",
+        headers={"Authorization": "Bearer reviewer-token"},
+    )
+    assert viewer.status_code == 403
+    assert reviewer.status_code == 200
+    assert reviewer.json()["delivery_status"] == "SIMULATED_NOT_SENT"
+    assert reviewer.json()["side_effects_performed"] is False
+    assert "tenant_id" not in reviewer.json()
+
+
+def test_data_asset_summary_is_tenant_scoped_and_truthful_before_baseline() -> None:
+    client = _client(_Repository())
+    response = client.get(
+        "/api/v1/data-assets/summary",
+        headers={"Authorization": "Bearer viewer-token"},
+    )
+    assert response.status_code == 200
+    assert response.json()["total_records"] == 0
+    assert response.json()["readiness_status"] == "COLLECTING_BASELINE"
+    assert response.json()["drift_evaluation_available"] is False

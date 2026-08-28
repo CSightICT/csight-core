@@ -45,7 +45,7 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024
 NORMAL_FILENAME = re.compile(r"normal_rank_(?P<rank>[0-9]{3})_(?P<capture_id>[0-9a-f-]{36})\.jpg")
 # Pixel-reviewed for obvious personal text, faces, barcodes, and readable branding.
 # Provenance and reuse rights are still absent, so these remain internal-only.
-SAFE_INTERNAL_DEMO_RANKS = (2, 8, 17, 23, 65, 67)
+SAFE_INTERNAL_DEMO_RANKS = (1, 2, 8, 17, 20, 23, 65, 67)
 
 
 class NormalReferenceFailure(RuntimeError):

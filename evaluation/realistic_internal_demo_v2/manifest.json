@@ -1,0 +1,313 @@
+{
+  "schema_version": "2.0.0",
+  "dataset_id": "realistic-internal-demo-v2",
+  "tenant_slug": "csight",
+  "selection": {
+    "total_count": 10,
+    "defect_selected_correct_count": 6,
+    "normal_reference_count": 4,
+    "defect_ranks": [3, 32, 54, 58, 78, 80],
+    "normal_reference_ranks": [2, 8, 17, 23],
+    "ratio": "6:4"
+  },
+  "boundaries": {
+    "scenario_type": "SYNTHETIC_CUSTOMER_NARRATIVE_WITH_REAL_E3_INFERENCE",
+    "policy_input_linkage": "NOT_LINKED_TO_POLICY_INPUT",
+    "final_decision_owner": "AUTHENTICATED_HUMAN_ONLY",
+    "external_action_mode": "NOT_RUN",
+    "normal_confirmation_supported": false,
+    "public_redistribution_allowed": false
+  },
+  "narrative_contract": {
+    "display_label": "문의 내용",
+    "locale": "ko-KR",
+    "commerce_context": "FICTIONAL_MULTI_SELLER_ECOMMERCE",
+    "min_sentence_count": 3,
+    "max_sentence_count": 5,
+    "real_company_affiliation_claimed": false,
+    "revision": "VISUAL_ALIGNED_R1"
+  },
+  "cases": [
+    {
+      "demo_id": "REAL-DEMO-V2-DEFECT-01",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 3,
+        "image_sha256": "413653dc290ab8c537f5c3036da14f2ccd755297230a072ff9a266839e797a11",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-001",
+        "product_ref": "DEMO-V2-SPRAY-CONTAINER-01",
+        "customer_message": "온라인 마켓에서 스프레이형 플라스틱 용기를 새 상품으로 주문해 배송받았습니다. 박스를 개봉했을 때 검은 보호캡이 용기와 분리되어 있었고 제가 다시 끼워 보아도 고정되지 않았습니다. 내용물은 사용하지 않았으며 배송 전부터 분리돼 있었는지는 사진만으로 확인하기 어렵지만 수령 직후 상태를 첨부했습니다. 정상적으로 잠기는 같은 형태의 상품으로 교환하고 기존 상품 회수 일정을 안내해 주세요.",
+        "requested_action": "EXCHANGE",
+        "attributes": {
+          "days_since_purchase": 2,
+          "product_category": "GENERAL",
+          "demo_image_observation": "스프레이형 용기와 분리되어 놓인 검은 보호캡이 보이며, 배송 중 파손 여부는 사진만으로 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1,
+            "shipping_address_ref": "DEMO-V2-ADDR-001"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-DEFECT-02",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 32,
+        "image_sha256": "299a03e1756d7ae1c106edf3b34ff5d517077ec7b6dce03ca46cbe8d3540b3d0",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-002",
+        "product_ref": "DEMO-V2-FLIPTOP-CONTAINER-02",
+        "customer_message": "온라인 쇼핑몰에서 대용량 플립탑 플라스틱 용기를 주문했고 예정된 날짜에 배송받았습니다. 개봉한 뒤 소량 사용해 보니 상부 덮개가 단단히 잠기지 않고 뚜껑 주변에서 내용물이 샜습니다. 첨부한 사진에는 덮개가 열린 용기만 보이며 실제 누수 현상은 사진으로 확인되지 않아 고객 진술로 접수합니다. 기능 하자로 반품하고 결제 금액을 환불받고 싶으니 회수 가능한 일정도 안내해 주세요.",
+        "requested_action": "REFUND",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "demo_image_observation": "상부 덮개가 열린 플립탑 용기 한 개가 보이며, 누수나 잠금 불량은 사진만으로 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "amount": "18900",
+            "currency": "KRW"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-DEFECT-03",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 54,
+        "image_sha256": "f249bf013a12603ee0810df8c2a573cc82518a916da874de0fe13ee6048bb675",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-003",
+        "product_ref": "DEMO-V2-SPRAY-CONTAINER-03",
+        "customer_message": "판매자 배송 상품으로 스프레이형 플라스틱 용기를 주문했고 수령 당일 외관을 확인한 뒤 개봉했습니다. 며칠 사용한 뒤부터 검은 보호캡이 반복해서 빠지고 분사 상태도 일정하지 않았다고 고객이 설명했습니다. 첨부 사진에서는 용기와 분리된 보호캡만 확인되며 실제 분사 불량이나 사용 중 상태는 사진으로 판정할 수 없습니다. 전체 반품보다 분사부 수리나 부품 교체가 가능한지, 어렵다면 어떤 자료를 추가로 제출해야 하는지 문의드립니다.",
+        "requested_action": "REPAIR",
+        "attributes": {
+          "days_since_purchase": 9,
+          "product_category": "GENERAL",
+          "demo_image_observation": "스프레이형 용기와 분리된 검은 보호캡이 보이며, 분사 불량 여부는 사진만으로 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "functional_evidence": "CUSTOMER_REPORTED",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-DEFECT-04",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 58,
+        "image_sha256": "5b31bdd0ccbe342bf6a44005af61dac65c5e92d9a97374464b190ff086238564",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-004",
+        "product_ref": "DEMO-V2-SMALL-PUMP-CONTAINER-04",
+        "customer_message": "소형 펌프형 플라스틱 용기를 온라인 마켓에서 주문했고 필요한 일정에 맞춰 배송받았습니다. 박스를 개봉하자 투명 보호캡이 본체와 분리되어 있었고 고객은 펌프 고정 상태도 불안해 보인다고 접수했습니다. 첨부 사진에서는 금색 펌프가 용기에 붙어 있고 투명 캡이 떨어져 있는 모습만 확인되며 실제 작동 상태는 알 수 없어 아직 사용하지 않았습니다. 환불보다는 상품을 회수하면서 같은 구성의 정상 상품을 다시 배송해 주길 바라며 가능한 처리 일정을 문의드립니다.",
+        "requested_action": "OTHER",
+        "attributes": {
+          "days_since_purchase": 3,
+          "product_category": "GENERAL",
+          "demo_image_observation": "금색 펌프가 달린 소형 용기와 분리된 투명 보호캡이 보이며, 펌프 작동 상태는 사진으로 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1,
+            "shipping_address_ref": "DEMO-V2-ADDR-004"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-DEFECT-05",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 78,
+        "image_sha256": "9773ee1cf87cd3b806fcedf230f34f7777dc378836c11a35099ccd2882c11398",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-005",
+        "product_ref": "DEMO-V2-SPRAY-CONTAINER-05",
+        "customer_message": "온라인 쇼핑몰에서 스프레이형 플라스틱 용기를 주문해 배송 이틀 뒤 개봉했습니다. 고객은 처음 사용했을 때 분사부가 불안정해 액체가 얼굴 쪽으로 튀었다고 설명했고 즉시 사용을 중단했습니다. 첨부 사진에는 용기와 분리된 검은 보호캡만 보이며 노즐 이탈이나 액체가 튄 상황은 사진으로 확인되지 않습니다. 안전이 걱정되어 추가 사용은 하지 않으려 하니 하자 반품 가능 여부를 확인하고 회수 접수를 요청드립니다.",
+        "requested_action": "RETURN",
+        "attributes": {
+          "days_since_purchase": 4,
+          "product_category": "GENERAL",
+          "demo_image_observation": "스프레이형 용기와 분리된 검은 보호캡이 보이며, 노즐 이탈이나 액체가 튄 상황은 사진으로 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": true,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-DEFECT-06",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 80,
+        "image_sha256": "953e0ad91257669b4617a1a6ac1ad52e07ab0c9cdb46eefe4e6ba2b6dd0b6282",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-006",
+        "product_ref": "DEMO-V2-NOZZLE-CONTAINER-06",
+        "customer_message": "다중 판매자 온라인 마켓에서 노즐형 플라스틱 용기를 주문했고 배송 상자를 받은 날 바로 개봉했습니다. 포장 안에서 본체와 흰색 노즐·마개 부품이 각각 분리되어 있었고 별도의 조립 설명서는 찾지 못했습니다. 누락이나 파손 여부는 사진만으로 알 수 없어 내용물을 넣거나 실제로 사용하지 않았으며 억지로 결합하지도 않았습니다. 정상 조립이 가능한 구성인지, 누락 부품은 없는지와 추가로 필요한 확인 사진을 먼저 안내해 주세요.",
+        "requested_action": "INFORMATION",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "demo_image_observation": "반투명 본체와 흰색 노즐·마개 부품이 떨어져 보이며, 누락이나 파손 여부는 사진만으로 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-NORMAL-01",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 2,
+        "image_sha256": "1ecbb3c261491b1d00f4989a1622899cd77e71396f4d2f3da162c994e97c81f2",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-007",
+        "product_ref": "DEMO-V2-PACKED-SMALL-GOODS-07",
+        "customer_message": "온라인 마켓에서 소형 수납용품 3단 옵션을 주문했고 배송된 외부 상자만 개봉했습니다. 내부에는 버블랩으로 포장된 상품 한 개가 있었으며 고객은 동봉 표기에 2단 옵션이라고 적혀 있었다고 설명했습니다. 첨부 사진만으로는 실제 상품과 단수, 옵션 표기나 파손 여부를 확인할 수 없어 포장을 풀거나 사용하지 않은 상태로 접수합니다. 주문 내역과 동봉 표기가 다르다면 미사용 상태로 동일한 3단 옵션 교환을 요청하고 싶습니다.",
+        "requested_action": "EXCHANGE",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "demo_image_observation": "버블랩으로 포장된 소형 물체 한 개만 보이며, 실제 상품·단수·옵션 표기·파손 여부는 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1,
+            "shipping_address_ref": "DEMO-V2-ADDR-007"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-NORMAL-02",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 8,
+        "image_sha256": "88610b05723033d2e15915766a0e97eb50d8752c711bdc611818b2139a519b18",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-008",
+        "product_ref": "DEMO-V2-PACKED-CYLINDER-GOODS-08",
+        "customer_message": "온라인 쇼핑몰에서 원통형 보관용품을 주문했고 안내된 날짜에 배송받았습니다. 크기를 확인하려고 외부 배송 상자만 개봉했으며 제품을 감싼 버블랩과 내부 포장은 그대로 두었습니다. 고객은 주문 상세의 치수가 사용 목적에 맞지 않아 미사용 반품을 원하지만 첨부 사진만으로 실제 치수나 상품 상태는 확인할 수 없습니다. 단순 변심 사유로 반품이 가능한지와 반품 배송비 부담 기준을 문의드립니다.",
+        "requested_action": "RETURN",
+        "attributes": {
+          "days_since_purchase": 2,
+          "product_category": "GENERAL",
+          "demo_image_observation": "길쭉한 원통형 물체가 버블랩에 완전히 포장되어 있으며, 실제 치수나 상품 상태는 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-NORMAL-03",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 17,
+        "image_sha256": "8fad11f324d8baecd7b4984c0ff488d6120274720f40a7be852830846102947b",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-009",
+        "product_ref": "DEMO-V2-PACKED-HOUSEHOLD-SET-09",
+        "customer_message": "온라인 마켓에서 생활용품 두 개를 한 주문으로 구매했고 배송 완료 알림과 함께 상자 한 개를 받았습니다. 외부 상자를 개봉했을 때 버블랩으로 포장된 물체 한 개만 보여 고객은 나머지 한 개가 누락됐다고 접수했습니다. 첨부 사진은 포장 물체 한 개만 보여 줄 뿐 실제 주문 수량이나 누락 여부, 내부 상품 상태는 확인할 수 없어 아직 사용하지 않았습니다. 주문 내역을 확인해 누락된 한 개만 다시 배송할 수 있는지, 아니면 전체 반품 후 재주문해야 하는지 문의드립니다.",
+        "requested_action": "OTHER",
+        "attributes": {
+          "days_since_purchase": 3,
+          "product_category": "GENERAL",
+          "demo_image_observation": "버블랩으로 포장된 물체 한 개가 보이며, 실제 주문 수량·누락 여부·내부 상품 상태는 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1,
+            "shipping_address_ref": "DEMO-V2-ADDR-009"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-V2-NORMAL-04",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 23,
+        "image_sha256": "f4935f10f5083028ed1dde3c05a6f6c81322c0e86a8eadfd418e24151014e468",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-V2-ORD-20260828-010",
+        "product_ref": "DEMO-V2-PACKED-RECTANGLE-GOODS-10",
+        "customer_message": "온라인 쇼핑몰에서 직사각형 소형 수납용품을 주문했고 완충재로 포장된 상태로 배송받았습니다. 외부 배송 상자를 개봉한 뒤 고객은 화면에서 예상한 색상보다 어두워 사용하지 않은 채 환불하고 싶다고 설명했습니다. 첨부 사진에는 버블랩 포장과 라벨 일부만 보여 실제 색상과 크기, 균열이나 미사용 여부는 확인할 수 없습니다. 상품 하자가 아닌 단순 변심 환불이 가능한지와 결제 취소 시점, 회수 방법을 함께 안내해 주세요.",
+        "requested_action": "REFUND",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "demo_image_observation": "직사각형 물체의 버블랩 포장과 라벨 일부만 보이며, 실제 색상·크기·균열·미사용 여부는 확인되지 않습니다.",
+          "demo_claim_boundary": "CUSTOMER_STATEMENT_ONLY_FOR_NON_VISIBLE_FACTS",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "amount": "15900",
+            "currency": "KRW"
+          }
+        }
+      }
+    }
+  ]
+}

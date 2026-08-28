@@ -355,12 +355,18 @@ def test_real_login_case_evidence_signed_download_and_tenant_isolation(
         f"/api/v1/cases/{case_id}/evidence/{evidence_id}/access-url",
         headers=_auth(other_token),
     )
+    hidden_content = e2e_context.client.get(
+        f"/api/v1/cases/{case_id}/evidence/{evidence_id}/content",
+        headers=_auth(other_token),
+    )
     assert hidden_case.status_code == 404
     assert hidden_case.json()["error"]["code"] == "CASE_NOT_FOUND"
     assert hidden_evidence.status_code == 404
     assert hidden_evidence.json()["error"]["code"] == "CASE_NOT_FOUND"
     assert hidden_access.status_code == 404
     assert hidden_access.json()["error"]["code"] == "CASE_NOT_FOUND"
+    assert hidden_content.status_code == 404
+    assert hidden_content.json()["error"]["code"] == "CASE_NOT_FOUND"
 
     other_case = e2e_context.client.post(
         "/api/v1/cases",
@@ -389,6 +395,16 @@ def test_real_login_case_evidence_signed_download_and_tenant_isolation(
     assert access.status_code == 200
     with urlopen(access.json()["url"], timeout=5) as response:
         assert response.read() == payload
+    content = e2e_context.client.get(
+        f"/api/v1/cases/{case_id}/evidence/{evidence_id}/content",
+        headers=_auth(reviewer_token),
+    )
+    assert content.status_code == 200
+    assert content.content == payload
+    assert content.headers["content-type"] == "image/png"
+    assert content.headers["cache-control"] == "private, no-store"
+    assert content.headers["x-content-type-options"] == "nosniff"
+    assert content.headers["etag"] == f'"{hashlib.sha256(payload).hexdigest()}"'
 
     storage = _storage(e2e_context.settings)
     assert storage.exists(object_key) is True
@@ -413,3 +429,9 @@ def test_real_login_case_evidence_signed_download_and_tenant_isolation(
     )
     assert missing_object_access.status_code == 500
     assert missing_object_access.json()["error"]["code"] == "EVIDENCE_UPLOAD_FAILED"
+    missing_object_content = e2e_context.client.get(
+        f"/api/v1/cases/{case_id}/evidence/{evidence_id}/content",
+        headers=_auth(reviewer_token),
+    )
+    assert missing_object_content.status_code == 500
+    assert missing_object_content.json()["error"]["code"] == "EVIDENCE_UPLOAD_FAILED"

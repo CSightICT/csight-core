@@ -15,7 +15,7 @@ from app.application.cases import (
     CreateCaseResult,
     ListCasesQuery,
 )
-from app.application.evidence import EvidenceAccessUrl
+from app.application.evidence import EvidenceAccessUrl, EvidenceContent
 from app.bootstrap.settings import Settings
 from app.interface.http.services import Sprint1ServiceContainer
 from app.main import create_app
@@ -242,6 +242,23 @@ class FakeCreateEvidenceAccessUrl:
         )
 
 
+class FakeReadEvidenceContent:
+    def execute(
+        self,
+        *,
+        principal: Principal,
+        case_id: str,
+        evidence_id: str,
+    ) -> EvidenceContent:
+        principal.require(Permission.CASE_READ)
+        return EvidenceContent(
+            evidence_id=evidence_id,
+            content=b"png-data",
+            content_type="image/png",
+            sha256="a" * 64,
+        )
+
+
 @dataclass(slots=True)
 class HTTPTestContext:
     client: TestClient
@@ -271,6 +288,7 @@ def _build_http_context(
         list_case_evidence=FakeListCaseEvidence(),
         get_evidence_metadata=FakeGetEvidenceMetadata(),
         create_evidence_access_url=FakeCreateEvidenceAccessUrl(),
+        read_evidence_content=FakeReadEvidenceContent(),
     )
     settings = Settings(
         _env_file=None,  # pyright: ignore[reportCallIssue]
@@ -531,6 +549,18 @@ def test_evidence_upload_list_metadata_and_access_url(
         "expires_at": "2026-08-26T01:17:03Z",
     }
 
+    content = http_context.client.get(
+        "/api/v1/cases/case-1/evidence/evidence-1/content",
+        headers=_authorization(),
+    )
+    assert content.status_code == 200
+    assert content.content == b"png-data"
+    assert content.headers["Content-Type"] == "image/png"
+    assert content.headers["Cache-Control"] == "private, no-store"
+    assert content.headers["Cross-Origin-Resource-Policy"] == "same-origin"
+    assert content.headers["ETag"] == f'"{"a" * 64}"'
+    assert content.headers["X-Content-Type-Options"] == "nosniff"
+
 
 def test_evidence_role_and_file_errors_use_standard_codes(
     http_context: HTTPTestContext,
@@ -547,11 +577,16 @@ def test_evidence_role_and_file_errors_use_standard_codes(
         data={"evidence_type": "IMAGE"},
         files={"file": ("too-large.png", b"png-data", "image/png")},
     )
+    unauthenticated_content = http_context.client.get(
+        "/api/v1/cases/case-1/evidence/evidence-1/content"
+    )
 
     assert forbidden.status_code == 403
     assert forbidden.json()["error"]["code"] == "FORBIDDEN"
     assert too_large.status_code == 413
     assert too_large.json()["error"]["code"] == "FILE_TOO_LARGE"
+    assert unauthenticated_content.status_code == 401
+    assert unauthenticated_content.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
 
 
 def test_evidence_request_body_is_bounded_before_multipart_spooling() -> None:
@@ -713,3 +748,12 @@ def test_openapi_matches_tenant_free_inputs_and_bearer_contract(
         "post"
     ]["responses"]
     assert access_url_responses.keys() >= {"200", "401", "403", "404", "500", "503"}
+    content_responses = paths["/api/v1/cases/{case_id}/evidence/{evidence_id}/content"]["get"][
+        "responses"
+    ]
+    assert content_responses.keys() >= {"200", "401", "403", "404", "500", "503"}
+    assert content_responses["200"]["content"].keys() >= {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+    }

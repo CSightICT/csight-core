@@ -74,7 +74,7 @@
     },
     "verdict": "SCENARIO_TECH_POC_READY"
   },
-  "evaluated_at": "2026-08-27T15:05:33.495466+00:00",
+  "evaluated_at": "2026-08-28T05:32:21.024477+00:00",
   "evidence_summary": {
     "artifact_hashes": {
       "cases.jsonl": "7c86524c41aab6bdb4d5a8939f780e6a5756892cfbf7e91cc5a14f584ae20138",
@@ -94,7 +94,7 @@
     }
   },
   "offline_status": "OFFLINE_SCENARIO_PACK_READY",
-  "report_hash": "0d5f1d88ee19fe9bec865e2d6ba33182cfd099b1ab3f8963c68f6a551fa8d05a",
+  "report_hash": "38f8ccbb3d60bb43fe20181c66c77c2a0c3628ad9a7d08734d08d177dff122f6",
   "runtime_status": "RUNTIME_VISION_INTEGRATION_BLOCKED",
   "schema_version": "scenario_poc_acceptance_report/1.0.0",
   "verdict": "SCENARIO_TECH_POC_READY"

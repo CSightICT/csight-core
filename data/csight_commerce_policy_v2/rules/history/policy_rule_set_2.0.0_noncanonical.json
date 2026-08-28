@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "rule_set_name": "product_defect_policy",
+  "rule_set_version": "2.0.0",
+  "expected_content_hash": "5d8cc3f10adbb51a5125c724f0527c1ed61a8237e2001af4d2668546f21e4703",
+  "source_clause_order_overrides": {
+    "CSC-POLICY-201": [
+      "CSC-OPS-RET-001:2.0.0:C1",
+      "CSC-OPS-RET-001:2.0.0:C7",
+      "CSC-OPS-FIN-006:2.0.0:C7"
+    ],
+    "CSC-POLICY-203": [
+      "CSC-OPS-RET-001:2.0.0:C2",
+      "CSC-OPS-RET-001:2.0.0:C8",
+      "CSC-OPS-FIN-006:2.0.0:C8"
+    ],
+    "CSC-POLICY-205": [
+      "CSC-OPS-RET-001:2.0.0:C5",
+      "CSC-OPS-RET-001:2.0.0:C8",
+      "CSC-OPS-FIN-006:2.0.0:C8"
+    ],
+    "CSC-POLICY-207": [
+      "CSC-OPS-SLA-007:2.0.0:C1",
+      "CSC-OPS-REP-003:2.0.0:C3"
+    ]
+  }
+}

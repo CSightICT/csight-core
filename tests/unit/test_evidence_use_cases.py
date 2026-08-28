@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from types import TracebackType
@@ -14,6 +15,7 @@ from app.application.evidence import (
     CreateEvidenceAccessUrl,
     GetEvidenceMetadata,
     ListCaseEvidence,
+    ReadEvidenceContent,
 )
 from app.platform.case import (
     Case,
@@ -194,7 +196,7 @@ class Inspector:
             extension="png",
             content_type="image/png",
             size_bytes=7,
-            sha256="a" * 64,
+            sha256=hashlib.sha256(b"content").hexdigest(),
             width=8,
             height=6,
         )
@@ -208,6 +210,8 @@ class Storage:
         self.fail_put = False
         self.fail_delete = False
         self.fail_exists = False
+        self.fail_get = False
+        self.contents: dict[str, bytes] = {}
 
     def put(
         self,
@@ -218,10 +222,11 @@ class Storage:
         content_type: str,
         sha256: str,
     ) -> StoredObject:
-        del content
+        value = content.read()
         self.put_keys.append(key)
         if self.fail_put:
             raise RuntimeError("minio unavailable")
+        self.contents[key] = value
         return StoredObject(
             bucket="evidence",
             key=key,
@@ -243,6 +248,14 @@ class Storage:
     def presign_get(self, key: str, *, expires_in: timedelta) -> str:
         self.presigned.append(key)
         return f"http://objects.test/{key}?expires={int(expires_in.total_seconds())}"
+
+    def get(self, key: str, *, max_bytes: int) -> bytes:
+        if self.fail_get:
+            raise RuntimeError("object GET failed")
+        value = self.contents[key]
+        if len(value) > max_bytes:
+            raise RuntimeError("read bound exceeded")
+        return value
 
     def is_ready(self) -> bool:
         return True
@@ -531,3 +544,61 @@ def test_signed_url_requires_the_available_object_to_exist() -> None:
     with pytest.raises(StorageUnavailableError):
         service.execute(principal=principal(), case_id=case.id, evidence_id=evidence.id)
     assert storage.presigned == []
+
+
+def test_authenticated_content_read_verifies_size_and_sha256() -> None:
+    case = make_case()
+    uow, storage, inspector = UnitOfWork(case), Storage(), Inspector()
+    evidence = build_service(uow, storage, inspector).execute(
+        principal=principal(),
+        case_id=case.id,
+        content=BytesIO(b"content"),
+        filename="photo.png",
+        declared_content_type="image/png",
+    )
+    service = ReadEvidenceContent(
+        get_evidence=GetEvidenceMetadata(uow_factory=Factory(uow)),
+        storage=storage,
+        max_bytes=1024,
+    )
+
+    result = service.execute(principal=principal(), case_id=case.id, evidence_id=evidence.id)
+
+    assert result.content == b"content"
+    assert result.content_type == "image/png"
+    assert result.sha256 == hashlib.sha256(b"content").hexdigest()
+    with pytest.raises(CaseNotFoundError):
+        service.execute(
+            principal=principal(tenant_id="00000000-0000-4000-8000-999999999999"),
+            case_id=case.id,
+            evidence_id=evidence.id,
+        )
+
+
+def test_authenticated_content_read_fails_closed_on_storage_or_integrity_error() -> None:
+    case = make_case()
+    uow, storage, inspector = UnitOfWork(case), Storage(), Inspector()
+    evidence = build_service(uow, storage, inspector).execute(
+        principal=principal(),
+        case_id=case.id,
+        content=BytesIO(b"content"),
+        filename="photo.png",
+        declared_content_type="image/png",
+    )
+    service = ReadEvidenceContent(
+        get_evidence=GetEvidenceMetadata(uow_factory=Factory(uow)),
+        storage=storage,
+        max_bytes=1024,
+    )
+
+    storage.fail_get = True
+    with pytest.raises(StorageUnavailableError):
+        service.execute(principal=principal(), case_id=case.id, evidence_id=evidence.id)
+    storage.fail_get = False
+    storage.contents[evidence.object_key] = b"corrupt"
+    with pytest.raises(EvidenceUploadFailedError, match="integrity"):
+        service.execute(principal=principal(), case_id=case.id, evidence_id=evidence.id)
+
+    storage.fail_exists = True
+    with pytest.raises(StorageUnavailableError):
+        service.execute(principal=principal(), case_id=case.id, evidence_id=evidence.id)

@@ -49,7 +49,6 @@ from app.platform.policy_engine import (
     ConditionEvaluation,
     ConditionStatus,
     EvaluationSummary,
-    PolicyCondition,
     PolicyEffect,
     PolicyEffectType,
     PolicyEvaluation,
@@ -59,13 +58,31 @@ from app.platform.policy_engine import (
     PolicyRule,
     PolicyRuleSet,
     PolicySourceReference,
-    RuleCategory,
     RuleEvaluation,
     RuleStatus,
     SourceQualification,
     canonical_hash,
 )
 from app.ports.policy_engine import PolicyEvaluationExecutionSource, PolicyEvaluationRunDetail
+
+
+def _source_reference_key(source: PolicySourceReference) -> tuple[str, str, str, str]:
+    return (
+        source.clause_id,
+        source.document_id,
+        source.document_version,
+        source.source_hash,
+    )
+
+
+def _require_canonical_rule_set_order(value: PolicyRuleSet) -> None:
+    rule_keys = tuple((item.rule_id, item.rule_version) for item in value.rules)
+    if rule_keys != tuple(sorted(rule_keys)):
+        raise ValidationError("Policy rules must use canonical identity order.")
+    for rule in value.rules:
+        source_keys = tuple(_source_reference_key(item) for item in rule.source_references)
+        if len(source_keys) != len(set(source_keys)) or source_keys != tuple(sorted(source_keys)):
+            raise ValidationError("Policy rule sources must use unique canonical order.")
 
 
 class SQLAlchemyPolicyEngineRepository:
@@ -85,6 +102,8 @@ class SQLAlchemyPolicyEngineRepository:
         self._max_execution_attempts = max_execution_attempts
 
     def ingest(self, rule_sets: tuple[PolicyRuleSet, ...]) -> tuple[int, int]:
+        for value in rule_sets:
+            _require_canonical_rule_set_order(value)
         inserted_sets = inserted_rules = 0
         now = datetime.now(UTC)
         with self._factory.begin() as session:
@@ -848,60 +867,107 @@ class SQLAlchemyPolicyEngineRepository:
             mark_event_failed(event, now=now, code=code, message=message)
 
 
-def _load_rule_set(session: Session, rule_set_id: UUID) -> PolicyRuleSet:
-    row = session.get(PolicyRuleSetModel, rule_set_id)
-    assert row is not None
+def _reconstruct_rule_set(
+    *,
+    tenant_slug: str,
+    row: PolicyRuleSetModel,
+    rule_rows: tuple[PolicyRuleModel, ...],
+    source_rows: tuple[PolicyRuleSourceClauseModel, ...],
+) -> PolicyRuleSet:
+    """Rebuild the immutable hash payload under the persistence ordering contract."""
+
+    source_rows_by_rule: dict[UUID, list[PolicyRuleSourceClauseModel]] = {}
+    for source in source_rows:
+        source_rows_by_rule.setdefault(source.policy_rule_id, []).append(source)
     rules: list[PolicyRule] = []
-    for rule in session.scalars(
-        select(PolicyRuleModel)
-        .where(PolicyRuleModel.rule_set_id == row.id)
-        .order_by(PolicyRuleModel.rule_id)
-    ).all():
-        sources = session.scalars(
-            select(PolicyRuleSourceClauseModel)
-            .where(PolicyRuleSourceClauseModel.policy_rule_id == rule.id)
-            .order_by(PolicyRuleSourceClauseModel.clause_id)
-        ).all()
+    for rule in sorted(rule_rows, key=lambda item: (item.rule_id, item.rule_version)):
+        sources = sorted(
+            source_rows_by_rule.get(rule.id, []),
+            key=lambda item: (
+                item.clause_id,
+                item.document_id,
+                item.document_version,
+                item.source_hash,
+            ),
+        )
         rules.append(
-            PolicyRule(
-                rule_id=rule.rule_id,
-                rule_version=rule.rule_version,
-                category=RuleCategory(rule.category),
-                priority=rule.priority,
-                conditions=tuple(PolicyCondition.model_validate(item) for item in rule.conditions),
-                effects=tuple(PolicyEffect.model_validate(item) for item in rule.effects),
-                requires_human_review=rule.requires_human_review,
-                prohibit_final_decision=True,
-                source_references=tuple(
-                    PolicySourceReference(
-                        clause_id=item.clause_id,
-                        document_id=item.document_id,
-                        document_version=item.document_version,
-                        source_hash=item.source_hash,
-                    )
-                    for item in sources
-                ),
+            PolicyRule.model_validate(
+                {
+                    "rule_id": rule.rule_id,
+                    "rule_version": rule.rule_version,
+                    "category": rule.category,
+                    "priority": rule.priority,
+                    "conditions": rule.conditions,
+                    "effects": rule.effects,
+                    "requires_human_review": rule.requires_human_review,
+                    "prohibit_final_decision": rule.prohibit_final_decision,
+                    "source_references": [
+                        {
+                            "clause_id": item.clause_id,
+                            "document_id": item.document_id,
+                            "document_version": item.document_version,
+                            "source_hash": item.source_hash,
+                        }
+                        for item in sources
+                    ],
+                }
             )
         )
-    result = PolicyRuleSet(
-        tenant_slug=session.get(TenantModel, row.tenant_id).slug,  # type: ignore[union-attr]
-        rule_set_name=row.rule_set_name,
-        rule_set_version=row.rule_set_version,
-        effective_from=row.effective_from,
-        effective_to=row.effective_to,
-        source_corpus_name=row.source_corpus_name,
-        source_corpus_version=row.source_corpus_version,
-        source_corpus_hash=row.source_corpus_hash,
-        source_type="SYNTHETIC_REFERENCE",
-        rule_schema_version="1.0.0",
-        field_registry_version="1.0.0",
-        operator_registry_version="1.0.0",
-        aggregation_version="1.0.0",
-        rules=tuple(rules),
+    result = PolicyRuleSet.model_validate(
+        {
+            "tenant_slug": tenant_slug,
+            "rule_set_name": row.rule_set_name,
+            "rule_set_version": row.rule_set_version,
+            "effective_from": row.effective_from,
+            "effective_to": row.effective_to,
+            "source_corpus_name": row.source_corpus_name,
+            "source_corpus_version": row.source_corpus_version,
+            "source_corpus_hash": row.source_corpus_hash,
+            "source_type": row.source_type,
+            "rule_schema_version": row.rule_schema_version,
+            "field_registry_version": row.field_registry_version,
+            "operator_registry_version": row.operator_registry_version,
+            "aggregation_version": row.aggregation_version,
+            "rules": rules,
+        }
     )
     if result.content_hash != row.content_hash:
         raise ValidationError("Immutable policy rule-set hash mismatch.")
     return result
+
+
+def _load_rule_set(session: Session, rule_set_id: UUID) -> PolicyRuleSet:
+    row = session.get(PolicyRuleSetModel, rule_set_id)
+    assert row is not None
+    rule_rows = tuple(
+        session.scalars(
+            select(PolicyRuleModel)
+            .where(PolicyRuleModel.rule_set_id == row.id)
+            .order_by(PolicyRuleModel.rule_id, PolicyRuleModel.rule_version)
+        ).all()
+    )
+    source_rows: list[PolicyRuleSourceClauseModel] = []
+    for rule in rule_rows:
+        source_rows.extend(
+            session.scalars(
+                select(PolicyRuleSourceClauseModel)
+                .where(PolicyRuleSourceClauseModel.policy_rule_id == rule.id)
+                .order_by(
+                    PolicyRuleSourceClauseModel.clause_id,
+                    PolicyRuleSourceClauseModel.document_id,
+                    PolicyRuleSourceClauseModel.document_version,
+                    PolicyRuleSourceClauseModel.source_hash,
+                )
+            ).all()
+        )
+    tenant = session.get(TenantModel, row.tenant_id)
+    assert tenant is not None
+    return _reconstruct_rule_set(
+        tenant_slug=tenant.slug,
+        row=row,
+        rule_rows=rule_rows,
+        source_rows=tuple(source_rows),
+    )
 
 
 def _to_run(session: Session, row: PolicyEvaluationRunModel) -> PolicyEvaluationRun:

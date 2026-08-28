@@ -7,7 +7,10 @@ private object write, and uses best-effort delete/``FAILED`` compensation.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import BinaryIO
 
@@ -45,7 +48,7 @@ from app.ports.file_inspection import (
 )
 from app.ports.observability import CompensationFailureObserver, CompensationStep
 from app.ports.runtime import Clock, IdGenerator
-from app.ports.storage import ObjectStorage, StoredObject
+from app.ports.storage import ObjectStorage, ReadableObjectStorage, StoredObject
 from app.ports.unit_of_work import CaseUnitOfWorkFactory
 
 
@@ -55,6 +58,14 @@ class EvidenceAccessUrl(BaseModel):
     evidence_id: str = Field(min_length=1)
     url: str = Field(min_length=1, repr=False)
     expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceContent:
+    evidence_id: str
+    content: bytes
+    content_type: str
+    sha256: str
 
 
 class AddImageEvidence:
@@ -362,4 +373,57 @@ class CreateEvidenceAccessUrl:
             evidence_id=evidence.id,
             url=url,
             expires_at=self._clock.now().astimezone(UTC) + self._ttl,
+        )
+
+
+class ReadEvidenceContent:
+    """Read one tenant-scoped private image through the authenticated API boundary."""
+
+    def __init__(
+        self,
+        *,
+        get_evidence: GetEvidenceMetadata,
+        storage: ReadableObjectStorage,
+        max_bytes: int,
+    ) -> None:
+        if max_bytes <= 0:
+            raise ValueError("max_bytes must be positive")
+        self._get_evidence = get_evidence
+        self._storage = storage
+        self._max_bytes = max_bytes
+
+    def execute(
+        self,
+        *,
+        principal: Principal,
+        case_id: str,
+        evidence_id: str,
+    ) -> EvidenceContent:
+        evidence = self._get_evidence.execute(
+            principal=principal,
+            case_id=case_id,
+            evidence_id=evidence_id,
+        )
+        if evidence.upload_status is not EvidenceUploadStatus.AVAILABLE:
+            raise EvidenceUploadFailedError("The evidence is not available for access.")
+        if evidence.size_bytes > self._max_bytes:
+            raise EvidenceUploadFailedError("The evidence exceeds the configured read limit.")
+        try:
+            if not self._storage.exists(evidence.object_key):
+                raise EvidenceUploadFailedError("The evidence object is not available for access.")
+            content = self._storage.get(evidence.object_key, max_bytes=self._max_bytes)
+        except EvidenceUploadFailedError:
+            raise
+        except Exception as exc:
+            raise StorageUnavailableError() from exc
+        actual_sha256 = hashlib.sha256(content).hexdigest()
+        if len(content) != evidence.size_bytes or not hmac.compare_digest(
+            actual_sha256, evidence.sha256
+        ):
+            raise EvidenceUploadFailedError("The evidence object failed integrity verification.")
+        return EvidenceContent(
+            evidence_id=evidence.id,
+            content=content,
+            content_type=evidence.content_type,
+            sha256=evidence.sha256,
         )

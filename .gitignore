@@ -15,7 +15,9 @@ htmlcov/
 .venv-embedding/
 .venv-reranker/
 .venv-local-llm/
+.venv-vision-e3/
 infra/local_llm/.server.pid
+infra/vision_e3/.server.pid
 .embedding-service.pid
 .embedding-service.log
 .reranker-service.pid
@@ -48,3 +50,7 @@ local-data/
 *.sqlite*
 *.db
 *.dump
+*.pt
+*.pth
+*.ckpt
+*.safetensors

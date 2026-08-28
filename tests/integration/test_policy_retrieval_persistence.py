@@ -83,11 +83,22 @@ def test_ingestion_is_idempotent_and_persists_expected_graph(policy_engine: Engi
         assert result.reused is True
         assert result.document_count == 24
         assert result.clause_count == 168
-        assert session.scalar(select(func.count(PolicyClauseModel.id))) == 168
+        reference_tenant_ids = select(TenantModel.id).where(
+            TenantModel.slug.in_(("csight-demo-brand", "csight-demo-retail"))
+        )
         assert (
             session.scalar(
                 select(func.count(PolicyClauseModel.id)).where(
-                    PolicyClauseModel.parent_clause_id.is_not(None)
+                    PolicyClauseModel.tenant_id.in_(reference_tenant_ids)
+                )
+            )
+            == 168
+        )
+        assert (
+            session.scalar(
+                select(func.count(PolicyClauseModel.id)).where(
+                    PolicyClauseModel.tenant_id.in_(reference_tenant_ids),
+                    PolicyClauseModel.parent_clause_id.is_not(None),
                 )
             )
             == 48

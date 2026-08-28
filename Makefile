@@ -15,10 +15,20 @@ RERANKER_DOWNLOAD_SECONDS ?= 0
 RERANKER_COLD_LOAD_SECONDS ?= 0
 POLICY_TENANT ?= csight-demo-brand
 POLICY_INDEX_VERSION ?= 1.0.0
+CSIGHT_POLICY_OUTPUT ?= local-data/csight-synthetic-policy-runtime-v2.0.1
+E3_TOP100_PACKAGE ?=
+E3_TOP100_OUTPUT ?= local-data/e3-top100-replay/replay_report.json
+E3_TOP100_CORE_SAMPLE_SIZE ?= 6
+REALISTIC_DEMO_TOP100_SOURCE ?=
+REALISTIC_DEMO_NORMAL_SOURCE ?=
+REALISTIC_DEMO_OUTPUT ?= local-data/realistic-internal-demo-v1/seed_report.json
+REALISTIC_DEMO_ACTOR_EMAIL ?= csight@csight.demo
+REALISTIC_DEMO_V2_MANIFEST ?= evaluation/realistic_internal_demo_v2/manifest.json
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision demo-scenario-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e
+.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision demo-scenario-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e setup-vision-e3 start-vision-e3 stop-vision-e3 health-vision-e3 qualify-vision-e3 test-vision-e3 up-e3-scenario-poc smoke-e3-scenario-vision replay-e3-top100 seed-realistic-poc-demo seed-realistic-poc-demo-v2
+.PHONY: prepare-csight-policy-runtime
 
 help:
 	@echo "CSight Core commands"
@@ -68,6 +78,7 @@ help:
 	@echo "  make stop-embedding  Stop the private embedding service started by Make"
 	@echo "  make health-embedding  Probe embedding health and pinned model metadata"
 	@echo "  make build-policy-embeddings  Build/reuse embeddings and activate complete indexes"
+	@echo "  make prepare-csight-policy-runtime  Preserve v1 and activate fictional Commerce policy v2"
 	@echo "  make activate-policy-index POLICY_TENANT=... POLICY_INDEX_VERSION=..."
 	@echo "  make list-policy-indexes  List versioned policy indexes"
 	@echo "  make evaluate-policy-{lexical,dense,hybrid,retrieval}  Verify locked results"
@@ -83,6 +94,12 @@ help:
 	@echo "  make evaluate-local-{extraction,query-builder,grounding}  Run Local MLX Dev"
 	@echo "  make evaluate-local-llm-all  Run all Local MLX Dev evaluations"
 	@echo "  make smoke-local-llm-e2e  Run the Local MLX PoC smoke path"
+	@echo "  make setup-vision-e3 / start-vision-e3 / stop-vision-e3 / health-vision-e3"
+	@echo "  make qualify-vision-e3  Run a real E3 HTTP forward on a synthetic image"
+	@echo "  make up-e3-scenario-poc / smoke-e3-scenario-vision  Run E3 through Core"
+	@echo "  make replay-e3-top100 E3_TOP100_PACKAGE=...  Replay selected positives through E3/Core"
+	@echo "  make seed-realistic-poc-demo ...  Reproduce the preserved v1 customer-case demo"
+	@echo "  make seed-realistic-poc-demo-v2 ...  Seed the long-inquiry ecommerce demo"
 
 up:
 	$(COMPOSE_CMD) up --build --detach --wait
@@ -149,6 +166,52 @@ test-external-llm:
 test-external-vision:
 	RUN_EXTERNAL_VISION_TESTS=1 $(UV) run pytest -q -m external_vision
 
+setup-vision-e3:
+	./infra/vision_e3/setup_vision_e3.sh
+
+start-vision-e3:
+	./infra/vision_e3/serve_vision_e3.sh
+
+stop-vision-e3:
+	$(UV) run python infra/vision_e3/stop_vision_e3.py
+
+health-vision-e3:
+	./infra/vision_e3/healthcheck.sh
+
+qualify-vision-e3:
+	.venv-vision-e3/bin/python infra/vision_e3/qualify_vision_e3.py
+
+test-vision-e3:
+	PYTHONPATH=. .venv-vision-e3/bin/python -m pytest -q infra/vision_e3/tests
+
+replay-e3-top100:
+	@test -n "$(E3_TOP100_PACKAGE)" || (echo "E3_TOP100_PACKAGE is required" >&2; exit 2)
+	$(UV) run python scripts/evaluate_e3_top100_replay.py \
+		--package "$(E3_TOP100_PACKAGE)" \
+		--output "$(E3_TOP100_OUTPUT)" \
+		--core-sample-size "$(E3_TOP100_CORE_SAMPLE_SIZE)" \
+		--env-file "$(ENV_FILE)"
+
+seed-realistic-poc-demo:
+	@test -n "$(REALISTIC_DEMO_TOP100_SOURCE)" || (echo "REALISTIC_DEMO_TOP100_SOURCE is required" >&2; exit 2)
+	@test -n "$(REALISTIC_DEMO_NORMAL_SOURCE)" || (echo "REALISTIC_DEMO_NORMAL_SOURCE is required" >&2; exit 2)
+	$(UV) run python scripts/seed_realistic_poc_demo.py \
+		--top100-source "$(REALISTIC_DEMO_TOP100_SOURCE)" \
+		--normal-source "$(REALISTIC_DEMO_NORMAL_SOURCE)" \
+		--output "$(REALISTIC_DEMO_OUTPUT)" \
+		--actor-email "$(REALISTIC_DEMO_ACTOR_EMAIL)" \
+		--env-file "$(ENV_FILE)"
+
+seed-realistic-poc-demo-v2:
+	@test -n "$(REALISTIC_DEMO_TOP100_SOURCE)" || (echo "REALISTIC_DEMO_TOP100_SOURCE is required" >&2; exit 2)
+	@test -n "$(REALISTIC_DEMO_NORMAL_SOURCE)" || (echo "REALISTIC_DEMO_NORMAL_SOURCE is required" >&2; exit 2)
+	$(UV) run python scripts/seed_realistic_poc_demo.py \
+		--top100-source "$(REALISTIC_DEMO_TOP100_SOURCE)" \
+		--normal-source "$(REALISTIC_DEMO_NORMAL_SOURCE)" \
+		--manifest "$(REALISTIC_DEMO_V2_MANIFEST)" \
+		--actor-email "$(REALISTIC_DEMO_ACTOR_EMAIL)" \
+		--env-file "$(ENV_FILE)"
+
 test-external-embedding:
 	RUN_EXTERNAL_EMBEDDING_TESTS=1 EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run pytest -q -m external_embedding
 
@@ -214,11 +277,46 @@ up-scenario-poc:
 	$(COMPOSE_CMD) up --build --detach --wait
 	$(COMPOSE_CMD) run --rm api uv run alembic upgrade head
 
+up-e3-scenario-poc:
+	VISION_PROVIDER=remote \
+	VISION_BASE_URL=http://host.docker.internal:8093 \
+	VISION_TASK=ANY_DEFECT_CLASSIFICATION \
+	VISION_ASSESSMENT_EXPECTED_THRESHOLD=0.8984375 \
+	VISION_MODEL_ID=csight-dinov2-vits14-kaputt-binary \
+	VISION_MODEL_VERSION=e3-epoch10-20260827 \
+	VISION_MODEL_REVISION=49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e \
+	VISION_CONNECT_TIMEOUT_SECONDS=10 \
+	VISION_READ_TIMEOUT_SECONDS=180 \
+	VISION_TLS_VERIFY=false \
+	$(COMPOSE_CMD) up --build --detach --wait
+	VISION_PROVIDER=remote \
+	VISION_BASE_URL=http://host.docker.internal:8093 \
+	VISION_TASK=ANY_DEFECT_CLASSIFICATION \
+	VISION_ASSESSMENT_EXPECTED_THRESHOLD=0.8984375 \
+	VISION_MODEL_ID=csight-dinov2-vits14-kaputt-binary \
+	VISION_MODEL_VERSION=e3-epoch10-20260827 \
+	VISION_MODEL_REVISION=49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e \
+	VISION_CONNECT_TIMEOUT_SECONDS=10 \
+	VISION_READ_TIMEOUT_SECONDS=180 \
+	VISION_TLS_VERIFY=false \
+	$(COMPOSE_CMD) run --rm api uv run alembic upgrade head
+
 seed-scenario-poc-demo:
 	$(UV) run python scripts/seed_scenario_poc_demo.py --env-file $(ENV_FILE)
 
 smoke-scenario-vision:
 	$(UV) run python scripts/smoke_scenario_vision.py --env-file $(ENV_FILE)
+
+smoke-e3-scenario-vision:
+	$(UV) run python scripts/smoke_scenario_vision.py \
+		--env-file $(ENV_FILE) \
+		--timeout-seconds 180 \
+		--allow-below-threshold \
+		--expected-model-name csight-dinov2-vits14-kaputt-binary \
+		--expected-model-version e3-epoch10-20260827 \
+		--expected-model-revision 49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e \
+		--verdict REAL_E3_CORE_INTEGRATION_PASS \
+		--claim-boundary REAL_E3_CHECKPOINT_ON_SYNTHETIC_CONNECTIVITY_IMAGE_NOT_PRODUCT_QUALIFICATION
 
 demo-scenario-poc: verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision
 
@@ -328,6 +426,12 @@ health-embedding:
 
 build-policy-embeddings:
 	$(UV) run python scripts/build_policy_embeddings.py --env-file $(ENV_FILE) --embedding-base-url $(EMBEDDING_BASE_URL)
+
+prepare-csight-policy-runtime:
+	$(UV) run python scripts/prepare_csight_synthetic_policy_runtime.py \
+		--env-file "$(ENV_FILE)" \
+		--embedding-base-url "$(EMBEDDING_BASE_URL)" \
+		--output-root "$(CSIGHT_POLICY_OUTPUT)"
 
 activate-policy-index:
 	$(UV) run python scripts/activate_policy_index.py --env-file $(ENV_FILE) --tenant $(POLICY_TENANT) --index-version $(POLICY_INDEX_VERSION)

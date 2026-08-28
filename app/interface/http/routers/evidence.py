@@ -15,6 +15,7 @@ from app.interface.http.sprint1_schemas import (
     EvidenceListResponse,
     EvidenceResponse,
 )
+from app.platform.errors import StorageUnavailableError
 from app.platform.evidence import EvidenceType
 from app.platform.tenant import Principal
 
@@ -127,3 +128,39 @@ def create_evidence_access_url(
     )
     response.headers["Cache-Control"] = "no-store"
     return EvidenceAccessUrlResponse.from_result(result)
+
+
+@router.get(
+    "/{case_id}/evidence/{evidence_id}/content",
+    response_class=Response,
+    responses={
+        200: {"content": {"image/jpeg": {}, "image/png": {}, "image/webp": {}}},
+        **EVIDENCE_QUERY_ERROR_RESPONSES,
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ErrorResponse},
+    },
+)
+def read_evidence_content(
+    case_id: CaseId,
+    evidence_id: EvidenceId,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[Sprint1ServiceContainer, Depends(provide_sprint1_services)],
+) -> Response:
+    service = services.read_evidence_content
+    if service is None:
+        raise StorageUnavailableError()
+    result = service.execute(
+        principal=principal,
+        case_id=case_id,
+        evidence_id=evidence_id,
+    )
+    return Response(
+        content=result.content,
+        media_type=result.content_type,
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": "inline",
+            "Cross-Origin-Resource-Policy": "same-origin",
+            "ETag": f'"{result.sha256}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )

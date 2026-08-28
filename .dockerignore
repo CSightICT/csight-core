@@ -1,6 +1,7 @@
 .git
 .github
 .venv
+.venv-*/
 .env
 .env.*
 !.env.example
@@ -33,6 +34,10 @@ local-data/
 *.sqlite*
 *.db
 *.dump
+*.pt
+*.pth
+*.ckpt
+*.safetensors
 
 CSight_project_docs/
 docs/

@@ -13,6 +13,7 @@ from app.adapters.persistence.models import (
     PolicyRuleSetActivationModel,
     PolicyRuleSetModel,
     PolicyRuleSourceClauseModel,
+    TenantModel,
 )
 from app.adapters.persistence.session import create_session_factory
 from app.bootstrap.settings import Settings
@@ -24,13 +25,38 @@ def main() -> int:
     arguments = parser.parse_args()
     settings = Settings(_env_file=arguments.env_file)  # pyright: ignore[reportCallIssue]
     with create_session_factory(get_engine(settings))() as session:
-        rule_set_count = session.scalar(select(func.count(PolicyRuleSetModel.id))) or 0
-        rule_count = session.scalar(select(func.count(PolicyRuleModel.id))) or 0
-        source_count = session.scalar(select(func.count(PolicyRuleSourceClauseModel.id))) or 0
+        reference_tenant_ids = select(TenantModel.id).where(
+            TenantModel.slug.in_(("csight-demo-brand", "csight-demo-retail"))
+        )
+        rule_set_count = (
+            session.scalar(
+                select(func.count(PolicyRuleSetModel.id)).where(
+                    PolicyRuleSetModel.tenant_id.in_(reference_tenant_ids)
+                )
+            )
+            or 0
+        )
+        rule_count = (
+            session.scalar(
+                select(func.count(PolicyRuleModel.id)).where(
+                    PolicyRuleModel.tenant_id.in_(reference_tenant_ids)
+                )
+            )
+            or 0
+        )
+        source_count = (
+            session.scalar(
+                select(func.count(PolicyRuleSourceClauseModel.id)).where(
+                    PolicyRuleSourceClauseModel.tenant_id.in_(reference_tenant_ids)
+                )
+            )
+            or 0
+        )
         active_count = (
             session.scalar(
                 select(func.count(PolicyRuleSetActivationModel.id)).where(
-                    PolicyRuleSetActivationModel.retired_at.is_(None)
+                    PolicyRuleSetActivationModel.tenant_id.in_(reference_tenant_ids),
+                    PolicyRuleSetActivationModel.retired_at.is_(None),
                 )
             )
             or 0
@@ -52,19 +78,23 @@ def main() -> int:
                         PolicyClauseModel.document_status == "ACTIVE",
                     ),
                 )
-                .where(PolicyClauseModel.id.is_(None))
+                .where(
+                    PolicyRuleSourceClauseModel.tenant_id.in_(reference_tenant_ids),
+                    PolicyClauseModel.id.is_(None),
+                )
             )
             or 0
         )
         rules_without_sources = (
             session.scalar(
                 select(func.count(PolicyRuleModel.id)).where(
+                    PolicyRuleModel.tenant_id.in_(reference_tenant_ids),
                     ~select(PolicyRuleSourceClauseModel.id)
                     .where(
                         PolicyRuleSourceClauseModel.tenant_id == PolicyRuleModel.tenant_id,
                         PolicyRuleSourceClauseModel.policy_rule_id == PolicyRuleModel.id,
                     )
-                    .exists()
+                    .exists(),
                 )
             )
             or 0
@@ -72,9 +102,10 @@ def main() -> int:
         forbidden_effects = (
             session.scalar(
                 select(func.count(PolicyRuleModel.id)).where(
+                    PolicyRuleModel.tenant_id.in_(reference_tenant_ids),
                     PolicyRuleModel.effects.cast(String).op("~")(
                         "APPROVE|REJECT|FRAUD|LIABILITY|FINAL_DECISION"
-                    )
+                    ),
                 )
             )
             or 0

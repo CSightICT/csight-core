@@ -60,5 +60,7 @@
 ## 실행 시 주의
 
 `human_decision`은 시스템 권고가 아니라 시나리오의 **사람 결정 Gold**다. 이미지 경로는
-합성 Fixture 참조이며 실제 사진이 포함되어 있다는 뜻이 아니다. 실제 E3 endpoint와 촬영
-이미지가 준비되기 전에는 Vision 단계가 fixture/advisory임을 화면에 표시해야 한다.
+합성 Fixture 참조이며 실제 사진이 포함되어 있다는 뜻이 아니다. 2026-08-28 별도 host-private
+E3 endpoint와 synthetic connectivity image의 실제 forward는 통과했지만, 다섯 시나리오의
+대표 이미지·Human Gold·제품 domain 평가는 아직 없다. 그러므로 각 Scenario의 Vision 단계는
+대표 이미지 평가를 추가하기 전까지 fixture/advisory임을 화면에 표시해야 한다.

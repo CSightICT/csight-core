@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "score": "sigmoid_probability_of_any_defect",
+  "high_confidence_defect_candidate": 0.8984375,
+  "selection_split": "validation",
+  "selection_rule": "maximum recall subject to precision >= 0.90",
+  "validation_precision": 0.900126422250316,
+  "validation_recall": 0.5185724690458849,
+  "high_score_action": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+  "low_score_action": "HUMAN_REVIEW_REQUIRED",
+  "normal_confirmation_supported": false,
+  "human_final_approval_required": true
+}

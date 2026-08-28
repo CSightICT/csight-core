@@ -22,8 +22,10 @@ from app.application.evidence import (
     AddImageEvidence,
     CreateEvidenceAccessUrl,
     EvidenceAccessUrl,
+    EvidenceContent,
     GetEvidenceMetadata,
     ListCaseEvidence,
+    ReadEvidenceContent,
 )
 
 __all__ = [
@@ -38,6 +40,7 @@ __all__ = [
     "CreateCaseResult",
     "CreateEvidenceAccessUrl",
     "EvidenceAccessUrl",
+    "EvidenceContent",
     "GetCase",
     "GetCaseStatusHistory",
     "GetEvidenceMetadata",
@@ -46,6 +49,7 @@ __all__ = [
     "ListCasesQuery",
     "LoginCommand",
     "LoginResult",
+    "ReadEvidenceContent",
     "ResolvePrincipal",
     "canonical_case_request_hash",
 ]

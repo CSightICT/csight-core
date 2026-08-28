@@ -24,6 +24,7 @@ from app.application.evidence import (
     CreateEvidenceAccessUrl,
     GetEvidenceMetadata,
     ListCaseEvidence,
+    ReadEvidenceContent,
 )
 from app.bootstrap.settings import Settings
 from app.interface.http.services import Sprint1ServiceContainer
@@ -133,6 +134,11 @@ def build_sprint1_services(settings: Settings) -> Sprint1ServiceContainer:
             storage=storage,
             clock=clock,
             ttl=timedelta(seconds=settings.signed_url_ttl_seconds),
+        ),
+        read_evidence_content=ReadEvidenceContent(
+            get_evidence=get_evidence,
+            storage=storage,
+            max_bytes=settings.max_upload_bytes,
         ),
     )
 

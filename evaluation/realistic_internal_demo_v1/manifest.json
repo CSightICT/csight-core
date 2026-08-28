@@ -1,0 +1,275 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_id": "realistic-internal-demo-v1",
+  "tenant_slug": "csight",
+  "selection": {
+    "total_count": 10,
+    "defect_selected_correct_count": 6,
+    "normal_reference_count": 4,
+    "defect_ranks": [3, 32, 54, 58, 78, 80],
+    "normal_reference_ranks": [2, 8, 17, 23],
+    "ratio": "6:4"
+  },
+  "boundaries": {
+    "scenario_type": "SYNTHETIC_CUSTOMER_NARRATIVE_WITH_REAL_E3_INFERENCE",
+    "policy_input_linkage": "NOT_LINKED_TO_POLICY_INPUT",
+    "final_decision_owner": "AUTHENTICATED_HUMAN_ONLY",
+    "external_action_mode": "NOT_RUN",
+    "normal_confirmation_supported": false,
+    "public_redistribution_allowed": false
+  },
+  "cases": [
+    {
+      "demo_id": "REAL-DEMO-DEFECT-01",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 3,
+        "image_sha256": "413653dc290ab8c537f5c3036da14f2ccd755297230a072ff9a266839e797a11",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-001",
+        "product_ref": "DEMO-PUMP-BOTTLE-01",
+        "customer_message": "배송받아 뚜껑을 열어보니 펌프 헤드와 보호 캡이 따로 빠져 있었습니다. 다시 끼워도 고정되지 않는데 새 제품으로 교환할 수 있을까요?",
+        "requested_action": "EXCHANGE",
+        "attributes": {
+          "days_since_purchase": 2,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1,
+            "shipping_address_ref": "DEMO-ADDR-001"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-DEFECT-02",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 32,
+        "image_sha256": "299a03e1756d7ae1c106edf3b34ff5d517077ec7b6dce03ca46cbe8d3540b3d0",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-002",
+        "product_ref": "DEMO-LOTION-PUMP-02",
+        "customer_message": "처음 눌렀을 때부터 펌프 연결부에서 내용물이 새고 용액도 제대로 나오지 않습니다. 사용하기 어려워서 환불을 요청합니다.",
+        "requested_action": "REFUND",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-DEFECT-03",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 54,
+        "image_sha256": "f249bf013a12603ee0810df8c2a573cc82518a916da874de0fe13ee6048bb675",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-003",
+        "product_ref": "DEMO-DISPENSER-03",
+        "customer_message": "디스펜서의 검은 캡이 빠져서 닫히지 않고 펌프도 헛돕니다. 부품만 수리하거나 교체할 수 있는지 확인 부탁드립니다.",
+        "requested_action": "REPAIR",
+        "attributes": {
+          "days_since_purchase": 9,
+          "product_category": "GENERAL",
+          "functional_evidence": "CUSTOMER_REPORTED",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-DEFECT-04",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 58,
+        "image_sha256": "5b31bdd0ccbe342bf6a44005af61dac65c5e92d9a97374464b190ff086238564",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-004",
+        "product_ref": "DEMO-TRAVEL-PUMP-04",
+        "customer_message": "여행용 펌프를 꺼내 보니 금색 펌프 부분이 본체에서 빠져 있었고 손으로 눌러도 다시 결합되지 않습니다. 교환해주세요.",
+        "requested_action": "EXCHANGE",
+        "attributes": {
+          "days_since_purchase": 3,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {
+            "quantity": 1,
+            "shipping_address_ref": "DEMO-ADDR-004"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-DEFECT-05",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 78,
+        "image_sha256": "9773ee1cf87cd3b806fcedf230f34f7777dc378836c11a35099ccd2882c11398",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-005",
+        "product_ref": "DEMO-MIST-PUMP-05",
+        "customer_message": "미스트 펌프를 누르는 순간 노즐이 빠졌고 주변으로 액체가 튀었습니다. 피부에 닿을까 걱정되어 사용을 중단했고 환불을 원합니다.",
+        "requested_action": "REFUND",
+        "attributes": {
+          "days_since_purchase": 4,
+          "product_category": "GENERAL",
+          "declared_safety_risk": true,
+          "external_action_input": {
+            "amount": "12900",
+            "currency": "KRW"
+          }
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-DEFECT-06",
+      "source": {
+        "kind": "TOP100_SELECTED_CORRECT_DEFECT",
+        "rank": 80,
+        "image_sha256": "953e0ad91257669b4617a1a6ac1ad52e07ab0c9cdb46eefe4e6ba2b6dd0b6282",
+        "source_grade": "KAPUTT_SELECTED_CORRECT_POSITIVE",
+        "expected_e3_outcome": "HIGH_CONFIDENCE_DEFECT_CANDIDATE",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "POSITIVE_ONLY_CORRECT_ONLY_HIGH_CONFIDENCE"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-006",
+        "product_ref": "DEMO-SANITIZER-PUMP-06",
+        "customer_message": "상자를 열자 용기와 펌프 부품이 완전히 분리되어 있었습니다. 조립 방법을 모르겠고 파손 여부도 확인이 필요합니다.",
+        "requested_action": "UNSPECIFIED",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-NORMAL-01",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 2,
+        "image_sha256": "1ecbb3c261491b1d00f4989a1622899cd77e71396f4d2f3da162c994e97c81f2",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-007",
+        "product_ref": "DEMO-ACRYLIC-ORGANIZER-07",
+        "customer_message": "포장 상태 확인차 사진을 올립니다. 에어캡에는 찢어진 곳이 없어 보이는데 개봉 전에 구성품을 확인하는 방법을 알려주세요.",
+        "requested_action": "INFORMATION",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-NORMAL-02",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 8,
+        "image_sha256": "88610b05723033d2e15915766a0e97eb50d8752c711bdc611818b2139a519b18",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-008",
+        "product_ref": "DEMO-CYLINDER-CASE-08",
+        "customer_message": "원통형 제품이 에어캡 안에서 조금 움직이는 것 같지만 겉포장은 멀쩡합니다. 바로 개봉해도 되는지 점검 기준이 궁금합니다.",
+        "requested_action": "INFORMATION",
+        "attributes": {
+          "days_since_purchase": 2,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-NORMAL-03",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 17,
+        "image_sha256": "8fad11f324d8baecd7b4984c0ff488d6120274720f40a7be852830846102947b",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-009",
+        "product_ref": "DEMO-STORAGE-SET-09",
+        "customer_message": "보관용기 세트가 에어캡으로 잘 감싸져 도착했고 사진상 파손은 보이지 않습니다. 선물하기 전에 확인할 항목만 안내받고 싶습니다.",
+        "requested_action": "INFORMATION",
+        "attributes": {
+          "days_since_purchase": 3,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    },
+    {
+      "demo_id": "REAL-DEMO-NORMAL-04",
+      "source": {
+        "kind": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "rank": 23,
+        "image_sha256": "f4935f10f5083028ed1dde3c05a6f6c81322c0e86a8eadfd418e24151014e468",
+        "source_grade": "USER_SUPPLIED_NORMAL_REFERENCE",
+        "expected_e3_outcome": "BELOW_HIGH_CONFIDENCE_THRESHOLD",
+        "rights_status": "INTERNAL_RESTRICTED_PROVENANCE_UNVERIFIED",
+        "selection_bias": "LOW_SCORE_WITHIN_PIXEL_REVIEWED_INTERNAL_ALLOWLIST"
+      },
+      "case_input": {
+        "order_ref": "DEMO-ORD-20260828-010",
+        "product_ref": "DEMO-COMPACT-CASE-10",
+        "customer_message": "수납 케이스가 비닐과 에어캡에 싸여 도착했습니다. 눌린 자국은 없어 보이는데 사용 전에 어떤 부분을 확인하면 될까요?",
+        "requested_action": "INFORMATION",
+        "attributes": {
+          "days_since_purchase": 1,
+          "product_category": "GENERAL",
+          "declared_safety_risk": false,
+          "external_action_input": {}
+        }
+      }
+    }
+  ]
+}

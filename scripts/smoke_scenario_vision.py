@@ -1,8 +1,9 @@
-"""Run the local synthetic hard-plastic binary-Vision contract smoke flow.
+"""Run the local synthetic hard-plastic binary-Vision smoke flow.
 
-This command does not execute the E3 checkpoint.  It proves that the CSight
-runtime can upload an image, preserve it in a multimodal snapshot, and expose
-an image-level any-defect candidate without inventing a defect type or box.
+The default remains the deterministic Mock candidate contract. Explicit CLI
+flags allow the same end-to-end flow to verify a real E3 checkpoint while
+preserving the narrower synthetic-connectivity, not product-qualification,
+claim boundary.
 """
 
 from __future__ import annotations
@@ -174,6 +175,12 @@ def run(
     reviewer_password: str,
     timeout_seconds: float,
     expected_threshold: float,
+    require_high_confidence_candidate: bool = True,
+    expected_model_name: str | None = None,
+    expected_model_version: str | None = None,
+    expected_model_revision: str | None = None,
+    verdict: str = "SYNTHETIC_BINARY_VISION_CONTRACT_PASS",
+    claim_boundary: str = "MOCK_CONTRACT_ONLY_NOT_E3_INFERENCE",
 ) -> Mapping[str, object]:
     suffix = uuid4().hex[:12]
     _, token_response = json_request(
@@ -267,22 +274,37 @@ def run(
         raise ScenarioVisionSmokeFailure(
             f"runtime threshold {threshold} does not match frozen E3 threshold {expected_threshold}"
         )
-    if float(score) < float(threshold):
+    is_high_confidence_candidate = float(score) >= float(threshold)
+    if require_high_confidence_candidate and not is_high_confidence_candidate:
         raise ScenarioVisionSmokeFailure("candidate mock returned a score below its threshold")
-    if assessment.get("outcome") != "HIGH_CONFIDENCE_DEFECT_CANDIDATE":
-        raise ScenarioVisionSmokeFailure("candidate outcome does not match score >= threshold")
+    expected_outcome = (
+        "HIGH_CONFIDENCE_DEFECT_CANDIDATE"
+        if is_high_confidence_candidate
+        else "BELOW_HIGH_CONFIDENCE_THRESHOLD"
+    )
+    if assessment.get("outcome") != expected_outcome:
+        raise ScenarioVisionSmokeFailure("assessment outcome does not match score and threshold")
     if assessment.get("assessment_type") != "ANY_DEFECT":
         raise ScenarioVisionSmokeFailure("the assessment is not ANY_DEFECT")
+    expected_identity = {
+        "model_name": expected_model_name,
+        "model_version": expected_model_version,
+        "model_revision": expected_model_revision,
+    }
+    for key, expected in expected_identity.items():
+        if expected is not None and result.get(key) != expected:
+            raise ScenarioVisionSmokeFailure(f"the persisted Vision result has an unexpected {key}")
 
     return {
-        "verdict": "SYNTHETIC_BINARY_VISION_CONTRACT_PASS",
-        "claim_boundary": "MOCK_CONTRACT_ONLY_NOT_E3_INFERENCE",
+        "verdict": verdict,
+        "claim_boundary": claim_boundary,
         "case_id": case_id,
         "evidence_id": evidence_id,
         "analysis_run_id": run_id,
         "run_status": status,
         "model_name": result.get("model_name"),
         "model_version": result.get("model_version"),
+        "model_revision": result.get("model_revision"),
         "assessment_type": assessment.get("assessment_type"),
         "score": score,
         "frozen_threshold": threshold,
@@ -299,6 +321,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--base-url")
     parser.add_argument("--timeout-seconds", type=float, default=120.0)
     parser.add_argument("--expected-threshold", type=float, default=0.8984375)
+    parser.add_argument("--allow-below-threshold", action="store_true")
+    parser.add_argument("--expected-model-name")
+    parser.add_argument("--expected-model-version")
+    parser.add_argument("--expected-model-revision")
+    parser.add_argument("--verdict", default="SYNTHETIC_BINARY_VISION_CONTRACT_PASS")
+    parser.add_argument("--claim-boundary", default="MOCK_CONTRACT_ONLY_NOT_E3_INFERENCE")
     arguments = parser.parse_args(list(argv) if argv is not None else None)
     try:
         env = env_values(arguments.env_file)
@@ -320,6 +348,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             reviewer_password=password,
             timeout_seconds=arguments.timeout_seconds,
             expected_threshold=arguments.expected_threshold,
+            require_high_confidence_candidate=not arguments.allow_below_threshold,
+            expected_model_name=arguments.expected_model_name,
+            expected_model_version=arguments.expected_model_version,
+            expected_model_revision=arguments.expected_model_revision,
+            verdict=arguments.verdict,
+            claim_boundary=arguments.claim_boundary,
         )
         print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
     except (OSError, UnicodeError, ValueError, ScenarioVisionSmokeFailure) as error:

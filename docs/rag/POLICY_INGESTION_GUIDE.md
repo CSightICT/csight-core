@@ -18,3 +18,7 @@ document/clause transaction이고 외부 embedding 호출과 분리된다. 합�
 
 관련 테이블은 ingestion run, immutable document version, clause이며 parent는 같은 tenant의 corpus
 clause만 참조할 수 있다. 실패 시 transaction은 rollback되고 기존 성공 corpus/index는 유지된다.
+
+이미 존재하는 `csight` 데모 로그인에 가상 브랜드 정책을 파생·적재하는 절차는
+[`CSIGHT_SYNTHETIC_POLICY_RUNTIME.md`](CSIGHT_SYNTHETIC_POLICY_RUNTIME.md)를 따른다. 이 경로는
+`local-data/`에 새 SHA와 manifest를 만들고 기존 target 정책을 자동 교체하지 않는다.

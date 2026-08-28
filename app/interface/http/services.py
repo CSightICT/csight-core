@@ -28,7 +28,7 @@ from app.application.cases import (
     CreateCaseResult,
     ListCasesQuery,
 )
-from app.application.evidence import EvidenceAccessUrl
+from app.application.evidence import EvidenceAccessUrl, EvidenceContent
 from app.application.grounding import (
     GetGroundedExplanationRun,
     ListGroundedExplanationRuns,
@@ -132,6 +132,16 @@ class CreateEvidenceAccessUrlService(Protocol):
     ) -> EvidenceAccessUrl: ...
 
 
+class ReadEvidenceContentService(Protocol):
+    def execute(
+        self,
+        *,
+        principal: Principal,
+        case_id: str,
+        evidence_id: str,
+    ) -> EvidenceContent: ...
+
+
 class StartTextAnalysisService(Protocol):
     def execute(
         self,
@@ -185,6 +195,7 @@ class Sprint1ServiceContainer:
     list_case_evidence: ListCaseEvidenceService
     get_evidence_metadata: GetEvidenceMetadataService
     create_evidence_access_url: CreateEvidenceAccessUrlService
+    read_evidence_content: ReadEvidenceContentService | None = None
 
 
 @dataclass(frozen=True, slots=True)

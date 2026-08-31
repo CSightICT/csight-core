@@ -768,7 +768,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   PRIMARY 자동 전환·fallback은 하지 않으며 8B 별도 Dev prompt profile부터 다시 자격화한다.
 - 현재 Core DB는 head 0034이고 9개 서비스 readiness는 정상이나 코드의 migration head는 0035다.
   실행 중 API/Web/Worker image와 DB는 시연본 보존을 위해 이번 작업트리로 재빌드·마이그레이션하지
-  않았다. 별도 pilot은 clean immutable release image·exact commit,
+  않았다. 구형 API image 내부의 Alembic package에는 DB가 가리키는 0034 revision 파일이 없어
+  `alembic current`는 실패하지만 DB 원장 직접 조회는 0034이고 API dependency readiness는 정상이다.
+  이 image에서 migration/restore 명령을 실행하지 않는다. 별도 pilot은 clean immutable release image·exact commit,
   실제 고객 env, 암호화 immutable off-host 복원 2회와 남은 load/IdP gate가 갖춰진 뒤 시작한다.
 - 운영 failure replay/cancel API 계약은 존재하지만 안전한 전체 pipeline cancellation/replay
   자격이 끝나지 않아 composition에서 503으로 비활성이다. 실패 원장을 덮어쓰는 임시 재처리는
@@ -3799,6 +3801,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   clean build 최소 35 GiB보다 부족해 clean worktree, `rc-<sha>` image, candidate stack은 만들지
   않았다. `.env.pilot`, 고객 IdP/public key/retention/policy, 보안 이미지 업로드 실증, release 모델,
   off-host 복원 2회, 경보 전달과 실제 20-session/20-workflow 증거가 없으므로 pilot은 계속 BLOCKED다.
+  최종 read-only 확인에서 API `/health/ready`와 Web은 정상이나 구형 API image의 Alembic package가
+  DB 원장 0034를 해석하지 못했다. 실행 중 image에서는 migration을 금지하고 clean candidate에서만
+  0034→0035를 수행한다.
 - 다음 행동: 삭제 대상과 예상 회수량을 사용자에게 제시해 승인을 받은 뒤 복구 가능한 cache만
   정리한다. 35 GiB 이상을 확인하면 push된 SHA의 clean worktree에서 non-dev image를 한 번 빌드하고
   digest를 고정한다. 이후 외부 고객 입력을 받은 owner-only `.env.pilot`에서 onboarding verify,

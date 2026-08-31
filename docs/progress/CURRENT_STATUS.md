@@ -13,12 +13,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0035, 세 LLM task의 pinned route guard, PII 없는 31개 pilot readiness gate, 운영자용 온보딩 명령과 pilot 전용 OpenAPI를 구현했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
-| 진행 중 작업 | 검토 가능한 기준선 3개 commit과 후속 pilot-readiness 구현 `0b7f179`를 현재 기능 브랜치에 push했다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거와 build 전 최소 35 GiB 디스크를 확보해야 clean worktree release 후보를 만들 수 있다. Query Build와 Search의 v2 event 분리는 다음 구현 항목이다. |
-| 마지막 갱신일 | 2026-08-31 15:10 KST, Asia/Seoul |
+| 진행 중 작업 | push된 `bc2d7be`의 clean worktree에서 `rc-bc2d7be495b0` Core/Web image를 한 번 빌드해 digest를 고정하고, 별도 candidate stack의 빈 DB 0035 migration·9개 장기 서비스 health·전체 회귀를 통과했다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거가 다음 차단 항목이다. Query Build와 Search의 v2 event 분리도 남아 있다. |
+| 마지막 갱신일 | 2026-08-31 15:47 KST, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private. 시연 기준선과 migration 0035·pilot readiness 구현을 `origin/codex/operator-console-product-direction`의 `0b7f179`까지 push; PR·`develop/main` 병합 없음 |
+| 원격 저장소 | `CSightICT/csight-core` — Private. 시연 기준선과 migration 0035·pilot readiness·최종 인계를 `origin/codex/operator-console-product-direction`의 `bc2d7be`까지 push; PR·`develop/main` 병합 없음 |
 | 로컬 Git | `codex/operator-console-product-direction`; 구현과 검증 결과는 push 완료. 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md` 보존 |
-| 마지막 검증 관측 | 2026-08-31 15:10 KST, 기본 backend 1014 PASS, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, Web 90 PASS와 lint/type/OpenAPI/build, Ruff/format/Pyright PASS. 코드 migration head는 0035지만 실행 중 데모 DB와 image는 의도적으로 0034를 유지하며 Core 9개는 정상이다. 실제 pilot start는 env 부재와 디스크 9.0 GiB로 BLOCKED이며 release eligible 모델은 0개다. |
+| 마지막 검증 관측 | 2026-08-31 15:47 KST, clean `bc2d7be`에서 backend 1014 PASS, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, Web 90 PASS와 lint/type/OpenAPI/build, Ruff/format/Pyright PASS. 별도 candidate는 DB 0035, 장기 서비스 9개 healthy/restart 0이었다. 실행 중 데모 DB/image는 의도적으로 0034를 유지하며 정상이다. 디스크는 41 GiB지만 실제 pilot env·운영 증거가 없어 start는 BLOCKED이고 release eligible 모델은 0개다. |
 | 마지막 GitHub 관측 | 2026-08-28 23:02 KST, `origin/codex/operator-console-product-direction`의 `3daaa7bff56fa0e25f7ca69bf6bc31d68a2cdb79`에 대한 CI Run #33177793237 PASS. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
@@ -132,7 +132,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Operator Queue Server Search + Onboarding View | PASS | Case·Review 목록의 문의/주문/상품 번호 검색을 pagination 전 단일 SQL에 적용하고 검색어 고정 cursor를 사용한다. 관리자 운영 화면은 개인정보 없는 6개 온보딩 gate만 표시하며 현재 실제 조회는 인력 1개 PASS·나머지 5개 FAIL, `pilot_ready=false`다. |
 | Generic Signed Case Intake 0032 | PASS | 단일 tenant/source/no-role actor에 고정된 Ed25519 raw-body 서명, ±300초, 128 KiB, exact replay 200·conflict 409를 구현했다. 실제 PostgreSQL HTTP에서 최초 201·replay 200·conflict 409와 Case/history/sensitive/idempotency 각 1건을 확인했으며 실제 고객 key는 생성하지 않았다. |
 | Task Model Route Plan 0033~0035 | PASS_WITH_SCOPE | 서명된 activation을 task별 append-only route plan으로 연결한다. Analysis, LLM Query Builder, Grounded Explanation run이 새 요청에서 역사적 plan을 같은 transaction에 고정하고 Worker가 task/mode/signature/deployment/runtime identity를 provider 호출 전에 검증한다. RAW·DETERMINISTIC query는 route와 모델 호출이 없다. Query Build와 Search의 독립 v2 event 분리는 아직 미완료다. |
-| Separate Limited-Pilot Runtime | BLOCKED | OIDC-only, strict RLS role, ClamAV, retention, OTel, signed intake/model과 복원 증거를 강제하는 별도 Compose/controller/preflight를 구현했다. 실제 `.env.pilot`은 없고 가용 디스크 9.0 GiB가 build 전 35 GiB 및 운영 30 GiB gate보다 작아 start/build는 실행하지 않았다. controller는 migrate/prune/down/volume 삭제를 하지 않는다. |
+| Separate Limited-Pilot Runtime | BLOCKED | OIDC-only, strict RLS role, ClamAV, retention, OTel, signed intake/model과 복원 증거를 강제하는 별도 Compose/controller/preflight를 구현했다. clean SHA의 RC image 빌드와 local candidate stack 검증은 완료했지만 실제 `.env.pilot`과 fresh 운영 증거가 없어 pilot start는 실행하지 않았다. controller는 build/migrate/prune/down/volume 삭제를 하지 않는다. |
 | Operator Queue Intake UI | PASS_WITH_SCOPE | 프론트의 새 케이스 메뉴·버튼·화면을 제거하고 이전 `/cases/new`는 목록으로 전환. 상담 케이스·검토 대기함 모두 주문/상품/문의 번호 검색과 정렬을 제공하며 5개 viewport에서 두 컨트롤 48px, 가로 overflow 0, Axe serious/critical 0을 확인 |
 | Demo Embedding Runtime Availability | PASS_WITH_SCOPE | macOS 제어 앱이 Qwen Embedding을 분리 세션으로 시작해 `/health`와 `/v1/models` 준비 후 Core 9개와 Cloudflare 공개 주소를 시작하고, 상태 표시와 안전 종료까지 함께 수행. 실제 stop→start 뒤 `doongdoong.org` health와 새 HYBRID Retrieval SUCCEEDED를 확인. 현재 Mac 내부 시연 전용이며 HA 자격은 아님 |
 | Limited Pilot Qualification | BLOCKED | schema drift, strict DB login/RLS, Case 배정·직접 객체 권한, 개인정보 삭제, 이미지 보안 adapter, 세 task route guard, 20-client read와 120초 모델/결정 queue 격리는 구현·부분 검증했다. 고객 IdP lifecycle, 실제 20-session/20-workflow, release 모델, 암호화 off-host WAL·MinIO 반복 복원과 경보 전달은 미완료다. 새 pilot readiness는 구성 6개와 운영 자격 25개를 freshness/digest와 함께 fail-closed로 합산하며 replay/cancel은 자격 전까지 503이다. |
@@ -754,10 +754,10 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 ## 8. 미해결 사항과 사용자 결정
 
-- 2026-08-31 상품화 P0 코드는 전체 기본·PostgreSQL·Web·정적 회귀를 통과했지만 실제 pilot
-  admission은 통과하지 않았다. `infra/pilot/.env.pilot`이 아직 없고 프로젝트 filesystem의 가용
-  공간은 9.0 GiB로 build 전 35 GiB 및 운영 중 30 GiB보다 작다. 볼륨·이미지·cache를 자동 삭제하지
-  않았고 clean worktree build와 pilot start도 실행하지 않았다.
+- 2026-08-31 상품화 P0와 clean RC candidate는 전체 기본·PostgreSQL·Web·정적 회귀를 통과했지만
+  실제 pilot admission은 통과하지 않았다. 사용자가 승인한 Ollama와 불필요한 Hugging Face cache
+  정리 후 가용 공간은 41 GiB이고 clean build 관문은 닫혔다. `infra/pilot/.env.pilot`과 fresh 운영
+  증거가 없어 pilot start는 실행하지 않았다. 현재 데모 volume과 RC candidate volume은 보존했다.
 - 온보딩 준비도는 6개 구성 gate, 새 pilot readiness는 여기에 25개 운영 자격 gate를 합산한다.
   고객별 signed-intake service actor/public key, 명시적 retention과 자동화, 고객 IdP group mapping,
   활성 policy index/rule set, 세 task PRIMARY route와 fresh 운영 증거를 실제 환경에 provision해야 한다.
@@ -770,8 +770,9 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   실행 중 API/Web/Worker image와 DB는 시연본 보존을 위해 이번 작업트리로 재빌드·마이그레이션하지
   않았다. 구형 API image 내부의 Alembic package에는 DB가 가리키는 0034 revision 파일이 없어
   `alembic current`는 실패하지만 DB 원장 직접 조회는 0034이고 API dependency readiness는 정상이다.
-  이 image에서 migration/restore 명령을 실행하지 않는다. 별도 pilot은 clean immutable release image·exact commit,
-  실제 고객 env, 암호화 immutable off-host 복원 2회와 남은 load/IdP gate가 갖춰진 뒤 시작한다.
+  이 image에서 migration/restore 명령을 실행하지 않는다. clean `bc2d7be`의 RC image와 별도 0035
+  candidate 검증은 완료했다. 별도 pilot은 실제 고객 env, 암호화 immutable off-host 복원 2회와
+  남은 load/IdP gate가 갖춰진 뒤 시작한다.
 - 운영 failure replay/cancel API 계약은 존재하지만 안전한 전체 pipeline cancellation/replay
   자격이 끝나지 않아 composition에서 503으로 비활성이다. 실패 원장을 덮어쓰는 임시 재처리는
   허용하지 않는다.
@@ -3810,3 +3811,31 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   31개 readiness gate와 preflight를 통과한 경우에만 별도 pilot profile을 시작한다.
 - 최종 Git: 위 후속 구현과 검증 원장은 `0b7f179 feat: complete routed pilot readiness contracts`로
   같은 기능 브랜치에 push했다. 원격과 로컬 SHA가 일치하며 PR·병합은 만들지 않았다.
+
+### 2026-08-31 15:47 KST — Clean RC Build and Isolated Candidate Qualification
+
+- 디스크 관문: 사용자 승인으로 Homebrew Ollama service/package와 13 GiB 모델, Qwen3.5 9B·CSight
+  Embedding/Reranker를 제외한 Hugging Face model/dataset cache 약 20 GiB를 삭제했다. 가용 공간은
+  9 GiB에서 빌드 전 42 GiB, 빌드 후 41 GiB가 됐다. Qwen3.5 9B MLX 4-bit 5.6 GiB와 CSight
+  Embedding/Reranker 각 1.1 GiB는 보존했고 embedding MPS health도 PASS다.
+- clean 기준점: 원격과 일치하는 `bc2d7be495b0415a282ded8f8a0680c0780fedaa`를 detached clean
+  worktree `/Users/ckdlsxor/Desktop/CSight_rc_bc2d7be`에 만들었다. 사용자 소유 문서나 원본 작업트리
+  변경은 포함하지 않았다.
+- immutable image: `rc-bc2d7be495b0` 태그로 Core/Web을 한 번 빌드했다. Core digest는
+  `sha256:d5be9f3750c19776b171fd87b777466ae8875acc0437f5f5d37334a30de6ee4a`, Web digest는
+  `sha256:b15b0ae812ff84f6493a09d3d25d97e70f79ce842f64f996986b2f0e7c66e836`이다.
+- candidate stack: `csight-rc-bc2d7be` 별도 project, 포트, network, volume에서 빈 PostgreSQL을
+  0001→0035로 migration했다. API/Web/Dispatcher/세 Worker/PostgreSQL/RabbitMQ/MinIO의 9개 장기
+  service가 모두 healthy, restart 0이었고 API dependency readiness와 Web 200을 확인했다. Pilot
+  OpenAPI artifact의 signed intake와 pilot readiness path도 확인했다.
+- clean 회귀: Ruff, format, Pyright, backend `1014 passed`, Web lint/type/OpenAPI sync/build와
+  `31 files/90 tests`가 PASS했다. 현재 demo DB를 read-only dump한 disposable DB에서 0034→0035를
+  적용한 integration은 `83 passed, 5 external-GPU skipped`였고 임시 DB는 삭제됐다. 빈 candidate
+  DB를 직접 복제한 첫 시도는 필요한 합성 policy/reranker seed와 RabbitMQ URL이 없어 환경 실패했고
+  disposable DB는 삭제됐다. 이는 최종 통과 수치에 포함하지 않는다.
+- 종료/보존: candidate 컨테이너와 network만 `down`으로 종료했고 volume과 두 RC image, clean
+  worktree는 보존했다. 원래 데모 API/Web은 계속 정상이고 DB/image는 0034 상태를 유지했다. 실제
+  환불·메일·결제·CRM, 외부 GPU 호출, pilot start는 0회다.
+- 남은 관문: owner-only `.env.pilot`, 고객 IdP/public key/retention/policy/support 입력, 31개 fresh
+  readiness 증거, ClamAV/OIDC/OTel/restore/load 실연과 release-eligible 모델이 필요하다. 이 입력과
+  증거 전에는 preflight exit 0이나 pilot start를 주장하지 않는다.

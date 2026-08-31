@@ -39,6 +39,11 @@ from app.platform.operations import (
     OperationsVersionKind,
     OperationsVersionSource,
 )
+from app.platform.pilot_readiness import (
+    PilotReadiness,
+    PilotReadinessGateKind,
+    PilotReadinessGateStatus,
+)
 
 
 class _Schema(BaseModel):
@@ -110,6 +115,27 @@ class OnboardingReadinessResponse(_Schema):
         cls,
         readiness: OnboardingReadiness,
     ) -> OnboardingReadinessResponse:
+        return cls.model_validate(readiness.model_dump(mode="python"))
+
+
+class PilotReadinessGateResponse(_Schema):
+    kind: PilotReadinessGateKind
+    code: str
+    status: PilotReadinessGateStatus
+    verified_at: datetime | None
+    expires_at: datetime | None
+    evidence_digest: str | None
+    description: str
+
+
+class PilotReadinessResponse(_Schema):
+    configuration_ready: bool
+    operationally_qualified: bool
+    pilot_ready: bool
+    gates: list[PilotReadinessGateResponse]
+
+    @classmethod
+    def from_readiness(cls, readiness: PilotReadiness) -> PilotReadinessResponse:
         return cls.model_validate(readiness.model_dump(mode="python"))
 
 
@@ -258,6 +284,7 @@ __all__ = [
     "OperationalFailureResolutionResponse",
     "OperationsFailuresResponse",
     "OperationsOverviewResponse",
+    "PilotReadinessResponse",
     "RegisterModelReleaseRequest",
     "RegisteredModelReleaseResponse",
 ]

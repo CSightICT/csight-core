@@ -13,6 +13,13 @@ from app.application.model_routing import (
 )
 from app.bootstrap.model_activation import build_runtime_llm_identity
 from app.bootstrap.settings import Settings
+from app.domains.product_defect_cs import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+from app.domains.product_defect_cs.prompts import (
+    GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1,
+    POLICY_QUERY_BUILDER_PROMPT_V1_1,
+)
+from app.platform.analysis.prompts import PromptManifest
+from app.platform.model_activation import ModelReleaseTask
 from app.platform.model_routing import ModelRouteDeploymentIdentity
 
 
@@ -38,13 +45,21 @@ def build_active_model_route_resolver(
 
 def build_pinned_model_route_guard(
     settings: Settings,
+    *,
+    prompt: PromptManifest | None = None,
+    task: ModelReleaseTask = ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
 ) -> ResolvePinnedModelRoutePlan | None:
     """Build the model Worker guard for a stage's historical v2 route."""
 
     if not settings.model_route_enforcement:
         return None
     _require_route_process(settings, role="worker")
-    deployment_id = settings.model_route_deployment_id
+    task_runtime = settings.llm_task_runtimes.get(task)
+    deployment_id = (
+        task_runtime.deployment_id
+        if task_runtime is not None
+        else settings.model_route_deployment_id
+    )
     if deployment_id is None:
         raise ModelRoutingConfigurationError(
             "MODEL_ROUTE_DEPLOYMENT_ID is required for the model Worker"
@@ -56,7 +71,7 @@ def build_pinned_model_route_guard(
         signature_verifier=verifier,
         deployment_identity=ModelRouteDeploymentIdentity(
             deployment_id=deployment_id,
-            runtime_identity=build_runtime_llm_identity(settings),
+            runtime_identity=build_runtime_llm_identity(settings, prompt, task),
         ),
     )
 
@@ -65,9 +80,20 @@ def validate_model_route_worker_startup(settings: Settings) -> None:
     """Reject an enforced Worker before Celery starts when its guard cannot compose."""
 
     if settings.model_route_enforcement:
-        guard = build_pinned_model_route_guard(settings)
-        if guard is None:
-            raise ModelRoutingConfigurationError("model route guard was not composed")
+        for task, prompt in (
+            (
+                ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+                PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
+            ),
+            (ModelReleaseTask.POLICY_QUERY_BUILDER_V1, POLICY_QUERY_BUILDER_PROMPT_V1_1),
+            (
+                ModelReleaseTask.GROUNDED_POLICY_EXPLANATION_V1,
+                GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1,
+            ),
+        ):
+            guard = build_pinned_model_route_guard(settings, prompt=prompt, task=task)
+            if guard is None:
+                raise ModelRoutingConfigurationError("model route guard was not composed")
 
 
 def _require_route_process(settings: Settings, *, role: str) -> None:

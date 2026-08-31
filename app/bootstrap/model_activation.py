@@ -15,7 +15,8 @@ from app.application.model_activation import (
 )
 from app.bootstrap.settings import Settings
 from app.domains.product_defect_cs import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
-from app.platform.model_activation import RuntimeLLMIdentity
+from app.platform.analysis.prompts import PromptManifest
+from app.platform.model_activation import ModelReleaseTask, RuntimeLLMIdentity
 
 
 class ModelActivationConfigurationError(RuntimeError):
@@ -64,12 +65,24 @@ def build_model_release_guard(settings: Settings) -> RequireActiveModelRelease |
     )
 
 
-def build_runtime_llm_identity(settings: Settings) -> RuntimeLLMIdentity:
+def build_runtime_llm_identity(
+    settings: Settings,
+    prompt: PromptManifest | None = None,
+    task: ModelReleaseTask = ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+) -> RuntimeLLMIdentity:
     """Build the exact v2 runtime identity shared by release and route guards."""
 
-    prompt = PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+    prompt = prompt or PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+    task_runtime = settings.llm_task_runtimes.get(task)
+    model_name = task_runtime.model_id if task_runtime is not None else settings.llm_model_id
+    model_version = (
+        task_runtime.model_version if task_runtime is not None else settings.llm_model_version
+    )
+    model_revision = (
+        task_runtime.model_revision if task_runtime is not None else settings.llm_model_revision
+    )
     required = (
-        settings.llm_model_revision,
+        model_revision,
         settings.llm_artifact_content_digest,
         settings.llm_runtime_image_digest,
         settings.llm_dependency_lock_digest,
@@ -78,8 +91,8 @@ def build_runtime_llm_identity(settings: Settings) -> RuntimeLLMIdentity:
     if not all(required):
         raise ModelActivationConfigurationError("signed model runtime identity is incomplete")
     return RuntimeLLMIdentity(
-        served_model_name=settings.llm_model_id,
-        model_version=settings.llm_model_version,
+        served_model_name=model_name,
+        model_version=model_version,
         artifact_revision=str(required[0]),
         artifact_content_digest=str(required[1]),
         runtime_image_digest=str(required[2]),

@@ -13,6 +13,7 @@ from app.platform.model_activation import ActiveLLMRelease, ModelReleaseTask, Ru
 
 _HASH_PATTERN = r"^[0-9a-f]{64}$"
 _DEPLOYMENT_PATTERN = r"^[a-z0-9][a-z0-9._-]{2,127}$"
+MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION = "model_route_enforcement/1.0.0"
 
 
 class _Contract(BaseModel):
@@ -110,6 +111,7 @@ class ModelRouteDeploymentIdentityMismatchError(CSightError):
 
 
 __all__ = [
+    "MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION",
     "ActiveModelRoutePlanRequiredError",
     "ModelRouteActivationConflictError",
     "ModelRouteDeploymentIdentity",

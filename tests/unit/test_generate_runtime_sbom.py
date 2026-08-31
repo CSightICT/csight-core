@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 from scripts.generate_runtime_sbom import (  # pyright: ignore[reportPrivateUsage]
-    _dpkg_components,
     build_sbom,
+    dpkg_components,
 )
 
 
@@ -22,7 +22,7 @@ def test_runtime_sbom_binds_exact_image_and_inventory(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    components = _dpkg_components(status)
+    components = dpkg_components(status)
     assert len(components) == 1
     assert components[0]["name"] == "zlib1g"
 

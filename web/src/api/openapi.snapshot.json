@@ -253,16 +253,6 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "An idempotent replay of the original Case creation result.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateCaseResponse"
-                }
-              }
-            }
-          },
           "201": {
             "description": "Successful Response",
             "content": {
@@ -273,25 +263,15 @@
               }
             }
           },
-          "401": {
+          "200": {
+            "description": "An idempotent replay of the original Case creation result.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/CreateCaseResponse"
                 }
               }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
+            }
           },
           "409": {
             "content": {
@@ -312,6 +292,26 @@
               }
             },
             "description": "Unprocessable Entity"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "503": {
             "content": {
@@ -458,6 +458,16 @@
               }
             }
           },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -477,16 +487,6 @@
               }
             },
             "description": "Forbidden"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
           },
           "503": {
             "content": {
@@ -555,6 +555,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -574,16 +584,6 @@
                 }
               }
             }
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       }
@@ -642,6 +642,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -661,16 +671,6 @@
                 }
               }
             }
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       }
@@ -733,6 +733,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -752,16 +762,6 @@
                 }
               }
             }
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       },
@@ -832,6 +832,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -861,16 +871,6 @@
               }
             },
             "description": "Unprocessable Entity"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       }
@@ -1323,26 +1323,6 @@
               }
             }
           },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -1352,16 +1332,6 @@
               }
             },
             "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
           },
           "413": {
             "content": {
@@ -1383,6 +1353,16 @@
             },
             "description": "Unprocessable Entity"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -1392,6 +1372,26 @@
               }
             },
             "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "503": {
             "content": {
@@ -1458,6 +1458,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1477,16 +1487,6 @@
                 }
               }
             }
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       }
@@ -1558,6 +1558,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1577,16 +1587,6 @@
                 }
               }
             }
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       }
@@ -1658,6 +1658,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1667,16 +1677,6 @@
               }
             },
             "description": "Not Found"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           },
           "500": {
             "content": {
@@ -1688,15 +1688,15 @@
             },
             "description": "Internal Server Error"
           },
-          "503": {
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            },
-            "description": "Service Unavailable"
+            }
           }
         }
       }
@@ -1766,6 +1766,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1775,16 +1785,6 @@
               }
             },
             "description": "Not Found"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           },
           "500": {
             "content": {
@@ -1796,15 +1796,15 @@
             },
             "description": "Internal Server Error"
           },
-          "503": {
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            },
-            "description": "Service Unavailable"
+            }
           }
         }
       }
@@ -1857,31 +1857,6 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "An idempotent replay of the original analysis run.",
-            "headers": {
-              "Location": {
-                "description": "Relative URL of the created or replayed analysis run.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "description": "Analysis responses must not be stored.",
-                "schema": {
-                  "type": "string",
-                  "example": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalysisRunResponse"
-                }
-              }
-            }
-          },
           "202": {
             "description": "A new append-only analysis run was accepted.",
             "content": {
@@ -1907,25 +1882,30 @@
               }
             }
           },
-          "401": {
-            "content": {
-              "application/json": {
+          "200": {
+            "description": "An idempotent replay of the original analysis run.",
+            "headers": {
+              "Location": {
+                "description": "Relative URL of the created or replayed analysis run.",
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Analysis responses must not be stored.",
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
                 }
               }
             },
-            "description": "Unauthorized"
-          },
-          "403": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/AnalysisRunResponse"
                 }
               }
-            },
-            "description": "Forbidden"
+            }
           },
           "404": {
             "content": {
@@ -1947,16 +1927,6 @@
             },
             "description": "Conflict"
           },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
-          },
           "429": {
             "description": "The transaction-safe nonterminal run budget is full.",
             "headers": {
@@ -1974,6 +1944,36 @@
                 }
               }
             }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "503": {
             "content": {
@@ -2095,6 +2095,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -2114,16 +2124,6 @@
               }
             },
             "description": "Unprocessable Entity"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       }
@@ -2195,6 +2195,16 @@
             },
             "description": "Forbidden"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -2214,16 +2224,6 @@
               }
             },
             "description": "Unprocessable Entity"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
           }
         }
       }
@@ -2349,16 +2349,6 @@
           }
         },
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PolicyRetrievalRunResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
           "202": {
             "description": "Successful Response",
             "content": {
@@ -2368,6 +2358,16 @@
                 }
               }
             }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyRetrievalRunResponse"
+                }
+              }
+            },
+            "description": "OK"
           },
           "403": {
             "content": {
@@ -2568,16 +2568,6 @@
           }
         },
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GroundedExplanationRunResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
           "202": {
             "description": "Successful Response",
             "content": {
@@ -2587,6 +2577,16 @@
                 }
               }
             }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroundedExplanationRunResponse"
+                }
+              }
+            },
+            "description": "OK"
           },
           "403": {
             "content": {
@@ -2787,16 +2787,6 @@
           }
         },
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PolicyEvaluationRunResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
           "202": {
             "description": "Successful Response",
             "content": {
@@ -2806,6 +2796,16 @@
                 }
               }
             }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyEvaluationRunResponse"
+                }
+              }
+            },
+            "description": "OK"
           },
           "403": {
             "content": {
@@ -3959,6 +3959,62 @@
         ]
       }
     },
+    "/api/v1/operations/pilot-readiness": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Get Pilot Readiness",
+        "operationId": "get_pilot_readiness_api_v1_operations_pilot_readiness_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PilotReadinessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/operations/overview": {
       "get": {
         "tags": [
@@ -4113,8 +4169,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Idempotent replay of the same recovery request.",
+          "202": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -4123,8 +4179,8 @@
               }
             }
           },
-          "202": {
-            "description": "Successful Response",
+          "200": {
+            "description": "Idempotent replay of the same recovery request.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4523,8 +4579,8 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Idempotent replay of the same model route activation.",
+          "202": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -4533,8 +4589,8 @@
               }
             }
           },
-          "202": {
-            "description": "Successful Response",
+          "200": {
+            "description": "Idempotent replay of the same model route activation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5373,7 +5429,7 @@
           },
           "expected_version": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Expected Version"
           },
           "rationale": {
@@ -5396,7 +5452,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Expected Version"
           },
           "assignee_id": {
@@ -5475,26 +5531,26 @@
           },
           "x1": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "X1"
           },
           "y1": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Y1"
           },
           "x2": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "X2"
           },
           "y2": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Y2"
           }
         },
@@ -6604,8 +6660,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence"
           },
           "geometry": {
@@ -6681,7 +6737,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Expected Version"
           },
           "reason_codes": {
@@ -6781,7 +6837,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Expected Version"
           },
           "reason_codes": {
@@ -7652,8 +7708,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1,
-                "minimum": 0
+                "maximum": 1.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -8036,20 +8092,20 @@
           },
           "max_context_tokens": {
             "type": "integer",
-            "maximum": 1000000,
-            "minimum": 1,
+            "maximum": 1000000.0,
+            "minimum": 1.0,
             "title": "Max Context Tokens"
           },
           "max_num_sequences": {
             "type": "integer",
-            "maximum": 64,
-            "minimum": 1,
+            "maximum": 64.0,
+            "minimum": 1.0,
             "title": "Max Num Sequences"
           },
           "gpu_memory_utilization": {
             "type": "number",
-            "maximum": 1,
-            "exclusiveMinimum": 0,
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
             "title": "Gpu Memory Utilization"
           },
           "kv_cache_dtype": {
@@ -9401,6 +9457,119 @@
         ],
         "title": "OutcomeRelation"
       },
+      "PilotReadinessGateKind": {
+        "type": "string",
+        "enum": [
+          "CONFIGURATION",
+          "OPERATIONAL"
+        ],
+        "title": "PilotReadinessGateKind"
+      },
+      "PilotReadinessGateResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PilotReadinessGateKind"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PilotReadinessGateStatus"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "evidence_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Digest"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "code",
+          "status",
+          "verified_at",
+          "expires_at",
+          "evidence_digest",
+          "description"
+        ],
+        "title": "PilotReadinessGateResponse"
+      },
+      "PilotReadinessGateStatus": {
+        "type": "string",
+        "enum": [
+          "PASS",
+          "FAIL"
+        ],
+        "title": "PilotReadinessGateStatus"
+      },
+      "PilotReadinessResponse": {
+        "properties": {
+          "configuration_ready": {
+            "type": "boolean",
+            "title": "Configuration Ready"
+          },
+          "operationally_qualified": {
+            "type": "boolean",
+            "title": "Operationally Qualified"
+          },
+          "pilot_ready": {
+            "type": "boolean",
+            "title": "Pilot Ready"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/PilotReadinessGateResponse"
+            },
+            "type": "array",
+            "title": "Gates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "configuration_ready",
+          "operationally_qualified",
+          "pilot_ready",
+          "gates"
+        ],
+        "title": "PilotReadinessResponse"
+      },
       "PocMetricResponse": {
         "properties": {
           "numerator": {
@@ -10150,8 +10319,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 20,
-            "minimum": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
             "title": "Top K",
             "default": 10
           },
@@ -10608,7 +10777,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Expected Version"
           },
           "reason_code": {
@@ -10710,7 +10879,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Expected Version"
           },
           "decision": {
@@ -10756,7 +10925,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Expected Version"
           },
           "rationale": {
@@ -11607,8 +11776,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 20,
-            "minimum": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
             "title": "Top K",
             "default": 3
           }
@@ -11774,7 +11943,7 @@
           },
           "expires_in": {
             "type": "integer",
-            "exclusiveMinimum": 0,
+            "exclusiveMinimum": 0.0,
             "title": "Expires In"
           }
         },
@@ -11830,7 +11999,7 @@
         "properties": {
           "expected_version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Expected Version"
           }
         },
@@ -11958,12 +12127,12 @@
           },
           "image_width": {
             "type": "integer",
-            "exclusiveMinimum": 0,
+            "exclusiveMinimum": 0.0,
             "title": "Image Width"
           },
           "image_height": {
             "type": "integer",
-            "exclusiveMinimum": 0,
+            "exclusiveMinimum": 0.0,
             "title": "Image Height"
           },
           "image_reference": {
@@ -12002,7 +12171,7 @@
           },
           "latency_ms": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Latency Ms"
           }
         },
@@ -12088,14 +12257,14 @@
           },
           "score": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Score"
           },
           "threshold": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Threshold"
           },
           "threshold_operator": {

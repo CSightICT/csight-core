@@ -6,6 +6,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.models import ProviderExecutionMetadata
 from app.platform.grounding import (
     CitationPack,
@@ -34,6 +35,22 @@ class GroundedExplanationRunDetail(_DTO):
 
 
 class GroundedExplanationRunRepository(Protocol):
+    def get_by_idempotency_key(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> GroundedExplanationRun | None: ...
+
+    def get_execution_mode(
+        self,
+        *,
+        tenant_id: str,
+        case_id: str,
+        retrieval_run_id: str,
+    ) -> AnalysisExecutionMode: ...
+
     def create(
         self,
         *,
@@ -48,6 +65,9 @@ class GroundedExplanationRunRepository(Protocol):
         prompt_name: str,
         prompt_version: str,
         prompt_hash: str,
+        execution_mode: AnalysisExecutionMode,
+        model_route_plan_id: str | None,
+        route_enforcement_contract_version: str | None,
     ) -> tuple[GroundedExplanationRun, bool]: ...
 
     def list(self, *, tenant_id: str, case_id: str) -> tuple[GroundedExplanationRun, ...]: ...

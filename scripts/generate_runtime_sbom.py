@@ -32,7 +32,7 @@ def _python_components() -> list[dict[str, object]]:
     return [packages[key] for key in sorted(packages)]
 
 
-def _dpkg_components(status_path: Path = _DPKG_STATUS) -> list[dict[str, object]]:
+def dpkg_components(status_path: Path = _DPKG_STATUS) -> list[dict[str, object]]:
     if not status_path.is_file():
         return []
     packages: dict[tuple[str, str, str], dict[str, object]] = {}
@@ -96,7 +96,7 @@ def build_sbom(*, runtime_image: str, runtime_image_digest: str) -> dict[str, ob
                 ],
             }
         },
-        "components": _python_components() + _dpkg_components(),
+        "components": _python_components() + dpkg_components(),
     }
 
 

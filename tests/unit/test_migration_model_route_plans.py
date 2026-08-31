@@ -28,7 +28,7 @@ def test_model_route_plan_revision_is_the_linear_head() -> None:
     scripts = ScriptDirectory.from_config(_config(StringIO()))
     revision = scripts.get_revision(REVISION)
 
-    assert scripts.get_heads() == ["20260831_0034_analysis_model_route_snapshot"]
+    assert scripts.get_heads() == ["20260831_0035_query_grounding_model_route_snapshot"]
     assert revision is not None
     assert revision.down_revision == PREVIOUS
 

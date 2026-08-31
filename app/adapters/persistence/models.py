@@ -2260,6 +2260,12 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
             name="fk_policy_retrieval_runs_user",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ("tenant_id", "model_route_plan_id"),
+            ("llm_model_route_plans.tenant_id", "llm_model_route_plans.id"),
+            name="fk_policy_retrieval_runs_tenant_route_plan",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
             f"strategy IN ({_sql_values(POLICY_QUERY_STRATEGIES)})", name="strategy_allowed"
         ),
@@ -2268,6 +2274,14 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
         ),
         CheckConstraint("top_k BETWEEN 1 AND 50", name="top_k_valid"),
         CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="request_hash_lower_hex"),
+        CheckConstraint(
+            "execution_mode IN ('PRIMARY','SHADOW')",
+            name="execution_mode_allowed",
+        ),
+        CheckConstraint(
+            "(model_route_plan_id IS NULL) = (route_enforcement_contract_version IS NULL)",
+            name="route_snapshot_consistent",
+        ),
         CheckConstraint(
             "(status = 'QUEUED' AND started_at IS NULL AND completed_at IS NULL) OR "
             "(status = 'RUNNING' AND started_at IS NOT NULL AND completed_at IS NULL) OR "
@@ -2308,6 +2322,12 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
             "id",
             postgresql_where=text("status = 'RUNNING'"),
         ),
+        Index(
+            "ix_policy_retrieval_runs_tenant_model_route_plan",
+            "tenant_id",
+            "model_route_plan_id",
+            postgresql_where=text("model_route_plan_id IS NOT NULL"),
+        ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
@@ -2315,6 +2335,13 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
     analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     text_result_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     strategy: Mapped[str] = mapped_column(String(32), nullable=False)
+    execution_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'PRIMARY'")
+    )
+    model_route_plan_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    route_enforcement_contract_version: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
     top_k: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -2671,11 +2698,25 @@ class GroundedExplanationRunModel(CreatedAtMixin, Base):
             name="fk_grounded_explanation_runs_profile",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ("tenant_id", "model_route_plan_id"),
+            ("llm_model_route_plans.tenant_id", "llm_model_route_plans.id"),
+            name="fk_grounded_explanation_runs_tenant_route_plan",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
             f"status IN ({_sql_values(GROUNDED_EXPLANATION_RUN_STATUSES)})",
             name="status_allowed",
         ),
         CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="request_hash_lower_hex"),
+        CheckConstraint(
+            "execution_mode IN ('PRIMARY','SHADOW')",
+            name="execution_mode_allowed",
+        ),
+        CheckConstraint(
+            "(model_route_plan_id IS NULL) = (route_enforcement_contract_version IS NULL)",
+            name="route_snapshot_consistent",
+        ),
         CheckConstraint(
             "(status = 'QUEUED' AND started_at IS NULL AND completed_at IS NULL) OR "
             "(status = 'RUNNING' AND started_at IS NOT NULL AND completed_at IS NULL) OR "
@@ -2716,6 +2757,12 @@ class GroundedExplanationRunModel(CreatedAtMixin, Base):
             "id",
             postgresql_where=text("status = 'RUNNING'"),
         ),
+        Index(
+            "ix_grounded_explanation_runs_tenant_model_route_plan",
+            "tenant_id",
+            "model_route_plan_id",
+            postgresql_where=text("model_route_plan_id IS NOT NULL"),
+        ),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
@@ -2723,6 +2770,13 @@ class GroundedExplanationRunModel(CreatedAtMixin, Base):
     retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     citation_pack_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     grounding_profile_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    execution_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'PRIMARY'")
+    )
+    model_route_plan_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    route_enforcement_contract_version: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     requested_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)

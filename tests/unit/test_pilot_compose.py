@@ -208,6 +208,25 @@ def test_real_compose_merge_scopes_provider_credentials_to_two_workers() -> None
             "LLM_MODEL_ID": "model",
             "LLM_MODEL_VERSION": "1",
             "LLM_MODEL_REVISION": "a" * 40,
+            "LLM_TASK_RUNTIMES": (
+                '{"PRODUCT_DEFECT_TEXT_EXTRACTION_V2":'
+                '{"base_url":"http://llm.internal","model_id":"model",'
+                '"model_version":"1","model_revision":"'
+                + "a"
+                * 40
+                + '","deployment_id":"onprem-4090-primary"},'
+                '"POLICY_QUERY_BUILDER_V1":'
+                '{"base_url":"http://llm.internal","model_id":"model",'
+                '"model_version":"1","model_revision":"'
+                + "a"
+                * 40
+                + '","deployment_id":"onprem-4090-primary"},'
+                '"GROUNDED_POLICY_EXPLANATION_V1":'
+                '{"base_url":"http://llm.internal","model_id":"model",'
+                '"model_version":"1","model_revision":"'
+                + "a" * 40
+                + '","deployment_id":"onprem-4090-primary"}}'
+            ),
             "MODEL_RELEASE_SIGNING_KEY_ID": "key-v1",
             "MODEL_ROUTE_DEPLOYMENT_ID": "onprem-4090-primary",
             "LLM_ARTIFACT_CONTENT_DIGEST": digest,

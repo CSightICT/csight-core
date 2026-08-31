@@ -10,7 +10,7 @@ REVISION = "20260830_0026_case_assignment_ownership"
 
 def test_case_assignment_revision_is_linear_audited_and_fail_closed() -> None:
     scripts = ScriptDirectory.from_config(Config("alembic.ini"))
-    assert scripts.get_current_head() == "20260831_0034_analysis_model_route_snapshot"
+    assert scripts.get_current_head() == "20260831_0035_query_grounding_model_route_snapshot"
     script = scripts.get_revision(REVISION)
     assert script is not None
     assert script.down_revision == "20260830_0025_waiting_owner_and_similarity_contract"

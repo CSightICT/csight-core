@@ -728,3 +728,15 @@ The body uses `signed_case_intake/1.0.0` and cannot contain `tenant_id` or `sour
 returns `201` and a `PILOT_LIVE` Case; an exact source-event replay returns `200` with the same Case; a changed
 payload under the same event returns `409`. Invalid or stale authentication returns a generic `401` with zero
 writes. The endpoint does not accept attachments or initiate analysis, review, resolution, or external action.
+
+## Pilot readiness contract
+
+`GET /api/v1/operations/pilot-readiness` is admin-only and returns `configuration_ready`,
+`operationally_qualified`, `pilot_ready`, and the combined configuration and qualification gate list.
+Each gate contains a bounded code, status, description, verification/expiry timestamps, and optional
+PII-free evidence digest. Tenant, Case, user, source identifiers, raw input, secrets, and filesystem
+paths are excluded. Missing or expired operational evidence is `FAIL`, and the response is `no-store`.
+
+The separately generated `docs/openapi/pilot.openapi.json` includes the signed Case intake and pilot
+readiness routes. It is an activation artifact only; generating it does not enable signed intake or
+admit a tenant.

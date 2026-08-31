@@ -11,8 +11,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.application.policy_retrieval import SearchPolicyClauses
 from app.domains.product_defect_cs.query_builder import build_deterministic_query_plan
+from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.prompts import PromptManifest
 from app.platform.errors import CaseNotFoundError
+from app.platform.model_activation import ModelReleaseTask
+from app.platform.model_routing import (
+    MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION,
+    PinnedModelRoutePlanRequiredError,
+)
 from app.platform.policy_retrieval import PolicySearchFilters, PolicySearchQuery, RetrievalMode
 from app.platform.privacy_lifecycle import is_purged_customer_message
 from app.platform.query_builder import (
@@ -29,6 +35,7 @@ from app.platform.query_builder import (
 )
 from app.platform.tenant import Permission, Principal, Role
 from app.ports.llm import LLMProvider
+from app.ports.model_routing import ActiveModelRouteResolver, PinnedModelRouteExecutionGuard
 from app.ports.policy_query_runs import PolicyRetrievalRunDetail, PolicyRetrievalRunRepository
 
 CREATE_OPERATION = "policy_retrieval_run.create.v1"
@@ -83,8 +90,14 @@ def canonical_request_hash(case_id: str, command: StartPolicyRetrievalRunCommand
 
 
 class StartPolicyRetrievalRun:
-    def __init__(self, repository: PolicyRetrievalRunRepository) -> None:
+    def __init__(
+        self,
+        repository: PolicyRetrievalRunRepository,
+        *,
+        model_route_resolver: ActiveModelRouteResolver | None = None,
+    ) -> None:
         self._repository = repository
+        self._model_route_resolver = model_route_resolver
 
     def execute(
         self,
@@ -94,6 +107,29 @@ class StartPolicyRetrievalRun:
         command: StartPolicyRetrievalRunCommand,
     ) -> StartPolicyRetrievalRunResult:
         principal.require(Permission.ANALYSIS_CREATE)
+        request_hash = canonical_request_hash(case_id, command)
+        replay = self._repository.get_by_idempotency_key(
+            tenant_id=principal.tenant_id,
+            idempotency_key=command.idempotency_key,
+            request_hash=request_hash,
+        )
+        if replay is not None:
+            return StartPolicyRetrievalRunResult(run=replay, replayed=True)
+        execution_mode = self._repository.get_execution_mode(
+            tenant_id=principal.tenant_id,
+            case_id=case_id,
+            analysis_run_id=command.analysis_run_id,
+        )
+        route_plan_id: str | None = None
+        route_contract: str | None = None
+        if command.strategy is QueryStrategy.LLM and self._model_route_resolver is not None:
+            route = self._model_route_resolver.execute(
+                tenant_id=principal.tenant_id,
+                task=ModelReleaseTask.POLICY_QUERY_BUILDER_V1,
+                execution_mode=execution_mode,
+            )
+            route_plan_id = route.route_plan.id
+            route_contract = MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION
         run, replayed = self._repository.create(
             tenant_id=principal.tenant_id,
             case_id=case_id,
@@ -104,7 +140,10 @@ class StartPolicyRetrievalRun:
             requested_by=principal.user_id,
             correlation_id=command.correlation_id,
             idempotency_key=command.idempotency_key,
-            request_hash=canonical_request_hash(case_id, command),
+            request_hash=request_hash,
+            execution_mode=execution_mode,
+            model_route_plan_id=route_plan_id,
+            route_enforcement_contract_version=route_contract,
         )
         return StartPolicyRetrievalRunResult(run=run, replayed=replayed)
 
@@ -142,11 +181,13 @@ class ExecutePolicyRetrievalRun:
         search: SearchPolicyClauses,
         llm: LLMProvider,
         prompt: PromptManifest,
+        model_route_guard: PinnedModelRouteExecutionGuard | None = None,
     ) -> None:
         self._repository = repository
         self._search = search
         self._llm = llm
         self._prompt = prompt
+        self._model_route_guard = model_route_guard
 
     def execute(self, command: ExecutePolicyRetrievalRunCommand) -> str:
         source = self._repository.claim(
@@ -179,6 +220,22 @@ class ExecutePolicyRetrievalRun:
             elif source.run.strategy is QueryStrategy.DETERMINISTIC:
                 plan = build_deterministic_query_plan(source.builder_input)
             else:
+                route_plan_id = getattr(source.run, "model_route_plan_id", None)
+                if route_plan_id is not None:
+                    if self._model_route_guard is None:
+                        raise PinnedModelRoutePlanRequiredError()
+                    self._model_route_guard.execute(
+                        tenant_id=source.run.tenant_id,
+                        route_plan_id=route_plan_id,
+                        task=ModelReleaseTask.POLICY_QUERY_BUILDER_V1,
+                        execution_mode=getattr(
+                            source.run,
+                            "execution_mode",
+                            AnalysisExecutionMode.PRIMARY,
+                        ),
+                    )
+                elif self._model_route_guard is not None:
+                    raise PinnedModelRoutePlanRequiredError()
                 plan = self._llm.build_policy_queries(source.builder_input, self._prompt).plan
             principal = Principal(
                 user_id="policy-retrieval-worker",

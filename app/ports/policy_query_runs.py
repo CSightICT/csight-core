@@ -6,6 +6,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.query_builder import (
     MultiQueryHit,
     PolicyQueryBuilderInput,
@@ -37,6 +38,22 @@ class PolicyRetrievalRunDetail(BaseModel):
 
 
 class PolicyRetrievalRunRepository(Protocol):
+    def get_by_idempotency_key(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> PolicyRetrievalRun | None: ...
+
+    def get_execution_mode(
+        self,
+        *,
+        tenant_id: str,
+        case_id: str,
+        analysis_run_id: str,
+    ) -> AnalysisExecutionMode: ...
+
     def create(
         self,
         *,
@@ -50,6 +67,9 @@ class PolicyRetrievalRunRepository(Protocol):
         correlation_id: str,
         idempotency_key: str,
         request_hash: str,
+        execution_mode: AnalysisExecutionMode,
+        model_route_plan_id: str | None,
+        route_enforcement_contract_version: str | None,
     ) -> tuple[PolicyRetrievalRun, bool]: ...
 
     def list(self, *, tenant_id: str, case_id: str) -> tuple[PolicyRetrievalRun, ...]: ...

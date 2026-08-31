@@ -8,6 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.models import ProviderExecutionMetadata
 from app.platform.analysis.prompts import PromptManifest
 from app.platform.errors import CaseNotFoundError
@@ -16,9 +17,15 @@ from app.platform.grounding import (
     GroundedExplanationRun,
     validate_grounded_explanation,
 )
+from app.platform.model_activation import ModelReleaseTask
+from app.platform.model_routing import (
+    MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION,
+    PinnedModelRoutePlanRequiredError,
+)
 from app.platform.tenant import Permission, Principal
 from app.ports.grounding import GroundedExplanationRunDetail, GroundedExplanationRunRepository
 from app.ports.llm import LLMProvider
+from app.ports.model_routing import ActiveModelRouteResolver, PinnedModelRouteExecutionGuard
 
 
 class _DTO(BaseModel):
@@ -75,10 +82,12 @@ class StartGroundedExplanation:
         repository: GroundedExplanationRunRepository,
         llm: LLMProvider,
         prompt: PromptManifest,
+        model_route_resolver: ActiveModelRouteResolver | None = None,
     ) -> None:
         self._repository = repository
         self._llm = llm
         self._prompt = prompt
+        self._model_route_resolver = model_route_resolver
 
     def execute(
         self,
@@ -88,6 +97,29 @@ class StartGroundedExplanation:
         command: StartGroundedExplanationCommand,
     ) -> StartGroundedExplanationResult:
         principal.require(Permission.ANALYSIS_CREATE)
+        request_hash = canonical_request_hash(case_id, command, self._prompt)
+        replay = self._repository.get_by_idempotency_key(
+            tenant_id=principal.tenant_id,
+            idempotency_key=command.idempotency_key,
+            request_hash=request_hash,
+        )
+        if replay is not None:
+            return StartGroundedExplanationResult(run=replay, replayed=True)
+        execution_mode = self._repository.get_execution_mode(
+            tenant_id=principal.tenant_id,
+            case_id=case_id,
+            retrieval_run_id=command.retrieval_run_id,
+        )
+        route_plan_id: str | None = None
+        route_contract: str | None = None
+        if self._model_route_resolver is not None:
+            route = self._model_route_resolver.execute(
+                tenant_id=principal.tenant_id,
+                task=ModelReleaseTask.GROUNDED_POLICY_EXPLANATION_V1,
+                execution_mode=execution_mode,
+            )
+            route_plan_id = route.route_plan.id
+            route_contract = MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION
         metadata = self._llm.provider_metadata
         execution_metadata = ProviderExecutionMetadata(
             provider_name=metadata.provider,
@@ -103,11 +135,14 @@ class StartGroundedExplanation:
             requested_by=principal.user_id,
             correlation_id=command.correlation_id,
             idempotency_key=command.idempotency_key,
-            request_hash=canonical_request_hash(case_id, command, self._prompt),
+            request_hash=request_hash,
             provider=execution_metadata,
             prompt_name=self._prompt.name,
             prompt_version=self._prompt.version,
             prompt_hash=self._prompt.content_hash,
+            execution_mode=execution_mode,
+            model_route_plan_id=route_plan_id,
+            route_enforcement_contract_version=route_contract,
         )
         return StartGroundedExplanationResult(run=run, replayed=replayed)
 
@@ -142,10 +177,12 @@ class ExecuteGroundedExplanation:
         repository: GroundedExplanationRunRepository,
         llm: LLMProvider,
         prompt: PromptManifest,
+        model_route_guard: PinnedModelRouteExecutionGuard | None = None,
     ) -> None:
         self._repository = repository
         self._llm = llm
         self._prompt = prompt
+        self._model_route_guard = model_route_guard
 
     def execute(self, command: ExecuteGroundedExplanationCommand) -> str:
         source = self._repository.claim(
@@ -158,6 +195,22 @@ class ExecuteGroundedExplanation:
         if source is None:
             return "NOOP"
         try:
+            route_plan_id = getattr(source.run, "model_route_plan_id", None)
+            if route_plan_id is not None:
+                if self._model_route_guard is None:
+                    raise PinnedModelRoutePlanRequiredError()
+                self._model_route_guard.execute(
+                    tenant_id=source.run.tenant_id,
+                    route_plan_id=route_plan_id,
+                    task=ModelReleaseTask.GROUNDED_POLICY_EXPLANATION_V1,
+                    execution_mode=getattr(
+                        source.run,
+                        "execution_mode",
+                        AnalysisExecutionMode.PRIMARY,
+                    ),
+                )
+            elif self._model_route_guard is not None:
+                raise PinnedModelRoutePlanRequiredError()
             response = self._llm.explain_policy_grounded(
                 GroundedExplanationInput(
                     case_summary=source.case_summary,

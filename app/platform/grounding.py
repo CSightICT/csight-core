@@ -10,6 +10,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.models import ProviderExecutionMetadata
 from app.platform.errors import CSightError
 from app.platform.policy_reference import ClauseType
@@ -174,6 +175,9 @@ class GroundedExplanationRun(_StrictModel):
     case_id: str
     retrieval_run_id: str
     citation_pack_id: str
+    execution_mode: AnalysisExecutionMode = AnalysisExecutionMode.PRIMARY
+    model_route_plan_id: str | None = None
+    route_enforcement_contract_version: str | None = None
     status: GroundedExplanationRunStatus
     idempotency_key: str
     request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")

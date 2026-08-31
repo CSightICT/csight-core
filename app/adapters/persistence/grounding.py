@@ -30,6 +30,7 @@ from app.adapters.persistence.models import (
     PolicyRetrievalRunHitModel,
     PolicyRetrievalRunModel,
 )
+from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.models import ProviderExecutionMetadata
 from app.platform.async_reliability import (
     AsyncEventIntegrityError,
@@ -69,6 +70,46 @@ class SQLAlchemyGroundedExplanationRunRepository:
             raise ValueError("max_execution_attempts must be positive")
         self._max_execution_attempts = max_execution_attempts
 
+    def get_by_idempotency_key(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> GroundedExplanationRun | None:
+        with self._factory() as session:
+            existing = session.scalar(
+                select(GroundedExplanationRunModel).where(
+                    GroundedExplanationRunModel.tenant_id == UUID(tenant_id),
+                    GroundedExplanationRunModel.idempotency_key == idempotency_key,
+                )
+            )
+        if existing is None:
+            return None
+        if existing.request_hash != request_hash:
+            raise IdempotencyKeyReusedError()
+        return _to_run(existing)
+
+    def get_execution_mode(
+        self,
+        *,
+        tenant_id: str,
+        case_id: str,
+        retrieval_run_id: str,
+    ) -> AnalysisExecutionMode:
+        with self._factory() as session:
+            retrieval = session.scalar(
+                select(PolicyRetrievalRunModel).where(
+                    PolicyRetrievalRunModel.tenant_id == UUID(tenant_id),
+                    PolicyRetrievalRunModel.case_id == UUID(case_id),
+                    PolicyRetrievalRunModel.id == UUID(retrieval_run_id),
+                    PolicyRetrievalRunModel.status == "SUCCEEDED",
+                )
+            )
+        if retrieval is None:
+            raise CaseNotFoundError("A successful policy retrieval run was not found.")
+        return AnalysisExecutionMode(retrieval.execution_mode)
+
     def create(
         self,
         *,
@@ -83,6 +124,9 @@ class SQLAlchemyGroundedExplanationRunRepository:
         prompt_name: str,
         prompt_version: str,
         prompt_hash: str,
+        execution_mode: AnalysisExecutionMode,
+        model_route_plan_id: str | None,
+        route_enforcement_contract_version: str | None,
     ) -> tuple[GroundedExplanationRun, bool]:
         tenant_uuid, case_uuid, retrieval_uuid = map(UUID, (tenant_id, case_id, retrieval_run_id))
         now = datetime.now(UTC)
@@ -107,6 +151,8 @@ class SQLAlchemyGroundedExplanationRunRepository:
             )
             if retrieval is None:
                 raise CaseNotFoundError("A successful policy retrieval run was not found.")
+            if AnalysisExecutionMode(retrieval.execution_mode) is not execution_mode:
+                raise ValidationError("The retrieval execution mode changed before run creation.")
             pack = _get_or_create_pack(session, retrieval, now)
             profile = _ensure_profile(
                 session,
@@ -122,6 +168,11 @@ class SQLAlchemyGroundedExplanationRunRepository:
                 retrieval_run_id=retrieval_uuid,
                 citation_pack_id=UUID(pack.id),
                 grounding_profile_id=profile.id,
+                execution_mode=execution_mode.value,
+                model_route_plan_id=(
+                    UUID(model_route_plan_id) if model_route_plan_id is not None else None
+                ),
+                route_enforcement_contract_version=route_enforcement_contract_version,
                 status="QUEUED",
                 requested_by=UUID(requested_by),
                 correlation_id=correlation_id,
@@ -757,6 +808,11 @@ def _to_run(row: GroundedExplanationRunModel) -> GroundedExplanationRun:
         case_id=str(row.case_id),
         retrieval_run_id=str(row.retrieval_run_id),
         citation_pack_id=str(row.citation_pack_id),
+        execution_mode=AnalysisExecutionMode(row.execution_mode),
+        model_route_plan_id=(
+            str(row.model_route_plan_id) if row.model_route_plan_id is not None else None
+        ),
+        route_enforcement_contract_version=row.route_enforcement_contract_version,
         status=GroundedExplanationRunStatus(row.status),
         idempotency_key=row.idempotency_key,
         request_hash=row.request_hash,

@@ -1,16 +1,39 @@
 """Frozen limited-pilot qualification thresholds."""
 
-import pytest
+from datetime import UTC, datetime, timedelta
+from typing import Any
+from unittest.mock import Mock
+from uuid import uuid4
 
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.application.pilot_readiness import GetPilotReadiness
 from app.bootstrap.settings import Settings
+from app.interface.http.dependencies import provide_current_principal
+from app.interface.http.operations_services import OperationsServiceContainer
+from app.interface.http.routers.operations import router
+from app.platform.onboarding_readiness import (
+    OnboardingGateCode,
+    OnboardingGateStatus,
+    OnboardingReadiness,
+    OnboardingReadinessGate,
+)
 from app.platform.pilot_qualification import (
     GateStatus,
     PilotQualificationEvidence,
     assess_limited_pilot,
 )
+from app.platform.pilot_readiness import (
+    PilotQualificationEvidenceArtifact,
+    PilotReadinessGateStatus,
+)
+from app.platform.tenant import Principal, Role
 from scripts.validate_limited_pilot_release import apply_runtime_configuration_gates
 
 pytestmark = pytest.mark.unit
+NOW = datetime(2026, 8, 31, 12, 0, tzinfo=UTC)
 
 
 def _evidence() -> PilotQualificationEvidence:
@@ -129,3 +152,92 @@ def test_production_pilot_gate_requires_oidc_and_telemetry_while_local_is_compat
     telemetry_checks = {check.name: check for check in telemetry_configured.checks}
     assert telemetry_checks["telemetry_configuration"].status is GateStatus.PASS
     assert telemetry_configured.eligible is False  # OIDC remains fail-closed.
+
+
+def _pilot_readiness_service(*, verified_at: datetime | None) -> GetPilotReadiness:
+    onboarding = Mock()
+    onboarding.execute.return_value = OnboardingReadiness(
+        pilot_ready=True,
+        gates=tuple(
+            OnboardingReadinessGate(
+                code=code,
+                status=OnboardingGateStatus.PASS,
+                description="Configuration is ready.",
+            )
+            for code in OnboardingGateCode
+        ),
+    )
+    repository = Mock()
+    repository.load.return_value = (
+        PilotQualificationEvidenceArtifact(
+            evidence=_evidence(),
+            verified_at=verified_at,
+            evidence_digest="a" * 64,
+        )
+        if verified_at is not None
+        else None
+    )
+    clock = Mock()
+    clock.now.return_value = NOW
+    return GetPilotReadiness(
+        onboarding=onboarding,
+        evidence_repository=repository,
+        clock=clock,
+        evidence_max_age=timedelta(hours=24),
+    )
+
+
+def _admin() -> Principal:
+    return Principal(
+        user_id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        email="admin@example.invalid",
+        display_name="Admin",
+        roles=frozenset({Role.ADMIN}),
+    )
+
+
+def test_pilot_readiness_requires_fresh_25_gate_evidence() -> None:
+    fresh = _pilot_readiness_service(verified_at=NOW - timedelta(hours=1)).execute(
+        principal=_admin()
+    )
+    stale = _pilot_readiness_service(verified_at=NOW - timedelta(hours=25)).execute(
+        principal=_admin()
+    )
+    missing = _pilot_readiness_service(verified_at=None).execute(principal=_admin())
+
+    assert fresh.configuration_ready is True
+    assert fresh.operationally_qualified is True
+    assert fresh.pilot_ready is True
+    operational = [gate for gate in fresh.gates if gate.kind.value == "OPERATIONAL"]
+    assert len(operational) == 25
+    assert all(gate.status is PilotReadinessGateStatus.PASS for gate in operational)
+    assert stale.operationally_qualified is False
+    assert all(
+        gate.status is PilotReadinessGateStatus.FAIL
+        for gate in stale.gates
+        if gate.kind.value == "OPERATIONAL"
+    )
+    assert missing.pilot_ready is False
+
+
+def test_pilot_readiness_http_contract_is_no_store_and_identifier_free() -> None:
+    application = FastAPI()
+    application.include_router(router)
+    principal = _admin()
+    application.dependency_overrides[provide_current_principal] = lambda: principal
+    unused: Any = object()
+    application.state.operations_services = OperationsServiceContainer(
+        get_overview=unused,
+        get_failures=unused,
+        get_pilot_readiness=_pilot_readiness_service(verified_at=NOW - timedelta(hours=1)),
+    )
+
+    response = TestClient(application).get("/api/v1/operations/pilot-readiness")
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.json()["pilot_ready"] is True
+    serialized = response.text
+    assert principal.tenant_id not in serialized
+    assert principal.user_id not in serialized

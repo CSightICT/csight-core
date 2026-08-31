@@ -408,3 +408,15 @@ after the configured skew, capped at 300 seconds. Operators must prove valid cre
 tamper rejection, stale rejection, and unchanged Case counts for failed requests before enabling a customer
 source. Rotation adds a new key ID before retiring the old one. The canonical signing and smoke-test procedure
 is in ADR-0120.
+
+## Onboarding and pilot admission
+
+The operator onboarding command accepts an explicit manifest and exposes `plan`, `apply`, and `verify`.
+It never deletes a tenant, invents a retention period, prints a secret, or grants a role to the signed-intake
+service actor. `apply` is additive and idempotent; conflicting existing identities fail closed. The generated
+environment fragment is owner-readable only and contains references and public configuration, not private keys.
+
+Pilot admission requires all six configuration gates and all 25 operational qualification gates to pass with
+fresh evidence. Disk capacity, dependency health, alert delivery, restore drills, immutable image identity, and
+real load evidence are operational gates rather than documentation claims. See ADR-0123 and
+`docs/operations/PILOT_READINESS_AND_ONBOARDING.md`.

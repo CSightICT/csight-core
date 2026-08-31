@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 
 REVISION = "20260829_0020_postgres_rls_roles"
 PREVIOUS = "20260829_0019_analysis_execution_modes"
-HEAD = "20260831_0034_analysis_model_route_snapshot"
+HEAD = "20260831_0035_query_grounding_model_route_snapshot"
 MIGRATION = Path("alembic/versions/20260829_0020_postgres_rls_roles.py")
 FAILURE_RECOVERY_MIGRATION = Path("alembic/versions/20260829_0021_failure_recovery.py")
 CASE_ASSIGNMENT_MIGRATION = Path("alembic/versions/20260830_0026_case_assignment_ownership.py")

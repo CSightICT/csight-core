@@ -18,6 +18,7 @@ from app.interface.http.operations_schemas import (
     OperationalFailureResolutionResponse,
     OperationsFailuresResponse,
     OperationsOverviewResponse,
+    PilotReadinessResponse,
     RegisteredModelReleaseResponse,
     RegisterModelReleaseRequest,
 )
@@ -109,6 +110,43 @@ def get_onboarding_readiness(
     readiness = services.get_onboarding_readiness.execute(principal=principal)
     _no_store(response)
     return OnboardingReadinessResponse.from_readiness(readiness)
+
+
+@router.get(
+    "/pilot-readiness",
+    response_model=PilotReadinessResponse,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ErrorResponse},
+    },
+)
+def get_pilot_readiness(
+    request: Request,
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[
+        OperationsServiceContainer | None,
+        Depends(provide_operations_services),
+    ],
+) -> PilotReadinessResponse | Response:
+    if Role.ADMIN not in principal.roles:
+        return _boundary_error(
+            request,
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="FORBIDDEN",
+            message="The authenticated user is not allowed to perform this operation.",
+        )
+    if services is None or services.get_pilot_readiness is None:
+        return _boundary_error(
+            request,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="SERVICE_UNAVAILABLE",
+            message="Pilot readiness is unavailable.",
+        )
+    readiness = services.get_pilot_readiness.execute(principal=principal)
+    _no_store(response)
+    return PilotReadinessResponse.from_readiness(readiness)
 
 
 @router.get("/overview", response_model=OperationsOverviewResponse)

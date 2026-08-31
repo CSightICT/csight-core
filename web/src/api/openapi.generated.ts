@@ -801,6 +801,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operations/pilot-readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pilot Readiness */
+        get: operations["get_pilot_readiness_api_v1_operations_pilot_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operations/overview": {
         parameters: {
             query?: never;
@@ -2671,6 +2688,42 @@ export interface components {
          * @enum {string}
          */
         OutcomeRelation: "CONSISTENT_WITH_RECOMMENDATION" | "DIFFERS_FROM_RECOMMENDATION" | "NO_COMPARABLE_RECOMMENDATION" | "INDETERMINATE_POLICY";
+        /**
+         * PilotReadinessGateKind
+         * @enum {string}
+         */
+        PilotReadinessGateKind: "CONFIGURATION" | "OPERATIONAL";
+        /** PilotReadinessGateResponse */
+        PilotReadinessGateResponse: {
+            kind: components["schemas"]["PilotReadinessGateKind"];
+            /** Code */
+            code: string;
+            status: components["schemas"]["PilotReadinessGateStatus"];
+            /** Verified At */
+            verified_at: string | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Evidence Digest */
+            evidence_digest: string | null;
+            /** Description */
+            description: string;
+        };
+        /**
+         * PilotReadinessGateStatus
+         * @enum {string}
+         */
+        PilotReadinessGateStatus: "PASS" | "FAIL";
+        /** PilotReadinessResponse */
+        PilotReadinessResponse: {
+            /** Configuration Ready */
+            configuration_ready: boolean;
+            /** Operationally Qualified */
+            operationally_qualified: boolean;
+            /** Pilot Ready */
+            pilot_ready: boolean;
+            /** Gates */
+            gates: components["schemas"]["PilotReadinessGateResponse"][];
+        };
         /** PocMetricResponse */
         PocMetricResponse: {
             /** Numerator */
@@ -6213,6 +6266,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OnboardingReadinessResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_pilot_readiness_api_v1_operations_pilot_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PilotReadinessResponse"];
                 };
             };
             /** @description Unauthorized */

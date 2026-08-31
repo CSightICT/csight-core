@@ -24,6 +24,7 @@ from pydantic import (
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
+from app.platform.model_activation import ModelReleaseTask
 from app.platform.tenant import Role
 
 _SUPPORTED_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
@@ -49,6 +50,22 @@ class SignedIntakeSourceSettings(BaseModel):
     actor_user_id: UUID
     provenance: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,191}$")
     public_key_file: Path
+
+
+class LLMTaskRuntimeSettings(BaseModel):
+    """Non-secret endpoint and runtime identity overrides for one LLM task."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+
+    base_url: AnyHttpUrl
+    model_id: str = Field(min_length=1, max_length=255)
+    model_version: str = Field(min_length=1, max_length=100)
+    model_revision: str = Field(min_length=1, max_length=255)
+    deployment_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{2,127}$")
+    connect_timeout_seconds: float = Field(default=5.0, gt=0.0, le=60.0)
+    read_timeout_seconds: float = Field(default=120.0, gt=0.0, le=900.0)
+    circuit_failure_threshold: int = Field(default=5, ge=1, le=100)
+    circuit_open_seconds: float = Field(default=30.0, gt=0.0, le=3600.0)
 
 
 class Settings(BaseSettings):
@@ -451,6 +468,10 @@ class Settings(BaseSettings):
         max_length=255,
         validation_alias="LLM_MODEL_REVISION",
     )
+    llm_task_runtimes: dict[ModelReleaseTask, LLMTaskRuntimeSettings] = Field(
+        default_factory=dict,
+        validation_alias="LLM_TASK_RUNTIMES",
+    )
     model_release_enforcement: bool = Field(
         default=False,
         validation_alias="MODEL_RELEASE_ENFORCEMENT",
@@ -463,6 +484,16 @@ class Settings(BaseSettings):
         default=None,
         pattern=r"^[a-z0-9][a-z0-9._-]{2,127}$",
         validation_alias="MODEL_ROUTE_DEPLOYMENT_ID",
+    )
+    pilot_qualification_evidence_file: Path | None = Field(
+        default=None,
+        validation_alias="PILOT_QUALIFICATION_EVIDENCE",
+    )
+    pilot_qualification_evidence_max_age_hours: int = Field(
+        default=24,
+        ge=1,
+        le=720,
+        validation_alias="PILOT_QUALIFICATION_EVIDENCE_MAX_AGE_HOURS",
     )
     model_release_signing_public_key_file: Path | None = Field(
         default=None,

@@ -98,11 +98,11 @@ def test_core_compose_splits_model_retrieval_and_decision_worker_lanes() -> None
 
     assert "  worker-model:" in compose
     assert "--hostname=worker-model@%h" in compose
-    assert "--queues=analysis,grounded-explanation" in compose
+    assert "--queues=analysis,policy-retrieval,grounded-explanation" in compose
     assert "--concurrency=1" in compose
     assert "  worker-retrieval:" in compose
     assert "--hostname=worker-retrieval@%h" in compose
-    assert "--queues=policy-retrieval" in compose
+    assert "--queues=policy-search" in compose
     assert "  worker-decision:" in compose
     assert "--hostname=worker-decision@%h" in compose
     assert (

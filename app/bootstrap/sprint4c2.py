@@ -12,6 +12,10 @@ from app.application.policy_query_runs import (
     StartPolicyRetrievalRun,
 )
 from app.bootstrap.dependencies import build_llm_provider
+from app.bootstrap.model_routing import (
+    build_active_model_route_resolver,
+    build_pinned_model_route_guard,
+)
 from app.bootstrap.settings import Settings
 from app.bootstrap.sprint4b import build_sprint4b_services, sprint4b_is_configured
 from app.domains.product_defect_cs.prompts import (
@@ -19,6 +23,7 @@ from app.domains.product_defect_cs.prompts import (
     POLICY_QUERY_BUILDER_PROMPT_V1_1,
 )
 from app.interface.http.services import Sprint4C2ServiceContainer
+from app.platform.model_activation import ModelReleaseTask
 
 
 def sprint4c2_is_configured(settings: Settings) -> bool:
@@ -32,7 +37,10 @@ def build_sprint4c2_services(settings: Settings) -> Sprint4C2ServiceContainer:
         max_execution_attempts=settings.celery_task_max_retries + 1,
     )
     return Sprint4C2ServiceContainer(
-        start_policy_retrieval_run=StartPolicyRetrievalRun(repository),
+        start_policy_retrieval_run=StartPolicyRetrievalRun(
+            repository,
+            model_route_resolver=build_active_model_route_resolver(settings),
+        ),
         list_policy_retrieval_runs=ListPolicyRetrievalRuns(repository),
         get_policy_retrieval_run=GetPolicyRetrievalRun(repository),
     )
@@ -44,14 +52,20 @@ def build_execute_policy_retrieval_run(settings: Settings) -> ExecutePolicyRetri
         lease_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),
         max_execution_attempts=settings.celery_task_max_retries + 1,
     )
+    prompt = (
+        POLICY_QUERY_BUILDER_PROMPT_LOCAL_2
+        if settings.llm_provider == "mlx"
+        else POLICY_QUERY_BUILDER_PROMPT_V1_1
+    )
     return ExecutePolicyRetrievalRun(
         repository=repository,
         search=build_sprint4b_services(settings).search_policy_clauses,
-        llm=build_llm_provider(settings),
-        prompt=(
-            POLICY_QUERY_BUILDER_PROMPT_LOCAL_2
-            if settings.llm_provider == "mlx"
-            else POLICY_QUERY_BUILDER_PROMPT_V1_1
+        llm=build_llm_provider(settings, ModelReleaseTask.POLICY_QUERY_BUILDER_V1),
+        prompt=prompt,
+        model_route_guard=build_pinned_model_route_guard(
+            settings,
+            prompt=prompt,
+            task=ModelReleaseTask.POLICY_QUERY_BUILDER_V1,
         ),
     )
 

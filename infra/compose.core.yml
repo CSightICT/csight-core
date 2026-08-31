@@ -56,6 +56,7 @@ x-app-environment: &app-environment
   LLM_MODEL_ID: ${LLM_MODEL_ID:-csight-mock-llm}
   LLM_MODEL_VERSION: ${LLM_MODEL_VERSION:-0.1.0}
   LLM_MODEL_REVISION: ${LLM_MODEL_REVISION:-}
+  LLM_TASK_RUNTIMES: '${LLM_TASK_RUNTIMES:-{}}'
   LLM_CONNECT_TIMEOUT_SECONDS: ${LLM_CONNECT_TIMEOUT_SECONDS:-5}
   LLM_READ_TIMEOUT_SECONDS: ${LLM_READ_TIMEOUT_SECONDS:-120}
   LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-1024}
@@ -199,7 +200,7 @@ services:
       - worker
       - --loglevel=${LOG_LEVEL:-INFO}
       - --hostname=worker-model@%h
-      - --queues=analysis,grounded-explanation
+      - --queues=analysis,policy-retrieval,grounded-explanation
       - --concurrency=1
     healthcheck:
       test:
@@ -223,7 +224,7 @@ services:
       - worker
       - --loglevel=${LOG_LEVEL:-INFO}
       - --hostname=worker-retrieval@%h
-      - --queues=policy-retrieval
+      - --queues=policy-search
       - --concurrency=2
     healthcheck:
       test:

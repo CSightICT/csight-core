@@ -469,3 +469,20 @@ maps each key to one tenant, dedicated no-role service actor, source identity, a
 can create `PILOT_LIVE`; ordinary Case creation remains `NOT_ATTESTED` or validated `SYNTHETIC_DEMO`.
 The authenticated tenant is bound to the transaction RLS context and the existing Case UoW performs the same
 sensitive-payload and status-history writes. See ADR-0120.
+
+## Query and grounding route snapshots
+
+New LLM Query Builder and Grounded Explanation runs pin the tenant-scoped active model route in the
+same transaction as the run and Outbox event. A replay is resolved before active-route lookup, and a
+failed lookup leaves no residual run or event. Workers revalidate the pinned historical activation,
+signature, task, mode, deployment, prompt, schema, and runtime identity before calling a provider.
+`RAW` and `DETERMINISTIC` query strategies do not resolve a route or call an LLM. Query generation and
+search still share the existing policy-retrieval task; the independent v2 event split is required
+before claiming separately qualified model and search queues. See ADR-0123.
+
+## Pilot readiness composition
+
+Pilot admission combines the existing six configuration gates with 25 operational qualification
+gates. Operational evidence is referenced by a PII-free digest and expires after the configured
+freshness window; missing or stale evidence fails closed. Readiness reporting never starts services,
+migrates data, or changes an active model route.

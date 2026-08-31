@@ -19,6 +19,7 @@ from app.application.operations import (
     ListOperationalFailures,
     ReplayOperationalFailure,
 )
+from app.application.pilot_readiness import GetPilotReadiness
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +35,7 @@ class OperationsServiceContainer:
     activate_model_route: ActivateModelRoutePlan | None = None
     get_active_model_route: GetActiveModelRoutePlan | None = None
     get_onboarding_readiness: GetOnboardingReadiness | None = None
+    get_pilot_readiness: GetPilotReadiness | None = None
 
 
 def provide_operations_services(request: Request) -> OperationsServiceContainer | None:

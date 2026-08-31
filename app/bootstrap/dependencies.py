@@ -18,6 +18,7 @@ from app.adapters.vision import MockVisionProvider, RemoteVisionProvider
 from app.application.analyze_case import AnalyzeCase
 from app.bootstrap.settings import Settings
 from app.platform.analysis import VisionTask
+from app.platform.model_activation import ModelReleaseTask
 from app.ports.llm import LLMProvider
 from app.ports.readiness import DependencyProbe, ReadinessService
 from app.ports.vision import VisionProvider
@@ -131,30 +132,65 @@ def build_readiness_service(settings: Settings) -> ReadinessService:
     return ReadinessService(probes=tuple(probes))
 
 
-def build_llm_provider(settings: Settings) -> LLMProvider:
+def build_llm_provider(
+    settings: Settings,
+    task: ModelReleaseTask = ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+) -> LLMProvider:
+    task_runtime = settings.llm_task_runtimes.get(task)
+    model_id = task_runtime.model_id if task_runtime is not None else settings.llm_model_id
+    model_version = (
+        task_runtime.model_version if task_runtime is not None else settings.llm_model_version
+    )
+    model_revision = (
+        task_runtime.model_revision if task_runtime is not None else settings.llm_model_revision
+    )
+    base_url = (
+        str(task_runtime.base_url).rstrip("/")
+        if task_runtime is not None
+        else settings.llm_base_url_value
+    )
+    connect_timeout = (
+        task_runtime.connect_timeout_seconds
+        if task_runtime is not None
+        else settings.llm_connect_timeout_seconds
+    )
+    read_timeout = (
+        task_runtime.read_timeout_seconds
+        if task_runtime is not None
+        else settings.llm_read_timeout_seconds
+    )
+    circuit_threshold = (
+        task_runtime.circuit_failure_threshold
+        if task_runtime is not None
+        else settings.provider_circuit_failure_threshold
+    )
+    circuit_open_seconds = (
+        task_runtime.circuit_open_seconds
+        if task_runtime is not None
+        else settings.provider_circuit_open_seconds
+    )
     if settings.llm_provider == "mock":
         return MockLLMProvider(
-            model_name=settings.llm_model_id,
-            model_version=settings.llm_model_version,
-            model_revision=settings.llm_model_revision or "deterministic",
+            model_name=model_id,
+            model_version=model_version,
+            model_revision=model_revision or "deterministic",
         )
     if settings.llm_provider == "vllm":
-        base_url = settings.llm_base_url_value
         if base_url is None:
             raise ProviderConfigurationError("LLM_BASE_URL is required for the vLLM adapter")
         return _as_llm_provider(
             _cached_process_provider(
-                kind="llm",
+                kind=f"llm:{task.value}",
                 settings=settings,
                 factory=lambda: CircuitBreakingLLMProvider(
                     VLLMLLMProvider(
                         base_url=base_url,
                         api_key=settings.llm_api_key_value,
-                        model_id=settings.llm_model_id,
-                        model_version=settings.llm_model_version,
-                        model_revision=settings.llm_model_revision,
-                        connect_timeout_seconds=settings.llm_connect_timeout_seconds,
-                        read_timeout_seconds=settings.llm_read_timeout_seconds,
+                        model_id=model_id,
+                        model_version=model_version,
+                        model_revision=model_revision,
+                        connect_timeout_seconds=connect_timeout,
+                        read_timeout_seconds=read_timeout,
                         max_output_tokens=settings.llm_max_output_tokens,
                         max_output_chars=settings.llm_max_output_chars,
                         max_input_chars=settings.llm_max_input_chars,
@@ -162,29 +198,28 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
                         tls_verify=settings.llm_tls_verify,
                     ),
                     breaker=CircuitBreaker(
-                        failure_threshold=settings.provider_circuit_failure_threshold,
-                        open_seconds=settings.provider_circuit_open_seconds,
+                        failure_threshold=circuit_threshold,
+                        open_seconds=circuit_open_seconds,
                     ),
                 ),
             )
         )
     if settings.llm_provider == "mlx":
-        base_url = settings.llm_base_url_value
         if base_url is None:
             raise ProviderConfigurationError("LLM_BASE_URL is required for the MLX adapter")
         return _as_llm_provider(
             _cached_process_provider(
-                kind="llm",
+                kind=f"llm:{task.value}",
                 settings=settings,
                 factory=lambda: CircuitBreakingLLMProvider(
                     MLXLLMProvider(
                         base_url=base_url,
                         api_key=settings.llm_api_key_value,
-                        model_id=settings.llm_model_id,
-                        model_version=settings.llm_model_version,
-                        model_revision=settings.llm_model_revision,
-                        connect_timeout_seconds=settings.llm_connect_timeout_seconds,
-                        read_timeout_seconds=settings.llm_read_timeout_seconds,
+                        model_id=model_id,
+                        model_version=model_version,
+                        model_revision=model_revision,
+                        connect_timeout_seconds=connect_timeout,
+                        read_timeout_seconds=read_timeout,
                         max_output_tokens=settings.llm_max_output_tokens,
                         max_output_chars=settings.llm_max_output_chars,
                         max_input_chars=settings.llm_max_input_chars,
@@ -192,8 +227,8 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
                         tls_verify=settings.llm_tls_verify,
                     ),
                     breaker=CircuitBreaker(
-                        failure_threshold=settings.provider_circuit_failure_threshold,
-                        open_seconds=settings.provider_circuit_open_seconds,
+                        failure_threshold=circuit_threshold,
+                        open_seconds=circuit_open_seconds,
                     ),
                 ),
             )

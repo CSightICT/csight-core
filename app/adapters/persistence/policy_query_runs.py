@@ -36,6 +36,7 @@ from app.adapters.persistence.models import (
     PolicyRetrievalSimilarityModel,
 )
 from app.adapters.persistence.policy_repositories import to_policy_clause_record
+from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.llm_v2 import (
     ActionConsistency,
     CompletenessResult,
@@ -110,6 +111,46 @@ class SQLAlchemyPolicyRetrievalRunRepository:
             raise ValueError("max_execution_attempts must be positive")
         self._max_execution_attempts = max_execution_attempts
 
+    def get_by_idempotency_key(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> PolicyRetrievalRun | None:
+        with self._factory() as session:
+            existing = session.scalar(
+                select(PolicyRetrievalRunModel).where(
+                    PolicyRetrievalRunModel.tenant_id == UUID(tenant_id),
+                    PolicyRetrievalRunModel.idempotency_key == idempotency_key,
+                )
+            )
+        if existing is None:
+            return None
+        if existing.request_hash != request_hash:
+            raise IdempotencyKeyReusedError()
+        return _to_run(existing)
+
+    def get_execution_mode(
+        self,
+        *,
+        tenant_id: str,
+        case_id: str,
+        analysis_run_id: str,
+    ) -> AnalysisExecutionMode:
+        with self._factory() as session:
+            analysis = session.scalar(
+                select(AnalysisRunModel).where(
+                    AnalysisRunModel.tenant_id == UUID(tenant_id),
+                    AnalysisRunModel.case_id == UUID(case_id),
+                    AnalysisRunModel.id == UUID(analysis_run_id),
+                    AnalysisRunModel.status.in_(("SUCCEEDED", "PARTIAL_SUCCESS")),
+                )
+            )
+        if analysis is None:
+            raise ValidationError("A successful v2 analysis run for this Case is required.")
+        return AnalysisExecutionMode(analysis.execution_mode)
+
     def create(
         self,
         *,
@@ -123,6 +164,9 @@ class SQLAlchemyPolicyRetrievalRunRepository:
         correlation_id: str,
         idempotency_key: str,
         request_hash: str,
+        execution_mode: AnalysisExecutionMode,
+        model_route_plan_id: str | None,
+        route_enforcement_contract_version: str | None,
     ) -> tuple[PolicyRetrievalRun, bool]:
         tenant_uuid, case_uuid, analysis_uuid = map(UUID, (tenant_id, case_id, analysis_run_id))
         now = datetime.now(UTC)
@@ -170,6 +214,8 @@ class SQLAlchemyPolicyRetrievalRunRepository:
             )
             if analysis is None:
                 raise ValidationError("A successful v2 analysis run for this Case is required.")
+            if AnalysisExecutionMode(analysis.execution_mode) is not execution_mode:
+                raise ValidationError("The analysis execution mode changed before run creation.")
             text_result = session.scalar(
                 select(LLMExtractionResultV2Model).where(
                     LLMExtractionResultV2Model.tenant_id == tenant_uuid,
@@ -194,6 +240,11 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                 analysis_run_id=analysis_uuid,
                 text_result_id=text_result.id,
                 strategy=strategy,
+                execution_mode=execution_mode.value,
+                model_route_plan_id=(
+                    UUID(model_route_plan_id) if model_route_plan_id is not None else None
+                ),
+                route_enforcement_contract_version=route_enforcement_contract_version,
                 status="QUEUED",
                 as_of_date=date.fromisoformat(as_of_date),
                 top_k=top_k,
@@ -794,6 +845,11 @@ def _to_run(row: PolicyRetrievalRunModel) -> PolicyRetrievalRun:
         analysis_run_id=str(row.analysis_run_id),
         text_result_id=str(row.text_result_id),
         strategy=QueryStrategy(row.strategy),
+        execution_mode=AnalysisExecutionMode(row.execution_mode),
+        model_route_plan_id=(
+            str(row.model_route_plan_id) if row.model_route_plan_id is not None else None
+        ),
+        route_enforcement_contract_version=row.route_enforcement_contract_version,
         status=RetrievalRunStatus(row.status),
         as_of_date=row.as_of_date,
         top_k=row.top_k,

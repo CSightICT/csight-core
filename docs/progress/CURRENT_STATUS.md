@@ -12,14 +12,14 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | Sprint 5C 내부 데모 PASS; 실제 E3 Runtime·현실형 가상 문의/Commerce Context·사람 확정형 빠른 검토·환불 확인서·자연어 업무 UI·고객 안내 메일 시뮬레이션·tenant 비식별 데이터 자산 원장 종합 회귀 PASS |
-| 진행 중 작업 | 기존 10건을 보존한 `poc_closed_set/2.0.0` 확장 팩 10건을 추가해 현재 시연 범위를 결함 후보 12·사람 확인 저점수 참고 8의 총 20건으로 늘렸다. 상품군 4/4·결함군 3/3을 표현하지만 클래스별 성능평가가 아니다. 다음은 인증 상담원 검토와 20건 연속 운영 측정이다. |
-| 마지막 갱신일 | 2026-08-28, Asia/Seoul |
+| 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0035, 세 LLM task의 pinned route guard, PII 없는 31개 pilot readiness gate, 운영자용 온보딩 명령과 pilot 전용 OpenAPI를 구현했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
+| 진행 중 작업 | 검토 가능한 기준선 3개 commit을 현재 기능 브랜치에 push했고 후속 pilot-readiness 구현·전체 회귀도 완료했다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거와 build 전 최소 35 GiB 디스크를 확보해야 clean worktree release 후보를 만들 수 있다. Query Build와 Search의 v2 event 분리는 다음 구현 항목이다. |
+| 마지막 갱신일 | 2026-08-31 15:10 KST, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private. 누적 운영형 상담원 제품과 방향 전환 기록을 새 `origin/codex/operator-console-product-direction`에 기능 기준점 `c90357d`로 백업; PR·`develop/main` 병합 없음 |
-| 로컬 Git | `codex/operator-console-product-direction`; `feature/scenario-poc-hard-plastic`의 `dfaa373`에서 분기. 기능 `c90357d`, handoff `dac2447`, 운영형 E2E 보정 `42616a4`를 원격 확인했고 이 원장 closeout은 후속 문서 커밋으로 기록. 사용자 소유 미추적 문서 3개 보존 |
-| 마지막 검증 관측 | 2026-08-28 22:52 KST, 로컬 Ruff·Format 392 files·Pyright 0·Backend 686 PASS/65 deselected, Web lint·typecheck·OpenAPI sync·24 files/63 tests·build·Playwright 5 PASS. GitHub CI Run #33177206525의 Quality와 Consultant console 두 Job 및 5개 UI 시나리오 PASS. local/public JS `index-BdA6eGFX.js`, CSS `index-CWAdx66O.css` 일치, Core 7개 서비스 healthy. |
-| 마지막 GitHub 관측 | 2026-08-28 22:52 KST, `origin/codex/operator-console-product-direction`의 운영형 E2E 보정 커밋 `42616a4557d84cb8caa5e66d167aed4d1ba7db29`에 대한 CI Run #33177206525 PASS. PR·`develop/main` 병합 없음 |
+| 원격 저장소 | `CSightICT/csight-core` — Private. 시연 기준선 3개 commit을 `origin/codex/operator-console-product-direction`의 `ba39aea`까지 push; PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; 기준선은 push 완료, migration 0035와 pilot readiness 후속 변경은 최종 검증 후 같은 기능 브랜치에 별도 commit 예정. 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md` 보존 |
+| 마지막 검증 관측 | 2026-08-31 15:10 KST, 기본 backend 1014 PASS, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, Web 90 PASS와 lint/type/OpenAPI/build, Ruff/format/Pyright PASS. 코드 migration head는 0035지만 실행 중 데모 DB와 image는 의도적으로 0034를 유지하며 Core 9개는 정상이다. 실제 pilot start는 env 부재와 디스크 9.0 GiB로 BLOCKED이며 release eligible 모델은 0개다. |
+| 마지막 GitHub 관측 | 2026-08-28 23:02 KST, `origin/codex/operator-console-product-direction`의 `3daaa7bff56fa0e25f7ca69bf6bc31d68a2cdb79`에 대한 CI Run #33177793237 PASS. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
 
@@ -128,6 +128,22 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | R1 Policy→Human Review | PASS | 수리·Safety·단순변심 3건이 Policy `SUCCEEDED`, matching Review `PENDING`; Decision·Resolution·Action 0 |
 | R1 Public Sharing Gate | BLOCKED | Cloudflare Access·강한 Credential·이미지 재배포 권리 미확보; 현재 본인 내부 시연 전용 |
 | Limited PoC 승격 | BLOCKED | 실제 기업 Data/Policy는 오늘 범위에서 의도적으로 제외; Privacy·제품도메인 Vision·Shadow·Qwen 증거 미확보 |
+| Limited Pilot Service Foundation | DEMO_READY_WITH_BLOCKERS | 상담원 단일 조회·명시 확인·워크플로 snapshot, OIDC+PKCE/session/CSRF, tenant RLS, 민감 payload 수명주기, 3개 queue lane, 운영 조회, PRIMARY/SHADOW·회로 차단·admission, 선택적 OpenTelemetry를 additive migration으로 구현. 사람만 최종 결정하고 실제 사업 동작은 계속 0 |
+| Operator Queue Server Search + Onboarding View | PASS | Case·Review 목록의 문의/주문/상품 번호 검색을 pagination 전 단일 SQL에 적용하고 검색어 고정 cursor를 사용한다. 관리자 운영 화면은 개인정보 없는 6개 온보딩 gate만 표시하며 현재 실제 조회는 인력 1개 PASS·나머지 5개 FAIL, `pilot_ready=false`다. |
+| Generic Signed Case Intake 0032 | PASS | 단일 tenant/source/no-role actor에 고정된 Ed25519 raw-body 서명, ±300초, 128 KiB, exact replay 200·conflict 409를 구현했다. 실제 PostgreSQL HTTP에서 최초 201·replay 200·conflict 409와 Case/history/sensitive/idempotency 각 1건을 확인했으며 실제 고객 key는 생성하지 않았다. |
+| Task Model Route Plan 0033~0035 | PASS_WITH_SCOPE | 서명된 activation을 task별 append-only route plan으로 연결한다. Analysis, LLM Query Builder, Grounded Explanation run이 새 요청에서 역사적 plan을 같은 transaction에 고정하고 Worker가 task/mode/signature/deployment/runtime identity를 provider 호출 전에 검증한다. RAW·DETERMINISTIC query는 route와 모델 호출이 없다. Query Build와 Search의 독립 v2 event 분리는 아직 미완료다. |
+| Separate Limited-Pilot Runtime | BLOCKED | OIDC-only, strict RLS role, ClamAV, retention, OTel, signed intake/model과 복원 증거를 강제하는 별도 Compose/controller/preflight를 구현했다. 실제 `.env.pilot`은 없고 가용 디스크 9.0 GiB가 build 전 35 GiB 및 운영 30 GiB gate보다 작아 start/build는 실행하지 않았다. controller는 migrate/prune/down/volume 삭제를 하지 않는다. |
+| Operator Queue Intake UI | PASS_WITH_SCOPE | 프론트의 새 케이스 메뉴·버튼·화면을 제거하고 이전 `/cases/new`는 목록으로 전환. 상담 케이스·검토 대기함 모두 주문/상품/문의 번호 검색과 정렬을 제공하며 5개 viewport에서 두 컨트롤 48px, 가로 overflow 0, Axe serious/critical 0을 확인 |
+| Demo Embedding Runtime Availability | PASS_WITH_SCOPE | macOS 제어 앱이 Qwen Embedding을 분리 세션으로 시작해 `/health`와 `/v1/models` 준비 후 Core 9개와 Cloudflare 공개 주소를 시작하고, 상태 표시와 안전 종료까지 함께 수행. 실제 stop→start 뒤 `doongdoong.org` health와 새 HYBRID Retrieval SUCCEEDED를 확인. 현재 Mac 내부 시연 전용이며 HA 자격은 아님 |
+| Limited Pilot Qualification | BLOCKED | schema drift, strict DB login/RLS, Case 배정·직접 객체 권한, 개인정보 삭제, 이미지 보안 adapter, 세 task route guard, 20-client read와 120초 모델/결정 queue 격리는 구현·부분 검증했다. 고객 IdP lifecycle, 실제 20-session/20-workflow, release 모델, 암호화 off-host WAL·MinIO 반복 복원과 경보 전달은 미완료다. 새 pilot readiness는 구성 6개와 운영 자격 25개를 freshness/digest와 함께 fail-closed로 합산하며 replay/cancel은 자격 전까지 503이다. |
+| Schema Drift Repair 0024 | PASS | evidence 복합 unique 조건부 복구, 운영 실패 check 18개 이름 수렴, similarity index ORM metadata 정합화. 빈 DB·기존 drift DB·현재 runtime이 모두 head/check 0이며 재빌드 Core 정상 |
+| Waiting Ownership + Similarity Contract 0025 | PASS_WITH_SCOPE | WAITING 담당자·활성 assignment 보존, same-owner CLAIMED 재개, 기존 행 append-only recovery, cosine 0.0 보존, 기준 0.65 거리 최근접/최저 3개 계약과 실제 PostgreSQL lifecycle 통과. 자료 제출 포함 브라우저 전체 E2E는 후속 release gate |
+| Case Intake Assignment + Direct Ownership 0026 | PASS_WITH_SCOPE | 관리자 Case CAS 배정·재배정, append-only 이력, 열린 Review owner 원자 상속, 목록/직접-ID reviewer 404와 restrictive RLS를 실제 PostgreSQL·API·브라우저에서 검증. 담당자 대기함과 처리 현황은 보고서 생성이 아닌 사람 결정 기록을 경계로 즉시 분리한다. unassign은 현재 제품 계약에 포함하지 않으며 terminal Case 재배정은 차단 |
+| Terminal Customer Content Erasure 0029 | PASS_WITH_SCOPE | 원문 만료 transaction에서 사람 rationale/action payload, Case attributes, terminal report 고객·주문·배송 snapshot, communication과 resolution failure prose를 삭제하고 결정·보고서·안내 hash를 재계산. PII-free receipt와 deferred DB 재삽입 차단을 실제 PostgreSQL workflow로 검증. tenant retention 운영·log scan·backup/legal hold는 미완료 |
+| Pilot Data Provenance 0030 | PASS_WITH_SCOPE | Case 생성 시 `SYNTHETIC_DEMO` 또는 fail-closed `NOT_ATTESTED`를 서버가 부여하고 DB trigger로 변경을 차단. KPI·SLA·drift readiness는 `PILOT_LIVE`만 집계하며 합성 60건 readiness=false를 고정. 현재 실표본 0건이고 trusted pilot intake 자격은 별도 필요 |
+| Non-local OIDC-only Authentication | PASS_WITH_OPERATIONAL_GATE | 실제 Keycloak에서 PKCE·역할 매핑·return path·CSRF·idle expiry, 새 로그인 차단과 signed back-channel 기존 세션 즉시 회수까지 PASS. 고객 IdP에서 권한 변경→provider session 종료→전달 재시도·경보 연결은 파일럿 onboarding Gate |
+| Product Readiness + RTX4090 Audit | BLOCKED_P0 | schema drift, strict login/RLS, 담당자 소유권·직접 객체 권한은 완료. Qwen3.8-27B 공식 BF16/FP8는 단일 4090에 부적합하고 현재 Community W4A16은 VRAM·Action/Missing 품질 제한이 있다. 개인정보 완전 삭제, 실제 OIDC/model/restore/alert 자격을 순서대로 해소해야 함 |
+| RTX4090 Qwen Candidate Gate | PASS_WITH_NO_ELIGIBLE_RELEASE | exact artifact/runtime matrix, Extraction v2 Dev→digest 검증 freeze→sealed Test, 두 challenger의 matrix-locked Compose/allowlisted launcher/exact alias canary 구현. 공식 27B BF16/FP8 hardware 제외, Community 27B baseline Shadow-only, vLLM 0.28.0/공식 8B FP8은 실제 4090 자격 대기. 100 Shadow·20 workflow·activation은 미연결 |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | GitHub PoC·MVP·Release Branch Audit | PASS | 현재 PoC=`feature/scenario-poc-hard-plastic`; MVP 통합 기준=`develop`; 최종 릴리스 기준=`main`. 별도 `poc/mvp/final` branch·tag 없음, PoC 최신화 후에도 역할 유지 |
 | PoC 안전 원격 백업 | PASS | Secret·5 MiB 초과·가중치·원본 이미지 0. E3/backend `0f4de4b`, Web `b3e09cf`, handoff `81b6e20`을 fast-forward Push했고 CI #108 PASS; 사용자 소유 문서 3개 미추적 보존 |
@@ -738,6 +754,25 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 ## 8. 미해결 사항과 사용자 결정
 
+- 2026-08-31 상품화 P0 코드는 전체 기본·PostgreSQL·Web·정적 회귀를 통과했지만 실제 pilot
+  admission은 통과하지 않았다. `infra/pilot/.env.pilot`이 아직 없고 프로젝트 filesystem의 가용
+  공간은 9.0 GiB로 build 전 35 GiB 및 운영 중 30 GiB보다 작다. 볼륨·이미지·cache를 자동 삭제하지
+  않았고 clean worktree build와 pilot start도 실행하지 않았다.
+- 온보딩 준비도는 6개 구성 gate, 새 pilot readiness는 여기에 25개 운영 자격 gate를 합산한다.
+  고객별 signed-intake service actor/public key, 명시적 retention과 자동화, 고객 IdP group mapping,
+  활성 policy index/rule set, 세 task PRIMARY route와 fresh 운영 증거를 실제 환경에 provision해야 한다.
+- text extraction v2, LLM query builder, grounded explanation의 immutable plan snapshot과 historical
+  activation/runtime identity guard는 모두 구현됐다. 다만 Query Build와 Search를 독립 처리하는 v2
+  event는 아직 없으므로 현재 LLM query 경로 전체는 model lane 동시성 1로 보수적으로 실행된다.
+- 실제 4090 Dev에서 두 후보가 모두 품질 gate에 실패해 release eligible 모델은 0개다. 운영
+  PRIMARY 자동 전환·fallback은 하지 않으며 8B 별도 Dev prompt profile부터 다시 자격화한다.
+- 현재 Core DB는 head 0034이고 9개 서비스 readiness는 정상이나 코드의 migration head는 0035다.
+  실행 중 API/Web/Worker image와 DB는 시연본 보존을 위해 이번 작업트리로 재빌드·마이그레이션하지
+  않았다. 별도 pilot은 clean immutable release image·exact commit,
+  실제 고객 env, 암호화 immutable off-host 복원 2회와 남은 load/IdP gate가 갖춰진 뒤 시작한다.
+- 운영 failure replay/cancel API 계약은 존재하지만 안전한 전체 pipeline cancellation/replay
+  자격이 끝나지 않아 composition에서 503으로 비활성이다. 실패 원장을 덮어쓰는 임시 재처리는
+  허용하지 않는다.
 - HDP-100은 가상 브랜드의 fictional product이고 36 Case/Gold, 10 clause/7 rule, 5 demo가 모두
   합성이다. Offline acceptance 9/9는 artifact와 안전 계약의 완전성을 뜻하며 실제 고객/상품
   성능이나 실제 기업 정책 타당성을 뜻하지 않는다.
@@ -799,7 +834,8 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   버전·효력일이 있는 실제 정책, 개인정보 Retention·삭제·EXIF·접근 승인, 실제 Vision qualification
   또는 명시적 제외, 실제 Qwen Extraction·Grounding 재평가와 Shadow 비교가 모두 필요하다.
 - 실제 `LIVE` 외부 실행, 환불·교환·재배송·수리·결제·CRM·고객 알림, Case Closure, Decision
-  amendment, Review 단계 입력 보완, 자동 assignment/SLA, OIDC/RLS는 구현하지 않았다.
+  amendment, Review 단계 입력 보완과 자동 SLA 배정은 구현하지 않았다. OIDC/RLS와 관리자 수동
+  배정은 구현됐지만 실제 고객 IdP·별도 runtime login으로 묶은 운영 qualification은 남아 있다.
 - 고객 안내 메일은 발송 결과가 아니라 `SIMULATED_NOT_SENT` 상태의 화면·감사 기록이다. 실제 SMTP,
   수신자 전송, 배송 성공률은 구현·검증하지 않았고 UI도 `실제 미발송`으로 고정한다.
 - 데이터 자산은 고객 문의 원문·이름·전화·주소·담당자 rationale을 제외한 allowlist다. 현재 `csight`
@@ -1056,6 +1092,20 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   `make require-limited-poc`으로 `LIMITED_POC` 승격을 판정한다.
 - [ ] 대표 10 Case를 연속 처리하면서 5초 간격으로 Vision·Embedding physical footprint, Docker
   container memory, queue depth와 실패율을 함께 기록하고 p95/peak 기준점을 추가한다.
+- [x] 문의/주문/상품 번호의 server-side Case·Review 검색, 검색어 고정 cursor와 관리자용 6개
+  온보딩 준비도 API/UI를 구현하고 전체 Web·PostgreSQL 회귀를 통과한다.
+- [x] generic Ed25519 signed Case intake, task별 signed model route plan, Analysis stage route
+  snapshot과 text extraction v2 runtime identity guard를 migration 0032~0034로 구현한다.
+- [x] demo controller와 분리된 fail-closed pilot Compose/controller/preflight를 구현하고 build,
+  migrate, prune, volume 삭제 없이 admission 실패 시 start를 차단한다.
+- [ ] 사용자 승인 하에 filesystem 가용 공간을 최소 30 GiB로 확보하고, clean immutable release
+  commit/image와 owner-only `infra/pilot/.env.pilot`을 준비한다. 현재 8.7 GiB이므로 임의 정리하지 않는다.
+- [ ] 고객 tenant의 no-role signed-intake actor/public key, retention, OIDC group mapping, 활성
+  policy index/rule set을 provision하고 온보딩 준비도에서 해당 gate를 각각 재검증한다.
+- [ ] Policy query builder와 grounded explanation에 immutable route snapshot·historical activation·
+  exact runtime identity guard를 연결한 뒤에만 `PRIMARY_MODEL_ROUTES` gate를 열 수 있게 한다.
+- [ ] release-eligible 모델, 실제 20-session/20-workflow, 고객 IdP lifecycle, 암호화 immutable
+  off-host WAL·MinIO target-host 복원 2회와 경보 전달을 모두 증명한 뒤 pilot preflight/start를 실행한다.
 
 ## 10. 세션 종료 체크리스트
 
@@ -2441,3 +2491,1315 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 실패 Run과 원인은 원장에 그대로 보존. 수정 후 로컬 Playwright 5/5 PASS, 수정 커밋의 GitHub CI를
   다시 확인
 - 범위: PR·병합·tag/release 없음. 사용자 소유 미추적 문서 3개는 계속 Commit·Push에서 제외
+
+### 2026-08-28 — Next-session Operator Workflow Handoff
+
+- 다음 세션 전용 요약 `docs/progress/SESSION_HANDOFF_2026-08-28_OPERATOR_WORKFLOW.md` 작성
+- 제품 방향 전환 근거, 현재 구현, E3/Qwen 역할 구분, Human Decision·명시 입력·외부 시스템 미반영
+  경계, Git/CI 기준점, 미추적 보존 파일과 재시작 명령을 한 문서에 통합
+- 현재 관측: 23:02 KST Git HEAD와 원격 `3daaa7b` 일치, GitHub CI #33177793237 PASS, DB Head
+  `0016`, Core 7개 healthy, public `/web-health` `ok`
+- 검증: 문서 전용 변경으로 제품 회귀는 NOT_RUN; `git diff --check` PASS, 인계 문서의 로컬 상대
+  링크 10개 대상 파일 존재 PASS
+- Git safety: 이번 인계 문서 작성 요청은 Commit·Push 권한으로 확장하지 않음. 새 문서와 원장 갱신은
+  로컬 변경으로 남기고 사용자 소유 미추적 문서 3개는 계속 보존
+- 다음 작업: 인계 문서의 7절에 따라 인증 상담원 공개 화면 수동 QA부터 시작
+
+### 2026-08-29 — Investor-facing System Architecture SVG
+
+- 목표: 최신 원격 브랜치와 운영형 상담원 인계 문서를 기준으로, 비기술 투자자가 전체 제품 구조와
+  사람 최종 결정 경계를 한 장에서 이해할 수 있는 시스템 아키텍처 SVG 작성
+- Git 기준점: `git fetch --prune origin` 후 가장 최근 원격 브랜치는
+  `origin/codex/operator-console-product-direction`, HEAD `3daaa7b`로 확인. PR·병합·Push 없음
+- 산출물: `CSight_project_docs/docs/assets/CSight_investor_system_architecture.svg`. 문의/이미지/주문
+  접수 → 멀티모달 근거 분석 → 정책 근거 준비 → 상담원 최종 결정 → 처리 사전 확인/문서/비식별
+  학습 자산의 흐름과 고객사 격리·비동기 복원력·Private Evidence·변경 불가능한 감사 원장을 표현
+- 안전 경계: E3는 이미지 단위 결함 후보 선별만 담당하고, 정책과 모델은 근거/권고만 제공하며,
+  인증된 사람만 최종 결정을 생성한다. 합성 정책·상거래 문맥과 외부 환불·결제·CRM·물류·메일
+  미실행 범위를 SVG 하단에 명시
+- 검증: XML well-formed PASS, macOS SVG→PNG 1600×1000 렌더 PASS, 전체 화면 육안 QA PASS,
+  `git diff --check` PASS. 문서 전용 산출물이므로 제품 회귀 테스트는 NOT_RUN
+- 미해결: 투자자 발표 자료의 실제 배경색·슬라이드 비율과 조합한 최종 배치 검토는 NOT_RUN
+- 다음 작업: 필요 시 발표 덱에 맞춘 밝은 배경형 또는 16:9 슬라이드 삽입형 변형을 별도 자산으로 생성
+
+### 2026-08-29 — Admin Operations Read API (append-only session log)
+
+- 완료 체크리스트: technology-neutral operations contract/port, admin-only application services,
+  SQLAlchemy aggregate read adapter, HTTP response schema/router/service container, bootstrap builder,
+  focused unit test, opt-in PostgreSQL integration test, 운영 계약 문서를 새 파일 중심으로 구현
+- 조회 계약: `GET /api/v1/operations/overview`와 `GET /api/v1/operations/failures`는 현재
+  Principal tenant만 조회하고 `ADMIN` role을 HTTP/application 양쪽에서 확인. 응답은 고정 7 queue,
+  고정 7 processing component, component당 상위 실패코드 최대 3개, 활성 version 최대 64개로 제한하고
+  tenant/case/run/event ID, 원문 오류, 입력·출력·문의 내용은 반환하지 않음
+- 집계 범위: legacy analysis outbox와 retrieval/grounding/evaluation/review/resolution/simulation durable
+  outbox, 각 처리 run/task/attempt의 backlog·oldest age·failed·partial success·retry·stalled·last healthy,
+  그리고 저장된 model/prompt/policy/threshold/index version을 endpoint당 PostgreSQL 한 문장으로 집계.
+  `latest_run_snapshot`/`latest_succeeded_result`는 실제 활성 배포 증명이 아님을 source로 구분
+- 실제 검증: focused Ruff `All checks passed`, Ruff format check `10 files already formatted`, focused
+  Pyright `0 errors, 0 warnings, 0 informations`, `tests/unit/test_operations.py` 4 passed,
+  `RUN_CORE_INTEGRATION=1 tests/integration/test_operations_read_sql.py` 1 passed. PostgreSQL test에서
+  endpoint당 statement count 1, 7/7 고정 차원, response bound와 식별자 미노출을 확인
+- 안전 경계: PostgreSQL은 read-only 조회만 수행했고 외부 network/GPU/provider/실제 환불·결제·메일 등
+  사업 동작은 0. `app/main.py`, 공통 `dependencies.py`, router package export, permission enum은 이 세션에서
+  수정하지 않았으며 Commit·Push·PR도 수행하지 않음
+- 미해결: replay/cancel은 미구현. ADR-0011/0075의 새 immutable run 원칙과 ADR-0093의 fenced event
+  원장을 지키려면 새 operation/event/run identity, idempotency, 대상 상태·권한, live claim race fencing,
+  append-only audit reason과 side-effect 경계를 함께 정한 accepted contract가 먼저 필요
+- 다음 작업: composition owner가 `build_operations_services(settings)`를
+  `application.state.operations_services`에 연결하고 operations router를 include/export한 뒤 OpenAPI sync,
+  전체 backend 회귀와 배선된 admin/reviewer HTTP smoke를 실행
+
+### 2026-08-29 — Limited-pilot Demo-safe Closeout
+
+- 목표와 종료선: 약 6주 계획 전체를 파일럿 적격으로 과장하지 않고, 2026-08-30 내부 시연을 깨뜨릴
+  가능성이 큰 안전·복구·UI 문제를 우선 구현했다. 외부 GPU·실제 환불·결제·메일 동작은 0이며
+  모델과 정책은 권고만 만들고 인증된 사람만 최종 결정을 생성하는 경계를 유지했다.
+- 상담원 흐름: 사건/검토 목록 단일 조회와 상태별 건수·cursor, 업무 탭, 통합 workflow snapshot,
+  timeout·지수 backoff·마지막 정상 결과, 동일 제출 멱등성 키, 빠른 결정의 명시 확인 dialog,
+  cancel 0 mutation과 lost response/409 최종 상태 재조회 계약을 구현했다. 5개 viewport
+  320/375/768/1024/1440에서 Axe serious/critical 0, 가로 overflow 0, 44px 조작 영역을 확인했다.
+- 인증·보안: OIDC Authorization Code+PKCE, 일회성 browser-bound state cookie, hashed DB session,
+  HttpOnly/Secure/SameSite cookie, CSRF, group→tenant/role mapping, 절대/유휴 만료와 복귀 경로를 추가했다.
+  non-local 환경은 완전한 OIDC 설정 없이는 시작하지 않고 Uvicorn access log와 `/auth/` access/error
+  log에서 callback code/state query를 차단한다. 관련 보안 집중 테스트 30 PASS.
+- DB·개인정보: tenant 조건 보강, 기본 거부 RLS와 API/Worker/Dispatcher 역할, 민감 원문 분리·명시
+  retention·fail-closed dual-read, PII-free append-only lifecycle event, idempotent purge와 Evidence 정합성
+  dry-run/명시 삭제 경계를 추가했다. EXIF 제거·재인코딩·악성 파일 검사 port/adapter도 추가했지만 실제
+  고객 이미지 반입 자격은 아직 부여하지 않았다.
+- 비동기·운영: model 1/retrieval 2/decision 2의 별도 처리선, child dispatcher failure isolation,
+  poison event 영구 실패/격리, durable failure ledger와 운영 overview/failure 조회를 구현했다. recovery
+  replay/cancel 코드는 검증 자산으로 보존하되 일부 pipeline이 원본 작업을 실제 terminalize하지 않고도
+  resolution을 남길 수 있어 runtime composition에서는 둘 다 비활성화했다. 관리자 조회만 사용 가능하다.
+- 모델·관측: 기본 RAW→HYBRID→Top 3, process-scoped provider client, 5회 연속 장애/30초 circuit,
+  global/tenant admission, tenant/index/profile/content-hash cache 경계, PRIMARY/SHADOW 및 package
+  qualification 계약을 추가했다. OpenTelemetry는 기본 off·network-free이며 HTTP/Celery span과
+  low-cardinality metric만 opt-in으로 제공한다.
+- 정적·회귀 실제 결과: Ruff PASS, Format 478 files PASS, Pyright 0, 기본 Backend 809 PASS/83
+  deselected, Web ESLint·TypeScript·OpenAPI sync PASS, Vitest 29 files/76 tests PASS, production build
+  PASS. 초기 JS gzip 82.27 kB, 최대 raw chunk 257.97 kB로 120 kB/500 kB 예산 이내다.
+- PostgreSQL 실제 결과: 격리 임시 DB에서 failure recovery·RLS·append-only·claim fencing·privacy
+  preflight·migration round-trip·최종 Alembic drift check 7 PASS. 재빌드한 로컬 스택은 API,
+  Dispatcher, model/retrieval/decision Worker, Web, PostgreSQL, RabbitMQ, MinIO 총 9개 healthy이며
+  `/health/ready`와 `/web-health` PASS. DB Head `20260829_0022_privacy_lifecycle`, Case 94건과
+  restricted payload 94건을 보존했다.
+- 백업: 재빌드 전 `/private/tmp/csight_pre_demo_20260829.dump`를 PostgreSQL custom dump로 만들고
+  SHA-256 `900b80ea73f0e75fd0ea0f9657d4687897bdc439cbd842ab74bb1026e71f84b3`, TOC 854개를 확인했다.
+  이는 같은 Mac의 임시 안전 사본일 뿐 off-host 암호화 백업·RPO/RTO 복원 훈련 증거가 아니다.
+- 미해결/파일럿 차단: 현재 데모 DB는 수정 전 0021 제약조건 이름으로 이미 migration이 적용되어
+  최신 ORM과 `alembic check` 이름 drift가 남고, 뒤늦게 보강한 Evidence 복합 unique constraint도
+  반영되지 않았다. 새 빈 DB는 drift 0이므로 시연 후 additive 수렴 migration으로 기존 DB만 고친다.
+  실제 IdP, 20세션/20건 부하·120초 모델 격리, full E2E fault matrix, peak memory, off-host WAL/MinIO
+  restore drill, 경보 전달, 실 고객 이미지 ClamAV 경로는 NOT_RUN이다.
+- 다음 행동: 시연에서는 `http://127.0.0.1:8080`의 합성 문의 목록→검토 상세→확인 dialog→사람 결정→
+  외부 처리 전 문서 흐름만 사용하고 운영 실패 replay/cancel은 사용하지 않는다. 시연 후 기존 DB
+  수렴 migration과 복원 훈련을 먼저 끝낸 뒤에만 제한 운영 파일럿 승격을 다시 판단한다.
+- Git safety: Commit·Push·PR 없음. 사용자 소유 미추적 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 수정·삭제·stage하지 않았다.
+
+### 2026-08-29 — macOS One-click Server Controller
+
+- 목표: 시연자가 Terminal 명령을 외우지 않고 CSight 로컬 서버를 켜고 끄며 상태와 상담원 화면을
+  확인할 수 있는 작은 macOS 앱을 제공했다.
+- 산출물: 바탕화면 `/Users/ckdlsxor/Desktop/CSight 서버 제어.app`, 실행 로직
+  `scripts/csight_server_control.sh`, 대화상자 원본 `scripts/csight_server_control.applescript`.
+- 기능: 빠른 시작, 코드 재빌드+Migration 시작, 상태 확인, 상담원 화면 열기, 서버 끄기. Docker
+  Desktop이 꺼져 있으면 시작 작업이 자동으로 앱을 열고 최대 2분간 준비를 기다린다.
+- 안전 경계: 종료는 `docker compose stop`만 사용하며 `down`, `volume rm`, `--volumes`를 사용하지
+  않는다. 따라서 PostgreSQL·RabbitMQ·MinIO Named Volume과 시연 데이터는 보존된다. 코드 반영
+  시작만 명시적으로 build와 migrator를 실행한다.
+- 실제 검증: zsh syntax PASS, AppleScript compile PASS, local app codesign verify PASS, static safety
+  unit 3 PASS. 실제 현재 스택에서 status가 9개 서비스·API 정상·상담원 화면 정상을 반환했고,
+  stop→빠른 start를 한 번 수행한 뒤 9개 서비스 healthy, DB Head
+  `20260829_0022_privacy_lifecycle`, Case 94건, restricted payload 94건 보존을 재확인했다.
+- 문서: README 빠른 시작 아래에 앱 메뉴, 볼륨 보존 동작, source 경로와 프로젝트 이동 시 재컴파일
+  조건을 추가했다.
+- 미해결: macOS 전용 앱이며 프로젝트 경로를 옮기면 AppleScript의 `controllerPath`를 수정해 다시
+  컴파일해야 한다. Windows/Linux launcher와 메뉴바 상주 기능은 이번 범위에서 NOT_RUN이다.
+- 다음 행동: 시연 시작 전 바탕화면 앱에서 `서버 상태 확인`; 정상이 아니면 `서버 켜기 (빠른 시작)`;
+  종료 후 `서버 끄기`를 사용한다. 시연 직전에는 불필요한 `코드 반영 후 켜기`를 실행하지 않는다.
+- Git safety: Commit·Push·PR 없음. 기존 사용자 파일과 미추적 투자자 SVG를 수정·삭제·stage하지 않았다.
+
+### 2026-08-29 — Operator Queue Intake UI Cleanup
+
+- 목표: 상담원이 프론트에서 직접 새 케이스를 생성하는 기능을 제거하고, 상담 케이스와 검토 대기함의
+  주문·상품·문의 번호 검색 및 정렬 영역을 시연용으로 단정하게 통일했다.
+- 기능 제거: 사이드바 `새 케이스`, 상담 케이스의 `새 문의`·빈 목록 생성 버튼, lazy route와
+  `NewCasePage` 구현·테스트를 삭제했다. 이전 북마크 `/cases/new`는 동적 case ID로 오인하지 않고
+  `/cases`로 즉시 전환한다. Backend의 기존 additive API 계약은 이번 프론트 범위에서 변경하지 않았다.
+- 목록 UX: 검토 대기함에도 상담 케이스와 같은 검색창을 추가했고 case/order/product reference와 표시용
+  상품명·담당자를 현재 로드된 목록에서 검색한다. 검색 결과 건수와 전체 건수를 함께 보여주며 결과가
+  없을 때 전용 안내를 표시한다.
+- 스타일 원인과 수정: 공통 `label`의 column 방향이 큐 전용 검색·정렬 label을 뒤에서 덮어써 실제 높이가
+  데스크톱 75/80px, 모바일 검색 300px까지 늘어났다. 큐 전용 컨트롤을 row 방향·48px로 고정하고
+  테두리, 배경, focus ring, select 구분선을 하나의 시각 체계로 정리했다.
+- 실제 검증: Web ESLint PASS, Vitest 전체 28 files/76 tests PASS, TypeScript 포함 production build PASS.
+  Playwright에서 320/375/768/1024/1440px 각각 검색·정렬 48/48px, Axe serious/critical 0, 가로 overflow
+  0, 44px 미만 조작 영역 0을 확인해 접근성 E2E 5/5 PASS했다. `git diff --check`도 PASS했다.
+- 실행 반영: Docker registry의 base-image metadata 응답이 멈춰 immutable Web image 재빌드는 중단했지만
+  기존 서비스는 계속 healthy였다. 검증된 local production `dist`를 현재 Web container에 복사했고,
+  로컬 브라우저 reload에서 JS `index-D51HAjpP.js`와 CSS `index-B0VMCdDB.css`가 실제 로드됨을 확인했다.
+  인증 정보는 사용하지 않아 배포 로그인 화면만 확인했고, 인증 후 목록 육안 검증은 fixture E2E로 수행했다.
+- 미해결: Docker image 자체의 최신 코드 재빌드는 registry metadata 연결이 정상일 때 다시 수행해야 한다.
+  현재 container는 stop→quick start에는 파일 변경이 유지되지만 명시적 rebuild/recreate 시 기존 image로
+  돌아갈 수 있으므로 시연 직전에는 제어 앱의 `서버 켜기 (빠른 시작)`만 사용한다.
+- 다음 행동: 시연 직전 `서버 상태 확인` 후 빠른 시작을 사용하고, 로그인 뒤 상담 케이스와 검토 대기함의
+  검색·정렬을 한 번씩 확인한다. 시연 후 Web image를 정상 재빌드해 container-local 반영 의존성을 제거한다.
+- Git safety: Commit·Push·PR 없음. 기존 대규모 작업트리 변경, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-29 — Policy Retrieval Embedding Outage Diagnosis
+
+- 증상: 문의 `228374aa-…-a97e`는 이미지 분석까지 완료됐지만 정책 검색이 FAILED로 종료되어 정책 평가와
+  사람 검토가 생성되지 않았고, 화면은 마지막 정상 단계 `ANALYSIS`와 정책 후보 0개를 표시했다.
+- DB 증거: Retrieval Run `b96123b8-…-0b6b`, correlation `8f13527a-…-7f83a`, RAW query strategy,
+  `as_of_date=2026-08-28`, 실행 1회, failure code `EMBEDDING_PROVIDER_UNAVAILABLE`, 10:07 KST terminal
+  FAILED를 확인했다. 정책 날짜 422나 문의 데이터 문제가 아니다.
+- 원인: RAW는 query-builder 전략일 뿐이며 Accepted ADR-0103과 application use case는 실제 검색을
+  고정 HYBRID로 수행한다. 활성 index 2.0.0은 `Qwen/Qwen3-Embedding-0.6B` query embedding을 요구하지만
+  host `127.0.0.1:8091`은 응답하지 않았고 PID 파일의 6483도 실행 중이 아닌 stale 상태였다.
+- 운영 원인: macOS one-click controller의 빠른 시작은 `infra/compose.core.yml`만 시작하므로 Docker 밖의
+  host-native Embedding을 시작하거나 health-check하지 않는다. Mac 종료 전 프로세스가 사라진 뒤 Core 9개만
+  다시 올라와 화면·API는 healthy지만 정책 검색 기능만 degraded가 된 상태다.
+- 영향 범위: 같은 실패코드의 최근 Retrieval 2건을 확인했고, 그 전 저장된 성공 실행은 30건이다. 실패는
+  append-only로 정상 보존됐으며 하위 정책 평가·사람 결정으로 잘못 진행하지 않아 안전 경계는 유지됐다.
+- 검증: Docker Core 9개 healthy, host 8091 connection refused, stale PID, 해당 Run/Outbox/Worker disposition과
+  집계 결과를 read-only로 확인했다. 코드·DB·프로세스 상태 변경과 외부 사업 동작은 0, 테스트는 NOT_RUN이다.
+- 미해결/다음 행동: 이번 요청은 원인 진단이므로 Embedding 시작, 실패 Run 재처리, controller 수정은 하지
+  않았다. 다음 변경에서는 제어 앱이 Embedding을 함께 시작하고 health를 확인한 뒤, 기존 실패를 덮지 않는
+  새 Retrieval Run으로 대표 문의를 검증해야 한다.
+- Git safety: Commit·Push·PR 없음. 사용자 소유 파일과 기존 작업트리 변경을 보존했다.
+
+### 2026-08-29 — Full-PoC macOS Controller Recovery
+
+- 목표: 바탕화면 `CSight 서버 제어.app`의 빠른 시작 한 번으로 Docker Core뿐 아니라 HYBRID 정책
+  검색에 필수인 host-native Qwen Embedding까지 오류 없이 시작하고, 상태 확인·안전 종료 범위에도
+  포함했다.
+- 구현: `scripts/csight_embedding_runtime.sh`를 추가하고 macOS 기본 `screen`의 전용 분리 세션에서
+  Embedding을 실행한다. 대화상자나 호출 shell이 끝나도 엔진은 유지되며 PID·실제 command를 함께
+  검증한다. stale PID는 제거하고 앱이 소유하지 않은 8091 프로세스는 강제 종료하지 않는다.
+- 시작 Gate: 빠른 시작과 재빌드 시작 모두 Embedding `/health`와 `/v1/models`가 성공할 때까지 최대
+  3분 기다린 뒤에만 Core를 시작한다. 상태 화면에는 Core 실행 수, API, Web, 정책 검색 엔진을 함께
+  표시한다.
+- 종료 안전성: `screen` 세션 종료 후 기록한 PID가 실제 `infra.embedding.server:app`인지 확인해
+  `TERM`만 사용한다. Docker는 계속 `compose stop`만 사용해 PostgreSQL·RabbitMQ·MinIO Named
+  Volume과 append-only 실행을 보존하고 `down`·volume 삭제·강제 KILL은 사용하지 않는다.
+- 공개 주소: 기존 macOS Cloudflare Tunnel LaunchAgent를 시작·종료 범위에 포함하고 외부
+  `https://doongdoong.org/web-health`까지 준비 Gate와 상태 표시에 추가했다. Tunnel 설정과 인증
+  자료는 수정·삭제하지 않는다.
+- 실제 전체 검증: controller stop으로 공개 주소·Core 0개·API/Web/Embedding down을 확인한 뒤
+  controller 빠른 start로 Core 9개, API·Web·Embedding·공개 주소 모두 정상 복귀했다. 재시작 뒤
+  외부 Web health 200과 새 합성 Retrieval `e581dfdc-c02a-495d-84c4-a2a1b092dbea`의
+  `SUCCEEDED`, query 2개·hit 10개 저장을 확인했다.
+- 회귀·앱 검증: 두 zsh 파일 syntax PASS, controller static safety unit 5 PASS, AppleScript compile
+  PASS, 바탕화면 앱 ad-hoc codesign verify PASS. DB Head `20260829_0022_privacy_lifecycle`, Case
+  97건을 확인했다.
+- 경계/미해결: 기존 FAILED Retrieval은 감사 원칙에 따라 덮어쓰지 않고 보존한다. 문의 상세에서
+  `분석 계속하기`를 누르면 정상 의존성으로 새 실행이 생성된다. 이 결과는 현재 Mac 내부 시연 가용성
+  증거이며 HA·24x7·20명 부하·복원 훈련 자격은 아니다.
+- 다음 행동: 시연 직전 바탕화면 앱에서 `서버 상태 확인`을 눌러 네 항목이 정상인지 보고, 이상 시
+  `서버 켜기 (빠른 시작)`만 사용한다. 기존 실패 문의는 `분석 계속하기` 한 번으로 새 정책 검색을
+  시작하고 사람 결정 전 확인 화면을 유지한다.
+- Git safety: Commit·Push·PR 없음. 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 수정·삭제·stage하지 않았다.
+
+### 2026-08-30 — Admin Assignment and Personal Review Workspace
+
+- 목표/완료: 문의가 들어온 뒤 관리자가 담당자를 지정·변경하고, reviewer-only 계정은 현재 배정된
+  문의와 자신이 최종 처리한 문의만 분리해서 보도록 구현했다. 관리자 사이드바는 기존 명칭을 유지하고,
+  담당자 사이드바는 `문의 대기`, `내 문의 처리 현황` 두 업무 메뉴만 표시한다.
+- 배정 계약: 관리자 전용 `GET /api/v1/human-review-assignees`와
+  `POST /api/v1/human-review-tasks/{task_id}/assign`을 추가했다. 배정·재배정은 CAS version을 검사하고
+  `ASSIGNED`/`REASSIGNED` action과 `ADMIN_ASSIGNMENT` 이력을 append-only로 남긴다. 관리자 전용 검토는
+  reviewer에게 배정되지 않도록 fail closed한다.
+- 개인별 조회: reviewer-only의 활성 문의는 현재 assignee, 완료 문의는 immutable
+  `human_review_decisions.decided_by` 기준으로 제한했다. Quality Viewer와 Admin의 감독용 전체 조회는
+  유지했다. 담당자 `/cases`는 `my`, `/reviews`는 `complete`를 기본·유일 보기로 사용한다.
+- 단일 검토 요약: 기존 `요약/정책 규칙/인용 근거/기록` 탭을 한 장의 `문의 검토 요약`으로 통합했다.
+  사진, LLM 문의 요약, grounded 정책 설명, 인용 조항 본문, 기술 이력 접기를 한 흐름으로 표시한다.
+- 유사도 근거: 새 HYBRID 실행부터 기존 query embedding을 재사용해 정확한 cosine 기준 최근접 3개와
+  최저 3개를 `policy_retrieval_similarity_evidence`에 저장한다. 설명용 reference 0.65는
+  `policy_similarity_reference/1.0.0`으로 고정했으며 정책 판정·승인·거절 임계값이 아니다. 기존 Run은
+  점수를 추정하지 않고 새 분석이 필요하다고 표시한다. 결정·환불·메일 등 외부 동작은 추가하지 않았다.
+- 문서/DB: Accepted ADR-0109, API/Architecture 계약, additive migration
+  `20260830_0023_operator_assignment_similarity`를 추가했다. RLS 기본 거부와 API/Worker insert-select만
+  허용하고 update/delete는 revoke했다.
+- 실제 검증: Backend Ruff PASS, Pyright 0 error, unit 전체 714 PASS. Web 관련 Vitest 13 PASS,
+  TypeScript production build PASS(초기 JS gzip 82.19KB). Controller `rebuild` 경로로 image build,
+  migration, 전체 재기동을 완료했고 DB Head 0023, Core 9개/API/Web/Embedding/공개 주소 모두 정상이다.
+  OpenAPI에서 두 배정 API를 확인했다.
+- Runtime smoke: 합성 Policy Retrieval Run `e26aaf44-3135-4187-9f08-bbc460faa539`이 query 2개,
+  hit 10개로 SUCCEEDED했고 DB에 NEAREST 3 / LEAST 3이 저장됐다. `csight-demo-brand`의 합성 관리자
+  검토 1건을 실제 API로 관리자에게 배정해 `ASSIGNED`, version 2, `CLAIMED`를 확인했다. Reviewer
+  개인 조회 API는 미배정 항목을 노출하지 않았다. Browser 검증 절차로
+  `https://doongdoong.org/login`의 새 배포 화면이 정상 렌더링되는 것도 확인했다.
+- 미해결: 기존 완료/대기 Run에는 exact cosine 근거가 없으므로 상세 화면에서 legacy 안내가 보인다.
+  새 비교 6개를 시연하려면 새로 분석된 문의를 열어야 한다. 실제 reviewer 계정의 개인 큐 육안 확인은
+  비밀번호를 브라우저에 입력하지 않아 NOT_RUN이며 API 역할 조회와 fixture UI 테스트로 검증했다.
+- 다음 행동: 내일 시연 직전 서버 제어 앱에서 `서버 상태 확인` 후, 관리자 계정으로 검토함의 담당자
+  선택을 보여주고 담당자 계정으로 `문의 대기`를 연다. 유사도 6개 시연은 새 분석 완료 문의를 사용한다.
+- Handoff checklist: 구현 완료, migration 적용, image 재빌드, public health 확인, synthetic runtime
+  smoke 완료. Commit·Push·PR 없음. 기존 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 — Product Readiness and RTX 4090 Qwen3.8 Audit
+
+- 목표/범위: 새 데이터 수급만 기다리지 않고 현재 내부 시연 기반에서 실제 제한 운영 제품을 막는
+  architecture, DB, 개인정보, 업무 소유권, UI 안전성, 복구·관측, 모델 release 공백을 실측했다.
+  진단 세션이므로 P0 동작 수정, 실제 고객 데이터 반입, 실제 외부 환불·메일·결제는 수행하지 않았다.
+- 산출물: `docs/product/PRODUCT_READINESS_AND_RTX4090_AUDIT_2026-08-30.md`에 현재 분류,
+  Qwen3.8-27B/4090 artifact 결정, P0/P1, ordered implementation batches, acceptance gate와 대외 claim
+  경계를 기록했다. 현재 상태는 `DEMO_READY`, 제한 파일럿은 `BLOCKED_P0`다.
+- 4090 결론: 공식 Qwen3.8-27B BF16/FP8 weight는 각각 약 55.56/30.87 GB여서 단일
+  24,564 MiB 4090에 적재되지 않는다. 현재 Community W4A16 exact revision은 실구동됐지만 peak
+  23,825 MiB·최저 여유 254 MiB, requested-action accuracy 0.23, missing-information F1 0.00이다.
+  현 profile은 고정 Shadow 기준선으로 보존하고 first-party W4A16과 별도 Qwen3-8B FP8 후보를 동일
+  업무 corpus에서 비교한 뒤에만 승격한다. 자동 cross-model fallback은 계속 금지한다.
+- 모델 문서 정정: Community artifact Model Card가 `cyankiwi/calibration-medium`을 `STEM and
+  Agentic`으로 링크한다는 현재 사실을 반영했다. 남는 제한은 exact dataset revision/digest,
+  quantization recipe와 CSight-domain 대표성이 고정·자격화되지 않았다는 점이다.
+- Backend P0: `alembic check` exit 255의 evidence unique/복구 constraint name/similarity index drift,
+  모든 프로세스의 DB superuser+BYPASSRLS, OIDC/password 우회, 원문·파생문구·MinIO object version의
+  불완전 purge, off-host restore 미실행, 실제 model manifest activation 부재를 확인했다.
+- Product/UX P0: 배정이 정책 평가 뒤 review task에만 존재하고, reviewer legacy Case/Evidence 직접-ID
+  API는 tenant-wide이며, `WAITING_FOR_EVIDENCE`에서 assignee가 해제돼 두 개인 메뉴에서 사라진다.
+  Case/Evidence load failure에서도 수동 결정이 열릴 수 있고 cosine `0.0`이 `-1.0`으로 변환되며,
+  합성 asset이 실운영 readiness/KPI에 섞일 수 있음을 확인했다.
+- 실제 검증: Core 9개 healthy, API live/ready PASS, DB Head 0023. `alembic check` FAIL(exit 255).
+  provider resilience/vLLM contract 선택 24 PASS·external GPU 5 SKIP, pilot/model release/cache 7 PASS,
+  상담 목록·검토 UI/client 14 PASS, LLM Compose config PASS. 접근성 Playwright는 5 viewport 모두
+  fixture의 `inquiry_summary`/`policy_similarity` 누락으로 Axe 실행 전 FAIL했으므로 WCAG 위반이
+  확인된 것이 아니라 접근성 release 증거가 현재 무효다.
+- 미해결/다음 행동: schema drift 0부터 시작해 strict role/RLS, case-level assignment와 reviewer
+  ownership, WAITING 연속성, evidence fail-closed/cosine 정확성, OIDC-only·완전 purge를 먼저 구현한다.
+  그 뒤 4090 model registry/identity canary/SHADOW 100·workflow 20과 off-host restore/alert/load gate를
+  통과한다. P0 전에는 실제 고객 파일럿을 시작하지 않는다.
+- Git safety: Commit·Push·PR 없음. 누적 사용자 작업, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 — Schema Drift Repair and Strict Dispatcher Requalification
+
+- 목표/완료: 제품 준비도 감사의 첫 P0인 현재 DB/ORM drift를 과거 migration 재작성 없이 additive
+  `20260830_0024_schema_drift_repair`로 수렴했다. 운영 실패 4개 테이블의 이중 naming check 18개를
+  canonical 이름으로 바꾸고, 기존 DB에 빠진 evidence idempotency+SHA unique를 조건부 복구했으며,
+  similarity run/group index를 ORM metadata에 선언했다.
+- fail-closed migration: 두 이름이 동시에 존재하거나 어느 이름도 없으면 0024가 실패하며, unique 추가가
+  기존 데이터와 충돌해도 stamp를 진행하지 않는다. downgrade는 0017 의도에 속한 evidence unique를
+  파괴하지 않고 check 이름만 0023 출력 상태로 되돌린다.
+- 실제 migration 증거: disposable PostgreSQL에서 빈 DB→0024와 unique가 빠진 기존 0023→0024,
+  재실행 no-op을 한 테스트에서 검증하고 각 경로 `alembic check` 0을 확인했다. 현재 runtime DB에도
+  0024를 적용한 뒤 호스트와 재빌드 API 컨테이너 모두 `No new upgrade operations detected`를 반환했다.
+- strict Dispatcher 재평가: 오래된 runbook과 달리 현재 terminal publication failure는 run table을
+  변경하지 않고 outbox만 `FAILED`로 전환한다. 0021 SECURITY DEFINER trigger가 PII-free
+  `operational_failures`를 append하고, 인증된 replay/cancel 전까지 원 run은 QUEUED로 보존한다.
+  disposable PostgreSQL RLS·failure recovery 10개 테스트가 통과했으며 Dispatcher의 Case/run 접근은
+  계속 거부된다.
+- 현재 RLS 구조: tenant_id를 가진 65/65 테이블은 ENABLE+FORCE RLS이고 세 group role은 NOLOGIN,
+  NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOBYPASSRLS다. 그러나 실행 중 Compose는 여전히 owner
+  superuser URL fallback과 `DATABASE_RLS_REQUIRED=false`라 파일럿 증거가 아니다.
+- 검증: Ruff 전체 PASS, Pyright 0 error, unit 716 PASS. schema repair+operator read integration 2 PASS,
+  RLS+failure recovery integration 10 PASS. migration offline SQL 생성 PASS. Controller rebuild 뒤 Core
+  9개/API/Web/Embedding/공개 주소와 API readiness 모두 정상이다.
+- 부수 정합화: operator SQL integration에 명시적 `can_view_all` 계약을 추가하고 reranker test double이
+  최신 `retrieve_least_similar` port를 구현하도록 해 누적 Pyright 오류 4건을 0으로 만들었다.
+- 미해결/다음 행동: 외부 secret mechanism으로 API/Worker/Dispatcher의 서로 다른 LOGIN 계정을
+  provision하고 실제 Compose 전체 E2E에서 strict RLS를 활성화한다. 그 다음 case-level assignment,
+  reviewer 직접 객체 권한과 WAITING_FOR_EVIDENCE 소유권을 구현한다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 17:03 KST — Signed OIDC Back-Channel Session Revocation
+
+- 원인/완료: 외부 group/account 변경 뒤 새 로그인은 막혔지만 기존 CSight session이 살아 있던 P0-9
+  공백을 닫았다. ID token의 provider `sid`, issuer-scoped subject/session SHA-256 capability, signed
+  logout-token validator와 `POST /auth/oidc/backchannel-logout`을 추가했다. raw logout token·subject·
+  provider session ID는 DB에 저장하지 않고 hashed append-only receipt만 남기며 JWT ID replay는 멱등
+  성공한다.
+- DB/권한: additive migration 0031이 기존 OIDC session subject hash를 backfill하고 provider logout
+  capability용 restrictive RLS를 추가했다. API role은 receipt INSERT만 가능하고 SELECT·UPDATE·DELETE는
+  불가하다. 실 PostgreSQL 검증 중 0030의 Case source-scope index가 ORM metadata에서 빠진 drift도
+  발견해 정확히 보강했다.
+- 실제 자격: Keycloak 26.7.2 격리 E2E가 OIDC-only, password route 404, Authorization Code+PKCE,
+  REVIEWER mapping, return path, CSRF, idle expiry, group/account 새 로그인 차단과 provider session 종료
+  뒤 기존 CSight session 401까지 전 gate `PASS`했다. 격리 stack은 자동 삭제됐다. 권한 변경 API만으로는
+  logout이 발생하지 않으므로 고객 운영은 권한 변경→IdP session 종료→전달 재시도·경보를 묶어야 한다.
+- 검증: 전체 기본 무외부망 backend 896 PASS/6 skipped/86 deselected, Ruff 전체 PASS, Pyright 0.
+  Web ESLint·TypeScript·30 files/87 tests·production build와 OpenAPI sync PASS. disposable PostgreSQL
+  migration/RLS/drift 1 PASS, 실제 Keycloak qualification PASS다.
+- 런타임: 적용 전 `backups/pre-0031-20260830-165918.dump`를 mode 0600으로 보존했다. runtime은 Head
+  0031·Alembic drift 0이며 Case 98·Report 20을 유지했다. Core 9개, PostgreSQL/RabbitMQ/MinIO
+  readiness, 정책 검색과 `doongdoong.org` health가 정상이다.
+- 미해결/다음 행동: 실제 고객 IdP lifecycle automation과 logout 전달 실패 경보는 아직 NOT_RUN이다.
+  실제 RTX 4090 host도 연결되지 않아 Dev/Test/Shadow/workflow/soak/fault는 NOT_RUN, release eligible
+  후보는 0개다. 전체 파일럿은 개인정보·부하·격리·백업 복원·경보 Gate 때문에 계속 BLOCKED다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 16:31 KST — Real Keycloak OIDC Qualification and Revocation Gap
+
+- 목표/구성: 현재 데모 runtime과 분리된 포트 18000/18080, tmpfs PostgreSQL, digest 고정 Keycloak
+  26.7.2 realm을 추가했다. public client는 Authorization Code+PKCE S256만 허용하고 direct grant와
+  service account를 끈다. `OIDC_ALLOW_INSECURE_HTTP`는 local/test 명시 opt-in만 허용하며 non-local은
+  설정 단계에서 거부한다.
+- 실측 PASS: OIDC-only capability, password token route 404, 실제 PKCE 로그인, REVIEWER group/local
+  account 매핑, `/cases` return path, CSRF 없는 logout 403/유효 token logout 204, 12초 idle expiry 401,
+  그룹 제거·계정 비활성화 뒤 새 로그인 차단을 확인했다.
+- 실측 BLOCKED: 그룹 제거와 계정 비활성화 모두 이미 발급된 CSight session은 계속 200이었다. 현재
+  session resolve가 local account만 다시 읽고 IdP authority 변경을 받지 않기 때문이다. provider
+  issuer+subject 기반의 서명 검증 back-channel revocation과 IdP 변경 운영 이벤트를 연결한 뒤 같은
+  두 gate를 재통과하기 전에는 P0-9와 제한 파일럿을 완료로 표시하지 않는다.
+- 재현/검증: `make qualify-oidc-keycloak`이 임시 secret 생성→Keycloak/Core migration/seed→실 E2E→
+  fail-closed JSON verdict→전체 격리 stack 삭제를 한 번에 수행한다. 독립 재실행도 예상대로 exit 2,
+  `BLOCKED`, 실패 gate 2개를 반환했고 종료 뒤 관련 container 0개다. OIDC 집중 unit 60 PASS와 Ruff
+  대상 PASS, 전체 기본 무외부망 backend 884 PASS/91 skipped, Pyright 0이다.
+- 런타임/안전: 기존 데모 Core는 9개 running, API·Web·정책 검색·`doongdoong.org` 모두 정상이다.
+  기존 DB·volume·로그인 방식은 변경하지 않았고 외부 사업 동작은 0건이다. 실제 RTX 4090은 아직
+  연결되지 않아 release eligible 후보는 0개다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 13:03 KST — Session log ordering correction
+
+- 바로 위의 `Waiting Ownership and Policy Similarity Correctness` 다음 최신 세션은 이 문서 앞부분에
+  기록된 `Case Intake Assignment and Reviewer Direct-object Ownership`이다. 해당 항목은 DB Head 0026,
+  reviewer 직접 객체 404/RLS, 관리자 접수 배정 UI와 최신 검증 결과를 담고 있으며 현재 상태 요약도
+  그 결과로 갱신했다. 과거 로그를 삭제하거나 재작성하지 않고 이 append-only 정정만 추가한다.
+
+### 2026-08-30 — Case Intake Assignment and Reviewer Direct-object Ownership
+
+- 목표/완료: 문의가 들어온 시점부터 관리자가 담당자를 배정·재배정할 수 있도록 Case-level
+  projection, CAS version, active interval과 append-only action audit를 추가했다. 기존 Review 소유권은
+  0026에서 Case로 backfill하며 과거 Review/Assignment 이력은 수정하지 않는다.
+- 단일 소유권: Case 배정은 같은 transaction에서 모든 unresolved Human Review Task를 새 담당자에게
+  옮긴다. PENDING/ESCALATED는 CLAIMED, WAITING_FOR_EVIDENCE는 WAITING과 담당자를 유지한다. 오래된
+  expected version, 비활성/부적격 사용자, RESOLVED Case는 fail closed한다.
+- 접근 통제: Reviewer는 현재 Case 담당자이거나 해당 Case의 immutable final decision 작성자인 경우에만
+  Case/Evidence/Analysis/Retrieval/Grounding/Policy/Review/Resolution/Intent/Report 직접-ID 경로를 조회한다.
+  앱 계층은 enumeration 방지를 위해 404를 반환하고 API-role restrictive RLS도 동일 경계를 적용한다.
+  Admin/Quality Viewer는 tenant 범위에서 조회할 수 있다.
+- UI: 상담원 사이드바의 `문의 대기`와 `내 문의 처리 현황` 분리는 유지했다. 관리자는 `접수된 문의`
+  목록의 한 SQL projection에서 assignment version과 담당자를 받고 행 단위 추가 조회 없이 담당자를
+  선택한다. 기존 Review-task 배정 UI는 제거해 소유권 기준을 Case 하나로 통일했다.
+- 검토 요약: Review 상세는 사진, 문의 요약, 적용 정책과 인용 근거, 기준 0.65 최근접 3개와 cosine
+  최저 3개/부적격 설명을 하나의 요약 화면으로 유지한다. 모델·정책은 권고만 생성하고 최종 결정은
+  인증된 사람만 기록하며 실제 환불·메일·결제는 계속 0이다.
+- 실제 검증: disposable PostgreSQL에서 migration lifecycle/schema drift, admin assign→reassign,
+  stale CAS, active interval 1개, append-only action, open Review 상속, 이전 담당자 0행/새 담당자 1행 RLS를
+  통과했다. unit+contract 812 PASS, 외부 embedding/reranker 2 SKIP, 관련 integration 7 PASS, Ruff와
+  Pyright 0이다. Web lint/typecheck, Vitest 76 PASS, production build, 접근성 5 viewport 포함 Playwright
+  11/11 PASS다.
+- 런타임: 현재 DB Head `20260830_0026_case_assignment_ownership`, `alembic check` 0. 최신 API/Web/세
+  worker lane/dispatcher 이미지를 재생성했고 Core 9개가 healthy다. 실제 admin password login,
+  operator Case projection의 assignment version, assignment GET 200과 `doongdoong.org/login` 200을
+  확인했다.
+- ADR/계약: Accepted ADR-0111과 Architecture/API/Security 문서를 갱신하고 OpenAPI snapshot/generated
+  type을 현재 runtime과 동기화했다.
+- 미해결/다음 행동: 실제 IdP OIDC 로그인, 민감 원문·파생문구·MinIO version 완전 삭제, 실제 고객
+  이미지 security adapter, 20세션/20워크플로와 120초 모델 격리 부하, off-host WAL·MinIO 복원 훈련,
+  경보 전달과 4090 모델 identity/SHADOW 자격은 남아 있다. 이 Gate 전 실제 고객 파일럿은 BLOCKED다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 — Strict Runtime Login Activation and Accessibility Contract Repair
+
+- 목표/완료: 기본 one-click 시연 경로를 깨지 않고 제한 파일럿에서 선택할 실제 non-bypass DB
+  로그인 경로를 구현했다. API·Worker·Dispatcher는 비밀번호 없는 URL과
+  `DATABASE_PASSWORD_FILE`을 조합하며 inline password와 secret file 동시 설정은 fail closed한다.
+- secret/provisioning: `scripts/provision_postgres_runtime_logins.py`는 0600 이하, 한 줄, 32~4096 byte,
+  서로 다른 비밀번호 파일만 허용한다. 세 LOGIN의 unsafe flag와 migration group role을 검증하고
+  password rotation·membership을 transaction으로 적용한다. 비밀번호 CLI 인자, 전체 URL, DB 오류
+  세부를 출력하지 않는다.
+- strict Compose: `infra/compose.rls.yml`은 API, 세 Worker lane, Dispatcher에 서로 다른 Docker secret과
+  password-less URL을 주고 `DATABASE_RLS_REQUIRED=true`를 강제한다. `make up-rls`와
+  `make provision-runtime-logins`를 추가했으며 기존 `make up`과 macOS controller는 시연 호환 모드로
+  유지했다.
+- 실제 검증: disposable PostgreSQL에서 실제 LOGIN 3종을 만들어 current_user, guard, RLS missing
+  context, Dispatcher outbox-only 접근을 검증한 5개 integration이 PASS했다. 현재 Compose에서도
+  API=`csight_api_login`, Worker 3개=`csight_worker_login`, Dispatcher=`csight_dispatcher_login`으로
+  재기동해 모든 health를 통과했고 실제 reviewer password login, `/auth/me`, `/operator/cases`가 모두
+  200을 반환했다.
+- UI 회귀 복구: Playwright fixture가 새 필수 `inquiry_summary`와 정책 cosine 최근접/최저 3개씩을
+  누락하던 문제를 고쳤다. Web lint, TypeScript typecheck, 5개 viewport 접근성+5개 업무 시나리오
+  Playwright가 10/10 PASS했다.
+- 전체 회귀: `git diff --check`, Ruff lint/format, Pyright 0 error, 기본 unit 824 PASS, Web Vitest
+  76 PASS와 production build PASS, strict login+schema disposable PostgreSQL integration 6 PASS다.
+- 안전한 종료 상태: qualification용 임시 비밀 파일 6개와 임시 디렉터리 2개를 삭제했다. 데이터
+  volume은 건드리지 않았고 API/Worker/Dispatcher/Web을 기본 Compose로 재생성해 현재 API DB 사용자가
+  다시 `csight`임을 확인했다. 로컬 Core health와 `doongdoong.org` Web health는 정상이다.
+- 미해결/다음 행동: terminal failure·replay·lease recovery를 실제 LOGIN overlay 한 실행에서 묶는
+  release suite와 API/Worker 최소 권한 축소는 남아 있다. 다음 제품 P0은 정책 실행 전에도 존재하는
+  case-level assignment, reviewer 직접-ID API ownership, WAITING_FOR_EVIDENCE 담당자 연속성이다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 — Waiting Ownership and Policy Similarity Correctness
+
+- 목표/완료: 제품 감사 P0-5와 P0-7의 핵심 런타임 계약을 additive migration
+  `20260830_0025_waiting_owner_and_similarity_contract`로 닫았다. 자료 요청은 담당자와 활성 배정
+  구간을 보존하고, 같은 담당자의 `CLAIMED`로 재개한다. 관리자는 명시적 override로 재개할 수 있지만
+  담당자를 조용히 바꾸지 않는다.
+- 기존 데이터 안전성: 과거 방식으로 담당자가 지워진 대기 행은 최신 historical assignment를 찾아
+  새 `WAITING_OWNER_RECOVERY` 활성 구간을 append한다. 과거 release timestamp는 수정하지 않으며
+  복구할 담당자가 없는 대기 행이 있으면 migration이 fail closed한다. 적용 전 runtime 대기 행은 0건이었다.
+- 유사도 계약: 유효한 cosine `0.0`을 `-1.0`으로 바꾸던 truth-value fallback을 제거했다.
+  `NEAREST`는 버전된 설명 기준 `0.65`와 절대 거리가 가까운 3개, `LEAST`는 cosine이 가장 낮은
+  3개로 고정했다. 동점은 높은 cosine과 안정적인 clause identity 순이며 모델 호출 추가는 없다.
+- ADR/문서: Accepted ADR-0110, Architecture/API 계약, 상태 머신, 제품 준비도 감사를 같은 의미로
+  정합화했다. similarity는 정책 불적격 판정이나 학습 라벨이 아니며 사람만 최종 결정을 만든다.
+- 검증: 실제 PostgreSQL WAITING lifecycle 1 PASS, schema repair/operator read/exact-cosine integration
+  3 PASS, Ruff 전체 check PASS, app/tests/alembic/scripts format PASS, Pyright 0 error, 기본 unit
+  820 PASS. Web lint/typecheck, Vitest 76 PASS, production build, 접근성 5 viewport+업무 시나리오
+  Playwright 10/10 PASS. 재빌드 후 DB Head 0025/check 0, Core 9개/API/Web/Embedding과
+  `doongdoong.org` 모두 정상이다.
+- 미해결/다음 행동: 실제 제품 P0의 다음 순서는 정책 검색 성공 여부와 무관한 case-level
+  assignment, admin assign/reassign/unassign CAS+append-only audit, 이후 review task owner 상속과
+  상담원 직접-ID Case/Evidence/Analysis/Workflow/Report 404 방어다. 자료 제출을 포함한 동일 담당자
+  브라우저 E2E도 이 배치의 release gate에 포함한다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 13:03 KST — Latest session pointer
+
+- 최신 세션은 위에 기록된 `Case Intake Assignment and Reviewer Direct-object Ownership`이며 현재
+  DB Head는 0026이다. 같은 날짜의 0024·strict login·0025 기록은 과거 관측값으로 보존한다.
+
+### 2026-08-30 13:13 KST — MinIO Versioned Evidence Erasure
+
+- 목표/완료: 개인정보 P0-8의 명확한 저장소 공백을 줄였다. MinIO bucket versioning이
+  켜져 있어도 key 삭제만으로 delete marker를 추가하지 않고, exact Evidence key의 payload
+  version과 delete marker를 모두 불투명 version ID로 영구 삭제한다.
+- Fail-closed 계약: version inventory 실패·절단, 개별 삭제 실패, 삭제 후 남은 version 하나라도
+  있으면 `EVIDENCE_PURGED`를 기록하지 않고 blocked로 종료한다. 삭제 요청 event는 먼저
+  commit하며 완료 event는 재조회 0개 후에만 append한다.
+- 검증: 전체 unit+contract 814 PASS(외부 embedding/reranker 2 SKIP), MinIO/lifecycle 선택 27 PASS,
+  실제 versioning bucket에서 같은 test key를 두 번 저장한 뒤
+  delete marker를 추가하고 v1/v2/marker 3개를 전부 지운 통합 2 PASS, 선택 Ruff/format/Pyright
+  0이다. 통합 검증은 임시 합성 key만 사용했고 기존 시연 Evidence와 volume은 수정하지 않았다.
+- 문서: ADR-0108, Security/Operations, Product Readiness Audit에 version 영구 삭제와 재조회
+  계약을 반영했다.
+- 미해결/다음 행동: LLM claims/source quote/summary, generated query, grounded explanation, terminal
+  report/communication 문구는 무결성 hash와 보존 규칙을 함께 바꾸는 additive migration이 필요하다.
+  tenant onboarding retention, scheduler/alert, backup 만료, legal hold, 실제 ClamAV도 남아 있어
+  P0-8은 완료로 표시하지 않는다.
+- Handoff/Git safety: 다음은 파생 문구의 정확한 보존 범위와 hash 재계산/비가역 receipt
+  계약을 ADR·migration·synthetic marker E2E로 먼저 고정한다. Commit·Push·PR 없음. 누적
+  작업트리, 사용자 문서, 투자자 SVG와 `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 13:30 KST — Customer-derived Analysis Text Erasure
+
+- 목표/완료: 원문 만료 뒤에도 남던 LLM v1/v2 claim·source quote·summary, extracted action quote,
+  생성 정책 query, grounded statement/condition, analysis/retrieval/grounding provider failure 문구를
+  같은 privacy lifecycle transaction에서 tombstone 또는 빈 구조로 지우는 0027을 구현했다.
+- 보존 경계: analysis run/stage/attempt identity, 상태·시각·token/latency, model/prompt/policy/index
+  version, rank/similarity/metric, opaque hash와 회사 정책 citation은 유지한다. 일반 analysis repository는
+  계속 update/delete를 노출하지 않고 인증된 Admin lifecycle 경로만 bounded redaction을 수행한다.
+- DB 강제: `analysis_text_purged_at = purged_at` projection과 deferred constraint trigger를 추가했다.
+  이미 삭제된 Case에 비-tombstone 분석·검색·grounding 문구나 failure message가 삽입/복원되면 transaction이
+  실패한다. 이미 0026에서 원문만 삭제된 행도 upgrade 중 파생 문구를 먼저 지운다. 실제 이전 버전 시험에서
+  기존 deferred trigger event 때문에 DDL이 막히는 순서 결함을 발견해, 기존 parity 검사를 먼저 강제 실행한
+  뒤 constraint를 교체하도록 수정했다.
+- 검증: 전체 unit+contract 817 PASS(외부 embedding/reranker 2 SKIP), Ruff 전체·format 480 files·
+  Pyright 0. disposable PostgreSQL blank→latest runtime purge와 0026 already-purged→0027 backfill,
+  synthetic PII marker 0, tombstoned result schema read, 파생 문구 재삽입 거부, downgrade 거부를 통과했다.
+  schema/privacy migration과 실제 versioned MinIO를 합친 선택 integration 6 PASS다.
+- 런타임: 현재 DB Head `20260830_0027_analysis_text_erasure`, `alembic check` 0. Core 이미지를 다시
+  빌드해 API·세 worker lane·Dispatcher를 교체했고 전체 9개 healthy, API ready, Web health,
+  `doongdoong.org/login`이 정상이다. 기존 시연 payload의 purged row는 적용 전 0건이라 화면 데이터는
+  변경되지 않았다.
+- ADR/문서: Accepted ADR-0112, Architecture, Security/Operations, Privacy runbook, Product Readiness
+  Audit를 현재 계약과 일치시켰다.
+- 미해결/다음 행동: 사람 rationale, terminal Review Report/communication, Case commerce attributes는
+  법적 보존 class와 redacted hash/receipt 계약 없이 변경하지 않았다. tenant onboarding retention,
+  scheduler/alert, log 전수 marker scan, backup expiry/legal hold, 실제 ClamAV도 남아 있어 P0-8 전체는
+  아직 미완료다. 다음 제품 작업은 이 보존 class 설계와 Qwen 4090 후보 artifact 비교 gate다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 13:35 KST — Assigned Inquiry Workspace Revalidation and Web Refresh
+
+- 목표/확인: 요청한 관리자 Case 담당자 배정·재배정, 일반 담당자의 `문의 대기`·
+  `내 문의 처리 현황` 분리, 단일 `문의 검토 요약`, 설명 기준 0.65에 가장 가까운 3개와
+  cosine이 가장 낮은 부적합 3개 표시가 ADR-0109·0110·0111 계약과 일치하는지 재검증했다.
+- 권한/데이터 경계: reviewer 목록은 UI filter가 아니라 서버 SQL에서 현재 Case 배정자 또는
+  immutable decision의 `decided_by`로 제한된다. 실제 PostgreSQL에서 재배정 시 기존 담당자
+  접근이 즉시 제거되고 열린 Review owner가 같이 이동하며, 앱 조건을 빼도 RLS가 조회를
+  차단함을 확인했다.
+- 검증: 담당자 화면 집중 Vitest 10 PASS, 배정·operator read·정책 유사도 집중 unit 42 PASS,
+  disposable PostgreSQL 재배정/RLS·목록 단일 SQL integration 2 PASS. Web 전체 ESLint,
+  TypeScript, OpenAPI sync, Vitest 76, production build가 모두 PASS했다.
+- 런타임: 검증된 최신 Web 이미지로 상담원 화면만 무중단 재생성했다. Named Volume과
+  시연 데이터는 변경하지 않았다. Web healthy, API ready, `https://doongdoong.org/login`
+  HTTP 200을 확인했다.
+- 미해결/다음 행동: 이 작업 범위의 새 미해결 사항은 없다. 실제 파일럿 승격 차단 사유와
+  다음 순서는 상단의 개인정보 보존 class 설계와 Qwen 4090 artifact 비교 gate를 그대로 따른다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 13:49 KST — RTX 4090 Qwen Candidate Release Gate
+
+- 목표/완료: 공식 Qwen artifact와 현재 Community 27B INT4를 같은 이름으로 혼동하거나 과거
+  측정을 새 runtime에 승계하지 못하도록, exact revision·weight bytes·runtime image digest·serving
+  profile·qualification evidence를 하나의 strict candidate matrix로 고정했다.
+- 현재 판정: 공식 Qwen3.8-27B BF16/FP8은 weight bytes만으로 단일 24,564 MiB 4090을 넘어
+  `HARDWARE_EXCLUDED`다. 기존 Community W4A16/vLLM 0.26.0은 출처·평가 계약·20 workflow·2 GiB
+  headroom이 부족해 `SHADOW_ONLY`다. 같은 artifact의 vLLM 0.28.0 runtime challenger와 공식
+  Qwen3-8B-FP8 model challenger는 `PENDING_QUALIFICATION`이다.
+- 평가 계약: action 입력과 gold가 모호한 legacy v1은 역사적 진단으로만 남기고, release gate는
+  합성 `llm_extraction_v2/2.0.0` 160건의 exact file digest를 사용한다. package provenance,
+  100-case Shadow, 20/20 terminal, 안전률 0, 최소 free VRAM 2 GiB, p95 5초, 25 tok/s, 20분 soak,
+  OOM/restart/stall/duplicate 0을 전부 통과해야만 release eligible이다.
+- 구현/문서: technology-neutral platform contract와 검증 CLI, Make target, unit test 6개,
+  Accepted ADR-0113, model manifest/LLM runbook/README/Product Audit를 추가·갱신했다. 공식 base에서
+  CSight가 recipe/calibration까지 소유하는 27B W4A16을 quality-first 후보로 명시했으며, 공식
+  8B FP8은 자동 fallback이 아닌 별도 Shadow 후보로 고정했다.
+- 검증: candidate matrix/dataset digest 검증 PASS, `--require-eligible` 예상 exit 1,
+  관련 model/release/execution unit 10 PASS, Ruff PASS, Pyright 0. 이번 배치에서는 4090 endpoint가
+  설정되지 않아 다운로드·GPU 실행·model activation은 수행하지 않았다. 현재 Core mock과 시연
+  runtime/volume도 변경하지 않았다.
+- 미해결/다음 행동: 실제 vLLM v2 evaluator를 placeholder에서 executable harness로 연결하고,
+  4090에서 owned 27B W4A16과 공식 8B FP8을 각각 측정해 matrix evidence를 채운다. 그 뒤 signed
+  manifest persistence, worker startup identity canary, 관리자 atomic activation/rollback을 연결한다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 14:05 KST — Executable Qwen Extraction v2 Qualification Harness
+
+- 목표/완료: endpoint가 설정되면 종료하던 `evaluate_extraction_v2_qwen.py` placeholder를 실제
+  vLLM Extraction v2 평가기로 교체했다. frozen matrix의 candidate ID, served name, artifact revision,
+  production prompt hash, 전체 160건 dataset file digest와 temperature 0을 일치시켜야 호출한다.
+- Dev/Test 규율: 합성 Dev 120건은 반복 가능하되 현재 절대 품질·안전 기준을 모두 통과한 결과
+  package만 profile freeze할 수 있다. Freeze는 metrics/profile/observation/manifest와 result digest를
+  다시 검증한다. Test 40건은 frozen profile과 exact inputs가 같을 때 명시적 opt-in으로 한 번만
+  실행하며 기존 result manifest가 있으면 재실행을 거부한다.
+- 개인정보/안전: 결과에는 합성 record ID, 성공 여부, exact 여부, latency/token과 bounded error code만
+  기록한다. input text, model prediction, provider response/request ID, prompt/reasoning은 저장하지 않는다.
+  결과 observation에 금지 key가 있거나 count/digest가 다르면 동결을 거부한다. 사람 최종결정과 실제
+  사업 동작 경계는 변경하지 않았다.
+- 성능 증거: runner가 GPU host에 있을 때 `nvidia-smi`의 name/total/free를 200ms 간격으로 수집해
+  최저 free VRAM을 남긴다. remote client나 probe 실패는 `NOT_AVAILABLE`로 기록되며 2 GiB headroom
+  통과 증거로 사용할 수 없다. latency p50/p95와 직렬 output tok/s도 같은 결과에 기록한다.
+- 검증: harness unit 9 PASS, harness+candidate/release unit 15 PASS, 전체 기본 무외부망
+  850 PASS/89 deselected, Ruff 전체 PASS, format 504 files, Pyright 0. Mac 기본 설정에서는
+  `SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE`을 반환했고 외부 호출은 0회였다. Candidate matrix 검증은
+  PASS, release-required gate는 release eligible 0개로 계속 예상 차단이다.
+- 문서/다음 행동: Accepted ADR-0113, README, LLM node 안내, Product Audit와 별도
+  `QWEN4090_QUALIFICATION_GUIDE.md`에 실행 순서와 불충분 증거 경계를 기록했다. 다음은 exact 4090
+  host에서 후보 하나의 Dev를 실행하는 것이며, 그 뒤에도 100 application Shadow·20 terminal
+  workflow·soak/fault·signed activation은 별도 관문으로 남는다.
+- Git safety: Commit·Push·PR 없음. Core runtime과 volume, 사용자 문서, 투자자 SVG 및
+  `kaputt_best_vision_architecture.md`를 변경하지 않았다.
+
+### 2026-08-30 14:13 KST — Matrix-locked RTX 4090 Shadow Candidate Launcher
+
+- 원인/완료: 기존 `compose.llm.yml`은 Community 27B/vLLM 0.26.0 기준선에 고정되어 있어 matrix의
+  vLLM 0.28.0 Runtime Challenger와 공식 Qwen3-8B-FP8 Model Challenger를 수동 편집 없이 실행할
+  수 없었다. 두 후보 전용 JSON Compose overlay와 matrix drift verifier를 추가했다.
+- 고정 범위: verifier가 image tag+digest, artifact/revision, served alias, context, max sequences,
+  GPU memory utilization, KV dtype, language-only/eager, reasoning parser, thinking-disabled payload,
+  candidate ID와 `SHADOW` label을 matrix에서 계산한 값과 exact 비교한다. runnable role에 해당하는
+  profile이 빠지거나 하나라도 추가돼도 실패한다.
+- 실행 안전성: launcher는 두 candidate ID만 allowlist하고 private env regular-file/key/bind 조건과
+  전체 profile verifier를 먼저 통과시킨다. Docker health 뒤 container 내부에서 API key를 argv/log에
+  출력하지 않고 authenticated `/v1/models`를 조회하며 exact selected alias 하나만 허용한다. 한
+  Compose service만 사용하므로 단일 4090에서 후보 두 개를 동시에 올리지 않는다. Core PRIMARY나
+  업무 DB를 변경하지 않는다.
+- 검증: profile verifier PASS, 두 overlay의 실제 `docker compose config --quiet` PASS, 두 후보
+  launcher dry-run PASS, 비허용 candidate 거부 포함 새 unit 6 PASS. 누적 Qwen profile/harness/release
+  unit 21 PASS. 전체 기본 무외부망 856 PASS/89 deselected, Ruff 전체 PASS, format 506 files,
+  Pyright 0이다. 실제 GPU image pull/start는 하지 않아 모델 성능이나 vLLM 0.28.0 현장 성공을 주장하지
+  않는다.
+- 미해결/다음 행동: 4090 node에서 후보 하나를 명시적으로 시작해 alias canary와 Dev 120건을
+  실행한다. 결과가 기준을 통과해야 freeze/Test로 간다. 별도로 signed model manifest persistence,
+  Worker startup enforcement, 100 application Shadow, 20 terminal workflow, soak/fault와 관리자
+  activation/rollback이 남아 있다.
+- Git safety: Commit·Push·PR 없음. Mac Core runtime·volume과 사용자 소유 문서를 변경하지 않았다.
+
+### 2026-08-30 14:25 KST — Assigned Inquiry Navigation and Summary Revalidation
+
+- 목표/완료: 관리자 Case 담당자 배정·재배정, reviewer-only의 현재 배정 문의와 본인 완료 문의
+  분리, 단일 검토 요약, 설명 기준 최근접 3개와 최저 cosine 3개 표시를 다시 대조했다. 담당자
+  상세의 뒤로가기 문구도 기존 `검토함` 대신 `내 문의 처리 현황`으로 맞췄다.
+- 회귀 고정: reviewer 사이드바의 `문의 대기`·`내 문의 처리 현황`, `/cases?view=my`,
+  `/reviews?view=complete`, 관리자 배정 UI 비노출, 사진·문의 요약·정책 근거·유사도 3+3의 단일
+  화면 표시를 새 컴포넌트 테스트로 고정했다.
+- 검증: 관련 Web Vitest 14 PASS, ESLint·TypeScript·production build PASS. 배정·operator read·
+  유사도 backend unit 8 PASS, Ruff 집중 검사 PASS. disposable PostgreSQL에서 WAITING ownership과
+  Case 재배정/RLS 2 PASS, runtime DB Head `0027`을 확인했다.
+- 런타임: 최신 Web 이미지만 다시 빌드·재생성했다. Web health 정상이며 로컬 브라우저에서 공개
+  로그인 화면을 확인했다. PostgreSQL·RabbitMQ·MinIO volume과 시연 데이터는 변경하지 않았고
+  Core 9개는 healthy다. 인증 정보를 입력하지 않아 실제 담당자 로그인 수동 확인은 수행하지 않았다.
+- 미해결/다음 행동: 이 요청 범위의 새 코드 미해결은 없다. 시연에서는 관리자가 담당자를 배정한 뒤
+  담당자 계정의 두 메뉴를 순서대로 보여준다. 전체 제품 Gate는 상단 Qwen 4090 실제 후보 실행과
+  개인정보 보존·복구 관문을 그대로 따른다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 14:48 KST — Signed Qwen Release Activation and Worker Identity Gate
+
+- 목표/완료: matrix PASS가 곧바로 모델 활성화가 되는 빈틈을 닫았다. strict
+  `llm_release_manifest/1.0.0` canonical JSON과 Ed25519 서명 검증, immutable registration,
+  tenant·task·PRIMARY/SHADOW별 append-only activation event, idempotent replay와 expected-current
+  CAS를 추가했다. rollback은 과거 release를 가리키는 새 event이며 기존 기록은 수정하지 않는다.
+- Worker fail-closed: 실제 vLLM 적용 시 artifact revision/content, runtime image, dependency lock,
+  SBOM, served alias/version, prompt name/version/hash와 input/output schema를 active signed release와
+  exact 비교한다. active 없음·서명 오류·identity mismatch는 retry하지 않는 terminal failure로
+  기록되고 provider 호출은 0회다. non-local vLLM은 enforcement 없이 설정할 수 없다.
+- 관리자 계약: `/api/v1/operations/model-releases` 등록,
+  `/model-releases/{release_id}/activate` 활성화/rollback,
+  `/model-activations/active` 조회를 admin-only·no-store로 추가했다. public verification key가
+  설정되지 않으면 503이며 private signing key를 서버에 두는 계약은 추가하지 않았다.
+- DB/보안: migration 0028은 API SELECT/INSERT, Worker SELECT, Dispatcher 0 privilege와 tenant RLS를
+  적용하고 두 테이블의 UPDATE/DELETE를 trigger로 차단한다. current는 가장 최신 event로 계산한다.
+- 검증: 전체 기본 무외부망 863 PASS/90 skipped, Ruff 전체 PASS, format 대상 496 files, Pyright 0,
+  OpenAPI 관리 경로 3개 확인. disposable PostgreSQL에서 full head upgrade와 Alembic drift 0,
+  registration replay, 같은 시각 activation chain/replay/CAS, Worker SELECT·Dispatcher 거부,
+  append-only UPDATE 차단 1 PASS. 실행 중 시연 DB·Core는 건드리지 않았고 실제 4090
+  호출·서명·활성화는 0회다.
+- 미해결/다음 행동: release eligible 후보와 승인된 signing key가 아직 없으므로 enforcement는
+  의도적으로 false다. 4090에서 Dev→freeze→sealed Test→100 Shadow→20 terminal→soak/fault를 모두
+  통과한 뒤에만 manifest를 실제 서명·등록한다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 14:55 KST — Assigned Inquiry Summary Evidence Fail-closed
+
+- 목표/완료: 관리자 배정·재배정, reviewer-only `문의 대기`와 `내 문의 처리 현황`, 단일
+  `문의 검토 요약`, 참고선 최근접 3개와 최저 cosine 3개 표시를 재확인했다. 최저 유사도 항목은
+  순위와 참고선 거리로 부적격 이유를 항목별 표시한다.
+- 안전성 수정: Case·Evidence 메타데이터 조회 실패를 `첨부 사진 없음`과 구분해 명시적 오류와
+  재시도 버튼을 표시한다. 이 상태에서는 빠른 확인창뿐 아니라 상세 수동 결정도 비활성화하며,
+  추가 자료 요청 경로는 유지한다.
+- 검증: 관련 화면 Vitest 15 PASS, Web 전체 81 PASS, ESLint·TypeScript·production build PASS,
+  초기 JS gzip 82.17KB. 배정·개인 큐·migration backend 집중 12 PASS, Ruff 집중 PASS.
+- 런타임: DB·worker·volume은 유지하고 Web 이미지만 재빌드·재생성했다. 14:56 KST Core 9개가
+  모두 healthy이고 로컬·`https://doongdoong.org/web-health`가 모두 `ok`다.
+- 미해결/다음 행동: 메타데이터를 읽은 뒤 개별 이미지가 일부 실패·손상된 상태를 결정 Gate로
+  집계하는 P0-6 후속 E2E는 남아 있다. 전체 제품 Gate인 실제 4090 후보 실행과 개인정보
+  보존·복구 관문도 변함없다.
+- Git safety: Commit·Push·PR 없음. 실행 중 DB/Core와 volume은 변경하지 않았고, 사용자 문서,
+  투자자 SVG와 `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 15:09 KST — Strict RTX 4090 Host and Artifact Preflight
+
+- 목표/완료: 후보 이름·컨테이너 health만으로 4090 실행을 시작하던 공백을 닫았다. technology-neutral
+  `qwen4090_host_evidence/1.0.0`과 `qwen4090_host_preflight/1.0.0`, live collector와 Make 명령을
+  추가하고 allowlisted launcher가 Compose 전에 strict preflight를 반드시 통과하도록 연결했다.
+- 호스트 Gate: Linux x86_64, 단일 RTX 4090, compute capability 8.9, exact 24,564 MiB, 최소 2 GiB
+  free, 기존 compute process 0, Docker NVIDIA runtime, owner-only 0600 env·0700 evidence directory,
+  로컬에 실제 할당된 Tailscale CGNAT 주소, 32자 이상 non-placeholder key, HF Hub·Transformers
+  offline mode를 각각 fail closed한다.
+- 패키지 Gate: tag가 아닌 local runtime image digest, absolute host cache의 exact Hugging Face
+  revision, cache 밖으로 나가는 symlink 차단, 모든 snapshot file content hash, safetensors weight
+  byte parity, dependency lock, CycloneDX/SPDX JSON SBOM, quantization recipe와 calibration digest를
+  수집한다. Hash 중 파일 변경도 거부한다. lock은 exact image를 pull/network 없이 실행한 canonical
+  `pip freeze`와 일치해야 하고, SBOM은 image digest, recipe/calibration은 artifact revision을 식별해야 한다.
+- 개인정보/불변성: raw GPU UUID·API key·bind IP·hostname·host path는 결과에 저장하지 않고 UUID와
+  bind IP는 SHA-256만 남긴다. 결과 JSON은 owner-only mode로 create-once하며 같은 파일 overwrite를
+  거부한다. matrix digest가 null인 첫 수집은 `EVIDENCE_COLLECTED_NOT_PINNED`이고, reviewed matrix와
+  exact 일치한 `PASS`만 live launcher가 허용한다.
+- 캐시 경계: 후보 환경은 `LLM_MODEL_CACHE_DIR` absolute host bind를 사용해 시작 전 bytes 검증이
+  가능하다. 변수를 생략한 역사적 baseline은 기존 `qwen38-model-cache` named volume을 계속 보존한다.
+- 검증: host preflight·profile·release 집중 20 PASS, injected probe로 무GPU/무외부망 수집·immutable
+  output·잘못된 GPU/bind/busy host·HF blob symlink escape를 검증했다. 두 Compose config, launcher
+  dry-run, bash syntax PASS. 전체 기본 871 PASS/90 deselected, Ruff 전체 PASS, format 519 files,
+  Pyright 0이다.
+- 런타임/미해결: 15:09 KST Mac Core 9개 running, API dependency health와 Web health `ok`; Core DB,
+  volume, provider 설정은 변경하지 않았다. 실제 4090 host가 현재 연결되지 않아 real snapshot hash,
+  image inspect, Dev/Test/Shadow/workflow/soak/fault는 NOT_RUN이고 후보는 release eligible 0개다.
+- Git safety: Commit·Push·PR 없음. 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 15:22 KST — Evidence Image Decode Fail-closed
+
+- 목표/완료: 문의 검토 요약에서 Case와 Evidence 메타데이터뿐 아니라 필수 이미지 각각의
+  인증 조회와 브라우저 decode가 모두 성공해야 최종 결정을 허용하도록 P0-6 UI 경계를 닫았다.
+  하나라도 로딩 중·조회 실패·사용 불가·손상 상태이면 수동 결정과 빠른 확인을 함께 차단한다.
+- 복구/상태: 실패 이미지는 같은 화면에서 다시 시도할 수 있고, 새 Blob을 실제로 decode한 뒤에만
+  잠금이 해제된다. 증거가 원래 0장인 문의는 오류와 구분해 계속 검토할 수 있다. 요약 화면과
+  확인 대화상자의 표시 상태는 분리해 한쪽 decode 실패가 다른 쪽 정상 상태를 오염시키지 않는다.
+- 검증: Evidence/Review 상세 집중 Vitest 13 PASS. Web 전체 ESLint·TypeScript·29 files/86 tests와
+  production build PASS, 초기 JS gzip 82.17KB, 검토 상세 chunk gzip 11.73KB다. 정상·일부 실패·
+  재시도 후 decode·빈 증거·Case 조회 실패를 컴포넌트 수준에서 고정했다.
+- 런타임: DB·Worker·volume은 유지하고 Web 이미지만 재빌드·재생성했다. Core 9개가 모두
+  healthy이고 로컬·`https://doongdoong.org/web-health`가 모두 `ok`, API dependency readiness도
+  PostgreSQL·RabbitMQ·MinIO 전부 `ok`다.
+- 미해결/다음 행동: 실제 API와 인증 브라우저에서 손상/부분 실패 응답을 주입하는 live E2E는
+  아직 NOT_RUN이므로 파일럿 자격 증거로 승격하지 않는다. 실제 4090 Dev/Test/Shadow/workflow/
+  soak/fault 실행과 개인정보 보존·복구 관문도 그대로 남아 있다.
+- Git safety: Commit·Push·PR 없음. DB·Worker·volume, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 15:42 KST — Terminal Customer Content Erasure
+
+- 목표/완료: 개인정보 P0-8에서 남아 있던 사람 결정·행동 자유형 내용, Case attributes, terminal
+  Review Report의 고객·주문·배송 snapshot, simulated communication recipient/subject/body와
+  Case Resolution failure prose를 원문 만료 transaction에 포함했다. 정형 ID·상태·reason code·
+  직원 identity·정책/모델/프롬프트/인덱스 버전·qualification·dry-run side-effect=false는 보존한다.
+- 무결성/DB 강제: decision/report/communication의 현재 content hash를 redacted payload 기준으로
+  다시 계산하고 PII-free lifecycle event에 resource count, opaque pre/post hash 전환과 deterministic
+  receipt digest를 남긴다. `terminal_content_purged_at = purged_at` projection과 deferred PostgreSQL
+  triggers가 삭제된 Case에 customer-derived terminal content를 다시 쓰거나 새로 넣는 commit을 막는다.
+- Migration/호환: additive 0029가 이미 0027에서 삭제된 Case도 online backfill하며 복원 불가능한
+  삭제 뒤 downgrade는 명시적으로 거부한다. Accepted ADR-0114와 Architecture, Security/Operations,
+  Privacy runbook, Product Audit를 동기화했다.
+- 검증: 전체 기본 무외부망 874 PASS/91 skipped, Ruff 전체 PASS, Python format 517 files, Pyright 0.
+  실제 disposable PostgreSQL 상담 workflow 6 PASS에서 Decision→terminal Report→communication→expiry
+  purge→redacted aggregate read→synthetic marker 0→재삽입 거부를 확인했다. blank head migration과
+  model activation persistence 1 PASS다.
+- 런타임: 적용 전 local DB dump를 `backups/pre-0029-20260830-154057.dump`에 mode 0600으로 보존했다.
+  실행 DB의 기존 purged Case는 0건이었고 0027→0028→0029 upgrade와 Alembic drift 0을 확인했다.
+  Core API·Dispatcher·세 Worker를 새 이미지로 교체한 뒤 9개 모두 healthy, API dependencies와
+  local/public Web health `ok`; Case 98·Report 20은 보존되고 release manifest는 예상대로 0개다.
+- 미해결/다음 행동: 이 배치는 terminal DB content 경계만 닫았다. tenant onboarding retention,
+  자동 scheduler/alert, log-wide marker scan, off-host backup expiry/legal hold와 실제 ClamAV는 남아
+  있어 P0-8 전체를 완료로 표시하지 않는다. Qwen은 실제 4090 host evidence와 Dev/Test/Shadow/
+  workflow/soak/fault가 NOT_RUN이고 release eligible 후보 0개다.
+- Git safety: Commit·Push·PR 없음. 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 16:02 KST — Immutable Pilot Data Provenance and Honest Metrics
+
+- 원인/완료: 합성 terminal report와 learning asset이 실운영 KPI·drift readiness에 함께 집계되어
+  합성 60건만으로 준비 완료처럼 보일 수 있던 P0-10을 닫았다. Case 생성 시 validated synthetic은
+  `SYNTHETIC_DEMO`, 일반 유입은 fail-closed `NOT_ATTESTED`로 분류하고 provenance와 함께 저장한다.
+- DB/불변성: additive migration 0030은 기존 synthetic commerce Case를 backfill하고 나머지는
+  `NOT_ATTESTED`로 둔다. 허용 scope check, tenant/scope index와 update 거부 trigger를 추가했다.
+  report `data_scope`와 learning asset `privacy_scope`에도 출처를 전달한다. public request는
+  `PILOT_LIVE`를 주장할 수 없다.
+- 집계/UI: 기본 PoC metric, SLA 해석, learning distribution, recent record와 30/60 drift readiness는
+  `PILOT_LIVE`만 포함한다. API와 화면은 eligible/excluded/total을 분리하고 합성·Shadow·Imported·
+  미확인 데이터가 성과로 보이지 않게 했다. 합성 60건만 있는 unit 계약은 readiness=false다.
+- 검증: Ruff 전체 PASS, Pyright 0, 전체 backend 878 PASS/91 skipped. Web TypeScript, 29 files/86 tests,
+  production build와 OpenAPI snapshot/generated sync PASS; 초기 JS gzip 82.17KB다. 적용 전 DB dump를
+  `backups/pre-0030-20260830-1555.dump` mode 0600으로 보존하고 runtime을 0030으로 migration/rebuild했다.
+- 실제 상태: 실행 DB Case 98건은 `NOT_ATTESTED` 77, `SYNTHETIC_DEMO` 21, `PILOT_LIVE` 0이다.
+  실제 PostgreSQL update probe가 immutable trigger에서 거부되고 live count 0이 유지됐다. Core 9개,
+  API, Web, embedding과 `doongdoong.org` health는 정상이다.
+- 미해결/다음 행동: trusted pilot intake/attestation의 운영 승인과 실제 `PILOT_LIVE` 표본은 0건이다.
+  Qwen도 실제 4090 host evidence·Dev/Test/Shadow/workflow/soak/fault가 NOT_RUN이며 release eligible
+  후보는 0개다. 다음 우선순위는 실제 4090 후보 실행 또는 P0-9 OIDC-only 실증이다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 16:12 KST — Non-local OIDC-only Authentication Boundary
+
+- 원인/완료: OIDC runtime이 있어도 Sprint 1 service가 구성되면 password token route와 Bearer JWT가
+  계속 활성화되던 P0-9 우회 경로를 닫았다. `LEGACY_PASSWORD_AUTH_ENABLED`는 local/test 호환
+  profile에서만 허용되고 pilot/production에서 true이면 설정 검증 단계에서 API 시작을 거부한다.
+- route/인증: OIDC-only process는 `POST /api/v1/auth/token`을 등록하거나 OpenAPI에 노출하지 않고
+  `/auth/capabilities`가 legacy=false를 반환한다. 보호 API의 Authorization Bearer는 JWT resolver 전에
+  401로 거부된다. IdP 장애 시 password fallback을 다시 여는 경로는 없다.
+- UI: capability를 읽기 전 legacy form의 초기값을 false로 바꿔 비밀번호 입력이 순간 노출되지 않게
+  했고, legacy=false를 받으면 메모리 compatibility token도 지운다. OIDC-only 로그인 화면은 조직
+  로그인 버튼만 표시한다.
+- 검증: Ruff 전체 PASS, Pyright 0, 전체 backend 880 PASS/91 skipped. Web ESLint·TypeScript,
+  30 files/87 tests, production build와 OpenAPI sync PASS; 초기 JS gzip 82.18KB다. pilot injected OIDC
+  runtime에서 password route 404·Bearer 401·capability false를 확인했다.
+- 런타임: local demo는 의도적으로 capability `oidc=false`, `legacy=true`이고 빈 password 요청이
+  422를 반환해 기존 route가 유지됨을 확인했다. 최신 image로 rebuild 후 Core 9개, embedding과
+  `doongdoong.org` health가 정상이다.
+- 미해결/다음 행동: 실제 시험 IdP의 로그인, group removal, account disable, session expiry, CSRF,
+  reauthentication E2E는 NOT_RUN이므로 P0-9 전체 자격은 아직 아니다. 실제 RTX 4090도 동일하게
+  연결되지 않아 Dev/Test/Shadow/workflow/soak/fault와 release eligibility는 미완료다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 17:03 KST — OIDC Back-Channel Qualification Closeout
+
+- 최종 판정: 위 17:03 signed back-channel 구현 기록을 실제 Keycloak 26.7.2 전 gate `PASS`,
+  disposable PostgreSQL migration/RLS/drift `1 PASS`, runtime Head 0031·drift 0으로 마감한다.
+  그룹/계정 변경 뒤 IdP session 종료가 전달되면 기존 CSight session은 즉시 401이다.
+- 전체 회귀: backend 896 PASS/6 skipped/86 deselected, Ruff PASS, Pyright 0; Web ESLint·TypeScript·
+  87 tests·production build·OpenAPI sync PASS. mode 0600 사전 백업과 Case 98·Report 20 보존을
+  확인했고 Core 9개·정책 검색·`doongdoong.org`가 정상이다.
+- 남은 Gate: 고객 IdP의 권한 변경→session 종료→재시도·경보 자동화, 실제 RTX 4090 자격,
+  개인정보·부하·복원·운영 경보는 NOT_RUN이다. Commit·Push·PR은 만들지 않았다.
+
+### 2026-08-30 17:47 KST — Reviewer Personal Queue and Summary Live Closeout
+
+- 목표/완료: 관리자는 접수 문의의 담당자를 배정·재배정하고, reviewer-only 계정은 현재 담당
+  문의를 `문의 대기`, 본인이 최종 처리한 문의를 `내 문의 처리 현황`에서 분리해 보는 계약을
+  재검증했다. 검토 상세는 탭 없이 사진·문의 요약·적용 정책 본문·참고선 최근접 3개·최저 cosine
+  3개와 항목별 부적격 이유를 하나의 `문의 검토 요약`으로 표시한다.
+- 실사용 결함 수정: 완료 문의 행의 `link` 역할을 `listitem`이 덮어쓰던 접근성 오류를 수정했다.
+  React StrictMode에서 Evidence Blob URL이 실제 decode 전에 폐기되어 정상 사진도 실패로 표시되고
+  최종 결정이 잠기던 수명주기를 외부 URL 생성·정리 effect로 교정했다. 비활성 최종 결정 버튼의
+  색 대비도 WCAG AA 기준에 맞췄다.
+- 회귀 고정: E2E fixture가 `WAITING_FOR_EVIDENCE` owner를 보존하고 실제 view filter를 따르게 했다.
+  담당자 메뉴 분리→완료 문의 진입→단일 요약→정책 3+3을 새 브라우저 시나리오로 고정했으며 손상된
+  fixture PNG를 정상 decode 가능한 synthetic PNG로 교체했다.
+- 검증: 배정·operator read·human review·migration backend 집중 47 PASS. Web 30 files/87 tests,
+  ESLint·TypeScript·OpenAPI sync·production build PASS. 브라우저 시연 7 PASS와 320·375·768·1024·
+  1440px 접근성/가로 overflow 5 PASS를 직렬 실행으로 확인했다. `git diff --check` PASS다.
+- 런타임: DB·Worker·volume을 유지하고 Web만 rebuild/recreate했다. 로컬과
+  `https://doongdoong.org`가 동일한 `index-XlE8HXPP.js`·`index-ynQ-EElY.css`를 제공하며 Web health
+  `ok`, Core 9개·정책 검색·공개 주소가 정상이고 DB Head는 `0031`이다.
+- 경계/다음 행동: 실제 사업 동작은 0이고 인증 정보를 입력한 live 담당자 수동 시연은 수행하지
+  않았다. 전체 제품 Gate인 고객 IdP 운영 연동, 실제 RTX 4090 Dev/Test/Shadow/workflow/soak/fault,
+  개인정보·부하·복원·경보 자격은 그대로 남아 있다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 18:00 KST — RTX 4090 Hub Identity and Product Gap Revalidation
+
+- 목표/진전: 실제 제품 전환을 위해 Qwen 4090 후보와 현재 운영 설정의 제품 격차를 다시
+  실측했다. Hugging Face 고정 revision을 bounded HTTPS metadata로 검사하는
+  `audit_qwen4090_hub.py`와 `make audit-qwen4090-hub`를 추가했다. 모델 weight는 다운로드하거나
+  활성화하지 않으며 optional `HF_TOKEN`도 출력하지 않는다.
+- Hub 증거: 후보 5개가 정확한 commit·Apache-2.0 license·quantized base lineage·safetensors LFS
+  identity·byte 합계와 일치해 모두 `HUB_REVISION_VERIFIED`였다. 공식 27B BF16
+  55,563,006,776 bytes와 FP8 30,866,866,928 bytes는 단일 4090에서 계속 hardware excluded다.
+  Community 27B W4A16은 21,018,000,928 bytes, 공식 Qwen3-8B-FP8은 9,436,628,784 bytes다.
+- 제품 판정: matrix는 27B baseline `SHADOW_ONLY`, 두 실행 challenger
+  `PENDING_QUALIFICATION`, eligible 0으로 계속 fail-closed한다. 첫 GPU 비교는 같은 27B artifact의
+  vLLM 0.28.0/context 4096/utilization 0.88로 runtime 변화만 측정하고, 다음에 공식 8B FP8로 model
+  변화를 분리한다. 실제 4090가 없으므로 Dev/Test/Shadow/workflow/fault/soak는 실행하지 않았다.
+- 운영 격차 실측: 현재 시연 runtime은 `LLM_PROVIDER=mock`, `VISION_PROVIDER=mock`,
+  `DATABASE_RLS_REQUIRED=false`, `OIDC_ENABLED=false`, `OTEL_ENABLED=false`, image sanitization
+  `false`, malware scanner `disabled`, retention `development/30d`다. Head 0031·drift 0과 Core 9개
+  health는 정상이나 이는 고객 파일럿 설정 증거가 아니다. failure replay/cancel도 runtime에서
+  의도적으로 비활성이다.
+- 검증: Hub live audit PASS, candidate matrix와 두 Compose profile PASS, Qwen/pilot 집중
+  28 PASS, 대상 Ruff/format PASS, Pyright 0, 전체 `git diff --check` PASS. 제품 감사 문서에 현재
+  gap table과 `4090 → RLS/OIDC/image security/retention/OTel/restore/load` 실행 순서를 추가했다.
+- 경계/다음 행동: 4090 노드에서 exact snapshot staging→unpinned evidence 수집→reviewed digest
+  pin→strict preflight가 첫 실행이다. 실제 고객 데이터와 외부 환불·메일·결제 동작은 0으로
+  유지한다. Commit·Push·PR 없음; 누적 작업트리와 사용자 소유 문서를 보존했다.
+
+### 2026-08-30 18:06 KST — Live ClamAV Evidence Security Qualification
+
+- 목표/진전: RTX 4090 없이 닫을 수 있는 실제 제품 P0 공백인 고객 이미지 반입 경로를 현재 시연
+  서버와 분리된 `csight-evidence-qualification` Docker 프로젝트에서 검증했다. 임시 PostgreSQL,
+  RabbitMQ, MinIO와 digest-pinned ClamAV 1.5.4를 사용하고 최신 migration 0031까지 적용했다.
+- 실제 HTTP 결과: 정상 JPEG는 201로 저장됐고 orientation 적용, private EXIF 제거, 원본 bytes
+  재인코딩을 readback으로 확인했다. EICAR는 422 `UNSAFE_EVIDENCE`, 손상 이미지는 422
+  `INVALID_IMAGE_CONTENT`, 과대 multipart 요청은 413으로 저장 전에 차단됐다. ClamAV를 실제로
+  중단한 뒤 정상 이미지도 503 `EVIDENCE_SECURITY_UNAVAILABLE`로 실패-폐쇄했으며 정상·장애
+  qualification 모두 `PASS`, 명령 exit 0이었다.
+- 격리/회귀: 종료 후 qualification 컨테이너와 volume 잔존 0. 기존 Core는 9개, API, 상담원 화면,
+  정책 검색과 공개 시연 주소가 모두 정상이다. 이미지 보안·설정·Evidence use case 집중 54 PASS,
+  자격 스크립트 재검증 3 PASS, 대상 Ruff/format PASS, Pyright 0, `git diff --check` PASS다.
+- 결함 수정/문서: 최신 Pyright가 경고한 contextmanager 반환형을 `Generator` 계약으로 교정했다.
+  `docs/operations/EVIDENCE_SECURITY.md`에 실행법, 관문, stop 조건과 x86_64 파일럿 호스트 재검증
+  경계를 추가하고 보안 운영 문서와 제품 감사표의 오래된 `NOT_RUN` 상태를 현재 증거로 갱신했다.
+- 판정/다음 행동: 격리된 이미지 보안 경로 자체는 자격을 통과했지만 현재 시연 runtime의 sanitizer와
+  scanner는 계속 비활성이다. 실제 고객 데이터 반입 전 x86_64 파일럿 호스트에서 재실행하고
+  production 두 경계를 필수 활성화해야 한다. 그와 별도로 RLS, 고객 IdP 운영 연결, retention 자동화,
+  OTel 경보, off-host 복원과 부하 관문이 남아 있어 파일럿 시작 판정은 계속 차단한다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 18:46 KST — Observability Qualification Closeout Correction
+
+- 정정: 위 18:45 observability 기록이 append 과정에서 파일상 18:30 retention 기록보다 먼저
+  배치되었다. 과거 항목을 이동·삭제하지 않고 이 항목을 최신 권위 closeout으로 추가한다.
+- 최종 판정: 격리 HTTP trace/metric, Prometheus query, 안전한 저장 label, 로컬 firing/resolved
+  acknowledgement, Collector outage 중 API 200과 재기동 후 signal/alert recovery는 `PASS`다.
+  실제 Worker 세 lane, pilot dashboard와 운영자 paging destination은 `NOT_RUN`이며 두 release gate는
+  계속 false다. qualification resource는 0건이고 Core 9개와 공개 시연 주소는 정상이다.
+- 검증: 기본 suite 916 PASS/92 deselected, 집중 18 PASS, Ruff/538-file format/Pyright 0,
+  Compose config와 diff check PASS. Commit·Push·PR 없음.
+
+### 2026-08-30 18:45 KST — Isolated OpenTelemetry and Local Alert Qualification
+
+- 목표/진전: 코드 내부 in-memory 계측까지만 검증됐던 관측 경로를 현재 demo와 분리된
+  `csight-observability-qualification` Docker project로 실측했다. digest-pinned Collector 0.135.0,
+  Prometheus 3.5.0, Alertmanager 0.28.1, 실제 CSight FastAPI emitter와 bounded local webhook receiver를
+  internal-only network에서 실행하며 host port와 외부 notification은 0으로 유지했다.
+- 실제 증거: 알려진 W3C trace/correlation이 Collector에 수신됐고 HTTP counter를 Prometheus에서
+  조회했다. firing webhook 200 acknowledgement와 resolved delivery, Collector 중단 중 FastAPI 200,
+  재기동 뒤 trace·metric 재수신과 alert refire를 확인해 최종 report `PASS`다. PII-free report는
+  `local-data/observability-qualification/latest/qualification_report.json`에 보존했다.
+- 발견/교정: SDK가 자동 생성한 `service.instance.id` UUID가 Prometheus에서 `exported_instance`로
+  저장되는 실제 고카디널리티 누출을 첫 실측이 차단했다. Collector metric resource processor가 이
+  값을 삭제하고, 저장된 series는 method·route·status class와 고정된 scrape/service labels만 갖도록
+  검사한다. read-only image의 uv cache와 HTTP header case를 잘못 가정한 qualification 결함도
+  fail-closed report를 통해 교정했다.
+- 자동화/정리: `make qualify-observability`가 digest pin, 무 host-port, UUID/금지 label 검사, firing→
+  outage→resolved→recovery를 자동 실행하고 성공·실패 모두 container/network/volume을 제거한다.
+  qualification 잔존 resource 0건이며 기존 Core 9개·API·상담원 화면·정책 검색·공개 주소는
+  18:44 KST 기준 정상이다.
+- 회귀: network-free 기본 suite 916 PASS/92 deselected, telemetry/readiness/pilot 집중 18 PASS,
+  qualification static contract 3 PASS, Ruff 전체 PASS, Python format 538 files, Pyright 0,
+  observability Compose config와 `git diff --check` PASS다.
+- 경계/다음 행동: 이 결과는 HTTP와 로컬 receiver 자격이다. 실제 Worker 세 처리선 export,
+  pilot-host dashboard p50/p95, 운영자 paging destination의 사람 acknowledgement는 `NOT_RUN`이므로
+  `otel_signal_delivery_passed`와 `operations_alert_delivery_passed`를 아직 true로 올리지 않는다.
+  RTX 4090 Dev/Test/Shadow/workflow/fault/soak와 release eligible 후보도 계속 미완료다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 18:30 KST — Bounded Automatic Sensitive Retention
+
+- 목표/진전: 사람의 수동 명령에 의존하던 만료 원문 삭제를 단일 고객 파일럿용 opt-in
+  `privacy-lifecycle` maintenance process로 자동화했다. 기본·현재 demo에서는 꺼져 있고, 정확한
+  tenant UUID와 승인된 retention version/days가 모두 있어야 한다. 비로컬 기동은 RLS-enforced API
+  DB role을 요구하며 이 프로세스는 Evidence reconciliation·MinIO 삭제 adapter를 갖지 않는다.
+- 권한/감사 경계: 자동 sweep은 tenant transaction context와 그 범위 안의 system all-Case read
+  capability를 함께 사용한다. 사람 ADMIN을 가장하지 않고 lifecycle event의 `actor_id`는 NULL,
+  `initiator=SYSTEM_RETENTION_SCHEDULER`로 고정한다. 수동 Evidence 복구와 모든 object version 삭제는
+  계속 active tenant ADMIN + dry-run + 이중 확인 경로만 허용한다.
+- 운영 안전성: batch 1~5,000, sweep당 최대 1~100 batches로 제한하고 blocked item에서 즉시 멈춘다.
+  blocked·truncated·exception·stale health를 성공으로 낮추지 않으며 health file과 구조화 log에는
+  aggregate count·timestamp만 남긴다. release gate는 자동 만료 drill과 실제 runtime 활성을 모두
+  요구한다. strict Core Compose overlay는 API password secret을 재사용하되 owner URL로 fallback하지
+  않는다.
+- 실제 PostgreSQL 증거: 최신 Head 0031 임시 DB에서 owner로 합성 자료를 준비한 뒤 연결을
+  `csight_api_role`로 낮추고 RLS를 강제한 상태에서 만료 문의 1건을 자동 sweep했다. 원문, LLM v1/v2
+  claim/summary와 terminal 파생문 삭제, actor NULL, system initiator, Alembic drift 0을 확인해 1 PASS다.
+  처음 0027까지만 올리던 stale integration fixture가 현재 0031 ORM과 충돌하던 결함도 최신 Head
+  runtime fixture로 교정했다.
+- 현재 시연 영향: 현재 demo DB의 만료 대상은 0건이며 host와 새 Docker image의 `--once` sweep 모두
+  scanned 0, applied 0, blocked 0, truncated false로 exit 0이다. one-off container 잔존 0, 기존 Core
+  9개·API·상담원 화면·정책 검색·공개 주소는 정상이다. 새 `csight-core:dev` image는 만들었지만 실행
+  중인 9개 container와 volume은 재생성하지 않았다.
+- 회귀: network-free 기본 suite 913 PASS/92 deselected, 집중 77 PASS, strict RLS PostgreSQL 1 PASS,
+  전체 Pyright 0, 대상 Ruff/format과 Compose core+RLS profile config, Make command dry-run,
+  `git diff --check` PASS다. 고정된 OIDC unit clock이 실제 시각을 지나 cookie 2건을 실패시키던
+  독립 time-bomb도 실행 시점 UTC 기준으로 교정해 2 PASS를 확인했다.
+- 문서/남은 Gate: ADR-0118과 privacy runbook, 보안 운영 문서, 제품 감사표를 갱신했다. 고객이 승인한
+  retention 값 입력과 profile 활성, 실제 alert delivery·log-wide marker scan·backup expiry/legal hold는
+  아직 필요하다. 실제 RTX 4090 Dev/Test/Shadow/workflow/fault/soak도 계속 미실행이다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 18:47 KST — Append-only Ordering Correction
+
+- 정정: 18:45·18:46 observability 항목이 파일상 18:30 항목 앞에 배치되었다. 기존 기록을 삭제하거나
+  이동하지 않고 이 EOF 항목을 최신 closeout으로 삼는다.
+- 최종 상태: 격리 HTTP 관측·로컬 Alertmanager 장애/복구 자격 `PASS`, qualification 잔존 resource
+  0건, Core 9개와 공개 시연 주소 정상이다. Worker lane·pilot dashboard·운영자 paging과 RTX 4090
+  자격은 `NOT_RUN`이며 release gate는 계속 fail-closed다. Commit·Push·PR 없음.
+
+### 2026-08-30 18:59 KST — Physical WAL and MinIO Version Restore Qualification
+
+- 목표/진전: checksum fixture에 머물던 복원을 현재 demo와 분리된 internal-only
+  `csight-restore-qualification` 환경에서 실제 실행했다. 매니페스트 v2는 PostgreSQL base, WAL,
+  MinIO inventory, 실제 MinIO version backup, runtime identity의 다섯 역할을 모두 결합한다. 기존
+  v1이 실제 객체 백업을 해시하지 않던 무결성 공백을 ADR-0119로 대체했다.
+- PostgreSQL 증거: digest-pinned PostgreSQL 16 source를 migration Head `0031`로 올리고 물리 base
+  backup을 만든 뒤 두 번째 synthetic row와 WAL switch를 기록했다. `pg_verifybackup` PASS, archive
+  증가, clean PGDATA의 recovery.signal/verified archive replay 후 row 2/2와 Head 일치를 확인했다.
+- MinIO 증거: digest-pinned 동일 MinIO에서 versioning을 활성화해 content version 4개와 delete marker
+  1개를 생성했다. 중단 상태 raw version backup을 clean volume에 복원한 뒤 모든 version ID·content
+  SHA-256·delete-marker semantics가 source inventory와 일치했다. 실제 backup copy에 bytes를 추가한
+  tamper probe는 restore 전에 manifest mismatch로 거부됐다.
+- 시간/경계: 최종 local synthetic RPO 0.0462분, RTO 0.2944분으로 각각 60/240분 기준 안이다. 이는
+  절차 자격이며 `encrypted_off_host_copy_qualified=false`, `target_host_repeat_required=true`다. 실제
+  encrypted immutable off-host storage, 독립 key resolution, pilot hardware 2회 drill 전에는
+  `restore_drill_passed`를 true로 올리지 않는다. 외부 사업 동작은 0회다.
+- 자동화/검증: `make qualify-restore-drill`이 성공·실패 모두 격리 container/network/volume을 제거한다.
+  잔존 resource 0건, 기본 무외부망 suite 921 PASS/92 deselected, restore 집중 16 PASS, Ruff 전체,
+  Python format 541 files, Pyright 0, Compose config와 diff check PASS다. Core 9개·API·상담원 화면·정책
+  검색·공개 주소는 18:59 KST 기준 정상이다.
+- 다음 행동: 실제 4090 host가 연결되기 전 다음 독립 제품 P0는 20-session/20-workflow와 두 120초
+  model job 처리선 격리 부하 또는 DLQ replay/cancel drill이다. RTX 4090 후보의 Dev/Test/Shadow/
+  workflow/fault/soak와 release eligible 후보는 계속 미완료다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 19:07 KST — 20-client Read and Model/Decision Queue Isolation
+
+- 목표/진전: 실측이 없던 동시 읽기와 처리선 격리를 두 범위로 분리해 검증했다. 현재 demo에는
+  DB mutation 없이 20개 독립 legacy-auth client가 Case/Review endpoint를 각 run당 200회, 3회 반복해
+  endpoint별 총 600회·전체 1,200회를 요청했다. 별도 internal-only RabbitMQ/Celery 환경에서는
+  120초 synthetic model task 2건을 concurrency 1 lane에 in-flight로 둔 채 decision 20건을
+  concurrency 2 lane에 발행했다.
+- 실제 수치: Case read p95는 396.274/359.804/306.245ms, Review는
+  460.999/349.606/451.916ms로 worst p95 모두 500ms 이하다. HTTP 오류·contract 실패 0건이다.
+  model task 1건이 실행되고 1건이 대기하는 동안 decision enqueue-to-start p50 257.834ms,
+  p95 574.339ms, max 574.404ms였고 20/20 완료, 유실·중복 0건, 측정 중 model completion 0건이다.
+- 자동화/안전: `make qualify-load-isolation`은 현재 demo read-only 측정 후 digest-pinned RabbitMQ,
+  model concurrency 1, decision concurrency 2 격리 stack을 실행한다. DB mutation·외부 사업 동작은
+  0회이고 qualification container/network/volume 잔존 0건이다. Core 9개·API·상담원 화면·정책 검색·
+  공개 주소는 19:06 KST 기준 정상이다.
+- 회귀: 기본 무외부망 suite 924 PASS/92 deselected, load static/percentile 집중 5 PASS, Ruff 전체,
+  Python format 544 files, Pyright 0, Compose config와 diff check PASS다. 운영 절차는
+  `docs/operations/LOAD_AND_QUEUE_ISOLATION.md`에 기록했다.
+- 경계/다음 행동: read는 같은 reviewer 계정의 legacy Bearer client라 OIDC/RLS 20-session 자격이
+  아니다. synthetic routing은 실제 provider/workflow가 아니다. non-model mutation p95, 20/20 terminal
+  workflow, queue 완전 배출·stall 0, strict RLS/OIDC와 실제 4090 부하는 `NOT_RUN`이므로 전체 load
+  release gate는 계속 fail-closed다. 다음 P0는 이 남은 20-workflow 범위 또는 DLQ replay/cancel이다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 19:16 KST — Reviewer-owned Intake and Completed-work Separation Closeout
+
+- 목표/진전: 관리자 전용 Case CAS 배정·재배정, 일반 담당자의 `문의 대기`와
+  `내 문의 처리 현황` 분리, 검토 상세의 단일 `문의 검토 요약`, 사진·문의 요약·정책 인용과
+  참고선 최근접 3개/최저 유사도 3개 표시가 현재 구현과 Accepted ADR-0109~0111에 일치함을
+  다시 대조했다. 새 외부 동작이나 모델 자동 결정은 추가하지 않았다.
+- 결함 수정: Case 대기함이 완료 판단을 review report 생성 시점에 의존해, 사람이 결정을 기록한 뒤
+  보고서 비동기 생성 전까지 처리한 문의가 잠시 `문의 대기`에 남을 수 있었다. operator Case
+  projection의 `my/unassigned/complete` 경계를 immutable human review decision 존재 여부로 바꿔
+  처리 즉시 완료 현황으로 분리하고, 보고서 실패·지연이 담당자 작업 분리를 되돌리지 않게 했다.
+- 검증: 담당자 배정·operator read·정책 유사도·human review backend 집중 21 PASS, 역할별 Web
+  18 PASS, 전체 기본 backend 925 PASS/92 skipped, 실제 PostgreSQL one-statement operator read
+  1 PASS, Web 전체 87 PASS와 lint/typecheck/OpenAPI sync/production build PASS, Ruff PASS,
+  Python source format 524 files, Pyright 0이다. 사용자 소유
+  `kaputt_best_vision_architecture.md`의 code fence format 차이는 수정하지 않고 제외했다.
+- Runtime: 현재 image로 API/Web를 재빌드·재기동했고 두 container와 PostgreSQL·RabbitMQ·MinIO
+  readiness가 정상이다. 로컬 로그인 화면은 DOM 로드와 browser console warning/error 0을 확인했다.
+  실제 자격정보 입력과 최종 결정·환불·메일·결제 동작은 0회다.
+- 미해결/다음 행동: 관리자/담당자 signed OIDC 실제 사용자 두 계정의 수동 화면 동선은 자격정보를
+  대신 입력하지 않아 `NOT_RUN`이다. 다음 운영 검증은 고객 IdP 계정으로 배정→담당자 대기함 노출→
+  사람 결정→완료 현황 즉시 이동을 실행하고, 별도 P0인 실제 20-workflow terminal 자격과 RTX 4090
+  Dev/Test/Shadow gate를 이어간다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 19:26 KST — Assignment and Personal-work UI Reverification
+
+- 목표/결과: 관리자 Case 배정·재배정, reviewer-only `문의 대기`와 `내 문의 처리 현황`, 단일
+  `문의 검토 요약`, 사진·문의 요약·정책 인용, 설명용 참고선 최근접 3개와 최저 코사인 3개가
+  Accepted ADR-0109~0111 및 현재 UI/API/DB 계약에 일치함을 재검증했다. 사람 최종결정 경계와
+  DRY_RUN 외부 동작 0회 원칙은 유지했다.
+- 결함 수정: 실제 PostgreSQL human-review 통합 검증에서 synthetic Case를 `PILOT_LIVE` 운영 지표의
+  분모 1로 기대하던 오래된 assertion을 발견했다. 제품의 immutable source-scope 경계를 약화시키지
+  않고, 합성 workflow가 전체 검토·보고서 경로는 검증하되 운영 지표에서는 eligible 0/excluded 1로
+  남는 계약으로 테스트를 정정했다.
+- 검증: 역할별 Web 집중 22 PASS, 담당자 배정·operator read·human review·정책 유사도 backend 집중
+  48 PASS/7 integration deselected, 실제 disposable PostgreSQL integration 7 PASS다. Web lint,
+  TypeScript typecheck, production build, 관련 Python Ruff와 Pyright 0, `git diff --check` PASS다.
+  DB Head는 `20260830_0031_oidc_backchannel_logout`; Core API/Web/PostgreSQL/RabbitMQ/MinIO readiness와
+  `doongdoong.org/login` DOM 로드, browser console warning/error 0을 확인했다.
+- 미해결/다음 행동: 로그인 자격정보를 대신 입력하지 않았으므로 실제 관리자 계정 배정 → 담당자
+  계정 `문의 대기` 노출 → 사람 결정 → `내 문의 처리 현황` 즉시 이동 수동 동선은 `NOT_RUN`이다.
+  고객 IdP의 두 실제 계정으로 이 한 번의 수동 acceptance를 수행한 뒤, 별도 release gate인
+  20-workflow terminal 자격과 RTX 4090 Dev/Test/Shadow 검증을 진행한다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 19:28 KST — RTX 4090 Qwen Static Gate Recheck
+
+- 목표/결과: 장시간 20-workflow 구현은 사용자 요청에 따라 이번 회차에서 시작하지 않고, 현재
+  RTX 4090/Qwen 후보 매트릭스와 실제 Compose Shadow 프로필의 정적 자격 상태를 재검증했다.
+- 후보 판정: Qwen3.8 27B BF16/FP8 official 후보는 단일 4090 VRAM을 초과해
+  `HARDWARE_EXCLUDED`; 이전 vLLM 0.26 AWQ 후보는 lineage·평가·VRAM headroom 미충족으로
+  `SHADOW_ONLY`다. 비교 대상인 `Qwen3-8B-FP8` vLLM 0.26과
+  `Qwen3.8-27B-AWQ-INT4` vLLM 0.28은 모두 `PENDING_QUALIFICATION`이며 release eligible 후보는
+  0개로 fail-closed 상태를 유지한다.
+- 실행 계약: 두 비교 후보의 exact Hub revision, digest-pinned vLLM image, served model name,
+  `SHADOW` 실행 모드가 Compose 매트릭스와 일치해 2/2 `PROFILE_VERIFIED`, 전체 `PASS`다. 이는
+  실행 준비 계약의 검증이며 실제 속도·정확도·VRAM·안정성 통과를 의미하지 않는다.
+- 검증: 후보/Compose/host preflight/Hub audit/extraction harness unit 34 PASS, 대상 Ruff PASS,
+  Pyright 0, `git diff --check` PASS다. 외부 GPU 호출과 모델 다운로드, 실제 사업 동작은 0회다.
+- 미해결/다음 행동: 실제 RTX 4090에서 두 후보의 Dev 비교 후 우승 후보를 freeze하고 sealed Test,
+  100건 Shadow, 20-workflow terminal, fault/soak 및 서명된 activation gate를 순서대로 실행해야 한다.
+  현재는 `NO_RELEASE_ELIGIBLE`이며 실제 제품 기본 경로로 전환하지 않는다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리, 사용자 소유 문서, 투자자 SVG와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-30 19:29 KST — Product Audit Truth Sync
+
+- 목표/결과: 추가 장시간 실행 없이 제품 감사표의 현재 결론만 authoritative state와 다시 맞췄다.
+  DB Head를 0031로 갱신하고, 이미 완료된 Case 배정·reviewer 직접 객체 소유권과 terminal/MinIO
+  삭제 경계를 미구현처럼 읽히던 문장을 수정했다.
+- 모델 표현: 과거 4090 Qwen3.8-27B INT4 관측은 역사적 Shadow baseline이며 현재 출시 자격이
+  아님을 명시했다. 현재 Core는 mock이고 release eligible 후보는 계속 0개다.
+- 남은 Gate: 고객 IdP 두 계정 acceptance와 권한 변경→session 종료 운영 연결, 고객별 retention·
+  backup 만료/legal hold, 암호화 off-host 복원 반복, 실제 4090 Dev/Test/Shadow/workflow/fault/soak다.
+- 검증/Git safety: 문서 `git diff --check` PASS. Commit·Push·PR 없음; 사용자 소유 파일을 보존했다.
+
+### 2026-08-31 01:13 KST — RTX 4090 Tailscale Reconnection Attempt
+
+- 목표/진전: 사용자가 Tailscale을 다시 켠 뒤 실제 4090 qualification을 재개했다. Mac mini의
+  Tailscale backend는 Running이고 Linux `workstation` 피어 `100.116.246.125`는 online, direct
+  ping 10ms다. TCP 22와 기존 VLM 18001은 열려 있고 `/health`는 HTTP 200이다. 18000 LLM 포트는
+  닫혀 있어 새 extraction 후보는 아직 기동되지 않았다.
+- 접근 검증: 일반 SSH와 Tailscale SSH를 모두 확인했다. 로컬의 기존 4090 전용
+  `dacon_4090_ed25519` 키는 읽을 수 있지만 `khrin` 및 제한된 기존 후보 계정 조합에서 서버가
+  public-key 인증을 거부했다. 비밀번호 입력·추측, 서버 설정 변경, 모델 다운로드·기동은 하지 않았다.
+- 상태: 실제 `nvidia-smi`, NVIDIA Docker, disk, staged snapshot digest, running container identity는
+  `NOT_RUN`; 실제 4090 Dev/Test/Shadow/workflow/fault/soak도 계속 `NOT_RUN`이다. 기존 VLM 서비스는
+  중단하거나 변경하지 않았다.
+- 다음 행동: 4090 workstation의 정확한 `whoami` 결과를 확인하고, 해당 계정에 Mac의
+  `dacon_4090_ed25519.pub`를 authorized key로 등록하거나 Tailscale SSH를 명시적으로 허용한 뒤
+  read-only host preflight부터 재개한다.
+- Git safety: Commit·Push·PR 없음. 누적 작업트리와 사용자 소유 파일을 보존했다.
+
+### 2026-08-31 01:36 KST — RTX 4090 Host Access and Package Gate Correction
+
+- 접근 정정: 로컬 SSH 설정의 `Khrin` 별칭이 실제 `user@100.116.246.125`와 전용 key를 이미
+  가리키고 있음을 확인해 public-key 접속에 성공했다. 앞선 `khrin`/`kimhrin` 사용자명 시도 실패는
+  계정 추정 오류였다. 사용자가 제공한 비밀번호는 로그인 확인 외에 재사용하지 않았고 파일·환경·
+  명령·문서에 저장하지 않았다.
+- 실제 호스트: Linux `6.8.0-136-generic` x86_64, RTX 4090 24,564 MiB/CC 8.9/driver
+  580.173.02, Docker 29.5.3와 NVIDIA runtime을 확인했다. 기존
+  `csight-kaputt-vlm-qwen38-vlm-1`은 exact Community 27B AWQ revision과 vLLM 0.26 digest로
+  18001에서 health 200이며 22,626 MiB를 사용한다. GPU free는 1,350 MiB, 18000은 비어 있다.
+- 패키지 준비: 기존 volume은 변경하지 않고 26 GiB owner-controlled cache에 exact snapshot을
+  복제했다. vLLM 0.28 exact digest를 pull하고, artifact 15 files/21,018,000,928 weight bytes,
+  canonical lock 264 lines, Python+dpkg 749-component CycloneDX SBOM, publisher model card/config 기반
+  quantization recipe를 수집했다. 준비 후 디스크 여유는 약 255 GiB다.
+- 관문 결과: artifact content, image, lock, SBOM, recipe digest를 27B v0.28 matrix 항목에만 고정했고
+  전체 profile 검증은 PASS, release eligible 후보는 계속 0개다. 실제 container preflight에서 모든
+  host/private bind/offline/package 항목은 PASS, 기존 VLM 때문에 free VRAM 1,350 MiB와 active GPU
+  process 1건만 FAIL이다. publisher가 calibration dataset revision을 공개하지 않아 해당 digest는
+  꾸며 넣지 않고 경고로 보존했다.
+- 결함 수정: host Python 3.10에서도 digest-pinned candidate image로 verifier/preflight를 실행할 수
+  있는 container tooling, iproute2 없는 image의 stdlib IPv4 probe, deterministic runtime SBOM
+  generator를 추가했다. container probe에는 host PID namespace를 강제해 실제 GPU process가 0으로
+  숨는 오판을 차단했다. calibration 미공개만 남은 경우 평가용 Shadow만 허용하는
+  `SHADOW_READY_PROVENANCE_INCOMPLETE`를 추가했으며 `strict_ready=false`와 release 차단은 유지한다.
+- 검증: Qwen host/release/profile/harness/Hub/SBOM 집중 39 PASS, Compose profile 2/2 PASS, Shell
+  syntax, Ruff/format, 대상 Pyright 0, `git diff --check` PASS다. 원격 profile verifier도 PASS다.
+- 미해결/다음 행동: 단일 GPU라 27B Dev에는 기존 VLM의 약 30~60분 유지보수 중단이 필요하다.
+  자동 원상복구와 18001 health 200 확인 조건으로 사용자 허가를 요청했으며, 허가 전에는 중단하지
+  않는다. 27B Dev/freeze/Test/Shadow/workflow/fault/soak와 8B exact download/qualification은 아직
+  `NOT_RUN`이다.
+- Git safety: Commit·Push·PR 없음. 기존 VLM, Core, 사용자 소유 파일과 누적 작업트리를 보존했다.
+
+### 2026-08-31 01:48 KST — Official 8B Package and Maintenance Restore Readiness
+
+- HF/package: HF CLI를 token 없이 exact commit에 고정해 `Qwen/Qwen3-8B-FP8`을 별도 8.9 GiB
+  owner-controlled cache에 받았다. snapshot 12 files, weight 9,436,628,784 bytes와 content digest,
+  vLLM 0.26 canonical lock 265 lines, Python+dpkg 745-component SBOM, official card/config 기반 FP8
+  recipe를 matrix에 고정했다. 두 runnable profile은 계속 2/2 PASS이고 release eligible은 0개다.
+- 계약 교정: official config의 dynamic e4m3/block128 FP8은 calibration dataset을 선언하지 않으므로
+  `OFFICIAL_PREQUANTIZED_DYNAMIC_FP8` evidence mode를 추가했다. official+FP8 조합만 허용하고
+  calibration digest를 임의로 넣거나 Community artifact가 예외를 주장하면 validation이 실패한다.
+  27B Community의 미공개 calibration revision은 계속 Shadow-only 경고다.
+- 실제 preflight: 8B strict package/host/private-bind/offline/provenance 항목은 전부 PASS다. 기존 VLM
+  점유 때문에 GPU free 1,350 MiB와 active process 1건만 FAIL이다. 즉 중단 창에서 GPU가 idle이면
+  strict preflight가 통과할 준비가 됐고, 아직 모델 기동·Dev 호출은 하지 않았다.
+- 평가/복구: frozen app dependency의 Python 3.12 evaluator image
+  `sha256:13d8e94ee3e7a5fa054e09faca7f89f3b511496a6699616feab6ad88e7e6be28`을 빌드해 import와
+  GPU sampler 가용성을 확인했다. 기존 VLM compose의 재기동 입력이 shell에 없던 위험을 발견해
+  owner-only restore env로 캡처했고 secret 출력 없이 `docker compose config` PASS를 확인했다.
+- 자동 안전장치: `run_qwen4090_maintenance_dev.sh`는 명시적 허가 변수 없이는 exit 2, exact VLM
+  image/health 검증 뒤 EXIT trap 설치, Dev-only evaluation, 모든 종료 경로의 candidate 제거와 VLM
+  재기동·health 확인을 강제한다. 원격 fail-closed refusal PASS, 기존 18001 VLM health 200이다.
+- 검증: Qwen/SBOM 집중 41 PASS 뒤 maintenance/release/host 집중 28 PASS, Shell syntax,
+  Ruff/format, 대상 Pyright 0, matrix/profile PASS, `git diff --check` PASS다.
+- 미해결/다음 행동: 사용자의 명시적 유지보수 허가를 기다린다. 허가 후 27B v0.28 Dev를 먼저
+  실행하고 자동 VLM 복원을 확인한 뒤 8B Dev를 동일하게 비교한다. freeze, sealed Test, Core Shadow
+  100, workflow 20, fault/soak는 Dev 승자 결정 전까지 실행하지 않는다.
+- Git safety: Commit·Push·PR 없음. 사용자 비밀번호·LLM/VLM API key·HF token은 저장소와 문서에
+  기록하지 않았고 기존 VLM/Core/사용자 파일을 보존했다.
+
+### 2026-08-31 01:50 KST — RTX 4090 Pre-Maintenance Final Check
+
+- 최종 정적 검증: Qwen release/profile/host/extraction/Hub/maintenance/SBOM 집중 42 PASS,
+  matrix `NO_RELEASE_ELIGIBLE`, Compose profiles `PASS`, Shell syntax, Ruff/format, 대상 Pyright 0,
+  `git diff --check` PASS다.
+- 실제 상태: 기존 VLM은 `Up 2 days (healthy)`, 18001 health 200이고 GPU 사용 22,729 MiB/free
+  1,350 MiB다. 유지보수 runner의 허가 없는 실행은 실제 host에서 exit 2로 거부됐다.
+- 다음 행동: 사용자에게 기존 VLM의 30~60분 순차 중단 허가를 다시 요청한다. 허가 전에는
+  candidate start와 모델 provider 호출 0회를 유지한다.
+
+### 2026-08-31 03:55 KST — RTX 4090 Candidate Dev Qualification
+
+- 실제 실행: 사용자 승인 후 단일 RTX 4090 유지보수 창에서 27B AWQ/vLLM 0.28과 공식 8B FP8/
+  vLLM 0.26을 동일 합성 Dev 120건으로 순차 평가했다. 각 실행 전후 exact 기존 VLM image와
+  Tailscale 전용 18001 health를 확인했고 모든 종료에서 자동 복원됐다. 최종 VLM은
+  `running/healthy`, restart 0이다.
+- 27B 결과: 23/120 valid, schema·exact quote 0.191667, p50 3.4365s, p95 4.626s,
+  34.4969 output tok/s, observed min free VRAM 2,350 MiB다. 실패 97건은 모두
+  `LLM_INVALID_STRUCTURED_OUTPUT`, injection·reasoning 위반은 0건이다.
+- 8B 결과: 초기 offline cache가 `HF_HOME/hub` 구조가 아니어서 fail-closed startup 실패했고 기존
+  VLM이 복원됐다. 동일 inode를 올바른 Hub layout에 배치해 package digest preflight를 다시 통과한 뒤
+  49/120 valid, schema·exact quote 0.408333, p50 1.8295s, p95 2.823s, 50.4935 output tok/s,
+  observed min free VRAM 2,122 MiB를 측정했다. 구조화 출력 실패 45건, source quote 불일치 26건,
+  injection 위반 4/120, reasoning 0건이다.
+- 안전 보강: maintenance runner가 실패 후보 제거 전에 private result root에 mode 0600 startup log를
+  남기도록 수정했고 unit test와 Shell syntax가 PASS다. 실제 8B 실패 원인을 이 로그로 확인했다.
+- 증거: 두 privacy-safe 결과 패키지를 `evaluation/results/qwen4090_extraction_v2/`로 복사해 profile,
+  dataset, matrix와 result digest를 다시 검증했고 두 후보 모두 `RESULT_PACKAGE_PASS`다. 원문,
+  prediction, provider response/request ID, reasoning은 저장하지 않는다.
+- 판정/미해결: 둘 다 Dev 절대 기준 실패라 freeze, sealed Test, Core Shadow 100, workflow 20,
+  fault/soak, signed activation을 실행하지 않았다. release eligible은 0개이고 시연은 기존 VLM을
+  유지한다. Matrix의 `qualification`은 freeze 이후 release-grade evidence만 받으므로 실패 Dev는
+  result manifest로 보존하고 machine status는 `PENDING_QUALIFICATION`을 유지한다. 다음 안전 행동은
+  8B의 별도 Dev prompt profile 튜닝이며 운영 prompt나 PRIMARY를 바로 변경하지 않는다.
+- 최종 검증: Qwen release/profile/host/extraction/Hub/maintenance/SBOM 집중 42 PASS, Ruff와 format
+  PASS, 대상 Pyright 0, Shell syntax PASS, Compose profile PASS, matrix `NO_RELEASE_ELIGIBLE`, 두
+  result package 검증 PASS, `git diff --check` PASS다.
+- Git safety: Commit·Push·PR 없음. 사용자 비밀번호/API key/token은 저장소·문서·결과에 기록하지
+  않았고 사용자 소유 파일과 누적 작업트리를 보존했다.
+
+### 2026-08-31 05:38 KST — Generic Ed25519 Signed Case Intake
+
+- 목표/결과: 고객별 전용 코드를 추가하지 않고 승인된 외부 시스템이 Case를 전달할 수 있는
+  `POST /api/v1/integrations/cases` 수직 슬라이스를 구현했다. Ed25519 서명은 method, 고정 path,
+  key/event/timestamp header와 exact raw-body SHA-256을 묶고, 허용 시각 오차는 최대 ±300초다.
+- 신뢰 경계: key ID는 배포 설정의 단일 tenant, source, provenance와 active no-role service actor에
+  고정된다. body의 `tenant_id`·`source_scope`는 허용하지 않으며, 인증 성공 경로만 기존 Case UoW로
+  `PILOT_LIVE`/`RECEIVED` Case, 민감 payload와 최초 history를 기록한다. 첨부, 자동 분석, 배정,
+  정책·사람 결정, 외부 동작은 추가하지 않았다.
+- 복구/중복: source ID + signed event ID를 기존 idempotency 테이블의 별도
+  `case.intake.signed.v1` namespace로 사용한다. exact replay는 동일 Case/HTTP 200, 다른 payload의
+  event ID 재사용은 409다. invalid/tamper/stale는 Case 저장 use case 호출 0회다.
+- 운영 계약: migration `20260831_0032_signed_case_intake.py`와 ORM constraint를 추가했고,
+  `.env.example` 및 ADR-0120에 key mapping, canonical bytes, 예시 key 생성·서명·요청 절차를 기록했다.
+  실제 private key 생성·저장이나 customer source 활성화는 하지 않았다.
+- 검증: signed intake HTTP/application/key-loader/migration과 Settings 포함 대상 unit 59 PASS,
+  대상 Ruff PASS, 대상 Pyright 0이다. 외부 네트워크·GPU·실제 사업 동작은 0회다.
+- 미해결/다음 행동: 기능은 기본 비활성이다. 파일럿 tenant의 전용 service actor와 실제 public key를
+  운영 secret mount에 provision한 뒤 PostgreSQL/RLS 환경에서 valid/replay/tamper/stale 및 DB row
+  count를 검증해야 활성화할 수 있다. 첨부·자동 workflow start는 별도 승인된 후속 slice다.
+- Git safety: Commit·Push·PR 없음. 사용자 소유 파일과 누적 작업트리를 보존했다.
+
+### 2026-08-31 06:20 KST — Productization P0 Implementation and Full Regression
+
+- 목표/결과: 단일 고객·상담원 5~20명 제한 pilot로 발전시키기 위한 남은 제품 P0를 구현했다.
+  Case·Review의 문의/주문/상품 번호 검색을 pagination 전 server-side 단일 SQL로 옮기고, 관리자
+  운영 화면에 개인정보 없는 6개 온보딩 gate를 추가했다. 현재 실제 준비도는 인력만 PASS,
+  나머지 5개 FAIL이며 `pilot_ready=false`다.
+- Intake/model: generic Ed25519 signed intake를 실제 PostgreSQL HTTP에서 201/replay 200/conflict
+  409와 정확히 한 Case graph로 검증했다. task별 signed model route plan, migration 0033~0034,
+  Analysis stage의 immutable plan snapshot과 model Worker의 historical activation/deployment/runtime
+  identity 검증을 연결했다. 현재 강제 범위는 text extraction v2뿐이고 query builder·grounding은
+  의도적으로 준비도 FAIL을 유지한다. 모델이 정책·사람 결정·외부 동작을 만들지는 않는다.
+- Pilot runtime: demo와 별도인 OIDC-only/RLS/ClamAV/retention/OTel/signed intake·model profile,
+  read-only preflight와 volume 보존 controller를 추가했다. 실제 env가 없어 preflight는 exit 2로
+  거부됐고, filesystem 가용 공간도 8.7 GiB로 최소 30 GiB에 미달한다. start/build/migrate/prune/
+  volume 삭제는 0회다.
+- 회귀 수정: 전체 통합 실행에서 최신 migration head를 과거 revision으로 가정한 테스트, append-only
+  failure/assignment source graph를 삭제하려던 teardown, 운영 집계의 tenant context 누락과 시간 경계
+  fixture를 발견했다. 운영 constraint를 완화하지 않고 dynamic head, immutable graph 보존,
+  explicit tenant context와 생성 이후 만료시각으로 수정했다.
+- 최종 검증: 기본 backend 1002 PASS/6 SKIPPED/88 deselected, disposable PostgreSQL integration
+  83 PASS/5 external-GPU SKIPPED/1008 deselected, Web 31 files·90 tests PASS, lint/typecheck/OpenAPI
+  sync/production build PASS다. Ruff 전체, Python format 580 files, Pyright 0, diff check와 단일
+  Alembic head 0034도 PASS다. Web main gzip 82.18 kB, 최대 chunk 257.65 kB로 예산 안이다.
+- 런타임/경계: 06:20 KST 현재 Core 9개 running/healthy, DB는 0034이고 API의 PostgreSQL·RabbitMQ·
+  MinIO readiness는 `ok`다. 실행 중 demo image는 이번 작업트리로 재빌드하지 않았고 별도 pilot은
+  시작하지 않았다. release eligible 4090 모델은 0개, 실제 고객 key/env/IdP/off-host restore와
+  남은 20-workflow qualification은 미완료다. 실제 환불·메일·결제·GPU 호출은 0회다.
+- Git safety: Commit·Push·PR 없음. branch와 origin은 계속 `3daaa7b`이며 누적 작업트리,
+  사용자 소유 문서, 투자자 SVG와 `kaputt_best_vision_architecture.md`를 보존했다.
+
+### 2026-08-31 15:10 KST — Demo Baseline Freeze and Pilot Admission Contracts
+
+- 시연본 동결: 실행 중인 Core/Web/DB를 재빌드·재시작·마이그레이션하지 않고 누적 변경을 네 범주로
+  검토했다. 고신뢰 Secret과 대용량 staged blob은 0건이었다. 사용자 소유 문서·원본 이미지·모델
+  checkpoint·Docker volume과 `kaputt_best_vision_architecture.md`는 staging에서 제외했다.
+- Git 기준점: DB·보안·운영 기반 `8834b9b`, 상담원 API·UI `c8c7070`, ADR·평가·운영 문서
+  `ba39aea`의 세 commit을 현재 `codex/operator-console-product-direction`에 push했다. PR과
+  `develop/main` 병합은 만들지 않았다.
+- 모델 route: additive migration 0035로 Query Builder와 Grounded Explanation run에 실행 모드,
+  nullable legacy route ID, enforcement 계약 버전과 tenant-scoped FK/index를 추가했다. 새 LLM run은
+  replay 확인 뒤 활성 route를 같은 transaction에 고정하고 Worker가 역사적 activation·서명·task·
+  mode·deployment·prompt/schema/runtime identity를 provider 호출 전에 검증한다. RAW와
+  DETERMINISTIC은 route 조회와 모델 호출이 0이다.
+- 런타임 설정/queue: Extraction·Query Build·Grounding의 endpoint, model revision, deployment,
+  timeout과 circuit 설정을 task별로 분리하고 provider client를 process 내 재사용한다. 모델 lane은
+  concurrency 1, 검색 lane은 2, 결정 lane은 2다. 다만 Query Build와 Search의 독립 v2 event 분리는
+  아직 구현하지 않아 기존 LLM policy-retrieval task 전체를 보수적으로 모델 lane에서 처리한다.
+- 온보딩/준비도: PII 없는 `plan/apply/verify` 운영자 명령을 추가했다. 명명 계정 5~20명, 관리자·
+  검토자, 명시적 retention, no-role signed-intake actor, IdP groups, active policy와 지원 체계를
+  검증하며 삭제·암묵적 보존기간·Secret 출력은 금지한다. `/api/v1/operations/pilot-readiness`는
+  구성 6개와 운영 자격 25개를 freshness와 evidence digest로 합산하고 누락·만료를 FAIL 처리한다.
+  signed intake와 readiness가 포함된 별도 pilot OpenAPI artifact도 생성했다.
+- 최종 회귀: 기본 backend `1014 passed`, disposable PostgreSQL integration `83 passed, 5 skipped`,
+  Web `31 files/90 tests`, lint, typecheck, OpenAPI sync, production build, Ruff, format, Pyright가 모두
+  PASS다. 실제 migration 0034→0035와 schema drift도 격리 DB에서 PASS했다. Web main gzip은
+  82.18 kB, 최대 chunk는 257.65 kB다. 외부 네트워크·GPU·실제 사업 동작은 0회다.
+- 런타임/차단: 현재 데모 9개 서비스는 계속 정상이고 DB는 의도적으로 0034다. 디스크는 9.0 GiB로
+  clean build 최소 35 GiB보다 부족해 clean worktree, `rc-<sha>` image, candidate stack은 만들지
+  않았다. `.env.pilot`, 고객 IdP/public key/retention/policy, 보안 이미지 업로드 실증, release 모델,
+  off-host 복원 2회, 경보 전달과 실제 20-session/20-workflow 증거가 없으므로 pilot은 계속 BLOCKED다.
+- 다음 행동: 삭제 대상과 예상 회수량을 사용자에게 제시해 승인을 받은 뒤 복구 가능한 cache만
+  정리한다. 35 GiB 이상을 확인하면 push된 SHA의 clean worktree에서 non-dev image를 한 번 빌드하고
+  digest를 고정한다. 이후 외부 고객 입력을 받은 owner-only `.env.pilot`에서 onboarding verify,
+  31개 readiness gate와 preflight를 통과한 경우에만 별도 pilot profile을 시작한다.

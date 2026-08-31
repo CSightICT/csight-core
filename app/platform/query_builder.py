@@ -11,7 +11,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.platform.analysis.enums import ExtractionIssueType
+from app.platform.analysis.enums import AnalysisExecutionMode, ExtractionIssueType
 from app.platform.analysis.llm_v2 import CompletenessResult, LLMTextExtractionResultV2
 from app.platform.analysis.models import ProviderExecutionMetadata
 from app.platform.errors import CSightError
@@ -318,6 +318,9 @@ class PolicyRetrievalRun(_StrictModel):
     analysis_run_id: str
     text_result_id: str
     strategy: QueryStrategy
+    execution_mode: AnalysisExecutionMode = AnalysisExecutionMode.PRIMARY
+    model_route_plan_id: str | None = None
+    route_enforcement_contract_version: str | None = None
     status: RetrievalRunStatus
     as_of_date: date
     top_k: int = Field(gt=0, le=50)

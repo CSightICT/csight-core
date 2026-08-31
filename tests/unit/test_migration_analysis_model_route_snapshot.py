@@ -28,11 +28,11 @@ def _config(output: StringIO) -> Config:
     return config
 
 
-def test_analysis_model_route_snapshot_is_the_linear_head() -> None:
+def test_analysis_model_route_snapshot_precedes_query_and_grounding_snapshots() -> None:
     scripts = ScriptDirectory.from_config(_config(StringIO()))
     migration = scripts.get_revision(REVISION)
 
-    assert scripts.get_heads() == [REVISION]
+    assert scripts.get_heads() == ["20260831_0035_query_grounding_model_route_snapshot"]
     assert migration is not None
     assert migration.down_revision == PREVIOUS
 

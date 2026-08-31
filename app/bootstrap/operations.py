@@ -1,5 +1,7 @@
 """Composition root for aggregate operations reads."""
 
+from datetime import timedelta
+
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.failure_recovery import SQLAlchemyOperationalFailureRepository
 from app.adapters.persistence.model_activation import SQLAlchemyModelActivationRepository
@@ -9,6 +11,7 @@ from app.adapters.persistence.onboarding_readiness import (
 )
 from app.adapters.persistence.operations import SQLAlchemyOperationsReadRepository
 from app.adapters.persistence.session import create_session_factory
+from app.adapters.pilot_readiness import JsonPilotQualificationEvidenceRepository
 from app.adapters.runtime import UtcClock, Uuid4Generator
 from app.adapters.security.model_release_signatures import (
     Ed25519ModelReleaseSignatureVerifier,
@@ -32,6 +35,7 @@ from app.application.operations import (
     GetOperationsOverview,
     ListOperationalFailures,
 )
+from app.application.pilot_readiness import GetPilotReadiness
 from app.bootstrap.model_activation import model_activation_is_configured
 from app.bootstrap.settings import Settings
 from app.interface.http.operations_services import OperationsServiceContainer
@@ -96,6 +100,11 @@ def build_operations_services(settings: Settings) -> OperationsServiceContainer:
             ),
             GetActiveModelRoutePlan(route_resolver),
         )
+    onboarding_readiness = GetOnboardingReadiness(
+        repository=onboarding_repository,
+        configuration=onboarding_readiness_configuration(settings),
+        clock=clock,
+    )
     return OperationsServiceContainer(
         get_overview=GetOperationsOverview(repository, clock),
         get_failures=GetOperationsFailures(repository, clock),
@@ -110,10 +119,16 @@ def build_operations_services(settings: Settings) -> OperationsServiceContainer:
         get_active_model_release=activation_services[2],
         activate_model_route=activation_services[3],
         get_active_model_route=activation_services[4],
-        get_onboarding_readiness=GetOnboardingReadiness(
-            repository=onboarding_repository,
-            configuration=onboarding_readiness_configuration(settings),
+        get_onboarding_readiness=onboarding_readiness,
+        get_pilot_readiness=GetPilotReadiness(
+            onboarding=onboarding_readiness,
+            evidence_repository=JsonPilotQualificationEvidenceRepository(
+                getattr(settings, "pilot_qualification_evidence_file", None)
+            ),
             clock=clock,
+            evidence_max_age=timedelta(
+                hours=getattr(settings, "pilot_qualification_evidence_max_age_hours", 24)
+            ),
         ),
     )
 
@@ -149,9 +164,7 @@ def onboarding_readiness_configuration(
             else None
         ),
         oidc_tenant_slugs=oidc_tenant_slugs,
-        # The current runtime pins text extraction only. Keep the product gate
-        # closed until all three task paths prove route enforcement end to end.
-        model_route_runtime_complete=False,
+        model_route_runtime_complete=getattr(settings, "model_route_enforcement", False),
     )
 
 

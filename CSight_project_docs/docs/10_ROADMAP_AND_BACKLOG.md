@@ -220,7 +220,9 @@ Sprint 3의 기본 경로는 Mock Vision으로 검증됐다. 실제 Vision quali
 - [ ] Triton 전환
 - [ ] Object Storage Lifecycle 자동화
 - [ ] 외부 CRM Connector
-- [ ] OpenTelemetry 기반 분산 Trace
+- [ ] OpenTelemetry 기반 분산 Trace (HTTP 격리 Collector 실수신·Prometheus query·로컬
+  firing/resolved 알림·장애/복구 PASS; 실제 Worker lane·pilot dashboard·운영자 paging destination과
+  versioned async parent-context 전파는 미검증)
 - [ ] Cloud / Linux Core 배포
 - [ ] Domain Module 추가
 

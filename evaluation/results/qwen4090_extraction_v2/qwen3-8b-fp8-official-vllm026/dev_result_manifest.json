@@ -1,0 +1,13 @@
+{
+  "candidate_id": "qwen3-8b-fp8-official-vllm026",
+  "contains_customer_text": false,
+  "contains_model_predictions": false,
+  "contains_provider_responses": false,
+  "dataset_digest": "sha256:d522ea609b274810f75d186064635d16f7b4f2097dad02a2beddd3ba929543a4",
+  "metrics_file": "dev_metrics.json",
+  "observations_file": "dev_observations.jsonl",
+  "profile_digest": "sha256:48a7279cdff44f202814d06aee07bb7c9f804184c8699eaa4eb0c2c66a43877a",
+  "result_digest": "sha256:eaf00899494f913e492cf6e2a379393ad4042bf3ccd9ddf8d714ed72d409d48a",
+  "schema_version": "qwen4090_extraction_result_manifest/1.0.0",
+  "split": "dev"
+}

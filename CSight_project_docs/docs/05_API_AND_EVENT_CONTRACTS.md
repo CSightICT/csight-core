@@ -1,5 +1,13 @@
 # 05. API and Event Contracts
 
+## Operator assignment and review summary (ADR-0109)
+
+- `GET /api/v1/human-review-assignees` is administrator-only and returns active tenant users eligible for review assignment.
+- `POST /api/v1/human-review-tasks/{task_id}/assign` accepts `expected_version`, `assignee_id`, and an audit rationale. It appends assignment history and returns `409` on stale task versions.
+- Operator case/review projections restrict reviewer-only accounts to current assignments or their immutable completed decisions. Administrators retain tenant-wide views.
+- Review task detail additively returns `inquiry_summary`, cited clause `text`, and `policy_similarity`. `NEAREST` is ordered by absolute cosine distance from the versioned `0.65` reference; `LEAST` is ordered by ascending cosine. Similarity evidence is absent for legacy runs and is advisory only.
+- `WAITING_FOR_EVIDENCE` retains the current assignee and assignment interval. Resume returns the task to `CLAIMED`; it does not reopen an unassigned claim race.
+
 ## 1. 계약 원칙
 
 - 외부 API는 `/api/v1`으로 버전 관리한다.
@@ -26,8 +34,8 @@
 
 | Method | Path | 인증 | 설명 |
 |---|---|---|---|
-| POST | `/api/v1/auth/token` | 불필요 | 로컬·PoC Access Token 발급 |
-| GET | `/api/v1/auth/me` | Bearer | 현재 사용자, Tenant와 현재 역할 조회 |
+| POST | `/api/v1/auth/token` | 불필요 | 명시적 local/test 호환 프로필에서만 Access Token 발급 |
+| GET | `/api/v1/auth/me` | OIDC session 또는 local/test Bearer | 현재 사용자, Tenant와 현재 역할 조회 |
 
 ### Case
 
@@ -609,3 +617,114 @@ Public responses never expose tenant IDs, dispatcher claims, execution tokens, l
 credentials. There is no Resolution write endpoint, input-completion endpoint, Case-close endpoint,
 or LIVE external-action endpoint. Report and KPI responses are `no-store`; KPI fields each include
 `numerator`, `denominator`, `sample_count`, `value`, and `unit`.
+
+## Operator queue and workflow read contracts
+
+The Core API owns the operator queue projection; the browser does not fan out into per-Case detail
+requests. All three endpoints require `HUMAN_REVIEW_READ`, derive the tenant and current actor from
+the authenticated Principal, perform no provider calls, and return `Cache-Control: no-store`.
+
+| Method | Path | Contract |
+|---|---|---|
+| `GET` | `/api/v1/operator/cases` | Case work queue plus view counts |
+| `GET` | `/api/v1/operator/reviews` | Human Review task queue plus view counts |
+
+Both operator queue endpoints accept `view`, `sort`, opaque `cursor`, bounded
+`limit`, and an optional `q` (maximum 100 characters). Search is executed in the
+same tenant-scoped SQL projection across inquiry/case ID, order reference, and
+product reference (plus review-task ID for the review queue); wildcard characters
+are treated literally. Returned counts reflect the active search and cursors are
+hash-bound to the normalized search text, so an unchanged cursor is rejected
+after the query changes.
+| `GET` | `/api/v1/cases/{case_id}/workflow-snapshot` | Persisted workflow status projection |
+
+Queue query parameters are `view`, `sort`, `limit`, and `cursor`. `view` is one of `all`, `my`,
+`unassigned`, `urgent`, `waiting_evidence`, or `complete`; `sort` is `newest` or `oldest`; and
+`limit` is 1 through 100. Pagination uses an opaque, versioned keyset cursor bound to the endpoint,
+view, and sort. A malformed or cross-view cursor returns `422 VALIDATION_ERROR`.
+
+`my` means a `CLAIMED` or `WAITING_FOR_EVIDENCE` task assigned to the current actor. `unassigned` means an unassigned
+`PENDING` or `ESCALATED` task. `urgent` means an active `HIGH` or `CRITICAL` task.
+`waiting_evidence` means `WAITING_FOR_EVIDENCE`. For the Case queue, `complete` means that an
+immutable Review Report exists; for the Review queue, it means that the task is `RESOLVED`.
+`counts` contains all six view totals over the unpaginated tenant scope and is returned in the same
+database statement as the page. Queue responses omit the customer message, Case attributes,
+Evidence locations, tokens, claims, leases, and provider payloads.
+
+The workflow snapshot selects the latest persisted Analysis, Policy Retrieval, Grounded
+Explanation, Policy Evaluation, and Human Review records, the current Resolution, and the latest
+Review Report. `terminal=true` only when an immutable Review Report exists. `degraded=true` reports
+persisted partial/failure/manual-follow-up states. `retry_at` is the earliest persisted retry time
+of the latest Analysis run, `last_good` is the downstream-most successfully persisted boundary,
+and `correlation_id` is the downstream-most available persisted correlation ID. These fields are a
+read projection only: they do not advance a workflow, resolve a task, create a decision, or perform
+an external action.
+
+## Limited-pilot authentication contracts
+
+| Method | Path | Contract |
+|---|---|---|
+| `GET` | `/auth/oidc/login` | Start one-time Authorization Code + PKCE flow for an allowlisted return path |
+| `GET` | `/auth/oidc/callback` | Validate code/state/nonce and set an opaque HttpOnly session cookie |
+| `GET` | `/auth/session` | Rotate the memory-only CSRF proof and return current Principal and expiry |
+| `POST` | `/auth/logout` | Validate CSRF, revoke the hashed server session, and expire the cookie |
+| `POST` | `/auth/oidc/backchannel-logout` | Validate a signed provider logout token and idempotently revoke matching active sessions |
+
+Unsafe `/api` requests authenticated by the OIDC cookie require `X-CSRF-Token`. The response never
+contains an IdP access/refresh token. `POST /api/v1/auth/token` exists only when the explicit
+local/test compatibility profile enables it. Pilot and production processes omit the route from routing and
+OpenAPI, advertise `legacy_password_enabled=false`, and reject Bearer JWT on protected APIs.
+The back-channel route accepts form-encoded `logout_token` only in an OIDC-configured process. It returns
+`200` for the first receipt and a replay of the same JWT ID, `400` for an invalid signed token, and `503` when
+validation or persistence is temporarily unavailable. It never accepts browser session authentication or
+creates an external business action.
+
+## Admin operations read contracts
+
+| Method | Path | Contract |
+|---|---|---|
+| `GET` | `/api/v1/operations/overview` | Bounded Queue/component backlog and recent version aggregates |
+| `GET` | `/api/v1/operations/failures` | Bounded failure, partial, retry, and stalled summaries |
+
+Both endpoints require the current tenant's `ADMIN` role, execute one tenant-scoped SQL statement,
+return `no-store`, and omit tenant/Case/run/Event identifiers and raw error text. Replay and cancel
+routes are not enabled: their immutable recovery-operation identity, idempotency, live-claim
+fencing, and append-only audit contract remain a pilot activation blocker.
+## Case assignment contract
+
+- `GET /api/v1/cases/{case_id}/assignment` returns the current assignment projection and version.
+- `POST /api/v1/cases/{case_id}/assignment` is administrator-only and accepts `assignee_id`,
+  `expected_version`, and `rationale`. Stale versions return `409`; ineligible users and terminal
+  Cases fail closed.
+- `GET /api/v1/operator/cases` includes `assignment_version` without per-row detail requests.
+- Reviewer access to Case-scoped detail APIs returns `404` unless the Case is currently assigned to
+  that reviewer or was finalized by that reviewer.
+
+## Signed model release contracts
+
+| Method | Path | Contract |
+|---|---|---|
+| `POST` | `/api/v1/operations/model-releases` | Verify and immutably register an exact release-eligible signed manifest |
+| `POST` | `/api/v1/operations/model-releases/{release_id}/activate` | Append a PRIMARY/SHADOW activation or rollback event using `Idempotency-Key` and expected-current CAS |
+| `GET` | `/api/v1/operations/model-activations/active` | Read the latest activation and signed release for one task/mode |
+
+All three are admin-only, tenant-scoped, and `no-store`. Registration does not sign a manifest or
+override its qualification status, and activation performs no external business action.
+
+## Pilot metric source scope
+
+`GET /api/v1/metrics/poc` returns `eligible_source_scope=PILOT_LIVE`, `eligible_case_count`, and
+`excluded_case_count`. Every metric denominator uses eligible Cases only. `GET /api/v1/data-assets/summary`
+returns total, eligible, excluded, and per-scope counts; readiness, distributions, and recent records use only
+eligible assets. Synthetic, Shadow, imported, and unattested records never contribute to the default KPI, SLA,
+or drift-readiness contract.
+
+## Signed Case intake contract
+
+`POST /api/v1/integrations/cases` is available only in an explicitly configured signed-intake deployment.
+`X-CSight-Intake-Key-Id`, `X-CSight-Intake-Event-Id`, `X-CSight-Intake-Timestamp`, and
+`X-CSight-Intake-Signature` authenticate the exact raw JSON bytes using ADR-0120's Ed25519 canonical form.
+The body uses `signed_case_intake/1.0.0` and cannot contain `tenant_id` or `source_scope`. A valid first delivery
+returns `201` and a `PILOT_LIVE` Case; an exact source-event replay returns `200` with the same Case; a changed
+payload under the same event returns `409`. Invalid or stale authentication returns a generic `401` with zero
+writes. The endpoint does not accept attachments or initiate analysis, review, resolution, or external action.

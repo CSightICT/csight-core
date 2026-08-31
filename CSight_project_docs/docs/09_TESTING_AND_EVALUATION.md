@@ -72,6 +72,10 @@ Sprint 2의 구현 대상은 Text Extraction LLM 평가뿐이다. Vision, Alignm
 PostgreSQL/MinIO/RabbitMQ처럼 실제 Core Service가 필요한 Integration Test는 명시적인 Local
 Core 실행에서 분리한다. 기본 Test Suite가 외부 Service나 GPU의 가용성에 의존하지 않게 한다.
 
+`make qualify-load-isolation`은 기본 suite와 별도로 현재 demo의 read-only 20-client API 부하와
+internal-only synthetic RabbitMQ/Celery Model/Decision Lane 격리를 측정한다. 이 결과를 실제
+20-workflow terminal, mutation, OIDC/RLS 또는 model-provider 자격으로 재사용하지 않는다.
+
 ### Contract Test
 
 - 인증·Case·Evidence HTTP Schema와 오류 Envelope

@@ -1,5 +1,21 @@
 # 03. Architecture
 
+## Retention erasure without deleting execution lineage
+
+ADR-0108, ADR-0112, and ADR-0114 split erasable customer content from retained operational lineage. An expired
+Case clears restricted and legacy inquiry prose, LLM claims/source quotes/summaries, generated search
+queries, grounded prose, provider failure messages, human free-form rationale/action payloads, Case
+attributes, customer/order/delivery report snapshots, and simulated communication text in one database
+transaction. Current aggregate hashes are recomputed and a PII-free before/after hash receipt is appended.
+Deferred PostgreSQL guards reject customer-derived content written after purge. Run/stage identities, status and timing,
+model/prompt/policy/index versions, ranks, metrics, opaque hashes, and versioned company-policy
+citations remain so qualification and incident audit do not depend on retaining the customer's words.
+Order-reference retention, backups, and legal hold remain separately approved retention boundaries.
+
+## Reviewer ownership and policy comparison evidence
+
+ADR-0109 and ADR-0110 keep assignment, retrieval evidence, and final decisions as separate append-only facts. Administrators may assign or reassign tasks; reviewer workspaces derive active ownership from the current assignment and completed ownership from `human_review_decisions.decided_by`. A request for more evidence retains its owner and active assignment interval, and resume returns the same work to `CLAIMED`. The policy worker reuses its query embedding to persist the three clauses closest to the versioned `0.65` cosine reference and the three lowest-cosine clauses for explanation only. Policy rules and an authenticated human still own the final decision.
+
 ## 1. 아키텍처 목표
 
 - FastAPI 기반으로 빠르게 MVP를 개발한다.
@@ -352,10 +368,24 @@ transaction; integrity failures create a degraded no-source snapshot instead of 
 durable failure state.
 
 `web/` is a separate React/TypeScript client served by an unprivileged Nginx container. Nginx
-proxies `/api` to Core, so the browser needs no cross-origin API configuration. The console stores
-JWTs only in memory and persists only allowlisted opaque run IDs and idempotency keys for recovery.
-It composes existing idempotent APIs and does not introduce a server-side workflow coordinator.
+proxies `/api` and `/auth` to Core, so the browser needs no cross-origin API configuration. The
+limited-pilot path uses an HttpOnly opaque OIDC session cookie and keeps the CSRF proof only in
+memory; the one-release legacy JWT is also memory-only. The console persists only allowlisted opaque
+run IDs and idempotency keys for recovery. It composes existing idempotent APIs and does not
+introduce a server-side workflow coordinator.
 See `docs/resolution/` and ADR-0089 through ADR-0095.
+
+Core additionally exposes tenant-scoped operator Case and Review queues plus a per-Case workflow
+snapshot through a read port and a PostgreSQL adapter. Each queue page and its six view counts are
+produced by one indexed SQL statement with opaque keyset pagination; it does not issue per-row
+detail calls. The workflow snapshot aggregates only existing persisted run, stage, review,
+resolution, and report state and never calls an inference or business-action provider. Its
+`terminal`, `degraded`, `retry_at`, and `last_good` fields are operational projections, not a new
+workflow coordinator or decision authority.
+
+The browser polls only that workflow snapshot with bounded exponential backoff. It refreshes a
+component detail only when the persisted component identity or status changes, stops after two
+minutes, and keeps the last good boundary, server retry time, and correlation identifier visible.
 
 ## Image-level any-defect Vision boundary
 
@@ -365,3 +395,77 @@ that threshold against deployment configuration and Core derives either a high-c
 candidate or a below-threshold review signal. It never synthesizes a canonical defect type, mask,
 or bounding box. Existing localized Detection results remain unchanged and cannot coexist with the
 binary assessment in the same image result. See ADR-0096.
+
+## Limited-pilot database trust boundary
+
+The API and Worker retain repository tenant predicates, while PostgreSQL independently enforces the
+same tenant through forced RLS and a transaction-local context. Dispatcher uses a separate
+Outbox-only role; schema migration uses a non-runtime owner URL. `TenantAwareSession` is a
+persistence-adapter concern, so platform/application contracts remain independent of SQLAlchemy and
+PostgreSQL. See ADR-0105.
+
+## Limited-pilot observability boundary
+
+OpenTelemetry is an opt-in adapter/interface concern. FastAPI emits route-template HTTP spans and
+low-cardinality request metrics; the Celery task base emits consumer spans and task metrics after
+prefork. Structured logs add trace/span IDs and retain the existing correlation ID. No metric label
+contains tenant, Case, run, Event, task, user, or correlation identifiers, and exception messages or
+provider payloads are not copied into spans. `app/platform` and `app/domains` remain independent of
+the OpenTelemetry SDK.
+
+Non-local readiness checks only whether the OTLP/HTTP configuration is complete; it never calls the
+Collector synchronously. The persisted Operations Read API also remains Collector-independent.
+The digest-pinned, isolated qualification profile proves HTTP trace ingestion, Prometheus metric
+query, low-cardinality stored labels, local Alertmanager firing/resolved delivery, and request
+survival plus signal recovery across a Collector outage. It removes `service.instance.id` before the
+Prometheus exporter because that SDK-generated UUID would otherwise become a high-cardinality
+`exported_instance` label. Real Worker-lane export, an operator paging destination, pilot-host
+dashboard queries, and asynchronous parent-context propagation remain separate qualification
+evidence. See ADR-0106 and `docs/operations/OPENTELEMETRY.md`.
+## Intake assignment and personal ownership
+
+`Case` is the source of truth for operational ownership. An administrator assigns or reassigns a
+Case with compare-and-swap versioning; append-only assignment intervals and action events preserve
+the audit trail. Any unresolved Human Review Task inherits the Case owner in the same transaction.
+Reviewer list and direct-object reads are limited to currently owned Cases or Cases the reviewer
+personally finalized. PostgreSQL restrictive policies duplicate this boundary for API-role reads.
+
+## Signed LLM release boundary
+
+Release qualification, registration, activation, and execution are distinct gates. A strict
+Ed25519-signed manifest is stored immutably; tenant/task/PRIMARY-or-SHADOW activation is an
+append-only event with idempotency and compare-and-swap. Worker startup validates the pinned public
+key and complete configured runtime identity. Before each v2 call the Worker re-verifies the active
+release signature and exact artifact, image, lock, SBOM, served-model, prompt, and schema identity.
+Failure ends the attempt before any provider call. The default Mock path remains independent.
+
+## Pilot data provenance boundary
+
+Every Case has a server-owned immutable `source_scope` and provenance. Validated demo commerce input becomes
+`SYNTHETIC_DEMO`; untrusted or legacy intake is `NOT_ATTESTED`. The public intake contract cannot elevate a Case
+to `PILOT_LIVE`, and PostgreSQL rejects later relabelling. Terminal reports and de-identified learning assets
+carry the same provenance. Default PoC metrics and drift readiness select only `PILOT_LIVE`; all other scopes
+remain diagnostic and are reported as excluded counts. See ADR-0115.
+
+## Non-local authentication boundary
+
+Pilot and production API processes are OIDC-session-only. The password-token router is not registered, Bearer
+JWT is rejected before resolution, and `/auth/capabilities` reports the exact admitted methods. Legacy password
+authentication is an explicit local/test compatibility profile only; a non-local attempt to enable it prevents
+startup. Provider failure never activates a fallback login path. See ADR-0116.
+
+Active OIDC sessions are also bound to an issuer-scoped provider subject and optional provider session ID.
+The configured IdP sends a signed back-channel logout token when its session is terminated; Core validates
+the standard logout claims and atomically revokes matching sessions through hashed provider capabilities.
+Append-only receipts store hashes and counts only. Group removal and account disable must therefore be
+operationally coupled to IdP session termination and delivery; the authority mutation alone is not treated as
+proof of immediate revocation. See ADR-0117.
+
+## Signed pilot intake boundary
+
+The optional integration router authenticates an Ed25519 signature over method, fixed path, key ID, source
+event ID, timestamp, and the exact raw-body digest before parsing or writing a Case. Deployment configuration
+maps each key to one tenant, dedicated no-role service actor, source identity, and provenance. Only this path
+can create `PILOT_LIVE`; ordinary Case creation remains `NOT_ATTESTED` or validated `SYNTHETIC_DEMO`.
+The authenticated tenant is bound to the transaction RLS context and the existing Case UoW performs the same
+sensitive-payload and status-history writes. See ADR-0120.

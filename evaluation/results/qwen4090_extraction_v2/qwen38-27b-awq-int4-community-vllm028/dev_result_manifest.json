@@ -1,0 +1,13 @@
+{
+  "candidate_id": "qwen38-27b-awq-int4-community-vllm028",
+  "contains_customer_text": false,
+  "contains_model_predictions": false,
+  "contains_provider_responses": false,
+  "dataset_digest": "sha256:d522ea609b274810f75d186064635d16f7b4f2097dad02a2beddd3ba929543a4",
+  "metrics_file": "dev_metrics.json",
+  "observations_file": "dev_observations.jsonl",
+  "profile_digest": "sha256:2280ab7d82f62966a366180e1a724c6b85f49a3dc50f846cf6257451b7cc4c40",
+  "result_digest": "sha256:a5a01f0bed7dbc747078d44214d896f065541373ade5d17f699a47ac5a4be881",
+  "schema_version": "qwen4090_extraction_result_manifest/1.0.0",
+  "split": "dev"
+}

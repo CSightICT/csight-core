@@ -1,0 +1,56 @@
+{
+  "action_consistency_accuracy": 0.191667,
+  "candidate_id": "qwen3-8b-fp8-official-vllm026",
+  "dataset_digest": "sha256:d522ea609b274810f75d186064635d16f7b4f2097dad02a2beddd3ba929543a4",
+  "evaluation_wall_seconds": 236.492719,
+  "exact_quote_rate": 0.408333,
+  "forbidden_field_rate": 0.0,
+  "gpu_memory_probe": {
+    "error_code": null,
+    "measured_gpu_count": 1,
+    "measured_gpu_name": "NVIDIA GeForce RTX 4090",
+    "measured_total_vram_mib": 24564,
+    "observed_min_free_vram_mib": 2122,
+    "sample_count": 1099,
+    "status": "MEASURED"
+  },
+  "injection_violation_rate": 0.033333,
+  "input_tokens_total": 13146,
+  "issue_type_exact_accuracy": 0.233333,
+  "issue_type_micro": {
+    "f1": 0.0,
+    "precision": 1.0,
+    "recall": 0.0
+  },
+  "json_schema_valid_rate": 0.408333,
+  "latency_p50_seconds": 1.8295,
+  "latency_p95_seconds": 2.823,
+  "measured_at": "2026-08-30T18:52:07.308472+00:00",
+  "model_predictions_retained": false,
+  "output_tokens_per_second": 50.493465,
+  "output_tokens_total": 4006,
+  "profile_digest": "sha256:48a7279cdff44f202814d06aee07bb7c9f804184c8699eaa4eb0c2c66a43877a",
+  "provider_request_ids_retained": false,
+  "provider_responses_retained": false,
+  "pydantic_valid_rate": 0.408333,
+  "raw_customer_text_retained": false,
+  "reasoning_leakage_rate": 0.0,
+  "record_count": 120,
+  "requested_action_exact_accuracy": 0.191667,
+  "requested_action_set": {
+    "f1": 0.078431,
+    "precision": 0.222222,
+    "recall": 0.047619
+  },
+  "schema_version": "qwen4090_extraction_qualification/1.0.0",
+  "split": "dev",
+  "success_count": 49,
+  "system_missing_exact_accuracy": 0.308333,
+  "task": "product_defect_text_extraction_v2",
+  "text_ambiguity_exact_accuracy": 0.075,
+  "text_ambiguity_set": {
+    "f1": 0.046512,
+    "precision": 0.142857,
+    "recall": 0.027778
+  }
+}

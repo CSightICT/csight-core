@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000"
+     role="img" aria-labelledby="title desc">
+  <title id="title">CSight 투자자용 시스템 아키텍처</title>
+  <desc id="desc">
+    고객 문의와 상품 이미지가 AI 증거 분석과 정책 근거 준비를 거쳐 인증된 상담원의 최종 결정으로
+    이어지고, 외부 실행 전 확인 문서와 비식별 학습 자산으로 연결되는 CSight의 사람 중심 시스템
+    아키텍처. 현재는 합성 정책과 상거래 문맥을 사용하는 내부 운영형 PoC이며 외부 환불, 결제,
+    CRM, 물류, 메일 발송은 수행하지 않는다.
+  </desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07111F"/>
+      <stop offset="55%" stop-color="#0C1D34"/>
+      <stop offset="100%" stop-color="#14233C"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6D5DFB"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="human" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6D5DFB"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+    <linearGradient id="learning" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#073C45"/>
+      <stop offset="100%" stop-color="#0F5B58"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#020617" flood-opacity="0.30"/>
+    </filter>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#818CF8" flood-opacity="0.42"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#8293AE"/>
+    </marker>
+    <marker id="arrowAccent" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#A5B4FC"/>
+    </marker>
+    <style>
+      .font { font-family: 'Pretendard','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif; }
+      .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: 2.4px; fill: #91A4C2; }
+      .title { font-size: 38px; font-weight: 850; letter-spacing: -1.2px; fill: #F8FAFC; }
+      .subtitle { font-size: 17px; font-weight: 560; fill: #AFC0D9; }
+      .surface-title { font-size: 20px; font-weight: 800; fill: #F8FAFC; }
+      .surface-sub { font-size: 13px; font-weight: 570; fill: #C5D2E5; }
+      .step { font-size: 12px; font-weight: 850; letter-spacing: 1.4px; fill: #A5B4FC; }
+      .card-title { font-size: 21px; font-weight: 830; letter-spacing: -0.4px; fill: #F8FAFC; }
+      .card-sub { font-size: 13px; font-weight: 580; fill: #AFC0D9; }
+      .body { font-size: 13px; font-weight: 620; fill: #DBE5F3; }
+      .body-muted { font-size: 12px; font-weight: 560; fill: #91A4C2; }
+      .mini-title { font-size: 13px; font-weight: 800; fill: #E8EEF8; }
+      .mini-copy { font-size: 11.5px; font-weight: 570; fill: #AFC0D9; }
+      .human-title { font-size: 22px; font-weight: 850; fill: #FFFFFF; }
+      .human-copy { font-size: 13px; font-weight: 620; fill: #E0E7FF; }
+      .foundation-title { font-size: 14px; font-weight: 820; fill: #E8EEF8; }
+      .foundation-copy { font-size: 11.5px; font-weight: 560; fill: #91A4C2; }
+      .pill { font-size: 11.5px; font-weight: 800; }
+      .scope { font-size: 12.5px; font-weight: 700; fill: #C9D6E8; }
+      .footer { font-size: 11.5px; font-weight: 580; fill: #7185A3; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <circle cx="1425" cy="-45" r="330" fill="#4F46E5" opacity="0.10"/>
+  <circle cx="-40" cy="900" r="310" fill="#0EA5A4" opacity="0.07"/>
+
+  <!-- Header -->
+  <text x="72" y="52" class="font eyebrow">CSIGHT · HUMAN-IN-THE-LOOP AI OPERATIONS</text>
+  <text x="72" y="98" class="font title">AI가 근거를 준비하고, 사람이 결정하는 CS 운영 플랫폼</text>
+  <text x="72" y="130" class="font subtitle">문의 접수부터 정책 근거, 최종 검토, 업무 문서와 학습 데이터까지 하나의 안전한 흐름으로 연결</text>
+
+  <g transform="translate(1278,43)">
+    <rect width="250" height="72" rx="18" fill="#12243C" stroke="#334865"/>
+    <circle cx="35" cy="36" r="16" fill="#163C3C" stroke="#2DD4BF" stroke-opacity="0.55"/>
+    <path d="M27 36l5 5 11-12" fill="none" stroke="#5EEAD4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="62" y="31" class="font pill" fill="#5EEAD4">LATEST REMOTE BASELINE</text>
+    <text x="62" y="52" class="font body-muted">operator workflow · 3daaa7b</text>
+  </g>
+
+  <!-- Operator surface -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="162" width="1456" height="86" rx="22" fill="#11233B" stroke="#344A68"/>
+    <rect x="72" y="162" width="7" height="86" rx="3.5" fill="url(#hero)"/>
+  </g>
+  <g transform="translate(103,182)">
+    <rect width="48" height="48" rx="15" fill="#253657"/>
+    <rect x="10" y="10" width="28" height="21" rx="3" fill="none" stroke="#A5B4FC" stroke-width="2.2"/>
+    <line x1="18" y1="38" x2="30" y2="38" stroke="#A5B4FC" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="24" y1="31" x2="24" y2="38" stroke="#A5B4FC" stroke-width="2.2"/>
+  </g>
+  <text x="171" y="197" class="font surface-title">상담원 업무 화면</text>
+  <text x="171" y="221" class="font surface-sub">현재 할 일 · 고객 문의 · 사진 근거 · 정책 권고 · 결정 · 확인 문서를 자연어 중심으로 제공</text>
+  <g transform="translate(1058,186)">
+    <rect width="133" height="36" rx="18" fill="#182E49" stroke="#3B526F"/>
+    <text x="66.5" y="23" text-anchor="middle" class="font pill" fill="#C5D2E5">한글 업무 UI</text>
+    <rect x="145" width="133" height="36" rx="18" fill="#182E49" stroke="#3B526F"/>
+    <text x="211.5" y="23" text-anchor="middle" class="font pill" fill="#C5D2E5">역할 기반 접근</text>
+    <rect x="290" width="133" height="36" rx="18" fill="#182E49" stroke="#3B526F"/>
+    <text x="356.5" y="23" text-anchor="middle" class="font pill" fill="#C5D2E5">변경 방지 기록</text>
+  </g>
+
+  <!-- Flow arrows behind cards -->
+  <path d="M315 452 H350" fill="none" stroke="#8293AE" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M642 452 H677" fill="none" stroke="#8293AE" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M969 452 H1004" fill="none" stroke="#A5B4FC" stroke-width="3" marker-end="url(#arrowAccent)"/>
+  <path d="M1257 452 H1292" fill="none" stroke="#A5B4FC" stroke-width="3" marker-end="url(#arrowAccent)"/>
+
+  <!-- Step 1 -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="286" width="243" height="370" rx="24" fill="#11233B" stroke="#344A68"/>
+  </g>
+  <text x="97" y="322" class="font step">01 · INTAKE</text>
+  <text x="97" y="359" class="font card-title">문의와 근거 접수</text>
+  <text x="97" y="383" class="font card-sub">업무 맥락을 한 건의 Case로 구성</text>
+  <g transform="translate(97,416)">
+    <rect width="193" height="54" rx="14" fill="#172B46"/>
+    <circle cx="26" cy="27" r="13" fill="#243B5B"/>
+    <path d="M19 24h14M19 29h10" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
+    <text x="50" y="24" class="font mini-title">고객 문의</text>
+    <text x="50" y="42" class="font mini-copy">자유 텍스트 · 요청 유형</text>
+  </g>
+  <g transform="translate(97,481)">
+    <rect width="193" height="54" rx="14" fill="#172B46"/>
+    <circle cx="26" cy="27" r="13" fill="#243B5B"/>
+    <rect x="19" y="20" width="14" height="14" rx="2" fill="none" stroke="#93C5FD" stroke-width="1.8"/>
+    <circle cx="29" cy="24" r="1.5" fill="#93C5FD"/>
+    <path d="M20 32l4-4 3 3 3-2 3 3" fill="none" stroke="#93C5FD" stroke-width="1.5"/>
+    <text x="50" y="24" class="font mini-title">상품 이미지</text>
+    <text x="50" y="42" class="font mini-copy">Private Evidence 저장</text>
+  </g>
+  <g transform="translate(97,546)">
+    <rect width="193" height="54" rx="14" fill="#172B46"/>
+    <circle cx="26" cy="27" r="13" fill="#243B5B"/>
+    <rect x="19" y="20" width="14" height="14" rx="2" fill="none" stroke="#93C5FD" stroke-width="1.8"/>
+    <path d="M22 24h8M22 28h8M22 32h5" stroke="#93C5FD" stroke-width="1.5"/>
+    <text x="50" y="24" class="font mini-title">주문 문맥</text>
+    <text x="50" y="42" class="font mini-copy">상품 · 결제 · 배송 정보</text>
+  </g>
+  <text x="97" y="629" class="font body-muted">현재 상거래 문맥은 합성 데이터</text>
+
+  <!-- Step 2 -->
+  <g filter="url(#shadow)">
+    <rect x="350" y="286" width="292" height="370" rx="24" fill="#11233B" stroke="#344A68"/>
+  </g>
+  <text x="375" y="322" class="font step">02 · AI EVIDENCE</text>
+  <text x="375" y="359" class="font card-title">멀티모달 근거 분석</text>
+  <text x="375" y="383" class="font card-sub">텍스트와 이미지를 독립적으로 분석</text>
+  <g transform="translate(375,414)">
+    <rect width="242" height="84" rx="16" fill="#172B46" stroke="#2E4562"/>
+    <circle cx="29" cy="28" r="14" fill="#263A5C"/>
+    <path d="M21 25h16M21 30h12M21 35h9" stroke="#C4B5FD" stroke-width="2" stroke-linecap="round"/>
+    <text x="54" y="26" class="font mini-title">Text AI</text>
+    <text x="54" y="45" class="font mini-copy">문의 구조화 · 요청/모호성 추출</text>
+    <text x="18" y="69" class="font mini-copy">구조화 결과 · 분석 버전 기록</text>
+  </g>
+  <g transform="translate(375,510)">
+    <rect width="242" height="84" rx="16" fill="#172B46" stroke="#2E4562"/>
+    <circle cx="29" cy="28" r="14" fill="#173F4A"/>
+    <circle cx="29" cy="28" r="6" fill="none" stroke="#5EEAD4" stroke-width="2"/>
+    <path d="M18 28c5-8 17-8 22 0-5 8-17 8-22 0z" fill="none" stroke="#5EEAD4" stroke-width="1.6"/>
+    <text x="54" y="26" class="font mini-title">Vision E3</text>
+    <text x="54" y="45" class="font mini-copy">이미지 단위 결함 후보 선별</text>
+    <text x="18" y="69" class="font mini-copy">결함 유형·위치·업무결정은 미추론</text>
+  </g>
+  <g transform="translate(375,611)">
+    <rect width="242" height="27" rx="13.5" fill="#102F3A" stroke="#1D5B63"/>
+    <text x="121" y="18" text-anchor="middle" class="font pill" fill="#5EEAD4">AI 노드는 업무 DB에 직접 접근하지 않음</text>
+  </g>
+
+  <!-- Step 3 -->
+  <g filter="url(#shadow)">
+    <rect x="677" y="286" width="292" height="370" rx="24" fill="#11233B" stroke="#344A68"/>
+  </g>
+  <text x="702" y="322" class="font step">03 · POLICY INTELLIGENCE</text>
+  <text x="702" y="359" class="font card-title">정책 근거 준비</text>
+  <text x="702" y="383" class="font card-sub">찾고, 검증하고, 출처를 함께 제시</text>
+  <g transform="translate(702,414)">
+    <rect width="242" height="58" rx="14" fill="#172B46"/>
+    <circle cx="28" cy="29" r="13" fill="#263A5C"/>
+    <circle cx="25" cy="26" r="5" fill="none" stroke="#C4B5FD" stroke-width="1.8"/>
+    <line x1="29" y1="30" x2="34" y2="35" stroke="#C4B5FD" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="51" y="26" class="font mini-title">정책 검색</text>
+    <text x="51" y="44" class="font mini-copy">관련 조항 · 핵심 근거 제시</text>
+  </g>
+  <g transform="translate(702,484)">
+    <rect width="242" height="58" rx="14" fill="#172B46"/>
+    <circle cx="28" cy="29" r="13" fill="#263A5C"/>
+    <path d="M23 29l4 4 7-8" fill="none" stroke="#C4B5FD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="51" y="26" class="font mini-title">버전 관리 규칙</text>
+    <text x="51" y="44" class="font mini-copy">유효일 · 예외 · 적용 조건</text>
+  </g>
+  <g transform="translate(702,554)">
+    <rect width="242" height="58" rx="14" fill="#172B46"/>
+    <circle cx="28" cy="29" r="13" fill="#263A5C"/>
+    <path d="M22 23h12v14H22zM25 27h6M25 31h6" fill="none" stroke="#C4B5FD" stroke-width="1.6"/>
+    <text x="51" y="26" class="font mini-title">근거 스냅샷</text>
+    <text x="51" y="44" class="font mini-copy">출처 · 모델 · 정책 버전 보존</text>
+  </g>
+  <text x="702" y="637" class="font body-muted">정책은 권고를 만들지만 결정하지 않음</text>
+
+  <!-- Step 4: Human -->
+  <g filter="url(#glow)">
+    <rect x="1004" y="276" width="253" height="390" rx="28" fill="url(#human)" stroke="#A5B4FC" stroke-width="1.4"/>
+  </g>
+  <text x="1029" y="315" class="font step" style="fill:#E0E7FF">04 · HUMAN CONTROL</text>
+  <g transform="translate(1029,342)">
+    <circle cx="28" cy="28" r="28" fill="#FFFFFF" opacity="0.14"/>
+    <circle cx="28" cy="22" r="8" fill="none" stroke="#FFFFFF" stroke-width="2.2"/>
+    <path d="M13 46c2-10 9-15 15-15s13 5 15 15" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+  <text x="1029" y="426" class="font human-title">상담원이 최종 결정</text>
+  <text x="1029" y="454" class="font human-copy">인증된 사람의 명시적 행동만</text>
+  <text x="1029" y="474" class="font human-copy">변경 불가능한 결정을 생성합니다.</text>
+  <g transform="translate(1029,501)">
+    <rect width="203" height="44" rx="13" fill="#FFFFFF" opacity="0.13"/>
+    <path d="M18 22l5 5 10-11" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="45" y="27" class="font human-copy">허용 / 비허용 / 추가 확인</text>
+  </g>
+  <g transform="translate(1029,557)">
+    <rect width="203" height="44" rx="13" fill="#FFFFFF" opacity="0.13"/>
+    <path d="M18 15h14v14H18zM21 19h8M21 23h8" fill="none" stroke="#FFFFFF" stroke-width="1.7"/>
+    <text x="45" y="27" class="font human-copy">근거와 사유를 함께 기록</text>
+  </g>
+  <g transform="translate(1029,617)">
+    <rect width="203" height="28" rx="14" fill="#FFFFFF" opacity="0.18"/>
+    <text x="101.5" y="19" text-anchor="middle" class="font pill" fill="#FFFFFF">ONLY FINAL DECISION POINT</text>
+  </g>
+
+  <!-- Step 5 -->
+  <g filter="url(#shadow)">
+    <rect x="1292" y="286" width="236" height="370" rx="24" fill="url(#learning)" stroke="#287A75"/>
+  </g>
+  <text x="1317" y="322" class="font step" style="fill:#99F6E4">05 · OUTCOME</text>
+  <text x="1317" y="359" class="font card-title">안전한 후속 흐름</text>
+  <text x="1317" y="383" class="font card-sub" style="fill:#B7D8D4">실행 전 검증과 문서화</text>
+  <g transform="translate(1317,416)">
+    <rect width="186" height="49" rx="13" fill="#0C494D"/>
+    <path d="M16 15h14v18H16zM19 20h8M19 24h8M19 28h5" fill="none" stroke="#5EEAD4" stroke-width="1.6"/>
+    <text x="42" y="29" class="font mini-title">처리 사전 확인</text>
+  </g>
+  <g transform="translate(1317,477)">
+    <rect width="186" height="49" rx="13" fill="#0C494D"/>
+    <path d="M16 17h16v14H16zM16 18l8 6 8-6" fill="none" stroke="#5EEAD4" stroke-width="1.6"/>
+    <text x="42" y="29" class="font mini-title">확인서 · 안내 메일</text>
+  </g>
+  <g transform="translate(1317,538)">
+    <rect width="186" height="58" rx="13" fill="#0C494D"/>
+    <path d="M16 17h16v4H16zM18 23h12v14H18z" fill="none" stroke="#5EEAD4" stroke-width="1.6"/>
+    <text x="42" y="25" class="font mini-title">비식별 학습 자산</text>
+    <text x="42" y="43" class="font mini-copy" style="fill:#A7D9D2">모델·정책·결과 메타데이터</text>
+  </g>
+  <text x="1317" y="624" class="font body-muted" style="fill:#91C8C1">개인정보 원문은 학습 자산 제외</text>
+
+  <!-- Reliable foundation -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="700" width="1456" height="177" rx="24" fill="#0D1B2E" stroke="#2C405C"/>
+  </g>
+  <text x="98" y="735" class="font step">RELIABLE &amp; AUDITABLE CORE</text>
+  <text x="98" y="760" class="font card-sub">업무 상태와 데이터의 단일 소유 지점 · 장애와 재시도를 견디는 운영 기반</text>
+
+  <g transform="translate(98,782)">
+    <rect width="330" height="70" rx="16" fill="#132640"/>
+    <circle cx="34" cy="35" r="18" fill="#1C3554"/>
+    <path d="M25 35h18M28 29h12M29 41h10" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
+    <text x="62" y="29" class="font foundation-title">고객사별 안전한 Core</text>
+    <text x="62" y="49" class="font foundation-copy">FastAPI · 업무 규칙 · 역할 기반 접근</text>
+  </g>
+  <g transform="translate(448,782)">
+    <rect width="330" height="70" rx="16" fill="#132640"/>
+    <circle cx="34" cy="35" r="18" fill="#1C3554"/>
+    <path d="M25 30h18l-5-5M43 40H25l5 5" fill="none" stroke="#C4B5FD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="62" y="29" class="font foundation-title">복원력 있는 비동기 처리</text>
+    <text x="62" y="49" class="font foundation-copy">안전한 작업 큐 · 재시도 · 중복 방지</text>
+  </g>
+  <g transform="translate(798,782)">
+    <rect width="330" height="70" rx="16" fill="#132640"/>
+    <circle cx="34" cy="35" r="18" fill="#1C3554"/>
+    <ellipse cx="34" cy="29" rx="9" ry="4" fill="none" stroke="#5EEAD4" stroke-width="1.7"/>
+    <path d="M25 29v12c0 5 18 5 18 0V29M25 35c0 5 18 5 18 0" fill="none" stroke="#5EEAD4" stroke-width="1.7"/>
+    <text x="62" y="29" class="font foundation-title">데이터와 근거 저장</text>
+    <text x="62" y="49" class="font foundation-copy">PostgreSQL + pgvector · Private MinIO</text>
+  </g>
+  <g transform="translate(1148,782)">
+    <rect width="354" height="70" rx="16" fill="#132640"/>
+    <circle cx="34" cy="35" r="18" fill="#1C3554"/>
+    <path d="M27 28h14v15H27zM30 32h8M30 36h8M30 40h5" fill="none" stroke="#F9A8D4" stroke-width="1.7"/>
+    <text x="62" y="29" class="font foundation-title">변경 불가능한 감사 원장</text>
+    <text x="62" y="49" class="font foundation-copy">분석 · 정책 · 사람 결정 · 결과 버전 보존</text>
+  </g>
+
+  <!-- Scope and footer -->
+  <g transform="translate(72,908)">
+    <rect width="1456" height="53" rx="18" fill="#101F34" stroke="#334865"/>
+    <rect x="12" y="11" width="114" height="31" rx="15.5" fill="#3A2C20" stroke="#8A5A2B"/>
+    <text x="69" y="31" text-anchor="middle" class="font pill" fill="#FCD34D">CURRENT SCOPE</text>
+    <text x="149" y="32" class="font scope">내부 운영형 PoC · 합성 정책/상거래 문맥 · 외부 환불·결제·CRM·물류·메일 발송 없음</text>
+    <text x="1418" y="32" text-anchor="end" class="font footer">origin/codex/operator-console-product-direction · 2026-08-28</text>
+  </g>
+</svg>

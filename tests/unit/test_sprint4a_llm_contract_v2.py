@@ -182,7 +182,7 @@ def _offline_config(output: StringIO) -> Config:
 def test_migration_0005_precedes_0006_and_creates_v2_child_without_mutating_v1() -> None:
     scripts = ScriptDirectory.from_config(_offline_config(StringIO()))
     revision = scripts.get_revision("20260826_0005")
-    assert scripts.get_heads() == ["20260828_0016_communication_learning_assets"]
+    assert scripts.get_heads() == ["20260831_0034_analysis_model_route_snapshot"]
     assert revision is not None and revision.down_revision == "20260826_0004"
     output = StringIO()
     command.upgrade(_offline_config(output), "20260826_0004:20260826_0005", sql=True)

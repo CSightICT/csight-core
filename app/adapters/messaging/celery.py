@@ -312,6 +312,42 @@ class CeleryExternalActionSimulationMessageQueue:
             return False
 
 
+class CeleryOperationalRecoveryMessageQueue:
+    """Route one validated recovery envelope to its existing durable pipeline."""
+
+    def __init__(self, application: Celery) -> None:
+        self._queues = {
+            "analysis.requested.v1": CeleryAnalysisMessageQueue(application),
+            "policy_retrieval.requested.v1": CeleryPolicyRetrievalMessageQueue(application),
+            "grounded_explanation.requested.v1": CeleryGroundedExplanationMessageQueue(application),
+            "policy_evaluation.requested.v1": CeleryPolicyEvaluationMessageQueue(application),
+            "human_review.requested.v1": CeleryHumanReviewMessageQueue(application),
+            "case_resolution.requested.v1": CeleryCaseResolutionMessageQueue(application),
+            "external_action.simulation_requested.v1": (
+                CeleryExternalActionSimulationMessageQueue(application)
+            ),
+        }
+
+    def publish(
+        self,
+        *,
+        topic: str,
+        payload: Mapping[str, object],
+        correlation_id: str,
+    ) -> str:
+        queue = self._queues.get(topic)
+        if queue is None:
+            raise ValueError("unsupported operational recovery topic")
+        return queue.publish(
+            topic=topic,
+            payload=payload,
+            correlation_id=correlation_id,
+        )
+
+    def is_ready(self) -> bool:
+        return all(queue.is_ready() for queue in self._queues.values())
+
+
 __all__ = [
     "ANALYSIS_QUEUE_PAYLOAD_KEYS",
     "CASE_RESOLUTION_QUEUE_PAYLOAD_KEYS",
@@ -325,6 +361,7 @@ __all__ = [
     "CeleryExternalActionSimulationMessageQueue",
     "CeleryGroundedExplanationMessageQueue",
     "CeleryHumanReviewMessageQueue",
+    "CeleryOperationalRecoveryMessageQueue",
     "CeleryPolicyEvaluationMessageQueue",
     "CeleryPolicyRetrievalMessageQueue",
 ]

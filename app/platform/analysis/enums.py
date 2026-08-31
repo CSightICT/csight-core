@@ -116,6 +116,13 @@ class AnalysisRunStatus(StrEnum):
         return self in {self.SUCCEEDED, self.PARTIAL_SUCCESS, self.FAILED}
 
 
+class AnalysisExecutionMode(StrEnum):
+    """Immutable boundary between production workflow and observation-only runs."""
+
+    PRIMARY = "PRIMARY"
+    SHADOW = "SHADOW"
+
+
 class AnalysisStageStatus(StrEnum):
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"

@@ -1,0 +1,75 @@
+name: csight-queue-isolation-qualification
+
+x-worker: &worker
+  image: csight-core:${CSIGHT_IMAGE_TAG:-dev}
+  working_dir: /qualification
+  environment:
+    QUALIFICATION_BROKER_URL: amqp://qualification:qualification-only@rabbitmq:5672//
+    QUALIFICATION_EVIDENCE_PATH: /evidence/queue-events.ndjson
+  volumes:
+    - ../../scripts:/qualification:ro
+    - ${LOAD_EVIDENCE_DIR:?Set LOAD_EVIDENCE_DIR}:/evidence
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+  networks:
+    - qualification
+
+services:
+  rabbitmq:
+    image: rabbitmq@sha256:5ae1b436f98ed304168a55a90280dadfb0f1bfe5736d6e2e970e69f7f8fdf5e4
+    environment:
+      RABBITMQ_DEFAULT_USER: qualification
+      RABBITMQ_DEFAULT_PASS: qualification-only
+      RABBITMQ_DEFAULT_VHOST: /
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - qualification
+
+  model-worker:
+    <<: *worker
+    command:
+      - celery
+      - --app=queue_isolation_tasks:celery_app
+      - worker
+      - --loglevel=WARNING
+      - --hostname=model-qualification@%h
+      - --queues=model-qualification
+      - --concurrency=1
+
+  decision-worker:
+    <<: *worker
+    command:
+      - celery
+      - --app=queue_isolation_tasks:celery_app
+      - worker
+      - --loglevel=WARNING
+      - --hostname=decision-qualification@%h
+      - --queues=decision-qualification
+      - --concurrency=2
+
+  utility:
+    <<: *worker
+    profiles: [tools]
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: [python]
+
+networks:
+  qualification:
+    internal: true

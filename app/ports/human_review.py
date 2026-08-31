@@ -14,6 +14,7 @@ from app.platform.human_review import (
     HumanDecision,
     HumanDecisionRequest,
     ReviewAction,
+    ReviewAssignee,
     ReviewPacket,
     ReviewPriority,
     ReviewTask,
@@ -48,6 +49,8 @@ class ReviewTaskDetail(_DTO):
     rule_results: tuple[dict[str, object], ...]
     citation_items: tuple[dict[str, object], ...]
     grounded_explanation: dict[str, object] | None
+    inquiry_summary: str | None = None
+    policy_similarity: tuple[dict[str, object], ...] = ()
 
 
 class HumanReviewRepository(Protocol):
@@ -74,6 +77,20 @@ class HumanReviewRepository(Protocol):
     ) -> tuple[ReviewTask, ...]: ...
 
     def get(self, *, tenant_id: str, task_id: str) -> ReviewTaskDetail | None: ...
+
+    def list_assignees(self, *, tenant_id: str) -> tuple[ReviewAssignee, ...]: ...
+
+    def assign(
+        self,
+        *,
+        tenant_id: str,
+        task_id: str,
+        actor_id: str,
+        roles: frozenset[Role],
+        expected_version: int,
+        assignee_id: str,
+        rationale: str,
+    ) -> ReviewTask: ...
 
     def claim(
         self,

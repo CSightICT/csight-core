@@ -53,6 +53,7 @@ class DispatchOutbox:
         retry_max: timedelta = DEFAULT_RETRY_MAX,
         retry_jitter_ratio: float = DEFAULT_RETRY_JITTER_RATIO,
         topic: str = ANALYSIS_REQUESTED_EVENT_TYPE,
+        terminalize_run_on_failure: bool = True,
     ) -> None:
         if not claimed_by.strip():
             raise ValueError("claimed_by must not be blank")
@@ -83,6 +84,7 @@ class DispatchOutbox:
         self._retry_max = retry_max
         self._retry_jitter_ratio = retry_jitter_ratio
         self._topic = topic
+        self._terminalize_run_on_failure = terminalize_run_on_failure
 
     def execute(self) -> DispatchOutboxResult:
         now = self._clock.now().astimezone(UTC)
@@ -195,7 +197,7 @@ class DispatchOutbox:
                 uow.rollback()
                 return False
 
-            if requested_event is not None:
+            if requested_event is not None and self._terminalize_run_on_failure:
                 run = uow.analysis_runs.get_for_update(
                     tenant_id=requested_event.tenant_id,
                     case_id=requested_event.case_id,

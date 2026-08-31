@@ -26,7 +26,10 @@ from app.adapters.persistence.models import (
     AnalysisStageRunModel,
     CaseEvidenceModel,
     CaseModel,
+    CaseSensitivePayloadModel,
+    DataLifecycleEventModel,
     LLMExtractionResultModel,
+    OperationalFailureModel,
     OutboxEventModel,
     TenantModel,
     UserModel,
@@ -381,6 +384,19 @@ def application_context(
     finally:
         tenant_ids = [UUID(tenant_a), UUID(tenant_b)]
         with application_engine.begin() as connection:
+            # Failure capture is immutable and intentionally retains its source
+            # graph.  Never tear down a tenant after this test created durable
+            # operational history; UUID isolation keeps later tests independent.
+            preserved_tenant_ids = set(
+                connection.scalars(
+                    select(OperationalFailureModel.tenant_id).where(
+                        OperationalFailureModel.tenant_id.in_(tenant_ids)
+                    )
+                ).all()
+            )
+            tenant_ids = [
+                tenant_id for tenant_id in tenant_ids if tenant_id not in preserved_tenant_ids
+            ]
             connection.execute(
                 delete(VisionImageAssessmentModel).where(
                     VisionImageAssessmentModel.tenant_id.in_(tenant_ids)
@@ -425,6 +441,16 @@ def application_context(
             )
             connection.execute(
                 delete(CaseEvidenceModel).where(CaseEvidenceModel.tenant_id.in_(tenant_ids))
+            )
+            connection.execute(
+                delete(DataLifecycleEventModel).where(
+                    DataLifecycleEventModel.tenant_id.in_(tenant_ids)
+                )
+            )
+            connection.execute(
+                delete(CaseSensitivePayloadModel).where(
+                    CaseSensitivePayloadModel.tenant_id.in_(tenant_ids)
+                )
             )
             connection.execute(delete(CaseModel).where(CaseModel.tenant_id.in_(tenant_ids)))
             connection.execute(delete(UserModel).where(UserModel.tenant_id.in_(tenant_ids)))
@@ -723,6 +749,57 @@ def test_start_is_atomic_replays_conflicts_and_hides_cross_tenant_run(
                     AnalysisRequestIdempotencyRecordModel.tenant_id == tenant_uuid,
                     AnalysisRequestIdempotencyRecordModel.idempotency_key == fault_key,
                 )
+            )
+            == 0
+        )
+
+
+def test_malformed_analysis_delivery_is_durably_failed_without_provider_call(
+    application_context: ApplicationContext,
+) -> None:
+    clock = MutableClock(NOW)
+    _, started = _start(
+        application_context,
+        case=application_context.case_a,
+        idempotency_key=f"poison-{uuid4()}",
+        clock=clock,
+    )
+    queue = RecordingQueue()
+    dispatched = _dispatch(application_context, queue=queue, clock=clock)
+    assert dispatched.published == 1
+    message = queue.messages[0]
+    event_id = cast(str, message.payload["event_id"])
+    provider = NoCallMockLLMProvider()
+    service = ExecuteTextExtraction(
+        uow_factory=application_context.factory,
+        provider=provider,
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        clock=clock,
+        id_generator=Uuid4Generator(),
+    )
+
+    service.record_poison_event(event_id=event_id)
+
+    assert provider.extract_text_calls == 0
+    with Session(application_context.engine) as session:
+        run = session.get(AnalysisRunModel, UUID(started.run.id))
+        stage = session.scalar(
+            select(AnalysisStageRunModel).where(
+                AnalysisStageRunModel.analysis_run_id == UUID(started.run.id)
+            )
+        )
+        event_row = session.get(OutboxEventModel, UUID(event_id))
+        assert run is not None and run.status == AnalysisRunStatus.FAILED.value
+        assert run.failure_code == "ANALYSIS_QUEUE_PAYLOAD_INVALID"
+        assert stage is not None and stage.status == AnalysisStageStatus.FAILED.value
+        assert stage.failure_code == "ANALYSIS_QUEUE_PAYLOAD_INVALID"
+        assert event_row is not None and event_row.status == OutboxStatus.FAILED.value
+        assert event_row.last_error == "ANALYSIS_QUEUE_PAYLOAD_INVALID"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(AnalysisStageAttemptModel)
+                .where(AnalysisStageAttemptModel.analysis_run_id == UUID(started.run.id))
             )
             == 0
         )

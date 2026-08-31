@@ -143,8 +143,8 @@ def test_review_projection_and_basis_metadata_enforce_integrity_links() -> None:
         and str(item.name).endswith("assignee_status_consistent")
     )
     task_sql = str(task_check.sqltext)
-    assert "status = 'CLAIMED'" in task_sql
-    assert "status <> 'CLAIMED'" in task_sql
+    assert "status IN ('CLAIMED','WAITING_FOR_EVIDENCE')" in task_sql
+    assert "status NOT IN ('CLAIMED','WAITING_FOR_EVIDENCE')" in task_sql
 
     basis_table = cast(Table, HumanReviewDecisionBasisModel.__table__)
     basis_check = next(

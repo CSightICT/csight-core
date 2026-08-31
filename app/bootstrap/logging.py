@@ -7,10 +7,13 @@ from contextlib import contextmanager
 from typing import Any
 
 import structlog
+from opentelemetry import trace
 from structlog.typing import EventDict, WrappedLogger
 
 LOG_CONTEXT_KEYS = (
     "correlation_id",
+    "trace_id",
+    "span_id",
     "tenant_id",
     "case_id",
     "analysis_run_id",
@@ -59,6 +62,20 @@ def redact_sensitive_fields(
     return event_dict
 
 
+def add_trace_context(
+    _logger: WrappedLogger,
+    _method_name: str,
+    event_dict: EventDict,
+) -> EventDict:
+    """Correlate logs with the current local span without exposing payload data."""
+
+    span_context = trace.get_current_span().get_span_context()
+    if span_context.is_valid:
+        event_dict.setdefault("trace_id", format(span_context.trace_id, "032x"))
+        event_dict.setdefault("span_id", format(span_context.span_id, "016x"))
+    return event_dict
+
+
 def configure_logging(log_level: str) -> None:
     """Configure JSON logging for API and worker processes."""
 
@@ -71,6 +88,7 @@ def configure_logging(log_level: str) -> None:
             structlog.processors.TimeStamper(fmt="iso", utc=True),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
+            add_trace_context,
             redact_sensitive_fields,
             structlog.processors.JSONRenderer(),
         ],

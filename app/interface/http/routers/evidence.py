@@ -2,11 +2,12 @@
 
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, File, Form, Path, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, Path, Response, UploadFile, status
 
 from app.interface.http.dependencies import (
     provide_current_principal,
     provide_sprint1_services,
+    require_case_access,
 )
 from app.interface.http.schemas import ErrorResponse
 from app.interface.http.services import Sprint1ServiceContainer
@@ -19,7 +20,11 @@ from app.platform.errors import StorageUnavailableError
 from app.platform.evidence import EvidenceType
 from app.platform.tenant import Principal
 
-router = APIRouter(prefix="/api/v1/cases", tags=["evidence"])
+router = APIRouter(
+    prefix="/api/v1/cases",
+    tags=["evidence"],
+    dependencies=[Depends(require_case_access)],
+)
 
 AUTH_ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
@@ -46,6 +51,7 @@ EvidenceId = Annotated[
         status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
         status.HTTP_413_CONTENT_TOO_LARGE: {"model": ErrorResponse},
         status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
         status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ErrorResponse},
         **AUTH_ERROR_RESPONSES,
     },
@@ -59,6 +65,15 @@ def add_image_evidence(
     ],
     principal: Annotated[Principal, Depends(provide_current_principal)],
     services: Annotated[Sprint1ServiceContainer, Depends(provide_sprint1_services)],
+    idempotency_key: Annotated[
+        str | None,
+        Header(
+            alias="Idempotency-Key",
+            min_length=1,
+            max_length=255,
+            description="Optional tenant-and-Case-scoped Evidence upload key.",
+        ),
+    ] = None,
 ) -> EvidenceResponse:
     evidence = services.add_image_evidence.execute(
         principal=principal,
@@ -67,6 +82,7 @@ def add_image_evidence(
         filename=file.filename,
         declared_content_type=file.content_type,
         evidence_type=EvidenceType(evidence_type),
+        idempotency_key=idempotency_key,
     )
     return EvidenceResponse.from_evidence(evidence)
 

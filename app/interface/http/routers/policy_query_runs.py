@@ -5,7 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 
 from app.application.policy_query_runs import StartPolicyRetrievalRunCommand
-from app.interface.http.dependencies import provide_current_principal, provide_sprint4c2_services
+from app.interface.http.dependencies import (
+    provide_current_principal,
+    provide_sprint4c2_services,
+    require_case_access,
+)
 from app.interface.http.policy_query_run_schemas import (
     PolicyRetrievalRunDetailResponse,
     PolicyRetrievalRunListResponse,
@@ -17,7 +21,9 @@ from app.interface.http.services import Sprint4C2ServiceContainer
 from app.platform.tenant import Principal
 
 router = APIRouter(
-    prefix="/api/v1/cases/{case_id}/policy-retrieval-runs", tags=["policy-retrieval-runs"]
+    prefix="/api/v1/cases/{case_id}/policy-retrieval-runs",
+    tags=["policy-retrieval-runs"],
+    dependencies=[Depends(require_case_access)],
 )
 
 

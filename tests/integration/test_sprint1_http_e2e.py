@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,9 @@ from app.adapters.persistence.engine import clear_engine_cache, get_engine
 from app.adapters.persistence.models import (
     CaseEvidenceModel,
     CaseModel,
+    CaseSensitivePayloadModel,
     CaseStatusHistoryModel,
+    DataLifecycleEventModel,
     IdempotencyRecordModel,
     RoleModel,
     TenantModel,
@@ -46,6 +48,8 @@ class E2EContext:
     client: TestClient
     tenant_a: UUID
     tenant_b: UUID
+    reviewer_id: UUID
+    admin_email: str
     reviewer_email: str
     viewer_email: str
     other_reviewer_email: str
@@ -62,7 +66,13 @@ def e2e_context() -> Generator[E2EContext, None, None]:
         pytest.fail("DATABASE_URL is required for the Sprint 1 HTTP E2E")
     engine = get_engine(settings)
     tenant_a, tenant_b = uuid4(), uuid4()
-    reviewer_id, viewer_id, other_reviewer_id = uuid4(), uuid4(), uuid4()
+    admin_id, reviewer_id, viewer_id, other_reviewer_id = (
+        uuid4(),
+        uuid4(),
+        uuid4(),
+        uuid4(),
+    )
+    admin_email = f"admin-{admin_id}@example.test"
     reviewer_email = f"reviewer-{reviewer_id}@example.test"
     viewer_email = f"viewer-{viewer_id}@example.test"
     other_reviewer_email = f"reviewer-{other_reviewer_id}@example.test"
@@ -76,6 +86,13 @@ def e2e_context() -> Generator[E2EContext, None, None]:
             [
                 TenantModel(id=tenant_a, slug=f"tenant-{tenant_a}", name="E2E Tenant A"),
                 TenantModel(id=tenant_b, slug=f"tenant-{tenant_b}", name="E2E Tenant B"),
+                UserModel(
+                    id=admin_id,
+                    tenant_id=tenant_a,
+                    email=admin_email,
+                    password_hash=password_hash,
+                    display_name="E2E Administrator",
+                ),
                 UserModel(
                     id=reviewer_id,
                     tenant_id=tenant_a,
@@ -96,6 +113,11 @@ def e2e_context() -> Generator[E2EContext, None, None]:
                     email=other_reviewer_email,
                     password_hash=password_hash,
                     display_name="Other Tenant Reviewer",
+                ),
+                UserRoleModel(
+                    tenant_id=tenant_a,
+                    user_id=admin_id,
+                    role_id=role_ids[Role.ADMIN],
                 ),
                 UserRoleModel(
                     tenant_id=tenant_a,
@@ -121,6 +143,8 @@ def e2e_context() -> Generator[E2EContext, None, None]:
         client=TestClient(create_app(settings, sprint1_services=build_sprint1_services(settings))),
         tenant_a=tenant_a,
         tenant_b=tenant_b,
+        reviewer_id=reviewer_id,
+        admin_email=admin_email,
         reviewer_email=reviewer_email,
         viewer_email=viewer_email,
         other_reviewer_email=other_reviewer_email,
@@ -150,18 +174,37 @@ def e2e_context() -> Generator[E2EContext, None, None]:
                 )
                 connection.execute(
                     delete(CaseStatusHistoryModel).where(
-                        CaseStatusHistoryModel.tenant_id.in_(tenant_ids)
+                        CaseStatusHistoryModel.tenant_id == tenant_b
                     )
                 )
                 connection.execute(
                     delete(CaseEvidenceModel).where(CaseEvidenceModel.tenant_id.in_(tenant_ids))
                 )
-                connection.execute(delete(CaseModel).where(CaseModel.tenant_id.in_(tenant_ids)))
+                connection.execute(
+                    delete(DataLifecycleEventModel).where(
+                        DataLifecycleEventModel.tenant_id == tenant_b
+                    )
+                )
+                connection.execute(
+                    delete(CaseSensitivePayloadModel).where(
+                        CaseSensitivePayloadModel.tenant_id == tenant_b
+                    )
+                )
+                # Tenant A now has a genuine append-only assignment audit action.
+                # Retain it for the disposable integration database instead of
+                # weakening the production trigger merely for fixture cleanup.
+                connection.execute(delete(CaseModel).where(CaseModel.tenant_id == tenant_b))
                 connection.execute(
                     delete(UserRoleModel).where(UserRoleModel.tenant_id.in_(tenant_ids))
                 )
-                connection.execute(delete(UserModel).where(UserModel.tenant_id.in_(tenant_ids)))
-                connection.execute(delete(TenantModel).where(TenantModel.id.in_(tenant_ids)))
+                connection.execute(delete(UserModel).where(UserModel.tenant_id == tenant_b))
+                connection.execute(delete(TenantModel).where(TenantModel.id == tenant_b))
+                connection.execute(
+                    update(UserModel).where(UserModel.tenant_id == tenant_a).values(is_active=False)
+                )
+                connection.execute(
+                    update(TenantModel).where(TenantModel.id == tenant_a).values(is_active=False)
+                )
 
             if context.created_role_ids:
                 with engine.begin() as connection:
@@ -236,6 +279,11 @@ def test_real_login_case_evidence_signed_download_and_tenant_isolation(
     e2e_context: E2EContext,
 ) -> None:
     tenant_a_slug = f"tenant-{e2e_context.tenant_a}"
+    admin_token = _login(
+        e2e_context.client,
+        tenant_slug=tenant_a_slug,
+        email=e2e_context.admin_email,
+    )
     reviewer_token = _login(
         e2e_context.client,
         tenant_slug=tenant_a_slug,
@@ -289,6 +337,23 @@ def test_real_login_case_evidence_signed_download_and_tenant_isolation(
         json=request_body,
     )
     assert viewer_create.status_code == 403
+
+    unassigned_detail = e2e_context.client.get(
+        f"/api/v1/cases/{case_id}",
+        headers=_auth(reviewer_token),
+    )
+    assert unassigned_detail.status_code == 404
+    assigned = e2e_context.client.post(
+        f"/api/v1/cases/{case_id}/assignment",
+        headers=_auth(admin_token),
+        json={
+            "assignee_id": str(e2e_context.reviewer_id),
+            "expected_version": 0,
+            "rationale": "Assign the integration Case to its authenticated reviewer.",
+        },
+    )
+    assert assigned.status_code == 200
+    assert assigned.json()["current_assignee_id"] == str(e2e_context.reviewer_id)
 
     payload = _png_bytes()
     uploaded = e2e_context.client.post(

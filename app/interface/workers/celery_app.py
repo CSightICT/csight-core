@@ -3,6 +3,8 @@
 from celery import Celery
 
 from app.bootstrap.logging import configure_logging
+from app.bootstrap.model_activation import validate_model_release_worker_startup
+from app.bootstrap.model_routing import validate_model_route_worker_startup
 from app.bootstrap.settings import Settings, get_settings
 
 ANALYSIS_REQUESTED_TASK_NAME = "analysis.requested.v1"
@@ -18,11 +20,14 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
     """Create a RabbitMQ-backed Celery process with reference-only JSON messages."""
 
     resolved_settings = settings or get_settings()
+    validate_model_release_worker_startup(resolved_settings)
+    validate_model_route_worker_startup(resolved_settings)
     configure_logging(resolved_settings.log_level)
     application = Celery(
         "csight",
         broker=resolved_settings.rabbitmq_url_value,
         include=["app.interface.workers.tasks"],
+        task_cls="app.interface.workers.telemetry:TelemetryTask",
     )
     application.conf.update(
         accept_content=["json"],

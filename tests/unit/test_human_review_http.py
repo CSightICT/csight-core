@@ -12,6 +12,7 @@ from app.application.human_review import (
     GetHumanReviewTask,
     HumanReviewActions,
     ListHumanReviewTasks,
+    ListReviewAssignees,
 )
 from app.bootstrap.settings import Settings
 from app.interface.http.services import Sprint1ServiceContainer, Sprint5BServiceContainer
@@ -23,6 +24,7 @@ from app.platform.human_review import (
     OutcomeRelation,
     ReviewAction,
     ReviewActionType,
+    ReviewAssignee,
     ReviewPacket,
     ReviewPriority,
     ReviewTask,
@@ -33,9 +35,11 @@ from app.platform.human_review import (
 from app.platform.policy_engine import EvaluationSummary, PolicyEffect, PolicyEffectType
 from app.platform.tenant import Principal, Role
 from app.ports.human_review import ReviewQueueQuery, ReviewTaskDetail
+from tests.case_assignment_support import AllowCaseAccess
 
 pytestmark = pytest.mark.unit
 NOW = datetime(2026, 8, 27, tzinfo=UTC)
+ASSIGNEE_ID = "00000000-0000-0000-0000-000000000123"
 
 
 def _principal(role: Role) -> Principal:
@@ -139,6 +143,21 @@ class _Repository:
     def get(self, *, tenant_id: str, task_id: str) -> ReviewTaskDetail | None:
         return _detail() if tenant_id == "tenant-a" and task_id == "task-1" else None
 
+    def list_assignees(self, *, tenant_id: str) -> tuple[ReviewAssignee, ...]:
+        assert tenant_id == "tenant-a"
+        return (
+            ReviewAssignee(
+                user_id=ASSIGNEE_ID,
+                display_name="Reviewer",
+                email="reviewer@example.test",
+                roles=(Role.REVIEWER,),
+            ),
+        )
+
+    def assign(self, *, assignee_id: str, expected_version: int, **_: object) -> ReviewTask:
+        assert assignee_id == ASSIGNEE_ID and expected_version == 1
+        return _task(ReviewTaskStatus.CLAIMED, version=2)
+
     def claim(self, *, expected_version: int, **_: object) -> ReviewTask:
         if expected_version != 1:
             raise ReviewTaskAlreadyClaimedError()
@@ -191,10 +210,14 @@ def _client(repository: _Repository) -> TestClient:
         list_case_evidence=unused,
         get_evidence_metadata=unused,
         create_evidence_access_url=unused,
+        get_case_assignment=unused,
+        assign_case=unused,
+        authorize_case_access=AllowCaseAccess(),  # pyright: ignore[reportArgumentType]
     )
     services = Sprint5BServiceContainer(
         list_tasks=ListHumanReviewTasks(repository),  # pyright: ignore[reportArgumentType]
         get_task=GetHumanReviewTask(repository),  # pyright: ignore[reportArgumentType]
+        list_assignees=ListReviewAssignees(repository),  # pyright: ignore[reportArgumentType]
         actions=HumanReviewActions(repository),  # pyright: ignore[reportArgumentType]
     )
     return TestClient(
@@ -338,3 +361,38 @@ def test_human_action_endpoints_validate_role_version_reasons_and_basis() -> Non
         },
     )
     assert invalid.status_code == 422
+
+
+def test_only_admin_can_list_assignees_and_assign_with_audit_rationale() -> None:
+    client = _client(_Repository())
+    assignees = client.get("/api/v1/human-review-assignees", headers=_headers(Role.ADMIN))
+    assert assignees.status_code == 200
+    assert assignees.json()["items"][0]["display_name"] == "Reviewer"
+    assert (
+        client.get("/api/v1/human-review-assignees", headers=_headers(Role.REVIEWER)).status_code
+        == 403
+    )
+
+    assigned = client.post(
+        "/api/v1/human-review-tasks/task-1/assign",
+        headers=_headers(Role.ADMIN),
+        json={
+            "expected_version": 1,
+            "assignee_id": ASSIGNEE_ID,
+            "rationale": "관리자가 문의 담당자를 배정했습니다.",
+        },
+    )
+    assert assigned.status_code == 200
+    assert assigned.json()["task"]["status"] == "CLAIMED"
+    assert (
+        client.post(
+            "/api/v1/human-review-tasks/task-1/assign",
+            headers=_headers(Role.REVIEWER),
+            json={
+                "expected_version": 1,
+                "assignee_id": ASSIGNEE_ID,
+                "rationale": "담당자가 임의로 배정하려고 했습니다.",
+            },
+        ).status_code
+        == 403
+    )

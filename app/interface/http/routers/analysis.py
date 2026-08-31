@@ -12,12 +12,20 @@ from app.interface.http.analysis_schemas import (
     AnalysisRunResponse,
     StartTextAnalysisRequest,
 )
-from app.interface.http.dependencies import provide_current_principal, provide_sprint2_services
+from app.interface.http.dependencies import (
+    provide_current_principal,
+    provide_sprint2_services,
+    require_case_access,
+)
 from app.interface.http.schemas import ErrorResponse
 from app.interface.http.services import Sprint2ServiceContainer
 from app.platform.tenant import Principal
 
-router = APIRouter(prefix="/api/v1/cases/{case_id}/analysis-runs", tags=["analysis"])
+router = APIRouter(
+    prefix="/api/v1/cases/{case_id}/analysis-runs",
+    tags=["analysis"],
+    dependencies=[Depends(require_case_access)],
+)
 
 ANALYSIS_RUN_RESPONSE_HEADERS: dict[str, dict[str, object]] = {
     "Location": {
@@ -70,6 +78,16 @@ def _disable_storage(response: Response) -> None:
         },
         status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
         status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_429_TOO_MANY_REQUESTS: {
+            "model": ErrorResponse,
+            "description": "The transaction-safe nonterminal run budget is full.",
+            "headers": {
+                "Retry-After": {
+                    "description": "Seconds before retrying a new admission.",
+                    "schema": {"type": "integer"},
+                }
+            },
+        },
         status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
         **ANALYSIS_AUTH_ERROR_RESPONSES,
     },
@@ -101,6 +119,7 @@ def start_text_analysis(
         command=StartTextAnalysisCommand(
             pipeline=body.pipeline,
             pipeline_version=body.pipeline_version,
+            execution_mode=body.execution_mode,
             idempotency_key=idempotency_key,
             correlation_id=correlation_id,
         ),

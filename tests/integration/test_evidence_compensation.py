@@ -24,6 +24,8 @@ from app.adapters.persistence.engine import clear_engine_cache, get_engine
 from app.adapters.persistence.models import (
     CaseEvidenceModel,
     CaseModel,
+    CaseSensitivePayloadModel,
+    DataLifecycleEventModel,
     TenantModel,
     UserModel,
 )
@@ -116,6 +118,16 @@ def compensation_context() -> Generator[CompensationContext, None, None]:
                 connection.execute(
                     delete(CaseEvidenceModel).where(
                         CaseEvidenceModel.tenant_id == UUID(context.tenant_id)
+                    )
+                )
+                connection.execute(
+                    delete(DataLifecycleEventModel).where(
+                        DataLifecycleEventModel.tenant_id == UUID(context.tenant_id)
+                    )
+                )
+                connection.execute(
+                    delete(CaseSensitivePayloadModel).where(
+                        CaseSensitivePayloadModel.tenant_id == UUID(context.tenant_id)
                     )
                 )
                 connection.execute(

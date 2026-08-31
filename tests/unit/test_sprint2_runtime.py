@@ -4,6 +4,7 @@ import signal
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
+from pathlib import Path
 from threading import Event
 from types import FrameType
 from typing import Any, cast
@@ -91,6 +92,30 @@ def test_celery_configuration_uses_durable_db_retries_and_safe_worker_limits() -
     assert application.conf.task_ignore_result is True
 
 
+def test_core_compose_splits_model_retrieval_and_decision_worker_lanes() -> None:
+    compose = Path("infra/compose.core.yml").read_text(encoding="utf-8")
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "  worker-model:" in compose
+    assert "--hostname=worker-model@%h" in compose
+    assert "--queues=analysis,grounded-explanation" in compose
+    assert "--concurrency=1" in compose
+    assert "  worker-retrieval:" in compose
+    assert "--hostname=worker-retrieval@%h" in compose
+    assert "--queues=policy-retrieval" in compose
+    assert "  worker-decision:" in compose
+    assert "--hostname=worker-decision@%h" in compose
+    assert (
+        "--queues=policy-evaluation,human-review,case-resolution,external-action-simulation"
+        in compose
+    )
+    assert compose.count("--concurrency=2") == 2
+    assert "  worker:\n" not in compose
+    # Core demo, strict-RLS pilot, scenario PoC, and E3 scenario profiles all
+    # use the same health-gated worker-lane startup contract.
+    assert makefile.count("up --build --detach --wait --remove-orphans") == 4
+
+
 @dataclass(slots=True)
 class _SequenceDispatcher:
     outcomes: list[DispatchOutboxResult | Exception]
@@ -119,6 +144,72 @@ class _RecordingLogger:
 
     def error(self, event: str, **values: object) -> None:
         self.records.append(("error", event, values))
+
+
+def test_composite_dispatcher_isolates_child_failure_and_reports_each_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    analysis = _SequenceDispatcher(
+        outcomes=[DispatchOutboxResult(claimed=2, published=1, retried=1, failed=0)]
+    )
+    retrieval = _SequenceDispatcher(
+        outcomes=[RuntimeError("postgresql://private-user:private-password@db/csight")]
+    )
+    decision = _SequenceDispatcher(
+        outcomes=[DispatchOutboxResult(claimed=3, published=2, retried=0, failed=1)]
+    )
+    recording_logger = _RecordingLogger()
+    monkeypatch.setattr(dispatcher_module, "logger", recording_logger)
+    dispatcher = dispatcher_module.CompositeOutboxDispatcher(
+        (
+            ("analysis", analysis),
+            ("policy_retrieval", retrieval),
+            ("decision", decision),
+        )
+    )
+
+    result = dispatcher.execute()
+
+    assert (analysis.calls, retrieval.calls, decision.calls) == (1, 1, 1)
+    assert (result.claimed, result.published, result.retried, result.failed) == (5, 3, 1, 1)
+    assert result.pipeline_failures == 1
+    assert tuple(outcome.pipeline for outcome in result.pipeline_outcomes) == (
+        "analysis",
+        "policy_retrieval",
+        "decision",
+    )
+    assert result.pipeline_outcomes[1].result is None
+    assert result.pipeline_outcomes[1].error_type == "RuntimeError"
+    assert recording_logger.records == [
+        (
+            "info",
+            "outbox_pipeline_dispatch_completed",
+            {
+                "pipeline": "analysis",
+                "claimed": 2,
+                "published": 1,
+                "retried": 1,
+                "failed": 0,
+            },
+        ),
+        (
+            "warning",
+            "outbox_pipeline_dispatch_failed",
+            {"pipeline": "policy_retrieval", "error_type": "RuntimeError"},
+        ),
+        (
+            "info",
+            "outbox_pipeline_dispatch_completed",
+            {
+                "pipeline": "decision",
+                "claimed": 3,
+                "published": 2,
+                "retried": 0,
+                "failed": 1,
+            },
+        ),
+    ]
+    assert "private-password" not in repr(recording_logger.records)
 
 
 def test_dispatch_loop_once_executes_exactly_one_bounded_batch() -> None:
@@ -323,6 +414,11 @@ def test_all_sql_outboxes_share_resolved_dispatch_settings_and_process_identity(
     )
     monkeypatch.setattr(
         dispatcher_module,
+        "CeleryOperationalRecoveryMessageQueue",
+        queue_factory("failure-recovery"),
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
         "DispatchPolicyRetrievalOutbox",
         reliable_factory("retrieval"),
     )
@@ -351,6 +447,11 @@ def test_all_sql_outboxes_share_resolved_dispatch_settings_and_process_identity(
         "DispatchExternalActionSimulationOutbox",
         reliable_factory("action-simulation"),
     )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "DispatchOperationalFailureRecoveryOutbox",
+        reliable_factory("failure-recovery"),
+    )
 
     assert dispatcher_module.main(["--once"]) == 0
     assert identity_calls == 1
@@ -370,6 +471,7 @@ def test_all_sql_outboxes_share_resolved_dispatch_settings_and_process_identity(
         ("review", "review"),
         ("case-resolution", "case-resolution"),
         ("action-simulation", "action-simulation"),
+        ("failure-recovery", "failure-recovery"),
     ):
         values = captured[name]
         assert values["session_factory"] is session_factory_marker

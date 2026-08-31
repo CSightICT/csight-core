@@ -2,9 +2,15 @@
 
 from datetime import timedelta
 
+from app.adapters.evidence_security import (
+    ClamAVInstreamScanner,
+    NoopMalwareScanner,
+    PillowImageSanitizer,
+)
 from app.adapters.file_inspection import PillowImageInspector
 from app.adapters.hashing import BoundedSha256Hasher
 from app.adapters.observability import StructuredCompensationFailureObserver
+from app.adapters.persistence.case_assignment import SQLAlchemyCaseAssignmentRepository
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.identity import SQLAlchemyIdentityRepositoryFactoryAdapter
 from app.adapters.persistence.session import create_session_factory
@@ -13,6 +19,7 @@ from app.adapters.runtime import UtcClock, Uuid4Generator
 from app.adapters.security import Argon2PasswordHasher, PyJWTAccessTokenCodec
 from app.adapters.storage import MinioObjectStorage
 from app.application.auth import AuthenticateUser, ResolvePrincipal
+from app.application.case_assignment import AssignCase, AuthorizeCaseAccess, GetCaseAssignment
 from app.application.cases import (
     CreateCase,
     GetCase,
@@ -28,6 +35,7 @@ from app.application.evidence import (
 )
 from app.bootstrap.settings import Settings
 from app.interface.http.services import Sprint1ServiceContainer
+from app.ports.evidence_security import MalwareScanner
 
 
 class Sprint1ConfigurationError(RuntimeError):
@@ -37,16 +45,7 @@ class Sprint1ConfigurationError(RuntimeError):
 def sprint1_is_configured(settings: Settings) -> bool:
     """Return whether all infrastructure/security values needed by the API exist."""
 
-    return all(
-        (
-            settings.database_url_value,
-            settings.jwt_secret_key_value,
-            settings.minio_endpoint,
-            settings.minio_presigned_endpoint_value,
-            settings.minio_access_key_value,
-            settings.minio_secret_key_value,
-        )
-    )
+    return not _missing_configuration(settings)
 
 
 def build_sprint1_services(settings: Settings) -> Sprint1ServiceContainer:
@@ -69,7 +68,19 @@ def build_sprint1_services(settings: Settings) -> Sprint1ServiceContainer:
     engine = get_engine(settings)
     session_factory = create_session_factory(engine)
     identities = SQLAlchemyIdentityRepositoryFactoryAdapter(session_factory)
-    uow_factory = create_case_unit_of_work_factory(engine)
+    retention_policy_version = _required(
+        settings.sensitive_payload_retention_policy_version_value,
+        "SENSITIVE_PAYLOAD_RETENTION_POLICY_VERSION",
+    )
+    retention_days = settings.sensitive_payload_retention_days_value
+    if retention_days is None:
+        raise Sprint1ConfigurationError("SENSITIVE_PAYLOAD_RETENTION_DAYS is required")
+    uow_factory = create_case_unit_of_work_factory(
+        engine,
+        sensitive_payload_retention_policy_version=retention_policy_version,
+        sensitive_payload_retention_days=retention_days,
+    )
+    case_assignments = SQLAlchemyCaseAssignmentRepository(session_factory)
     clock = UtcClock()
     id_generator = Uuid4Generator()
     token_ttl = timedelta(minutes=settings.jwt_access_token_expire_minutes)
@@ -97,6 +108,21 @@ def build_sprint1_services(settings: Settings) -> Sprint1ServiceContainer:
         allowed_extensions=settings.allowed_image_extensions,
         hasher=BoundedSha256Hasher(max_bytes=settings.max_upload_bytes),
     )
+    image_sanitizer = None
+    if settings.evidence_image_sanitization_enabled:
+        scanner: MalwareScanner = NoopMalwareScanner()
+        if settings.evidence_malware_scanner == "clamav":
+            scanner = ClamAVInstreamScanner(
+                host=_required(settings.clamav_host, "CLAMAV_HOST"),
+                port=settings.clamav_port,
+                timeout_seconds=settings.clamav_timeout_seconds,
+            )
+        image_sanitizer = PillowImageSanitizer(
+            scanner=scanner,
+            max_input_bytes=settings.max_upload_bytes,
+            max_output_bytes=settings.max_upload_bytes,
+            max_pixels=settings.max_image_pixels,
+        )
     get_evidence = GetEvidenceMetadata(uow_factory=uow_factory)
 
     return Sprint1ServiceContainer(
@@ -118,6 +144,9 @@ def build_sprint1_services(settings: Settings) -> Sprint1ServiceContainer:
         list_cases=ListCases(uow_factory=uow_factory),
         get_case=GetCase(uow_factory=uow_factory),
         get_case_status_history=GetCaseStatusHistory(uow_factory=uow_factory),
+        get_case_assignment=GetCaseAssignment(case_assignments),
+        assign_case=AssignCase(case_assignments),
+        authorize_case_access=AuthorizeCaseAccess(case_assignments),
         add_image_evidence=AddImageEvidence(
             uow_factory=uow_factory,
             storage=storage,
@@ -126,6 +155,7 @@ def build_sprint1_services(settings: Settings) -> Sprint1ServiceContainer:
             clock=clock,
             id_generator=id_generator,
             compensation_observer=StructuredCompensationFailureObserver(),
+            image_sanitizer=image_sanitizer,
         ),
         list_case_evidence=ListCaseEvidence(uow_factory=uow_factory),
         get_evidence_metadata=get_evidence,
@@ -144,14 +174,36 @@ def build_sprint1_services(settings: Settings) -> Sprint1ServiceContainer:
 
 
 def _missing_configuration(settings: Settings) -> tuple[str, ...]:
-    candidates = (
+    candidates: list[tuple[str, object | None]] = [
         ("DATABASE_URL", settings.database_url_value),
         ("JWT_SECRET_KEY", settings.jwt_secret_key_value),
         ("MINIO_ENDPOINT", settings.minio_endpoint),
         ("MINIO_PRESIGNED_ENDPOINT", settings.minio_presigned_endpoint_value),
         ("MINIO_ACCESS_KEY", settings.minio_access_key_value),
         ("MINIO_SECRET_KEY", settings.minio_secret_key_value),
-    )
+        (
+            "SENSITIVE_PAYLOAD_RETENTION_POLICY_VERSION",
+            settings.sensitive_payload_retention_policy_version_value,
+        ),
+        (
+            "SENSITIVE_PAYLOAD_RETENTION_DAYS",
+            settings.sensitive_payload_retention_days_value,
+        ),
+    ]
+    if settings.environment not in {"local", "test"}:
+        candidates.extend(
+            (
+                (
+                    "EVIDENCE_IMAGE_SANITIZATION_ENABLED=true",
+                    settings.evidence_image_sanitization_enabled or None,
+                ),
+                (
+                    "EVIDENCE_MALWARE_SCANNER=clamav",
+                    settings.evidence_malware_scanner == "clamav" or None,
+                ),
+                ("CLAMAV_HOST", settings.clamav_host),
+            )
+        )
     return tuple(name for name, value in candidates if not value)
 
 

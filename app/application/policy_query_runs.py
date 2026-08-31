@@ -14,6 +14,7 @@ from app.domains.product_defect_cs.query_builder import build_deterministic_quer
 from app.platform.analysis.prompts import PromptManifest
 from app.platform.errors import CaseNotFoundError
 from app.platform.policy_retrieval import PolicySearchFilters, PolicySearchQuery, RetrievalMode
+from app.platform.privacy_lifecycle import is_purged_customer_message
 from app.platform.query_builder import (
     MultiQueryFusionProfile,
     PolicyQuery,
@@ -23,6 +24,7 @@ from app.platform.query_builder import (
     PolicyRetrievalRun,
     QueryFilterHints,
     QueryStrategy,
+    build_policy_similarity_diagnostics,
     fuse_multi_query_hits,
 )
 from app.platform.tenant import Permission, Principal, Role
@@ -38,9 +40,9 @@ class _DTO(BaseModel):
 
 class StartPolicyRetrievalRunCommand(_DTO):
     analysis_run_id: str = Field(min_length=1)
-    strategy: QueryStrategy
+    strategy: QueryStrategy = QueryStrategy.RAW
     as_of_date: date
-    top_k: int = Field(default=10, ge=1, le=20)
+    top_k: int = Field(default=3, ge=1, le=20)
     idempotency_key: str = Field(min_length=1, max_length=255, repr=False)
     correlation_id: str = Field(min_length=1, max_length=128)
 
@@ -158,6 +160,8 @@ class ExecutePolicyRetrievalRun:
             return "NOOP"
         raw_hash: str | None = None
         try:
+            if is_purged_customer_message(source.customer_message):
+                raise ValueError("sensitive payload unavailable under retention policy")
             if source.run.strategy is QueryStrategy.RAW:
                 plan = PolicyQueryPlan(
                     queries=(
@@ -184,6 +188,8 @@ class ExecutePolicyRetrievalRun:
                 roles=frozenset({Role.ADMIN}),
             )
             per_query = []
+            per_query_nearest = []
+            per_query_least = []
             for query in plan.queries:
                 result = self._search.execute(
                     principal=principal,
@@ -193,6 +199,7 @@ class ExecutePolicyRetrievalRun:
                         as_of_date=source.run.as_of_date,
                         mode=RetrievalMode.HYBRID,
                         top_k=20,
+                        least_similar_k=3,
                         filters=PolicySearchFilters(
                             product_categories=(
                                 source.builder_input.trusted_metadata.product_category,
@@ -201,10 +208,18 @@ class ExecutePolicyRetrievalRun:
                     ),
                 )
                 per_query.append((query.query_id, result.hits))
+                per_query_nearest.append(
+                    (query.query_id, getattr(result, "nearest_dense_hits", ()))
+                )
+                per_query_least.append((query.query_id, getattr(result, "least_similar_hits", ())))
             hits = fuse_multi_query_hits(
                 results=tuple(per_query),
                 profile=MultiQueryFusionProfile(),
                 top_k=source.run.top_k,
+            )
+            diagnostics = build_policy_similarity_diagnostics(
+                nearest_results=tuple(per_query_nearest),
+                least_results=tuple(per_query_least),
             )
         except Exception as error:
             code = getattr(error, "code", "POLICY_RETRIEVAL_FAILED")
@@ -233,6 +248,7 @@ class ExecutePolicyRetrievalRun:
             plan=plan,
             hits=hits,
             raw_query_hash=raw_hash,
+            diagnostics=diagnostics,
         )
         return "SUCCEEDED" if persisted else "FENCED"
 

@@ -12,6 +12,7 @@ from alembic import command
 pytestmark = pytest.mark.unit
 PREVIOUS = "20260827_0015_vision_image_assessment"
 REVISION = "20260828_0016_communication_learning_assets"
+CURRENT_HEAD = "20260831_0034_analysis_model_route_snapshot"
 
 
 def _config(output: StringIO) -> Config:
@@ -27,7 +28,7 @@ def _config(output: StringIO) -> Config:
 def test_communication_learning_asset_revision_is_single_head() -> None:
     scripts = ScriptDirectory.from_config(_config(StringIO()))
     revision = scripts.get_revision(REVISION)
-    assert scripts.get_heads() == [REVISION]
+    assert scripts.get_heads() == [CURRENT_HEAD]
     assert revision is not None
     assert revision.down_revision == PREVIOUS
 

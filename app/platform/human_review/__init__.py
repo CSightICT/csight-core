@@ -50,6 +50,8 @@ class ReviewTaskStatus(StrEnum):
 
 class ReviewActionType(StrEnum):
     CREATED = "CREATED"
+    ASSIGNED = "ASSIGNED"
+    REASSIGNED = "REASSIGNED"
     CLAIMED = "CLAIMED"
     RELEASED = "RELEASED"
     EVIDENCE_REQUESTED = "EVIDENCE_REQUESTED"
@@ -62,6 +64,8 @@ class AssignmentType(StrEnum):
     SELF_CLAIM = "SELF_CLAIM"
     ADMIN_ASSIGNMENT = "ADMIN_ASSIGNMENT"
     ESCALATION_CLAIM = "ESCALATION_CLAIM"
+    WAITING_OWNER_RECOVERY = "WAITING_OWNER_RECOVERY"
+    CASE_ASSIGNMENT_INHERITANCE = "CASE_ASSIGNMENT_INHERITANCE"
 
 
 class AdditionalEvidenceReason(StrEnum):
@@ -204,6 +208,13 @@ class ReviewTask(_Strict):
     resolved_at: datetime | None = None
 
 
+class ReviewAssignee(_Strict):
+    user_id: str
+    display_name: str
+    email: str
+    roles: tuple[Role, ...]
+
+
 class ReviewPacket(_Strict):
     id: str
     tenant_id: str
@@ -290,7 +301,7 @@ _TRANSITIONS = {
         ReviewTaskStatus.CLAIMED,
         ReviewActionType.EVIDENCE_REQUESTED,
     ): ReviewTaskStatus.WAITING_FOR_EVIDENCE,
-    (ReviewTaskStatus.WAITING_FOR_EVIDENCE, ReviewActionType.RESUMED): ReviewTaskStatus.PENDING,
+    (ReviewTaskStatus.WAITING_FOR_EVIDENCE, ReviewActionType.RESUMED): ReviewTaskStatus.CLAIMED,
     (ReviewTaskStatus.CLAIMED, ReviewActionType.ESCALATED): ReviewTaskStatus.ESCALATED,
     (ReviewTaskStatus.ESCALATED, ReviewActionType.CLAIMED): ReviewTaskStatus.CLAIMED,
     (ReviewTaskStatus.CLAIMED, ReviewActionType.RESOLVED): ReviewTaskStatus.RESOLVED,

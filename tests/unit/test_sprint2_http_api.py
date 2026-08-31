@@ -18,7 +18,9 @@ from app.bootstrap.settings import Settings
 from app.interface.http.services import Sprint1ServiceContainer, Sprint2ServiceContainer
 from app.main import create_app
 from app.platform.analysis import (
+    AnalysisAdmissionLimitExceededError,
     AnalysisAttemptSummary,
+    AnalysisExecutionMode,
     AnalysisFailure,
     AnalysisPipeline,
     AnalysisRun,
@@ -51,7 +53,12 @@ from app.platform.errors import (
     IdempotencyKeyReusedError,
 )
 from app.platform.evidence import EvidenceMetadata
+from app.platform.model_routing import (
+    ActiveModelRoutePlanRequiredError,
+    ModelRouteActivationConflictError,
+)
 from app.platform.tenant import Permission, Principal, Role
+from tests.case_assignment_support import AllowCaseAccess
 
 pytestmark = pytest.mark.unit
 
@@ -283,10 +290,24 @@ class _StartTextAnalysis:
             raise IdempotencyKeyReusedError()
         if command.idempotency_key == "terminal-key":
             raise AnalysisAlreadyTerminalError()
+        if command.idempotency_key == "quota-key":
+            raise AnalysisAdmissionLimitExceededError(
+                global_nonterminal=4,
+                tenant_nonterminal=2,
+                global_limit=4,
+                tenant_limit=4,
+                retry_after_seconds=5,
+            )
+        if command.idempotency_key == "missing-route-key":
+            raise ActiveModelRoutePlanRequiredError()
+        if command.idempotency_key == "stale-route-key":
+            raise ModelRouteActivationConflictError()
         if command.pipeline_version == "unsupported":
             raise AnalysisPipelineNotSupportedError()
         return StartTextAnalysisResult(
-            run=_run(tenant_id=principal.tenant_id, case_id=case_id),
+            run=_run(tenant_id=principal.tenant_id, case_id=case_id).model_copy(
+                update={"execution_mode": command.execution_mode}
+            ),
             replayed=command.idempotency_key == "replay-key",
         )
 
@@ -369,6 +390,9 @@ def _sprint1_services() -> Sprint1ServiceContainer:
         list_case_evidence=_ListCaseEvidence(),
         get_evidence_metadata=unused,
         create_evidence_access_url=unused,
+        get_case_assignment=unused,
+        assign_case=unused,
+        authorize_case_access=AllowCaseAccess(),  # pyright: ignore[reportArgumentType]
     )
 
 
@@ -440,6 +464,7 @@ def test_admin_and_reviewer_can_start_with_required_idempotency_contract(
     assert response.headers["Pragma"] == "no-cache"
     assert response.json()["analysis_run_id"] == "run-1"
     assert response.json()["status"] == "QUEUED"
+    assert response.json()["execution_mode"] == "PRIMARY"
     command = context.start.commands[-1]
     assert command.pipeline is AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION
     assert command.pipeline_version == "1.0.0"
@@ -450,6 +475,38 @@ def test_admin_and_reviewer_can_start_with_required_idempotency_contract(
     assert "request_hash" not in response.text
     assert "correlation_id" not in response.text
     assert _PRIVATE_IDEMPOTENCY_KEY not in response.text
+
+
+def test_start_accepts_explicit_shadow_mode_without_changing_permissions(
+    context: _HTTPContext,
+) -> None:
+    response = context.client.post(
+        "/api/v1/cases/case-1/analysis-runs",
+        headers={**_authorization(Role.REVIEWER), "Idempotency-Key": "shadow-key"},
+        json={**_start_body(), "execution_mode": "SHADOW"},
+    )
+
+    assert response.status_code == 202
+    assert response.json()["execution_mode"] == "SHADOW"
+    assert context.start.commands[-1].execution_mode is AnalysisExecutionMode.SHADOW
+
+
+def test_admission_limit_is_429_with_retry_after(context: _HTTPContext) -> None:
+    response = context.client.post(
+        "/api/v1/cases/case-1/analysis-runs",
+        headers={**_authorization(), "Idempotency-Key": "quota-key"},
+        json=_start_body(),
+    )
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "5"
+    assert response.json()["error"]["code"] == "ANALYSIS_ADMISSION_LIMIT_EXCEEDED"
+    assert response.json()["error"]["details"] == {
+        "global_nonterminal": 4,
+        "tenant_nonterminal": 2,
+        "global_limit": 4,
+        "tenant_limit": 4,
+    }
 
 
 def test_start_replay_is_200_and_invalid_idempotency_inputs_do_not_reach_service(
@@ -654,6 +711,22 @@ def test_analysis_detail_exposes_binary_assessment_without_bbox_or_defect_type(
             409,
             "IDEMPOTENCY_KEY_REUSED",
         ),
+        (
+            "POST",
+            "/api/v1/cases/case-1/analysis-runs",
+            {**_authorization(), "Idempotency-Key": "missing-route-key"},
+            _start_body(pipeline_version="2.0.0"),
+            503,
+            "ACTIVE_MODEL_ROUTE_PLAN_REQUIRED",
+        ),
+        (
+            "POST",
+            "/api/v1/cases/case-1/analysis-runs",
+            {**_authorization(), "Idempotency-Key": "stale-route-key"},
+            _start_body(pipeline_version="2.0.0"),
+            409,
+            "MODEL_ROUTE_ACTIVATION_CONFLICT",
+        ),
     ],
 )
 def test_analysis_errors_use_stable_safe_http_envelopes(
@@ -733,12 +806,13 @@ def test_openapi_declares_required_key_tenant_free_inputs_and_safe_outputs(
     parameters = {parameter["name"]: parameter for parameter in post["parameters"]}
     assert parameters["Idempotency-Key"]["required"] is True
     assert post["responses"]["202"]["headers"].keys() >= {"Location", "Cache-Control"}
-    assert post["responses"].keys() >= {"200", "202", "404", "409", "422", "503"}
+    assert post["responses"].keys() >= {"200", "202", "404", "409", "422", "429", "503"}
+    assert "Retry-After" in post["responses"]["429"]["headers"]
     assert path["get"]["responses"].keys() >= {"200", "401", "403", "404", "422", "503"}
 
     request_schema = post["requestBody"]["content"]["application/json"]["schema"]
     request_names = _schema_property_names(request_schema, document)
-    assert request_names == {"pipeline", "pipeline_version"}
+    assert request_names == {"pipeline", "pipeline_version", "execution_mode"}
 
     response_schema = post["responses"]["202"]["content"]["application/json"]["schema"]
     response_names = _schema_property_names(response_schema, document)

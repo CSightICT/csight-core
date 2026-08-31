@@ -1,0 +1,72 @@
+name: csight-core
+
+# Strict limited-pilot overlay. Use together with compose.core.yml only after
+# provision_postgres_runtime_logins.py has created the three LOGIN principals.
+services:
+  api:
+    environment:
+      DATABASE_URL: postgresql+psycopg://${API_DATABASE_LOGIN:-csight_api_login}@postgres:5432/${POSTGRES_DB:-csight}
+      DATABASE_PASSWORD_FILE: /run/secrets/api_db_password
+      DATABASE_RUNTIME_ROLE: api
+      DATABASE_RLS_REQUIRED: "true"
+    secrets:
+      - source: api-db-password
+        target: api_db_password
+
+  privacy-lifecycle:
+    environment:
+      DATABASE_URL: postgresql+psycopg://${API_DATABASE_LOGIN:-csight_api_login}@postgres:5432/${POSTGRES_DB:-csight}
+      DATABASE_PASSWORD_FILE: /run/secrets/api_db_password
+      DATABASE_RUNTIME_ROLE: api
+      DATABASE_RLS_REQUIRED: "true"
+    secrets:
+      - source: api-db-password
+        target: api_db_password
+
+  worker-model:
+    environment:
+      DATABASE_URL: postgresql+psycopg://${WORKER_DATABASE_LOGIN:-csight_worker_login}@postgres:5432/${POSTGRES_DB:-csight}
+      DATABASE_PASSWORD_FILE: /run/secrets/worker_db_password
+      DATABASE_RUNTIME_ROLE: worker
+      DATABASE_RLS_REQUIRED: "true"
+    secrets:
+      - source: worker-db-password
+        target: worker_db_password
+
+  worker-retrieval:
+    environment:
+      DATABASE_URL: postgresql+psycopg://${WORKER_DATABASE_LOGIN:-csight_worker_login}@postgres:5432/${POSTGRES_DB:-csight}
+      DATABASE_PASSWORD_FILE: /run/secrets/worker_db_password
+      DATABASE_RUNTIME_ROLE: worker
+      DATABASE_RLS_REQUIRED: "true"
+    secrets:
+      - source: worker-db-password
+        target: worker_db_password
+
+  worker-decision:
+    environment:
+      DATABASE_URL: postgresql+psycopg://${WORKER_DATABASE_LOGIN:-csight_worker_login}@postgres:5432/${POSTGRES_DB:-csight}
+      DATABASE_PASSWORD_FILE: /run/secrets/worker_db_password
+      DATABASE_RUNTIME_ROLE: worker
+      DATABASE_RLS_REQUIRED: "true"
+    secrets:
+      - source: worker-db-password
+        target: worker_db_password
+
+  dispatcher:
+    environment:
+      DATABASE_URL: postgresql+psycopg://${DISPATCHER_DATABASE_LOGIN:-csight_dispatcher_login}@postgres:5432/${POSTGRES_DB:-csight}
+      DATABASE_PASSWORD_FILE: /run/secrets/dispatcher_db_password
+      DATABASE_RUNTIME_ROLE: dispatcher
+      DATABASE_RLS_REQUIRED: "true"
+    secrets:
+      - source: dispatcher-db-password
+        target: dispatcher_db_password
+
+secrets:
+  api-db-password:
+    file: ${API_DATABASE_PASSWORD_HOST_FILE:?Set API_DATABASE_PASSWORD_HOST_FILE}
+  worker-db-password:
+    file: ${WORKER_DATABASE_PASSWORD_HOST_FILE:?Set WORKER_DATABASE_PASSWORD_HOST_FILE}
+  dispatcher-db-password:
+    file: ${DISPATCHER_DATABASE_PASSWORD_HOST_FILE:?Set DISPATCHER_DATABASE_PASSWORD_HOST_FILE}

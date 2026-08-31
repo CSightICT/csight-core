@@ -21,6 +21,7 @@ from app.adapters.persistence.async_events import (
 from app.adapters.persistence.grounding import load_verified_citation_pack
 from app.adapters.persistence.models import (
     AnalysisRunEvidenceModel,
+    CaseAssignmentModel,
     CaseEvidenceModel,
     CaseModel,
     CaseResolutionEventModel,
@@ -37,12 +38,18 @@ from app.adapters.persistence.models import (
     HumanReviewTaskModel,
     LLMExtractionResultV2Model,
     PolicyCitationPackItemModel,
+    PolicyCitationPackModel,
+    PolicyClauseModel,
     PolicyEvaluationEffectModel,
     PolicyEvaluationInputSnapshotModel,
     PolicyEvaluationRunModel,
     PolicyRetrievalRunModel,
+    PolicyRetrievalSimilarityModel,
     PolicyRuleEvaluationResultModel,
     PolicyRuleSetModel,
+    RoleModel,
+    UserModel,
+    UserRoleModel,
     VisionAnalysisResultModel,
 )
 from app.platform.async_reliability import AsyncEventIntegrityError
@@ -72,12 +79,14 @@ from app.platform.human_review import (
     InvalidReviewTransitionError,
     ReviewAction,
     ReviewActionType,
+    ReviewAssignee,
     ReviewPacket,
     ReviewPacketIntegrityError,
     ReviewTask,
     ReviewTaskAlreadyClaimedError,
     ReviewTaskNotFoundError,
     ReviewTaskStatus,
+    ReviewTaskType,
     ReviewTaskVersionConflictError,
     actor_role,
     can_claim,
@@ -237,6 +246,26 @@ class SQLAlchemyHumanReviewRepository:
             )
             if run is None or run.summary_status is None:
                 raise ReviewPacketIntegrityError("A successful policy evaluation was not found.")
+            owned_case = session.scalar(
+                select(CaseModel)
+                .where(CaseModel.tenant_id == tenant_uuid, CaseModel.id == case_uuid)
+                .with_for_update()
+            )
+            if owned_case is None:
+                raise ReviewPacketIntegrityError("The policy evaluation Case was not found.")
+            inherited_case_assignment = None
+            if owned_case.current_assignee_id is not None:
+                inherited_case_assignment = session.scalar(
+                    select(CaseAssignmentModel).where(
+                        CaseAssignmentModel.tenant_id == tenant_uuid,
+                        CaseAssignmentModel.case_id == case_uuid,
+                        CaseAssignmentModel.released_at.is_(None),
+                    )
+                )
+                if inherited_case_assignment is None:
+                    raise ReviewPacketIntegrityError(
+                        "The Case assignment projection has no active assignment record."
+                    )
             snapshot = session.scalar(
                 select(PolicyEvaluationInputSnapshotModel).where(
                     PolicyEvaluationInputSnapshotModel.tenant_id == tenant_uuid,
@@ -399,8 +428,12 @@ class SQLAlchemyHumanReviewRepository:
                 policy_evaluation_run_id=run.id,
                 task_type=task_type.value,
                 priority=priority.value,
-                status=ReviewTaskStatus.PENDING.value,
-                current_assignee_id=None,
+                status=(
+                    ReviewTaskStatus.CLAIMED.value
+                    if owned_case.current_assignee_id is not None
+                    else ReviewTaskStatus.PENDING.value
+                ),
+                current_assignee_id=owned_case.current_assignee_id,
                 version=1,
                 mapping_rule_name=TASK_MAPPING_NAME,
                 mapping_rule_version=TASK_MAPPING_VERSION,
@@ -445,17 +478,35 @@ class SQLAlchemyHumanReviewRepository:
                     review_task_id=task_id,
                     action_type=ReviewActionType.CREATED.value,
                     from_status=None,
-                    to_status=ReviewTaskStatus.PENDING.value,
+                    to_status=task.status,
                     actor_id=None,
                     actor_role=None,
                     reason_codes=[],
                     rationale=None,
-                    action_payload={"mapping_version": TASK_MAPPING_VERSION},
+                    action_payload={
+                        "mapping_version": TASK_MAPPING_VERSION,
+                        "case_assignment_version": owned_case.assignment_version,
+                        "inherited_case_assignment": owned_case.current_assignee_id is not None,
+                    },
                     expected_task_version=0,
                     resulting_task_version=1,
                     created_at=now,
                 )
             )
+            if inherited_case_assignment is not None:
+                session.add(
+                    HumanReviewAssignmentModel(
+                        id=uuid4(),
+                        tenant_id=tenant_uuid,
+                        review_task_id=task_id,
+                        assignee_id=inherited_case_assignment.assignee_id,
+                        assigned_by=inherited_case_assignment.assigned_by,
+                        assignment_type=AssignmentType.CASE_ASSIGNMENT_INHERITANCE.value,
+                        assigned_at=now,
+                        released_at=None,
+                        created_at=now,
+                    )
+                )
             mark_event_consumed(event, now=now)
             session.flush()
             return _to_task(task), False
@@ -607,6 +658,32 @@ class SQLAlchemyHumanReviewRepository:
                 if packet.grounding_result_id is not None
                 else None
             )
+            extraction = session.get(LLMExtractionResultV2Model, packet.llm_extraction_result_v2_id)
+            citation_pack = (
+                session.get(PolicyCitationPackModel, packet.citation_pack_id)
+                if packet.citation_pack_id is not None
+                else None
+            )
+            similarity_rows = (
+                session.execute(
+                    select(PolicyRetrievalSimilarityModel, PolicyClauseModel)
+                    .join(
+                        PolicyClauseModel,
+                        PolicyClauseModel.id == PolicyRetrievalSimilarityModel.policy_clause_row_id,
+                    )
+                    .where(
+                        PolicyRetrievalSimilarityModel.tenant_id == tenant_uuid,
+                        PolicyRetrievalSimilarityModel.retrieval_run_id
+                        == citation_pack.retrieval_run_id,
+                    )
+                    .order_by(
+                        PolicyRetrievalSimilarityModel.similarity_group,
+                        PolicyRetrievalSimilarityModel.rank,
+                    )
+                ).all()
+                if citation_pack is not None
+                else []
+            )
             return ReviewTaskDetail(
                 task=_to_task(task),
                 packet=_to_packet(packet),
@@ -635,6 +712,7 @@ class SQLAlchemyHumanReviewRepository:
                         "document_id": row.document_id,
                         "document_version": row.document_version,
                         "title": row.title,
+                        "text": row.clause_text,
                         "section_path": tuple(row.section_path),
                         "source_type": row.source_type,
                     }
@@ -650,7 +728,167 @@ class SQLAlchemyHumanReviewRepository:
                     if grounded is not None
                     else None
                 ),
+                inquiry_summary=extraction.summary if extraction is not None else None,
+                policy_similarity=tuple(
+                    {
+                        "group": evidence.similarity_group,
+                        "rank": evidence.rank,
+                        "cosine_similarity": evidence.cosine_similarity,
+                        "reference_threshold": evidence.reference_threshold,
+                        "threshold_version": evidence.threshold_version,
+                        "matched_query_ids": tuple(evidence.matched_query_ids),
+                        "reason_codes": tuple(evidence.reason_codes),
+                        "policy_clause_id": clause.clause_id,
+                        "document_id": clause.document_id,
+                        "document_version": clause.document_version,
+                        "title": clause.title,
+                        "section_path": tuple(clause.section_path),
+                        "text": clause.text,
+                    }
+                    for evidence, clause in similarity_rows
+                ),
             )
+
+    def list_assignees(self, *, tenant_id: str) -> tuple[ReviewAssignee, ...]:
+        tenant_uuid = UUID(tenant_id)
+        with self._factory() as session:
+            rows = session.execute(
+                select(UserModel, RoleModel.name)
+                .join(
+                    UserRoleModel,
+                    (UserRoleModel.tenant_id == UserModel.tenant_id)
+                    & (UserRoleModel.user_id == UserModel.id),
+                )
+                .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+                .where(
+                    UserModel.tenant_id == tenant_uuid,
+                    UserModel.is_active.is_(True),
+                    RoleModel.name.in_((Role.ADMIN.value, Role.REVIEWER.value)),
+                )
+                .order_by(UserModel.display_name, UserModel.email, RoleModel.name)
+            ).all()
+        grouped: dict[UUID, tuple[UserModel, set[Role]]] = {}
+        for user, role_name in rows:
+            if user.id not in grouped:
+                grouped[user.id] = (user, set())
+            grouped[user.id][1].add(Role(role_name))
+        return tuple(
+            ReviewAssignee(
+                user_id=str(user.id),
+                display_name=user.display_name,
+                email=user.email,
+                roles=tuple(sorted(roles, key=lambda item: item.value)),
+            )
+            for user, roles in grouped.values()
+        )
+
+    def assign(
+        self,
+        *,
+        tenant_id: str,
+        task_id: str,
+        actor_id: str,
+        roles: frozenset[Role],
+        expected_version: int,
+        assignee_id: str,
+        rationale: str,
+    ) -> ReviewTask:
+        if Role.ADMIN not in roles:
+            raise ForbiddenError()
+        tenant_uuid = UUID(tenant_id)
+        assignee_uuid = UUID(assignee_id)
+        with self._factory.begin() as session:
+            task = _lock_task(session, tenant_id, task_id)
+            _check_version(task, expected_version)
+            status = ReviewTaskStatus(task.status)
+            if status not in {
+                ReviewTaskStatus.PENDING,
+                ReviewTaskStatus.CLAIMED,
+                ReviewTaskStatus.ESCALATED,
+            }:
+                raise InvalidReviewTransitionError()
+            if task.current_assignee_id == assignee_uuid:
+                raise PlatformValidationError("The review task is already assigned to this user.")
+
+            assignee = session.scalar(
+                select(UserModel).where(
+                    UserModel.tenant_id == tenant_uuid,
+                    UserModel.id == assignee_uuid,
+                    UserModel.is_active.is_(True),
+                )
+            )
+            assignee_roles = frozenset(
+                Role(value)
+                for value in session.scalars(
+                    select(RoleModel.name)
+                    .join(UserRoleModel, UserRoleModel.role_id == RoleModel.id)
+                    .where(
+                        UserRoleModel.tenant_id == tenant_uuid,
+                        UserRoleModel.user_id == assignee_uuid,
+                    )
+                ).all()
+            )
+            if assignee is None or not assignee_roles.intersection({Role.ADMIN, Role.REVIEWER}):
+                raise PlatformValidationError("The selected user is not an active review assignee.")
+            if (
+                task.task_type
+                in {
+                    ReviewTaskType.MANAGER_REVIEW.value,
+                    ReviewTaskType.POLICY_EXCEPTION_REVIEW.value,
+                    ReviewTaskType.SAFETY_REVIEW.value,
+                }
+                and Role.ADMIN not in assignee_roles
+            ):
+                raise PlatformValidationError(
+                    "This review type must be assigned to an administrator."
+                )
+
+            now = datetime.now(UTC)
+            previous_assignee = task.current_assignee_id
+            action = (
+                ReviewActionType.REASSIGNED
+                if status is ReviewTaskStatus.CLAIMED
+                else ReviewActionType.ASSIGNED
+            )
+            if previous_assignee is not None:
+                _release_assignment(session, task, now)
+            _append_action(
+                session,
+                task=task,
+                action=action,
+                to_status=ReviewTaskStatus.CLAIMED,
+                actor_id=UUID(actor_id),
+                actor_role_value=Role.ADMIN,
+                expected_version=expected_version,
+                payload={
+                    "assignment_type": AssignmentType.ADMIN_ASSIGNMENT.value,
+                    "assignee_id": assignee_id,
+                    "previous_assignee_id": (
+                        str(previous_assignee) if previous_assignee is not None else None
+                    ),
+                },
+                rationale=rationale,
+                now=now,
+            )
+            task.status = ReviewTaskStatus.CLAIMED.value
+            task.current_assignee_id = assignee_uuid
+            task.version += 1
+            task.updated_at = now
+            session.add(
+                HumanReviewAssignmentModel(
+                    id=uuid4(),
+                    tenant_id=task.tenant_id,
+                    review_task_id=task.id,
+                    assignee_id=assignee_uuid,
+                    assigned_by=UUID(actor_id),
+                    assignment_type=AssignmentType.ADMIN_ASSIGNMENT.value,
+                    assigned_at=now,
+                    released_at=None,
+                    created_at=now,
+                )
+            )
+            session.flush()
+            return _to_task(task)
 
     def claim(
         self,
@@ -774,6 +1012,11 @@ class SQLAlchemyHumanReviewRepository:
             _check_version(task, expected_version)
             if ReviewTaskStatus(task.status) is not ReviewTaskStatus.WAITING_FOR_EVIDENCE:
                 raise InvalidReviewTransitionError()
+            actor_uuid = UUID(actor_id)
+            if task.current_assignee_id is None:
+                raise ReviewPacketIntegrityError("Waiting task has no retained assignee.")
+            if task.current_assignee_id != actor_uuid and Role.ADMIN not in roles:
+                raise ForbiddenError()
             packet = session.scalar(
                 select(HumanReviewPacketModel).where(
                     HumanReviewPacketModel.tenant_id == task.tenant_id,
@@ -875,9 +1118,12 @@ class SQLAlchemyHumanReviewRepository:
                 payload={**payload, "admin_override": is_admin_override},
                 now=now,
             )
-            _release_assignment(session, task, now)
+            preserve_assignment = action is ReviewActionType.EVIDENCE_REQUESTED
+            if not preserve_assignment:
+                _release_assignment(session, task, now)
             task.status = next_status.value
-            task.current_assignee_id = None
+            if not preserve_assignment:
+                task.current_assignee_id = None
             task.version += 1
             task.updated_at = now
             session.flush()
@@ -989,15 +1235,9 @@ class SQLAlchemyHumanReviewRepository:
                 )
                 for reference, columns in resolved_basis
             ]
-            decision_row.content_hash = canonical_hash(
-                _decision_hash_payload(
-                    decision_row,
-                    reason_codes=sorted(item.value for item in request.reason_codes),
-                    basis_rows=sorted(
-                        basis_rows,
-                        key=lambda item: (item.basis_type, item.reference_id),
-                    ),
-                )
+            decision_row.content_hash = compute_human_decision_content_hash(
+                decision_row,
+                basis_rows,
             )
             session.add(decision_row)
             # Basis rows reference the immutable decision aggregate directly.
@@ -1500,6 +1740,24 @@ def _decision_hash_payload(
     }
 
 
+def compute_human_decision_content_hash(
+    row: HumanReviewDecisionModel,
+    basis_rows: Sequence[HumanReviewDecisionBasisModel],
+) -> str:
+    """Return the canonical persisted aggregate hash for a human decision."""
+
+    return canonical_hash(
+        _decision_hash_payload(
+            row,
+            reason_codes=sorted(str(item) for item in row.reason_codes),
+            basis_rows=sorted(
+                basis_rows,
+                key=lambda item: (item.basis_type, item.reference_id),
+            ),
+        )
+    )
+
+
 def _basis_hash_payload(row: HumanReviewDecisionBasisModel) -> dict[str, object]:
     return {
         "id": str(row.id),
@@ -1553,13 +1811,7 @@ def _verify_decision_hash(
     ordered_basis = sorted(basis_rows, key=lambda item: (item.basis_type, item.reference_id))
     stored_reasons = [str(item) for item in row.reason_codes]
     ordered_reasons = sorted(stored_reasons)
-    strong_hash = canonical_hash(
-        _decision_hash_payload(
-            row,
-            reason_codes=ordered_reasons,
-            basis_rows=ordered_basis,
-        )
-    )
+    strong_hash = compute_human_decision_content_hash(row, ordered_basis)
     if row.content_hash == strong_hash:
         return
 
@@ -1679,4 +1931,4 @@ def _verify_decision_basis_links(
             raise ReviewPacketIntegrityError("Decision basis target link is invalid.")
 
 
-__all__ = ["SQLAlchemyHumanReviewRepository"]
+__all__ = ["SQLAlchemyHumanReviewRepository", "compute_human_decision_content_hash"]

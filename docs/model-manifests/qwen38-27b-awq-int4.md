@@ -1,6 +1,6 @@
 # Qwen3.8-27B AWQ INT4 Model Manifest
 
-- Manifest status: `QUALIFIED_WITH_LIMITATIONS`
+- Manifest status: `SHADOW_ONLY` (`QUALIFIED_WITH_LIMITATIONS` historical measurement retained)
 - Recorded: 2026-08-26 (Asia/Seoul)
 - Evaluation dataset: `qwen38_qualification_v1`
 
@@ -16,7 +16,7 @@
 | Artifact size | 21,041,255,795 bytes |
 | Architecture | `Qwen3_5ForConditionalGeneration` / `qwen3_5` |
 | Quantization | `compressed-tensors`, packed INT4, group size 32, asymmetric |
-| Calibration | Artifact publisher does not document the calibration dataset in the model card; unknown |
+| Calibration | Publisher links `cyankiwi/calibration-medium` and labels it `STEM and Agentic`; the exact dataset revision/digest and quantization recipe are not pinned in this manifest |
 
 The artifact is a Community quantization rather than an official Qwen release artifact. Several
 visual and linear-attention modules are excluded by its quantization config. The qualified service
@@ -100,16 +100,27 @@ so Pydantic validity was 98%. vLLM 0.26.0 rejected JSON Schema `uniqueItems` as 
 grammar key. Prompt 1.0.1 added explicit taxonomy and set semantics; the same 100 cases then passed
 all safety gates and improved issue F1 from 0.594 to 0.95. No validator or gate was weakened.
 
+The legacy dataset supplied `UNSPECIFIED` as a structured action input while some gold rows required
+an action inferred from free text. Its requested-action and missing-information metrics are therefore
+not comparable to the unambiguous `llm_extraction_v2/2.0.0` release contract. They remain historical
+diagnostics only. The frozen RTX 4090 candidate gate currently classifies this exact profile as
+`SHADOW_ONLY`; it cannot satisfy a product release with the legacy metrics.
+
 ## Known limitations
 
 - Single-GPU 24GB headroom is extremely small: workload peak was 23,825 MiB and observed free memory
   fell as low as 254 MiB. Context and concurrency increases require requalification.
 - FP8 KV cache can reduce accuracy if scaling is suboptimal; the measured baseline is authoritative.
 - Eager execution trades throughput for predictable memory behavior.
-- The Community artifact's calibration data is not documented in its model card.
+- The Community artifact names a calibration dataset, but this manifest does not pin its exact
+  revision/digest or the quantization recipe, and CSight-domain representativeness is unqualified.
 - The 100-case qualification dataset is synthetic and cannot establish production-domain accuracy.
 - Requested-action accuracy 0.23 and missing-information F1 0.00 prohibit treating the extraction as
   an autonomous workflow decision. Versioned policy and human review remain mandatory.
 - Concurrency 2 was stable but doubled p50 latency and TTFT because max sequences remains 1; the
   initial production profile serializes work through the Celery queue.
 - No Qwen vision feature, CPU offload, fallback model, autoscaling, or fine-tuning is included.
+
+Run `make verify-qwen4090-candidates` to inspect the deterministic candidate verdict. The stricter
+`make require-qwen4090-release` is expected to fail until a candidate supplies complete package
+provenance and passes the current v2, 100-case Shadow, 20-workflow, and 2 GiB headroom gates.

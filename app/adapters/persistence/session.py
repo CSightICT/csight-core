@@ -7,11 +7,17 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.adapters.persistence.engine import get_engine
+from app.adapters.persistence.tenant_context import TenantAwareSession
 from app.bootstrap.settings import Settings
 
 
 def create_session_factory(engine: Engine) -> sessionmaker[Session]:
-    return sessionmaker(bind=engine, class_=Session, expire_on_commit=False, autoflush=False)
+    return sessionmaker(
+        bind=engine,
+        class_=TenantAwareSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
 
 
 @contextmanager

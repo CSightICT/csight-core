@@ -3,8 +3,11 @@ SHELL := /bin/sh
 UV ?= uv
 COMPOSE ?= docker compose
 COMPOSE_FILE := infra/compose.core.yml
+COMPOSE_RLS_FILE := infra/compose.rls.yml
 ENV_FILE ?= .env
+PILOT_ENV_FILE ?= infra/pilot/.env.pilot
 COMPOSE_CMD := $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE_RLS_CMD := $(COMPOSE_CMD) -f $(COMPOSE_RLS_FILE)
 EMBEDDING_PORT ?= 8091
 EMBEDDING_BASE_URL ?= http://127.0.0.1:$(EMBEDDING_PORT)
 EMBEDDING_PID_FILE ?= .embedding-service.pid
@@ -25,20 +28,30 @@ REALISTIC_DEMO_OUTPUT ?= local-data/realistic-internal-demo-v1/seed_report.json
 REALISTIC_DEMO_ACTOR_EMAIL ?= csight@csight.demo
 REALISTIC_DEMO_V2_MANIFEST ?= evaluation/realistic_internal_demo_v2/manifest.json
 REALISTIC_DEMO_V3_MANIFEST ?= evaluation/realistic_internal_demo_v3/manifest.json
+QWEN4090_CANDIDATE_ID ?=
+QWEN4090_ENV_FILE ?= .env
+QWEN4090_RUNTIME_ENV_FILE ?= infra/llm/.env.llm
 
 .DEFAULT_GOAL := help
 
-.PHONY: help up down logs migrate seed outbox lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision demo-scenario-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e setup-vision-e3 start-vision-e3 stop-vision-e3 health-vision-e3 qualify-vision-e3 test-vision-e3 up-e3-scenario-poc smoke-e3-scenario-vision replay-e3-top100 seed-realistic-poc-demo seed-realistic-poc-demo-v2 seed-realistic-poc-demo-v3
+.PHONY: help up up-rls provision-runtime-logins down logs migrate seed outbox retention-once retention-start retention-stop lint format-check typecheck test test-integration test-all test-analysis test-analysis-integration test-external-llm test-external-vision test-external-embedding test-external-reranker test-local-llm web-lint web-typecheck web-openapi web-test web-build web-e2e qualify-oidc-keycloak qualify-evidence-security qualify-observability qualify-restore-drill qualify-load-isolation smoke-analysis build-policy-corpus validate-policy-corpus build-policy-rules validate-policy-rules ingest-policy-rules validate-policy-rule-db evaluate-policy-engine smoke-policy-evaluation build-human-review-evaluation validate-human-review-evaluation evaluate-human-review-workflow smoke-human-review inspect-human-review-queue verify-poc-readiness require-limited-poc verify-scenario-poc up-scenario-poc seed-scenario-poc-demo smoke-scenario-vision demo-scenario-poc build-evaluation-data validate-evaluation-data evaluate-extraction-v2 evaluate-extraction-v2-qwen freeze-extraction-v2-qwen evaluate-extraction-v2-qwen-test verify-qwen4090-candidates verify-qwen4090-compose-profiles collect-qwen4090-host-evidence verify-qwen4090-host start-qwen4090-candidate stop-qwen4090-candidate require-qwen4090-release report-reference-data ingest-policy-corpus validate-policy-db start-embedding stop-embedding health-embedding build-policy-embeddings activate-policy-index list-policy-indexes seed-policy-identities evaluate-policy-lexical evaluate-policy-dense evaluate-policy-hybrid evaluate-policy-retrieval smoke-policy-search analyze-policy-candidates evaluate-policy-candidate-upper-bound start-reranker stop-reranker health-reranker qualify-policy-reranker activate-policy-reranker-profile evaluate-policy-reranker-dev evaluate-policy-reranker-test smoke-policy-reranked-search build-query-builder-dataset validate-query-builder-dataset evaluate-query-builder-raw evaluate-query-builder-deterministic evaluate-query-builder-llm evaluate-query-builder smoke-policy-retrieval-run evaluate-grounding-contract smoke-grounded-explanation setup-local-llm start-local-llm stop-local-llm health-local-llm qualify-local-llm evaluate-local-extraction evaluate-local-query-builder evaluate-local-grounding evaluate-local-llm-all smoke-local-llm-e2e setup-vision-e3 start-vision-e3 stop-vision-e3 health-vision-e3 qualify-vision-e3 test-vision-e3 up-e3-scenario-poc smoke-e3-scenario-vision replay-e3-top100 seed-realistic-poc-demo seed-realistic-poc-demo-v2 seed-realistic-poc-demo-v3
 .PHONY: prepare-csight-policy-runtime
+.PHONY: audit-qwen4090-hub
+.PHONY: pilot-config pilot-preflight pilot-up pilot-status pilot-stop
 
 help:
 	@echo "CSight Core commands"
 	@echo "  make up            Build and start the core environment"
+	@echo "  make provision-runtime-logins  Create/rotate strict DB logins from private files"
+	@echo "  make up-rls        Start Core with distinct non-bypass runtime DB logins"
 	@echo "  make down          Stop the core environment (preserves volumes)"
 	@echo "  make logs          Follow core service logs"
 	@echo "  make migrate       Apply Alembic migrations in the app image"
 	@echo "  make seed          Explicitly seed local/test identities after migration"
 	@echo "  make outbox        Dispatch one batch of pending analysis events"
+	@echo "  make retention-once  Run one bounded automatic retention sweep"
+	@echo "  make retention-start/retention-stop  Control the opt-in pilot retention scheduler"
+	@echo "  make pilot-preflight/pilot-up/pilot-status/pilot-stop  Control the fail-closed pilot profile"
 	@echo "  make lint          Run Ruff lint checks"
 	@echo "  make format-check  Check Ruff formatting"
 	@echo "  make typecheck     Run Pyright"
@@ -46,6 +59,11 @@ help:
 	@echo "  make test-integration  Run integration tests against the core environment"
 	@echo "  make test-all      Run CI-safe and core integration tests"
 	@echo "  make web-lint web-typecheck web-openapi web-test web-build web-e2e  Verify the consultant console"
+	@echo "  make qualify-oidc-keycloak  Run isolated real-Keycloak PKCE and revocation gates"
+	@echo "  make qualify-evidence-security  Run isolated ClamAV HTTP upload and outage gates"
+	@echo "  make qualify-observability  Run isolated OTLP, metric query, and local alert gates"
+	@echo "  make qualify-restore-drill  Run isolated PostgreSQL WAL and MinIO version restore gates"
+	@echo "  make qualify-load-isolation  Run 20-client reads and synthetic queue isolation gates"
 	@echo "  make test-analysis Run CI-safe analysis-focused tests"
 	@echo "  make test-analysis-integration  Run analysis integration tests"
 	@echo "  make test-external-llm  Opt in to the configured external vLLM test"
@@ -56,7 +74,17 @@ help:
 	@echo "  make build-evaluation-data  Build all synthetic gold datasets and manifests"
 	@echo "  make validate-evaluation-data  Validate counts, references, splits, and tenant isolation"
 	@echo "  make evaluate-extraction-v2  Run the reference gold self-check (not an external model eval)"
-	@echo "  make evaluate-extraction-v2-qwen  Run or explicitly skip real Qwen v2 qualification"
+	@echo "  make evaluate-extraction-v2-qwen QWEN4090_CANDIDATE_ID=...  Run Qwen v2 Dev"
+	@echo "  make freeze-extraction-v2-qwen QWEN4090_CANDIDATE_ID=...  Freeze passing Dev"
+	@echo "  make evaluate-extraction-v2-qwen-test QWEN4090_CANDIDATE_ID=...  Run sealed Test once"
+	@echo "  make verify-qwen4090-candidates  Validate and report the frozen RTX 4090 candidate gate"
+	@echo "  make audit-qwen4090-hub  Verify exact Hub revisions, lineage, license, and weight bytes"
+	@echo "  make verify-qwen4090-compose-profiles  Check runnable Shadow profiles against matrix"
+	@echo "  make collect-qwen4090-host-evidence QWEN4090_CANDIDATE_ID=...  Collect unpinned host evidence"
+	@echo "  make verify-qwen4090-host QWEN4090_CANDIDATE_ID=...  Require exact pinned host evidence"
+	@echo "  make start-qwen4090-candidate QWEN4090_CANDIDATE_ID=...  Start one Shadow candidate"
+	@echo "  make stop-qwen4090-candidate  Stop candidate runtime and preserve model cache"
+	@echo "  make require-qwen4090-release  Fail unless one RTX 4090 candidate is release eligible"
 	@echo "  make build-query-builder-dataset / validate-query-builder-dataset"
 	@echo "  make evaluate-query-builder  Compare frozen-HYBRID query strategies"
 	@echo "  make evaluate-grounding-contract  Qualify deterministic citation guardrails"
@@ -104,7 +132,13 @@ help:
 	@echo "  make seed-realistic-poc-demo-v3 ...  Add ten closed-set ecommerce demo cases"
 
 up:
-	$(COMPOSE_CMD) up --build --detach --wait
+	$(COMPOSE_CMD) up --build --detach --wait --remove-orphans
+
+provision-runtime-logins:
+	$(UV) run python scripts/provision_postgres_runtime_logins.py
+
+up-rls:
+	$(COMPOSE_RLS_CMD) up --build --detach --wait --remove-orphans
 
 down:
 	$(COMPOSE_CMD) down --remove-orphans
@@ -113,13 +147,50 @@ logs:
 	$(COMPOSE_CMD) logs --follow --tail=200
 
 migrate:
-	$(COMPOSE_CMD) run --rm api uv run alembic upgrade head
+	$(COMPOSE_CMD) run --rm migrator
 
 seed:
 	$(UV) run python -m app.bootstrap.seed --env-file $(ENV_FILE)
 
+qualify-evidence-security:
+	./scripts/qualify_evidence_security.sh
+
+qualify-observability:
+	$(UV) run python scripts/qualify_observability.py
+
+qualify-restore-drill:
+	$(UV) run python scripts/qualify_restore_drill.py
+
+qualify-load-isolation:
+	$(UV) run python scripts/qualify_load_isolation.py
+
 outbox:
 	$(COMPOSE_CMD) run --rm dispatcher uv run python -m app.interface.dispatchers.outbox --once
+
+retention-once:
+	$(COMPOSE_RLS_CMD) --profile pilot-maintenance run --rm privacy-lifecycle \
+		uv run python -m app.interface.maintenance.privacy_lifecycle --once
+
+retention-start:
+	$(COMPOSE_RLS_CMD) --profile pilot-maintenance up --detach --wait privacy-lifecycle
+
+retention-stop:
+	$(COMPOSE_RLS_CMD) --profile pilot-maintenance stop privacy-lifecycle
+
+pilot-config:
+	CSIGHT_PILOT_ENV_FILE="$(PILOT_ENV_FILE)" ./scripts/csight_pilot_control.sh config
+
+pilot-preflight:
+	CSIGHT_PILOT_ENV_FILE="$(PILOT_ENV_FILE)" ./scripts/csight_pilot_control.sh preflight
+
+pilot-up:
+	CSIGHT_PILOT_ENV_FILE="$(PILOT_ENV_FILE)" ./scripts/csight_pilot_control.sh start
+
+pilot-status:
+	CSIGHT_PILOT_ENV_FILE="$(PILOT_ENV_FILE)" ./scripts/csight_pilot_control.sh status
+
+pilot-stop:
+	CSIGHT_PILOT_ENV_FILE="$(PILOT_ENV_FILE)" ./scripts/csight_pilot_control.sh stop
 
 lint:
 	$(UV) run ruff check .
@@ -155,6 +226,9 @@ web-build:
 
 web-e2e:
 	npm --prefix web run test:e2e
+
+qualify-oidc-keycloak:
+	./scripts/qualify_oidc_keycloak.sh
 
 test-analysis:
 	$(UV) run pytest -q -m "not integration and not external_gpu" -k "analysis or outbox or vllm or text_extraction"
@@ -286,8 +360,8 @@ up-scenario-poc:
 	VISION_ASSESSMENT_EXPECTED_THRESHOLD=0.8984375 \
 	VISION_MODEL_ID=csight-e3-contract-mock \
 	VISION_MODEL_VERSION=e3-epoch10-contract-v1 \
-	$(COMPOSE_CMD) up --build --detach --wait
-	$(COMPOSE_CMD) run --rm api uv run alembic upgrade head
+	$(COMPOSE_CMD) up --build --detach --wait --remove-orphans
+	$(COMPOSE_CMD) run --rm migrator
 
 up-e3-scenario-poc:
 	VISION_PROVIDER=remote \
@@ -300,7 +374,7 @@ up-e3-scenario-poc:
 	VISION_CONNECT_TIMEOUT_SECONDS=10 \
 	VISION_READ_TIMEOUT_SECONDS=180 \
 	VISION_TLS_VERIFY=false \
-	$(COMPOSE_CMD) up --build --detach --wait
+	$(COMPOSE_CMD) up --build --detach --wait --remove-orphans
 	VISION_PROVIDER=remote \
 	VISION_BASE_URL=http://host.docker.internal:8093 \
 	VISION_TASK=ANY_DEFECT_CLASSIFICATION \
@@ -311,7 +385,7 @@ up-e3-scenario-poc:
 	VISION_CONNECT_TIMEOUT_SECONDS=10 \
 	VISION_READ_TIMEOUT_SECONDS=180 \
 	VISION_TLS_VERIFY=false \
-	$(COMPOSE_CMD) run --rm api uv run alembic upgrade head
+	$(COMPOSE_CMD) run --rm migrator
 
 seed-scenario-poc-demo:
 	$(UV) run python scripts/seed_scenario_poc_demo.py --env-file $(ENV_FILE)
@@ -351,7 +425,47 @@ evaluate-extraction-v2:
 	$(UV) run python scripts/evaluate_llm_extraction_v2.py
 
 evaluate-extraction-v2-qwen:
-	$(UV) run python scripts/evaluate_extraction_v2_qwen.py
+	$(UV) run python scripts/evaluate_extraction_v2_qwen.py \
+		--env-file "$(QWEN4090_ENV_FILE)" --candidate-id "$(QWEN4090_CANDIDATE_ID)" --split dev
+
+freeze-extraction-v2-qwen:
+	$(UV) run python scripts/evaluate_extraction_v2_qwen.py \
+		--candidate-id "$(QWEN4090_CANDIDATE_ID)" --split dev --freeze
+
+evaluate-extraction-v2-qwen-test:
+	$(UV) run python scripts/evaluate_extraction_v2_qwen.py \
+		--env-file "$(QWEN4090_ENV_FILE)" --candidate-id "$(QWEN4090_CANDIDATE_ID)" \
+		--split test --allow-sealed-test
+
+verify-qwen4090-candidates:
+	$(UV) run python scripts/verify_qwen4090_candidates.py
+
+audit-qwen4090-hub:
+	$(UV) run python scripts/audit_qwen4090_hub.py
+
+verify-qwen4090-compose-profiles:
+	$(UV) run python scripts/verify_qwen4090_compose_profiles.py
+
+collect-qwen4090-host-evidence:
+	$(UV) run python scripts/preflight_qwen4090_host.py \
+		--candidate-id "$(QWEN4090_CANDIDATE_ID)" \
+		--runtime-env "$(QWEN4090_RUNTIME_ENV_FILE)" --collect-unpinned
+
+verify-qwen4090-host:
+	$(UV) run python scripts/preflight_qwen4090_host.py \
+		--candidate-id "$(QWEN4090_CANDIDATE_ID)" \
+		--runtime-env "$(QWEN4090_RUNTIME_ENV_FILE)"
+
+start-qwen4090-candidate:
+	infra/llm/serve_qwen_candidate.sh \
+		"$(QWEN4090_CANDIDATE_ID)" "$(QWEN4090_RUNTIME_ENV_FILE)"
+
+stop-qwen4090-candidate:
+	$(COMPOSE) --env-file "$(QWEN4090_RUNTIME_ENV_FILE)" \
+		-f infra/llm/compose.llm.yml down --remove-orphans
+
+require-qwen4090-release:
+	$(UV) run python scripts/verify_qwen4090_candidates.py --require-eligible
 
 build-query-builder-dataset:
 	$(UV) run python scripts/build_query_builder_dataset.py

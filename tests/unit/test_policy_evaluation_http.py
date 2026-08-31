@@ -22,6 +22,7 @@ from app.platform.policy_engine import (
 )
 from app.platform.tenant import Permission, Principal, Role
 from app.ports.policy_engine import PolicyEvaluationRunDetail
+from tests.case_assignment_support import AllowCaseAccess
 
 pytestmark = pytest.mark.unit
 NOW = datetime(2026, 8, 27, tzinfo=UTC)
@@ -120,6 +121,9 @@ def _client(start: _Start) -> TestClient:
         list_case_evidence=unused,
         get_evidence_metadata=unused,
         create_evidence_access_url=unused,
+        get_case_assignment=unused,
+        assign_case=unused,
+        authorize_case_access=AllowCaseAccess(),  # pyright: ignore[reportArgumentType]
     )
     sprint5a = Sprint5AServiceContainer(
         start_policy_evaluation=start,  # pyright: ignore[reportArgumentType]

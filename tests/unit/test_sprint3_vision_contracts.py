@@ -52,7 +52,11 @@ from app.platform.analysis import (
 from app.platform.case import Case, RequestedAction
 from app.platform.evidence import EvidenceMetadata, EvidenceUploadStatus
 from app.platform.tenant import Principal, Role
-from app.ports.analysis_repository import AnalysisRequestIdempotencyClaim, AnalysisUnitOfWorkFactory
+from app.ports.analysis_repository import (
+    AnalysisAdmissionCounts,
+    AnalysisRequestIdempotencyClaim,
+    AnalysisUnitOfWorkFactory,
+)
 
 pytestmark = pytest.mark.unit
 NOW = datetime(2026, 8, 26, 12, 0, tzinfo=UTC)
@@ -248,6 +252,10 @@ def _uow_factory(
     uow.__exit__.return_value = None
     uow.cases.get.return_value = _case()
     uow.evidence.list.return_value = evidence
+    uow.analysis_runs.lock_admission_counts.return_value = AnalysisAdmissionCounts(
+        global_nonterminal=0,
+        tenant_nonterminal=0,
+    )
 
     def claim(
         *, tenant_id: str, record: AnalysisRequestIdempotencyRecord

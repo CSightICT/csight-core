@@ -251,6 +251,12 @@ class _Dense:
             PolicySearchHit(clause=clause("C1"), dense_rank=2, dense_score=0.8),
         )
 
+    def retrieve_least_similar(self, **kwargs: Any) -> tuple[PolicySearchHit, ...]:
+        return ()
+
+    def retrieve_closest_to_score(self, **kwargs: Any) -> tuple[PolicySearchHit, ...]:
+        return ()
+
 
 class _Hybrid:
     def fuse(self, **kwargs: Any) -> tuple[PolicySearchHit, ...]:

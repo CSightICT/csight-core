@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from app.adapters.persistence.base import Base
-from app.adapters.persistence.models import PERSISTENCE_MODELS
+from app.adapters.persistence.model_registry import PERSISTENCE_MODELS
 
 config = context.config
 
@@ -19,7 +19,7 @@ _loaded_models = PERSISTENCE_MODELS
 
 
 def _database_url() -> str:
-    configured_url = config.get_main_option("sqlalchemy.url").strip()
+    configured_url = (config.get_main_option("sqlalchemy.url") or "").strip()
     database_url = configured_url or os.getenv("DATABASE_URL", "").strip()
     if not database_url:
         raise RuntimeError("DATABASE_URL must be configured before running Alembic")

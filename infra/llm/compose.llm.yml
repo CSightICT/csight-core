@@ -9,6 +9,8 @@ services:
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
       HF_HOME: /model-cache
+      HF_HUB_OFFLINE: ${LLM_HF_HUB_OFFLINE:-0}
+      TRANSFORMERS_OFFLINE: ${LLM_TRANSFORMERS_OFFLINE:-0}
       # vLLM reads this directly; keeping it out of CLI args prevents ps/log exposure.
       VLLM_API_KEY: ${LLM_API_KEY:?Set LLM_API_KEY in the private runtime env file}
     entrypoint:
@@ -41,7 +43,9 @@ services:
     ports:
       - ${LLM_BIND_ADDRESS:?Set a private Tailscale address}:${LLM_PORT:-18000}:8000
     volumes:
-      - qwen38-model-cache:/model-cache
+      # Runnable 4090 candidates set an absolute host directory so preflight can hash the exact
+      # snapshot. The historical profile may omit it and retain the existing named volume.
+      - ${LLM_MODEL_CACHE_DIR:-qwen38-model-cache}:/model-cache
     healthcheck:
       test:
         - CMD

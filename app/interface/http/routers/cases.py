@@ -4,11 +4,17 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 
+from app.application.case_assignment import AssignCaseCommand
 from app.application.cases import CreateCaseCommand, ListCasesQuery
+from app.interface.http.case_assignment_schemas import (
+    AssignCaseRequest,
+    CaseAssignmentResponse,
+)
 from app.interface.http.dependencies import (
     provide_current_principal,
     provide_optional_sprint2_services,
     provide_sprint1_services,
+    require_case_access,
 )
 from app.interface.http.schemas import ErrorResponse
 from app.interface.http.services import Sprint1ServiceContainer, Sprint2ServiceContainer
@@ -107,6 +113,7 @@ def list_cases(
     "/{case_id}",
     response_model=CaseDetailResponse,
     responses=CASE_QUERY_ERROR_RESPONSES,
+    dependencies=[Depends(require_case_access)],
 )
 def get_case_detail(
     case_id: CaseId,
@@ -138,6 +145,7 @@ def get_case_detail(
     "/{case_id}/status-history",
     response_model=StatusHistoryListResponse,
     responses=CASE_QUERY_ERROR_RESPONSES,
+    dependencies=[Depends(require_case_access)],
 )
 def get_case_status_history(
     case_id: CaseId,
@@ -148,3 +156,42 @@ def get_case_status_history(
     return StatusHistoryListResponse(
         items=tuple(StatusHistoryResponse.from_transition(item) for item in history)
     )
+
+
+@router.get(
+    "/{case_id}/assignment",
+    response_model=CaseAssignmentResponse,
+    responses=CASE_QUERY_ERROR_RESPONSES,
+)
+def get_case_assignment(
+    case_id: CaseId,
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[Sprint1ServiceContainer, Depends(provide_sprint1_services)],
+) -> CaseAssignmentResponse:
+    assignment = services.get_case_assignment.execute(principal=principal, case_id=case_id)
+    response.headers["Cache-Control"] = "no-store"
+    return CaseAssignmentResponse.from_snapshot(assignment)
+
+
+@router.post(
+    "/{case_id}/assignment",
+    response_model=CaseAssignmentResponse,
+    responses={
+        **CASE_QUERY_ERROR_RESPONSES,
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
+    },
+)
+def assign_case(
+    case_id: CaseId,
+    body: AssignCaseRequest,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[Sprint1ServiceContainer, Depends(provide_sprint1_services)],
+) -> CaseAssignmentResponse:
+    assignment = services.assign_case.execute(
+        principal=principal,
+        case_id=case_id,
+        command=AssignCaseCommand(**body.model_dump()),
+    )
+    return CaseAssignmentResponse.from_snapshot(assignment)

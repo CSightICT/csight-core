@@ -8,6 +8,7 @@ from app.application.human_review import (
     GetHumanReviewTask,
     HumanReviewActions,
     ListHumanReviewTasks,
+    ListReviewAssignees,
 )
 from app.bootstrap.settings import Settings
 from app.interface.http.services import Sprint5BServiceContainer
@@ -25,6 +26,7 @@ def build_sprint5b_services(settings: Settings) -> Sprint5BServiceContainer:
     repository = _repository(settings)
     return Sprint5BServiceContainer(
         list_tasks=ListHumanReviewTasks(repository),
+        list_assignees=ListReviewAssignees(repository),
         get_task=GetHumanReviewTask(repository),
         actions=HumanReviewActions(repository),
     )

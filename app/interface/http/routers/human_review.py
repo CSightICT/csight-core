@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.application.human_review import (
+    AssignTaskCommand,
     EscalateTaskCommand,
     ReleaseTaskCommand,
     RequestEvidenceCommand,
@@ -13,14 +14,21 @@ from app.application.human_review import (
     ResumeTaskCommand,
     VersionedTaskCommand,
 )
-from app.interface.http.dependencies import provide_current_principal, provide_sprint5b_services
+from app.interface.http.dependencies import (
+    provide_current_principal,
+    provide_sprint5b_services,
+    require_case_access,
+)
 from app.interface.http.human_review_schemas import (
+    AssignRequest,
     EscalateRequest,
     EvidenceRequest,
     ReleaseRequest,
     ResolveRequest,
     ResumeRequest,
     ReviewActionResponse,
+    ReviewAssigneeListResponse,
+    ReviewAssigneeResponse,
     ReviewTaskDetailResponse,
     ReviewTaskListResponse,
     ReviewTaskResponse,
@@ -32,7 +40,12 @@ from app.platform.tenant import Principal
 from app.ports.human_review import ReviewQueueQuery
 
 router = APIRouter(prefix="/api/v1/human-review-tasks", tags=["human-review"])
-case_router = APIRouter(prefix="/api/v1/cases/{case_id}/human-review-tasks", tags=["human-review"])
+case_router = APIRouter(
+    prefix="/api/v1/cases/{case_id}/human-review-tasks",
+    tags=["human-review"],
+    dependencies=[Depends(require_case_access)],
+)
+assignee_router = APIRouter(prefix="/api/v1/human-review-assignees", tags=["human-review"])
 
 
 def _query(
@@ -133,6 +146,34 @@ def get_task(
     return ReviewTaskDetailResponse.from_detail(detail)
 
 
+@assignee_router.get("", response_model=ReviewAssigneeListResponse)
+def list_assignees(
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[Sprint5BServiceContainer, Depends(provide_sprint5b_services)],
+) -> ReviewAssigneeListResponse:
+    items = services.list_assignees.execute(principal=principal)
+    response.headers["Cache-Control"] = "no-store"
+    return ReviewAssigneeListResponse(
+        items=tuple(ReviewAssigneeResponse.from_assignee(item) for item in items)
+    )
+
+
+@router.post("/{task_id}/assign", response_model=ReviewActionResponse)
+def assign_task(
+    task_id: str,
+    body: AssignRequest,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[Sprint5BServiceContainer, Depends(provide_sprint5b_services)],
+) -> ReviewActionResponse:
+    task = services.actions.assign(
+        principal=principal,
+        task_id=task_id,
+        command=AssignTaskCommand(**body.model_dump()),
+    )
+    return ReviewActionResponse(task=ReviewTaskResponse.from_task(task))
+
+
 @router.post("/{task_id}/claim", response_model=ReviewActionResponse)
 def claim_task(
     task_id: str,
@@ -223,4 +264,4 @@ def resolve_task(
     return ReviewActionResponse(task=ReviewTaskResponse.from_task(task), decision=decision)
 
 
-__all__ = ["case_router", "router"]
+__all__ = ["assignee_router", "case_router", "router"]

@@ -2,12 +2,12 @@
 
 from datetime import UTC, datetime
 from typing import cast
+from uuid import uuid4
 
 import pytest
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import Task
 from celery.exceptions import Reject
-from pydantic import ValidationError
 
 from app.application.analysis import (
     ExecuteTextExtractionCommand,
@@ -22,7 +22,9 @@ pytestmark = pytest.mark.e2e
 
 
 class _FakeExecuteTextExtraction:
-    command: ExecuteTextExtractionCommand | None = None
+    def __init__(self) -> None:
+        self.command: ExecuteTextExtractionCommand | None = None
+        self.poison_event_ids: list[str] = []
 
     def execute(
         self,
@@ -37,6 +39,9 @@ class _FakeExecuteTextExtraction:
             status=AnalysisStageStatus.RETRY_WAITING,
             retry_at=datetime(2026, 8, 26, 4, 5, 6, tzinfo=UTC),
         )
+
+    def record_poison_event(self, *, event_id: str) -> None:
+        self.poison_event_ids.append(event_id)
 
 
 class _FailingExecuteTextExtraction:
@@ -95,20 +100,38 @@ def test_worker_task_delegates_exact_six_key_command_without_celery_retry(
 def test_worker_task_rejects_raw_or_incomplete_payload_before_delegation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
     use_case = _FakeExecuteTextExtraction()
 
     def build(_settings: Settings) -> _FakeExecuteTextExtraction:
         return use_case
 
+    monkeypatch.setattr(tasks_module, "get_settings", lambda: settings)
     monkeypatch.setattr(tasks_module, "build_execute_text_extraction", build)
     task = cast(Task, tasks_module.execute_text_extraction_task)
+    event_id = str(uuid4())
 
-    with pytest.raises(ValidationError):
-        task.run({**_payload(), "customer_message": "must never enter the broker"})
-    with pytest.raises(ValidationError):
-        task.run({key: value for key, value in _payload().items() if key != "stage_run_id"})
+    with pytest.raises(Reject) as extra_rejected:
+        task.run(
+            {
+                **_payload(),
+                "event_id": event_id,
+                "customer_message": "must never enter the broker",
+            }
+        )
+    with pytest.raises(Reject) as incomplete_rejected:
+        task.run(
+            {
+                key: value
+                for key, value in {**_payload(), "event_id": event_id}.items()
+                if key != "stage_run_id"
+            }
+        )
 
     assert use_case.command is None
+    assert use_case.poison_event_ids == [event_id, event_id]
+    assert extra_rejected.value.requeue is False
+    assert incomplete_rejected.value.requeue is False
 
 
 @pytest.mark.parametrize(

@@ -14,9 +14,9 @@ class _Schema(BaseModel):
 
 class StartPolicyRetrievalRunRequest(_Schema):
     analysis_run_id: str = Field(min_length=1)
-    strategy: QueryStrategy
+    strategy: QueryStrategy = QueryStrategy.RAW
     as_of_date: date
-    top_k: int = Field(default=10, ge=1, le=20)
+    top_k: int = Field(default=3, ge=1, le=20)
 
 
 class PolicyRetrievalRunResponse(_Schema):

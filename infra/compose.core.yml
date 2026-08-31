@@ -11,6 +11,14 @@ x-app-environment: &app-environment
   APP_VERSION: ${APP_VERSION:-0.1.0}
   ENVIRONMENT: ${ENVIRONMENT:-local}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  OTEL_ENABLED: "${OTEL_ENABLED:-false}"
+  OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-csight-core}
+  OTEL_EXPORTER: ${OTEL_EXPORTER:-none}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+  OTEL_TRACE_SAMPLE_RATIO: ${OTEL_TRACE_SAMPLE_RATIO:-1.0}
+  OTEL_EXPORT_TIMEOUT_SECONDS: ${OTEL_EXPORT_TIMEOUT_SECONDS:-5}
+  OTEL_METRIC_EXPORT_INTERVAL_SECONDS: ${OTEL_METRIC_EXPORT_INTERVAL_SECONDS:-30}
   API_SCHEMA_VERSION: ${API_SCHEMA_VERSION:-1.0}
   READINESS_TIMEOUT_SECONDS: ${READINESS_TIMEOUT_SECONDS:-2}
   DATABASE_ECHO: ${DATABASE_ECHO:-false}
@@ -26,6 +34,18 @@ x-app-environment: &app-environment
   ALLOWED_IMAGE_MIME_TYPES: ${ALLOWED_IMAGE_MIME_TYPES:-image/jpeg,image/png,image/webp}
   ALLOWED_IMAGE_EXTENSIONS: ${ALLOWED_IMAGE_EXTENSIONS:-jpg,jpeg,png,webp}
   MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-40000000}
+  SENSITIVE_PAYLOAD_RETENTION_POLICY_VERSION: ${SENSITIVE_PAYLOAD_RETENTION_POLICY_VERSION:-development/30d}
+  SENSITIVE_PAYLOAD_RETENTION_DAYS: ${SENSITIVE_PAYLOAD_RETENTION_DAYS:-30}
+  PRIVACY_LIFECYCLE_AUTOMATION_ENABLED: "${PRIVACY_LIFECYCLE_AUTOMATION_ENABLED:-false}"
+  PRIVACY_LIFECYCLE_TENANT_ID: ${PRIVACY_LIFECYCLE_TENANT_ID:-}
+  PRIVACY_LIFECYCLE_INTERVAL_SECONDS: ${PRIVACY_LIFECYCLE_INTERVAL_SECONDS:-3600}
+  PRIVACY_LIFECYCLE_BATCH_SIZE: ${PRIVACY_LIFECYCLE_BATCH_SIZE:-500}
+  PRIVACY_LIFECYCLE_MAX_BATCHES_PER_SWEEP: ${PRIVACY_LIFECYCLE_MAX_BATCHES_PER_SWEEP:-20}
+  EVIDENCE_IMAGE_SANITIZATION_ENABLED: "${EVIDENCE_IMAGE_SANITIZATION_ENABLED:-false}"
+  EVIDENCE_MALWARE_SCANNER: ${EVIDENCE_MALWARE_SCANNER:-disabled}
+  CLAMAV_HOST: ${CLAMAV_HOST:-}
+  CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+  CLAMAV_TIMEOUT_SECONDS: ${CLAMAV_TIMEOUT_SECONDS:-10}
   LLM_PROVIDER: ${LLM_PROVIDER:-mock}
   VISION_PROVIDER: ${VISION_PROVIDER:-mock}
   VISION_MOCK_MODE: ${VISION_MOCK_MODE:-success_single_defect}
@@ -56,6 +76,8 @@ x-app-environment: &app-environment
   EMBEDDING_TIMEOUT_SECONDS: ${EMBEDDING_TIMEOUT_SECONDS:-30}
   RERANKER_BASE_URL: ${RERANKER_BASE_URL:-http://host.docker.internal:8092}
   RERANKER_TIMEOUT_SECONDS: ${RERANKER_TIMEOUT_SECONDS:-120}
+  PROVIDER_CIRCUIT_FAILURE_THRESHOLD: ${PROVIDER_CIRCUIT_FAILURE_THRESHOLD:-5}
+  PROVIDER_CIRCUIT_OPEN_SECONDS: ${PROVIDER_CIRCUIT_OPEN_SECONDS:-30}
   CELERY_TASK_MAX_RETRIES: ${CELERY_TASK_MAX_RETRIES:-3}
   CELERY_RETRY_BACKOFF_MAX_SECONDS: ${CELERY_RETRY_BACKOFF_MAX_SECONDS:-60}
   ANALYSIS_TASK_SOFT_TIME_LIMIT_SECONDS: ${ANALYSIS_TASK_SOFT_TIME_LIMIT_SECONDS:-150}
@@ -78,6 +100,20 @@ x-app-depends-on: &app-depends-on
   minio-init:
     condition: service_completed_successfully
 
+x-worker-base: &worker-base
+  <<: *app-image
+  init: true
+  environment:
+    <<: *app-environment
+    DATABASE_URL: ${WORKER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-csight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-csight}}
+    DATABASE_RUNTIME_ROLE: worker
+    DATABASE_RLS_REQUIRED: "${DATABASE_RLS_REQUIRED:-false}"
+  depends_on: *app-depends-on
+  restart: unless-stopped
+  stop_grace_period: 30s
+  networks:
+    - core
+
 services:
   api:
     <<: *app-image
@@ -91,13 +127,44 @@ services:
       - 0.0.0.0
       - --port
       - "8000"
+      - --no-access-log
     environment:
       <<: *app-environment
+      DATABASE_URL: ${API_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-csight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-csight}}
+      DATABASE_RUNTIME_ROLE: api
+      DATABASE_RLS_REQUIRED: "${DATABASE_RLS_REQUIRED:-false}"
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_ISSUER: ${JWT_ISSUER:-csight-core}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-csight-api}
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      LEGACY_PASSWORD_AUTH_ENABLED: "${LEGACY_PASSWORD_AUTH_ENABLED:-true}"
+      OIDC_ENABLED: "${OIDC_ENABLED:-false}"
+      OIDC_PROVIDER_KEY: ${OIDC_PROVIDER_KEY:-enterprise}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_AUTHORIZATION_ENDPOINT: ${OIDC_AUTHORIZATION_ENDPOINT:-}
+      OIDC_TOKEN_ENDPOINT: ${OIDC_TOKEN_ENDPOINT:-}
+      OIDC_JWKS_URI: ${OIDC_JWKS_URI:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
+      OIDC_SCOPES: ${OIDC_SCOPES:-openid,email,profile}
+      OIDC_ALLOWED_ALGORITHMS: ${OIDC_ALLOWED_ALGORITHMS:-RS256}
+      OIDC_GROUPS_CLAIM: ${OIDC_GROUPS_CLAIM:-groups}
+      OIDC_GROUP_MAPPINGS: '${OIDC_GROUP_MAPPINGS:-{}}'
+      OIDC_RETURN_PATH_ALLOWLIST: ${OIDC_RETURN_PATH_ALLOWLIST:-/cases,/reviews}
+      OIDC_CONNECT_TIMEOUT_SECONDS: ${OIDC_CONNECT_TIMEOUT_SECONDS:-3}
+      OIDC_READ_TIMEOUT_SECONDS: ${OIDC_READ_TIMEOUT_SECONDS:-5}
+      OIDC_MAX_RESPONSE_BYTES: ${OIDC_MAX_RESPONSE_BYTES:-1048576}
+      OIDC_JWKS_CACHE_SECONDS: ${OIDC_JWKS_CACHE_SECONDS:-300}
+      OIDC_CLOCK_SKEW_SECONDS: ${OIDC_CLOCK_SKEW_SECONDS:-30}
+      OIDC_TLS_VERIFY: "${OIDC_TLS_VERIFY:-true}"
+      OIDC_SESSION_ABSOLUTE_TIMEOUT_SECONDS: ${OIDC_SESSION_ABSOLUTE_TIMEOUT_SECONDS:-28800}
+      OIDC_SESSION_IDLE_TIMEOUT_SECONDS: ${OIDC_SESSION_IDLE_TIMEOUT_SECONDS:-1800}
+      OIDC_SESSION_EXPIRY_WARNING_SECONDS: ${OIDC_SESSION_EXPIRY_WARNING_SECONDS:-300}
+      OIDC_COOKIE_NAME: ${OIDC_COOKIE_NAME:-csight_session}
+      OIDC_COOKIE_SECURE: "${OIDC_COOKIE_SECURE:-true}"
+      OIDC_COOKIE_SAME_SITE: ${OIDC_COOKIE_SAME_SITE:-lax}
       MINIO_PRESIGNED_ENDPOINT: ${MINIO_PRESIGNED_ENDPOINT:-127.0.0.1:9000}
       MINIO_PRESIGNED_SECURE: "${MINIO_PRESIGNED_SECURE:-false}"
       SIGNED_URL_TTL_SECONDS: ${SIGNED_URL_TTL_SECONDS:-900}
@@ -121,9 +188,8 @@ services:
     networks:
       - core
 
-  worker:
-    <<: *app-image
-    init: true
+  worker-model:
+    <<: *worker-base
     command:
       - uv
       - run
@@ -132,25 +198,67 @@ services:
       - app.interface.workers.celery_app:celery_app
       - worker
       - --loglevel=${LOG_LEVEL:-INFO}
-      - --hostname=worker@%h
-      - --queues=default,analysis,policy-retrieval,grounded-explanation,policy-evaluation,human-review,case-resolution,external-action-simulation
-      - --concurrency=${CELERY_WORKER_CONCURRENCY:-2}
-    environment: *app-environment
-    depends_on: *app-depends-on
+      - --hostname=worker-model@%h
+      - --queues=analysis,grounded-explanation
+      - --concurrency=1
     healthcheck:
       test:
         - CMD-SHELL
         - >-
           celery -A app.interface.workers.celery_app:celery_app inspect ping
-          --destination "worker@$$HOSTNAME" --timeout 5 | grep -q pong
+          --destination "worker-model@$$HOSTNAME" --timeout 5 | grep -q pong
       interval: 15s
       timeout: 10s
       retries: 12
       start_period: 20s
-    restart: unless-stopped
-    stop_grace_period: 30s
-    networks:
-      - core
+
+  worker-retrieval:
+    <<: *worker-base
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - app.interface.workers.celery_app:celery_app
+      - worker
+      - --loglevel=${LOG_LEVEL:-INFO}
+      - --hostname=worker-retrieval@%h
+      - --queues=policy-retrieval
+      - --concurrency=2
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          celery -A app.interface.workers.celery_app:celery_app inspect ping
+          --destination "worker-retrieval@$$HOSTNAME" --timeout 5 | grep -q pong
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  worker-decision:
+    <<: *worker-base
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - app.interface.workers.celery_app:celery_app
+      - worker
+      - --loglevel=${LOG_LEVEL:-INFO}
+      - --hostname=worker-decision@%h
+      - --queues=policy-evaluation,human-review,case-resolution,external-action-simulation
+      - --concurrency=2
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          celery -A app.interface.workers.celery_app:celery_app inspect ping
+          --destination "worker-decision@$$HOSTNAME" --timeout 5 | grep -q pong
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   dispatcher:
     <<: *app-image
@@ -161,7 +269,11 @@ services:
       - python
       - -m
       - app.interface.dispatchers.outbox
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      DATABASE_URL: ${DISPATCHER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-csight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-csight}}
+      DATABASE_RUNTIME_ROLE: dispatcher
+      DATABASE_RLS_REQUIRED: "${DATABASE_RLS_REQUIRED:-false}"
     depends_on: *app-depends-on
     healthcheck:
       test:
@@ -175,6 +287,64 @@ services:
       start_period: 10s
     restart: unless-stopped
     stop_grace_period: 20s
+    networks:
+      - core
+
+  privacy-lifecycle:
+    <<: *app-image
+    profiles:
+      - pilot-maintenance
+    init: true
+    command:
+      - uv
+      - run
+      - python
+      - -m
+      - app.interface.maintenance.privacy_lifecycle
+    environment:
+      <<: *app-environment
+      DATABASE_URL: ${API_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-csight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-csight}}
+      DATABASE_RUNTIME_ROLE: api
+      DATABASE_RLS_REQUIRED: "${DATABASE_RLS_REQUIRED:-false}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - uv
+        - run
+        - python
+        - -m
+        - app.interface.maintenance.privacy_lifecycle
+        - --healthcheck
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 20s
+    networks:
+      - core
+
+  migrator:
+    <<: *app-image
+    profiles:
+      - tools
+    command:
+      - uv
+      - run
+      - alembic
+      - upgrade
+      - head
+    environment:
+      <<: *app-environment
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-csight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-csight}}
+      DATABASE_RUNTIME_ROLE: migration
+      DATABASE_RLS_REQUIRED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - core
 
@@ -209,6 +379,16 @@ services:
 
   postgres:
     image: pgvector/pgvector:0.8.6-pg16-bookworm
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=3600s
+      - -c
+      - archive_command=test ! -f /wal-archive/%f && cp %p /wal-archive/%f
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-csight}
       POSTGRES_USER: ${POSTGRES_USER:-csight}
@@ -217,6 +397,7 @@ services:
       - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ${POSTGRES_WAL_ARCHIVE_PATH:-postgres-wal-archive}:/wal-archive
     healthcheck:
       test:
         - CMD-SHELL
@@ -297,7 +478,8 @@ services:
       - >-
         mc alias set csight http://minio:9000 "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY";
         mc mb --ignore-existing "csight/$$MINIO_BUCKET";
-        mc anonymous set none "csight/$$MINIO_BUCKET"
+        mc anonymous set none "csight/$$MINIO_BUCKET";
+        mc version enable "csight/$$MINIO_BUCKET"
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
@@ -311,6 +493,7 @@ services:
 
 volumes:
   postgres-data:
+  postgres-wal-archive:
   rabbitmq-data:
   minio-data:
 

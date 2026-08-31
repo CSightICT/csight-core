@@ -1,0 +1,12 @@
+groups:
+  - name: csight-observability-qualification
+    rules:
+      - alert: CSightHttpTelemetryObserved
+        expr: sum(csight_http_server_request_count_total) >= 1
+        for: 0s
+        labels:
+          severity: qualification
+          receiver_scope: local_only
+        annotations:
+          summary: CSight qualification HTTP telemetry was observed
+          runbook: Local isolated qualification only

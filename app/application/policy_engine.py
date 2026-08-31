@@ -9,6 +9,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.platform.analysis import (
+    AnalysisExecutionMode,
+    ShadowAnalysisDownstreamForbiddenError,
+)
 from app.platform.errors import CaseNotFoundError
 from app.platform.policy_engine import PolicyEvaluationRun, evaluate_rule_set
 from app.platform.tenant import Permission, Principal
@@ -71,6 +75,13 @@ class StartPolicyEvaluation:
         command: StartPolicyEvaluationCommand,
     ) -> StartPolicyEvaluationResult:
         principal.require(Permission.ANALYSIS_CREATE)
+        execution_mode = self._repository.get_analysis_execution_mode(
+            tenant_id=principal.tenant_id,
+            case_id=case_id,
+            analysis_run_id=command.analysis_run_id,
+        )
+        if execution_mode is AnalysisExecutionMode.SHADOW:
+            raise ShadowAnalysisDownstreamForbiddenError()
         run, replayed = self._repository.create(
             tenant_id=principal.tenant_id,
             case_id=case_id,

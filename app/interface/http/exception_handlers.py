@@ -15,6 +15,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from app.bootstrap.logging import bind_log_context, get_logger
 from app.interface.http.schemas import ErrorDetail, ErrorResponse
 from app.platform.analysis import (
+    AnalysisAdmissionLimitExceededError,
     AnalysisAlreadyTerminalError,
     AnalysisError,
     AnalysisPipelineNotSupportedError,
@@ -22,6 +23,7 @@ from app.platform.analysis import (
     AnalysisRunNotFoundError,
     ImageEvidenceRequiredError,
     ProviderTimeoutError,
+    ShadowAnalysisDownstreamForbiddenError,
 )
 from app.platform.errors import CSightError, FileTooLargeError
 
@@ -33,19 +35,43 @@ _MULTIPART_OVERHEAD_ALLOWANCE_BYTES = 1024 * 1024
 _CSIGHT_STATUS_CODES = {
     "AUTHENTICATION_REQUIRED": 401,
     "INVALID_CREDENTIALS": 401,
+    "SIGNED_INTAKE_AUTHENTICATION_FAILED": 401,
+    "INVALID_OIDC_LOGOUT_TOKEN": 400,
     "FORBIDDEN": 403,
     "CASE_NOT_FOUND": 404,
+    "CASE_ASSIGNMENT_VERSION_CONFLICT": 409,
+    "CASE_ASSIGNMENT_TARGET_NOT_ELIGIBLE": 422,
+    "CASE_ASSIGNMENT_TERMINAL": 409,
     "EVIDENCE_NOT_FOUND": 404,
     "INVALID_FILE_TYPE": 422,
     "FILE_TOO_LARGE": 413,
     "EMPTY_FILE": 422,
     "INVALID_IMAGE_CONTENT": 422,
+    "UNSAFE_EVIDENCE": 422,
+    "EVIDENCE_SECURITY_UNAVAILABLE": 503,
     "IMAGE_DIMENSION_LIMIT_EXCEEDED": 422,
     "EVIDENCE_UPLOAD_FAILED": 500,
     "IDEMPOTENCY_KEY_REUSED": 409,
+    "MODEL_RELEASE_SIGNATURE_INVALID": 422,
+    "MODEL_RELEASE_NOT_FOUND": 404,
+    "MODEL_RELEASE_REGISTRATION_CONFLICT": 409,
+    "MODEL_ACTIVATION_CONFLICT": 409,
+    "MODEL_RELEASE_IDENTITY_MISMATCH": 503,
+    "ACTIVE_MODEL_RELEASE_REQUIRED": 409,
+    "MODEL_ROUTE_PLAN_CONFLICT": 409,
+    "MODEL_ROUTE_ACTIVATION_CONFLICT": 409,
+    "ACTIVE_MODEL_ROUTE_PLAN_REQUIRED": 503,
+    "PINNED_MODEL_ROUTE_PLAN_REQUIRED": 503,
+    "PINNED_MODEL_ACTIVATION_REQUIRED": 503,
+    "PINNED_MODEL_ROUTE_PLAN_MISMATCH": 503,
+    "MODEL_ROUTE_DEPLOYMENT_IDENTITY_MISMATCH": 503,
     "VALIDATION_ERROR": 422,
     "STORAGE_UNAVAILABLE": 503,
     "INCONSISTENT_PERSISTENCE_STATE": 500,
+    "SENSITIVE_PAYLOAD_UNAVAILABLE": 409,
+    "OPERATIONAL_FAILURE_NOT_FOUND": 404,
+    "OPERATIONAL_FAILURE_ALREADY_RESOLVED": 409,
+    "OPERATIONAL_FAILURE_NOT_REPLAYABLE": 409,
     "EMBEDDING_PROVIDER_UNAVAILABLE": 503,
     "POLICY_INDEX_UNAVAILABLE": 503,
     "POLICY_DOCUMENT_VERSION_CONTENT_MISMATCH": 409,
@@ -291,6 +317,27 @@ async def _handle_analysis_exception(request: Request, exception: Exception) -> 
             status_code=404,
             code=exception.code,
             message="The requested analysis run was not found.",
+        )
+    if isinstance(exception, AnalysisAdmissionLimitExceededError):
+        return _error_response(
+            request,
+            status_code=429,
+            code=exception.code,
+            message="The analysis queue is at its current admission limit.",
+            details={
+                "global_nonterminal": exception.global_nonterminal,
+                "tenant_nonterminal": exception.tenant_nonterminal,
+                "global_limit": exception.global_limit,
+                "tenant_limit": exception.tenant_limit,
+            },
+            headers={"Retry-After": str(exception.retry_after_seconds)},
+        )
+    if isinstance(exception, ShadowAnalysisDownstreamForbiddenError):
+        return _error_response(
+            request,
+            status_code=409,
+            code=exception.code,
+            message="A SHADOW analysis cannot create a decision-bearing workflow.",
         )
     if isinstance(exception, AnalysisPipelineNotSupportedError):
         return _error_response(

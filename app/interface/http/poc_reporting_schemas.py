@@ -60,6 +60,9 @@ class PocMetricResponse(_Schema):
 class PocSummaryResponse(_Schema):
     schema_version: str
     generated_at: datetime
+    eligible_source_scope: str
+    eligible_case_count: int
+    excluded_case_count: int
     review_time: PocMetricResponse
     recommendation_difference_rate: PocMetricResponse
     additional_evidence_request_rate: PocMetricResponse
@@ -73,6 +76,9 @@ class PocSummaryResponse(_Schema):
         return cls(
             schema_version=summary.schema_version,
             generated_at=summary.generated_at,
+            eligible_source_scope=summary.eligible_source_scope,
+            eligible_case_count=summary.eligible_case_count,
+            excluded_case_count=summary.excluded_case_count,
             review_time=PocMetricResponse.from_metric(summary.review_time),
             recommendation_difference_rate=PocMetricResponse.from_metric(
                 summary.recommendation_difference_rate
@@ -135,6 +141,10 @@ class DataAssetSummaryResponse(_Schema):
     schema_version: str
     generated_at: datetime
     total_records: int
+    eligible_records: int
+    excluded_records: int
+    eligible_source_scope: str
+    source_scope_distribution: dict[str, int]
     baseline_minimum: int
     drift_review_minimum: int
     readiness_status: str

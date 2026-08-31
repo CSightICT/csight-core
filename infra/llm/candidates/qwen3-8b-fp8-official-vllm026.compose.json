@@ -1,0 +1,36 @@
+{
+  "services": {
+    "qwen38": {
+      "image": "vllm/vllm-openai:v0.26.0@sha256:ffb2d59b1c059a5bd8d781320c9f5189de8293693b7d95da54befddaa54abf52",
+      "labels": {
+        "org.csight.qwen4090.candidate-id": "qwen3-8b-fp8-official-vllm026",
+        "org.csight.qwen4090.execution-mode": "SHADOW"
+      },
+      "command": [
+        "Qwen/Qwen3-8B-FP8",
+        "--revision",
+        "220b46e3b2180893580a4454f21f22d3ebb187d3",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--served-model-name",
+        "csight-qwen3-8b-fp8-shadow",
+        "--language-model-only",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.88",
+        "--kv-cache-dtype",
+        "fp8",
+        "--enforce-eager",
+        "--reasoning-parser",
+        "qwen3",
+        "--default-chat-template-kwargs",
+        "{\"enable_thinking\":false,\"preserve_thinking\":false}"
+      ]
+    }
+  }
+}

@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.pool import NullPool
@@ -21,7 +22,7 @@ pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[2]
 PREVIOUS = "20260827_0014_review_report_poc_metrics"
 REVISION = "20260827_0015_vision_image_assessment"
-HEAD = "20260828_0016_communication_learning_assets"
+HEAD = "head"
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,4 +115,6 @@ def test_migration_round_trip_constraints_and_drift(
     command.upgrade(config, HEAD)
     command.check(config)
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == HEAD
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
+            ScriptDirectory.from_config(config).get_current_head()
+        )

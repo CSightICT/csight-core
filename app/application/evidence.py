@@ -12,6 +12,7 @@ import hmac
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from typing import BinaryIO
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -20,12 +21,15 @@ from app.platform.errors import (
     CaseNotFoundError,
     EmptyFileError,
     EvidenceNotFoundError,
+    EvidenceSecurityUnavailableError,
     EvidenceUploadFailedError,
     FileTooLargeError,
+    IdempotencyKeyReusedError,
     ImageDimensionLimitExceededError,
     InvalidFileTypeError,
     InvalidImageContentError,
     StorageUnavailableError,
+    UnsafeEvidenceError,
 )
 from app.platform.evidence import (
     EvidenceMetadata,
@@ -34,6 +38,12 @@ from app.platform.evidence import (
     build_evidence_object_key,
 )
 from app.platform.tenant import Permission, Principal
+from app.ports.evidence_security import (
+    EvidenceSanitizationError,
+    ImageSanitizer,
+    MalwareDetectedError,
+    MalwareScannerUnavailableError,
+)
 from app.ports.file_inspection import EmptyFileError as InspectionEmptyFileError
 from app.ports.file_inspection import (
     FileInspector,
@@ -81,6 +91,7 @@ class AddImageEvidence:
         clock: Clock,
         id_generator: IdGenerator,
         compensation_observer: CompensationFailureObserver,
+        image_sanitizer: ImageSanitizer | None = None,
     ) -> None:
         if not storage_bucket.strip():
             raise ValueError("storage_bucket must not be empty")
@@ -91,6 +102,7 @@ class AddImageEvidence:
         self._clock = clock
         self._id_generator = id_generator
         self._compensation_observer = compensation_observer
+        self._image_sanitizer = image_sanitizer
 
     def execute(
         self,
@@ -101,6 +113,7 @@ class AddImageEvidence:
         filename: str | None,
         declared_content_type: str | None,
         evidence_type: EvidenceType = EvidenceType.IMAGE,
+        idempotency_key: str | None = None,
     ) -> EvidenceMetadata:
         if evidence_type is not EvidenceType.IMAGE:
             raise InvalidFileTypeError("Only IMAGE evidence is supported in this sprint.")
@@ -110,11 +123,30 @@ class AddImageEvidence:
         # so resolving the scoped parent before the write permission check does not
         # reveal any resource it could not otherwise query.
         principal.require(Permission.EVIDENCE_UPLOAD)
-        inspected = self._inspect(
-            content=content,
-            filename=filename,
-            declared_content_type=declared_content_type,
-        )
+        storage_content: BinaryIO = content
+        if self._image_sanitizer is not None:
+            try:
+                sanitized = self._image_sanitizer.sanitize(content)
+            except MalwareDetectedError as exc:
+                raise UnsafeEvidenceError() from exc
+            except MalwareScannerUnavailableError as exc:
+                raise EvidenceSecurityUnavailableError() from exc
+            except EvidenceSanitizationError as exc:
+                raise InvalidImageContentError() from exc
+            storage_content = BytesIO(sanitized.content)
+            inspected = self._inspect(
+                content=storage_content,
+                filename=filename,
+                declared_content_type=declared_content_type,
+            )
+            if inspected.image_format != sanitized.image_format:
+                raise InvalidImageContentError()
+        else:
+            inspected = self._inspect(
+                content=content,
+                filename=filename,
+                declared_content_type=declared_content_type,
+            )
 
         evidence_id = self._id_generator.new_id()
         now = self._clock.now().astimezone(UTC)
@@ -137,25 +169,38 @@ class AddImageEvidence:
             sha256=inspected.sha256,
             width=inspected.width,
             height=inspected.height,
+            idempotency_key=idempotency_key,
             created_by=principal.user_id,
             created_at=now,
             updated_at=now,
         )
         try:
             with self._uow_factory() as uow:
-                uow.evidence.add(
-                    tenant_id=principal.tenant_id,
-                    evidence=pending,
-                )
+                if idempotency_key is None:
+                    uow.evidence.add(
+                        tenant_id=principal.tenant_id,
+                        evidence=pending,
+                    )
+                else:
+                    claim = uow.evidence.claim(
+                        tenant_id=principal.tenant_id,
+                        evidence=pending,
+                    )
+                    if not claim.claimed:
+                        if not hmac.compare_digest(claim.evidence.sha256, pending.sha256):
+                            raise IdempotencyKeyReusedError()
+                        return claim.evidence
                 uow.flush()
                 uow.commit()
+        except IdempotencyKeyReusedError:
+            raise
         except Exception as exc:
             raise EvidenceUploadFailedError() from exc
 
         try:
             stored = self._storage.put(
                 key=object_key,
-                content=content,
+                content=storage_content,
                 length=inspected.size_bytes,
                 content_type=inspected.content_type,
                 sha256=inspected.sha256,

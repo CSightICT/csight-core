@@ -9,6 +9,8 @@ from pydantic import ValidationError as PydanticValidationError
 from app.application.cases import (
     CreateCase,
     CreateCaseCommand,
+    CreateSignedIntakeCase,
+    CreateSignedIntakeCaseCommand,
     GetCase,
     ListCases,
     ListCasesQuery,
@@ -16,18 +18,22 @@ from app.application.cases import (
 )
 from app.platform.case import (
     Case,
+    CaseSourceScope,
     CaseStatus,
     CaseStatusTransition,
     IdempotencyRecord,
+    JsonValue,
     RequestedAction,
 )
 from app.platform.errors import CaseNotFoundError, ForbiddenError, IdempotencyKeyReusedError
 from app.platform.evidence import EvidenceMetadata, EvidenceUploadStatus, build_evidence_object_key
+from app.platform.signed_intake import AuthenticatedSignedIntake, SignedIntakeSource
 from app.platform.tenant import Principal, Role
 from app.ports.case_repository import (
     CaseListCriteria,
     CaseRepository,
     CaseStatusHistoryRepository,
+    EvidenceClaim,
     EvidenceRepository,
     IdempotencyClaim,
     IdempotencyRepository,
@@ -94,6 +100,10 @@ class FakeEvidenceRepository:
     def add(self, *, tenant_id: str, evidence: EvidenceMetadata) -> None:
         if tenant_id != evidence.tenant_id:
             raise ValueError("evidence tenant mismatch")
+
+    def claim(self, *, tenant_id: str, evidence: EvidenceMetadata) -> EvidenceClaim:
+        self.add(tenant_id=tenant_id, evidence=evidence)
+        return EvidenceClaim(claimed=True, evidence=evidence)
 
     def get(self, *, tenant_id: str, case_id: str, evidence_id: str) -> EvidenceMetadata | None:
         del tenant_id, case_id, evidence_id
@@ -213,6 +223,42 @@ def test_case_rejects_blank_customer_message_and_non_finite_json() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("attributes", "message"),
+    [
+        ({"": "value"}, "must not be blank"),
+        ({"x" * 129: "value"}, "128 characters"),
+        ({f"key-{index}": index for index in range(257)}, "256 keys"),
+        ({"payload": "가" * 30_000}, "65536 UTF-8 bytes"),
+    ],
+)
+def test_case_rejects_unbounded_attributes(
+    attributes: dict[str, JsonValue],
+    message: str,
+) -> None:
+    with pytest.raises(PydanticValidationError, match=message):
+        CreateCaseCommand(
+            order_ref="ORD-1",
+            product_ref="SKU-1",
+            customer_message="Valid",
+            attributes=attributes,
+        )
+
+
+def test_case_rejects_attributes_deeper_than_eight_levels() -> None:
+    nested: dict[str, JsonValue] = {"leaf": True}
+    for index in range(8):
+        nested = {f"level-{index}": nested}
+
+    with pytest.raises(PydanticValidationError, match="8 levels"):
+        CreateCaseCommand(
+            order_ref="ORD-1",
+            product_ref="SKU-1",
+            customer_message="Valid",
+            attributes=nested,
+        )
+
+
 def test_create_case_starts_received_and_records_initial_history() -> None:
     unit_of_work = FakeUnitOfWork()
 
@@ -292,3 +338,43 @@ def test_object_key_never_uses_the_original_filename() -> None:
 
     assert key == "tenants/tenant-a/cases/case-a/evidence/evidence-a/original"
     assert "filename" not in key
+
+
+def test_signed_intake_creates_only_pilot_live_and_replays_one_source_event() -> None:
+    unit_of_work = FakeUnitOfWork()
+    create_case = CreateSignedIntakeCase(
+        uow_factory=FakeUnitOfWorkFactory(unit_of_work),
+        clock=StaticClock(),
+        id_generator=SequenceIds(),
+    )
+    authenticated = AuthenticatedSignedIntake(
+        source=SignedIntakeSource(
+            key_id="crm-key-1",
+            source_id="customer-crm",
+            tenant_id="tenant-a",
+            actor_user_id="service-actor-a",
+            provenance="signed/crm/v1",
+        ),
+        authenticated_at=NOW,
+    )
+    intake = CreateSignedIntakeCaseCommand(source_event_id="event-1", case=command())
+
+    first = create_case.execute(authenticated=authenticated, command=intake)
+    replay = create_case.execute(authenticated=authenticated, command=intake)
+
+    assert first.case.source_scope is CaseSourceScope.PILOT_LIVE
+    assert first.case.source_provenance == "signed/crm/v1"
+    assert first.case.created_by == "service-actor-a"
+    assert first.case.status is CaseStatus.RECEIVED
+    assert replay.replayed is True
+    assert replay.case.id == first.case.id
+    assert len(unit_of_work.case_repository.items) == 1
+    assert len(unit_of_work.history_repository.items) == 1
+    assert unit_of_work.commits == 1
+
+    changed = CreateSignedIntakeCaseCommand(
+        source_event_id="event-1",
+        case=command(message="Changed payload"),
+    )
+    with pytest.raises(IdempotencyKeyReusedError):
+        create_case.execute(authenticated=authenticated, command=changed)

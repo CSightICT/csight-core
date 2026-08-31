@@ -43,9 +43,19 @@ class AnalysisRequestIdempotencyClaim:
     record: AnalysisRequestIdempotencyRecord
 
 
+@dataclass(frozen=True, slots=True)
+class AnalysisAdmissionCounts:
+    """Counts observed while the transaction holds the global admission lock."""
+
+    global_nonterminal: int
+    tenant_nonterminal: int
+
+
 @runtime_checkable
 class AnalysisRunRepository(Protocol):
     def add(self, *, tenant_id: str, run: AnalysisRun) -> None: ...
+
+    def lock_admission_counts(self, *, tenant_id: str) -> AnalysisAdmissionCounts: ...
 
     def get(
         self,
@@ -247,6 +257,8 @@ class VisionAnalysisResultRepository(Protocol):
 class OutboxEventRepository(Protocol):
     def add(self, *, tenant_id: str, event: OutboxEvent) -> None: ...
 
+    def get_for_update(self, *, event_id: str) -> OutboxEvent | None: ...
+
     def claim_batch(
         self,
         *,
@@ -285,6 +297,15 @@ class OutboxEventRepository(Protocol):
         claim_token: str,
         last_error: str,
         now: datetime,
+    ) -> OutboxEvent | None: ...
+
+    def record_consumer_failure(
+        self,
+        *,
+        event_id: str,
+        last_error: str,
+        now: datetime,
+        terminal: bool,
     ) -> OutboxEvent | None: ...
 
     def recover_stale(
@@ -331,6 +352,7 @@ class AnalysisUnitOfWorkFactory(Protocol):
 
 
 __all__ = [
+    "AnalysisAdmissionCounts",
     "AnalysisEvidenceSnapshotRepository",
     "AnalysisRequestIdempotencyClaim",
     "AnalysisRequestIdempotencyRepository",

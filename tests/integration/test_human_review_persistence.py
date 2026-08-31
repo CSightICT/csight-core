@@ -2,33 +2,41 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 from alembic.config import Config
 from pydantic import ValidationError
-from sqlalchemy import Engine, create_engine, func, select, text
+from sqlalchemy import Engine, create_engine, func, select, text, update
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from alembic import command as alembic_command
 from app.adapters.external_action import DeterministicDryRunExternalActionAdapter
 from app.adapters.persistence import case_resolution as case_resolution_persistence
+from app.adapters.persistence.case_assignment import SQLAlchemyCaseAssignmentRepository
 from app.adapters.persistence.case_resolution import SQLAlchemyCaseResolutionRepository
 from app.adapters.persistence.human_review import SQLAlchemyHumanReviewRepository
 from app.adapters.persistence.models import (
     AnalysisRunModel,
     AnalysisStageRunModel,
+    CaseAssignmentActionModel,
+    CaseAssignmentModel,
     CaseModel,
     CaseResolutionModel,
     CaseResolutionRequestEventModel,
+    CaseSensitivePayloadModel,
+    CustomerCommunicationSimulationModel,
+    DataLifecycleEventModel,
     ExternalActionIntentModel,
     ExternalActionSimulationAttemptModel,
     ExternalActionSimulationRequestEventModel,
@@ -52,6 +60,9 @@ from app.adapters.persistence.models import (
 from app.adapters.persistence.poc_reporting import SQLAlchemyPocReportingRepository
 from app.adapters.persistence.policy_engine import SQLAlchemyPolicyEngineRepository
 from app.adapters.persistence.policy_ingestion import ingest_validated_policy_corpus
+from app.adapters.persistence.privacy_lifecycle import (
+    create_privacy_lifecycle_unit_of_work_factory,
+)
 from app.adapters.persistence.session import create_session_factory, session_scope
 from app.application.case_resolution import (
     CaseResolutionRequestedCommand,
@@ -60,8 +71,10 @@ from app.application.case_resolution import (
     ProcessCaseResolution,
 )
 from app.application.policy_engine import ExecutePolicyEvaluation, ExecutePolicyEvaluationCommand
+from app.application.privacy_lifecycle import PurgeExpiredSensitivePayloads
 from app.bootstrap.settings import Settings
 from app.platform.async_reliability import AsyncEventIntegrityError
+from app.platform.case_assignment import CaseAssignmentVersionConflictError
 from app.platform.case_resolution import ResolutionStatus
 from app.platform.errors import ForbiddenError
 from app.platform.human_review import (
@@ -79,14 +92,16 @@ from app.platform.human_review import (
     ReviewTaskNotFoundError,
 )
 from app.platform.policy_engine import PolicyEvaluationRun, PolicyRuleSet
-from app.platform.tenant import Role
+from app.platform.tenant import Principal, Role
 from app.ports.human_review import ReviewQueueQuery
 
 pytestmark = pytest.mark.integration
+TERMINAL_PRIVACY_MARKER = "개인정보삭제표식0029"
 
 
 @dataclass(frozen=True, slots=True)
 class HumanReviewIntegrationContext:
+    engine: Engine
     factory: sessionmaker[Session]
 
 
@@ -125,7 +140,7 @@ def human_review_database() -> Generator[HumanReviewIntegrationContext, None, No
         temporary_engine = create_engine(temporary_url, pool_pre_ping=True)
         factory = create_session_factory(temporary_engine)
         _seed_human_review_prerequisites(factory=factory, project_root=project_root)
-        yield HumanReviewIntegrationContext(factory=factory)
+        yield HumanReviewIntegrationContext(engine=temporary_engine, factory=factory)
     finally:
         try:
             if temporary_engine is not None:
@@ -235,6 +250,23 @@ def _seed_human_review_prerequisites(*, factory: sessionmaker[Session], project_
             )
         )
         session.flush()
+        customer_message = "합성 테스트: 용기가 파손되어 환불을 요청합니다."
+        session.add(
+            CaseSensitivePayloadModel(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                case_id=case_id,
+                schema_version="case_sensitive_payload/1.0.0",
+                customer_message=customer_message,
+                payload_sha256=hashlib.sha256(customer_message.encode("utf-8")).hexdigest(),
+                retention_policy_version="integration/30d",
+                expires_at=now + timedelta(days=30),
+                purged_at=None,
+                legacy_redacted_at=None,
+                created_at=now,
+                updated_at=now,
+            )
+        )
         session.add(
             AnalysisRunModel(
                 id=analysis_id,
@@ -449,7 +481,7 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
                 "data_classification": "SYNTHETIC_DEMO_ONLY",
                 "customer": {
                     "customer_id": "CUST-DEMO-100002",
-                    "display_name": "김하늘",
+                    "display_name": TERMINAL_PRIVACY_MARKER,
                     "phone_masked": "010-****-4821",
                     "membership_tier": "GOLD",
                 },
@@ -471,7 +503,7 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
                 },
                 "delivery": {
                     "shipping_address_ref": "DEMO-V2-ADDR-002",
-                    "recipient": "김하늘",
+                    "recipient": TERMINAL_PRIVACY_MARKER,
                     "phone_masked": "010-****-4821",
                     "postal_code": "06236",
                     "address_line1": "서울특별시 데모구 시연로 41",
@@ -738,27 +770,24 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
         )
 
     summary = reporting_repository.get_poc_summary(tenant_id=tenant_id)
-    assert summary.review_time.denominator == 1
-    assert summary.review_time.sample_count == 1
-    assert summary.review_time.numerator >= 0
-    comparable = decision.outcome_relation.value in {
-        "CONSISTENT_WITH_RECOMMENDATION",
-        "DIFFERS_FROM_RECOMMENDATION",
-    }
-    differs = decision.outcome_relation.value == "DIFFERS_FROM_RECOMMENDATION"
-    assert summary.recommendation_difference_rate.denominator == int(comparable)
-    assert summary.recommendation_difference_rate.sample_count == int(comparable)
-    assert summary.recommendation_difference_rate.numerator == int(differs)
-    assert summary.additional_evidence_request_rate.denominator == 1
-    assert summary.additional_evidence_request_rate.numerator == 0
-    assert summary.action_input_missing_rate.denominator == 1
-    assert summary.action_input_missing_rate.numerator == 0
-    assert summary.dry_run_success_rate.denominator == 1
-    assert summary.dry_run_success_rate.numerator == 1
-    assert summary.analysis_failure_rate.denominator == 1
-    assert summary.analysis_failure_rate.numerator == 0
-    assert summary.analysis_partial_success_rate.denominator == 1
-    assert summary.analysis_partial_success_rate.numerator == 0
+    # This workflow is explicitly synthetic.  It must exercise the full human-review and
+    # DRY_RUN persistence path without contaminating customer-pilot metrics, whose immutable
+    # source boundary admits only PILOT_LIVE cases.
+    assert summary.eligible_case_count == 0
+    assert summary.excluded_case_count == 1
+    for metric in (
+        summary.review_time,
+        summary.recommendation_difference_rate,
+        summary.additional_evidence_request_rate,
+        summary.action_input_missing_rate,
+        summary.dry_run_success_rate,
+        summary.analysis_failure_rate,
+        summary.analysis_partial_success_rate,
+    ):
+        assert metric.denominator == 0
+        assert metric.sample_count == 0
+        assert metric.numerator == 0
+        assert metric.value is None
     empty_summary = reporting_repository.get_poc_summary(tenant_id=str(other_tenant))
     assert empty_summary.review_time.denominator == 0
     assert empty_summary.review_time.value is None
@@ -1036,6 +1065,8 @@ def test_release_evidence_resume_escalation_and_assignment_history(
         instructions="결함 부위가 보이도록 이미지를 다시 촬영해 주세요.",
         rationale=None,
     )
+    assert waiting.status.value == "WAITING_FOR_EVIDENCE"
+    assert waiting.current_assignee_id == actor
     resumed = repository.resume(
         tenant_id=tenant_id,
         task_id=task.id,
@@ -1044,19 +1075,14 @@ def test_release_evidence_resume_escalation_and_assignment_history(
         expected_version=waiting.version,
         rationale="관리자가 추가 제출 경로를 확인하고 검토를 재개합니다.",
     )
-    claimed = repository.claim(
-        tenant_id=tenant_id,
-        task_id=task.id,
-        actor_id=actor,
-        roles=frozenset({Role.ADMIN}),
-        expected_version=resumed.version,
-    )
+    assert resumed.status.value == "CLAIMED"
+    assert resumed.current_assignee_id == actor
     escalated = repository.escalate(
         tenant_id=tenant_id,
         task_id=task.id,
         actor_id=actor,
         roles=frozenset({Role.ADMIN}),
-        expected_version=claimed.version,
+        expected_version=resumed.version,
         reason_codes=(EscalationReason.CONFLICTING_POLICY,),
         rationale="복수 정책 조건이 상충하여 관리자 재검토가 필요합니다.",
     )
@@ -1077,7 +1103,7 @@ def test_release_evidence_resume_escalation_and_assignment_history(
         expected_version=claimed.version,
         request=_decision(str(detail.rule_results[0]["id"])),
     )
-    assert resolved.version == 10 and resolved.status.value == "RESOLVED"
+    assert resolved.version == 9 and resolved.status.value == "RESOLVED"
     final = repository.get(tenant_id=tenant_id, task_id=task.id)
     assert final is not None
     assert [item.action_type.value for item in final.actions] == [
@@ -1087,7 +1113,6 @@ def test_release_evidence_resume_escalation_and_assignment_history(
         "CLAIMED",
         "EVIDENCE_REQUESTED",
         "RESUMED",
-        "CLAIMED",
         "ESCALATED",
         "CLAIMED",
         "RESOLVED",
@@ -1098,7 +1123,7 @@ def test_release_evidence_resume_escalation_and_assignment_history(
                 HumanReviewAssignmentModel.review_task_id == UUID(task.id)
             )
         ).all()
-    assert len(assignments) == 4
+    assert len(assignments) == 3
     assert all(item.released_at is not None for item in assignments)
 
 
@@ -1317,6 +1342,7 @@ def _create_resolution_source(
     external_action_input: dict[str, object],
 ) -> _ResolutionSource:
     now = datetime.now(UTC)
+    customer_message = "합성 테스트: 제품 파손으로 환불 검토를 요청합니다."
     with factory.begin() as session:
         tenant_id = session.scalar(
             select(TenantModel.id).where(TenantModel.slug == "csight-demo-brand")
@@ -1345,7 +1371,7 @@ def _create_resolution_source(
                 status="RECEIVED",
                 order_ref=f"RESOLUTION-{label}-ORDER",
                 product_ref=f"RESOLUTION-{label}-PRODUCT",
-                customer_message="합성 테스트: 제품 파손으로 환불 검토를 요청합니다.",
+                customer_message=customer_message,
                 requested_action="REFUND",
                 attributes={
                     "days_since_purchase": 3,
@@ -1359,6 +1385,22 @@ def _create_resolution_source(
             )
         )
         session.flush()
+        session.add(
+            CaseSensitivePayloadModel(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                case_id=case_id,
+                schema_version="case_sensitive_payload/1.0.0",
+                customer_message=customer_message,
+                payload_sha256=hashlib.sha256(customer_message.encode("utf-8")).hexdigest(),
+                retention_policy_version="integration/30d",
+                expires_at=now + timedelta(days=30),
+                purged_at=None,
+                legacy_redacted_at=None,
+                created_at=now,
+                updated_at=now,
+            )
+        )
         session.add(
             AnalysisRunModel(
                 id=analysis_id,
@@ -1683,6 +1725,390 @@ def test_resolution_missing_input_and_conflicting_decision_fail_closed_without_d
     assert str(conflict_resolution.source_human_decision_id) == original.decision_id
     assert [str(item.human_decision_id) for item in intents] == [original.decision_id]
     assert attempts == [] and results == []
+
+
+def test_case_reassignment_updates_open_review_owner_and_rls(
+    human_review_database: HumanReviewIntegrationContext,
+) -> None:
+    """A reassignment atomically moves the Case, review task, audit, and DB visibility."""
+
+    factory = human_review_database.factory
+    source = _create_resolution_source(
+        factory,
+        label=f"assignment-{uuid4().hex[:8]}",
+        external_action_input={"amount": "15000.0000", "currency": "KRW"},
+    )
+    policy_repository = SQLAlchemyPolicyEngineRepository(factory)
+    policy_run, _ = policy_repository.create(
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        analysis_run_id=source.analysis_id,
+        as_of_date=date(2026, 2, 1),
+        requested_by=source.actor_id,
+        correlation_id=f"assignment-policy-{uuid4()}",
+        idempotency_key=f"assignment-policy-{uuid4()}",
+        request_hash="e" * 64,
+    )
+    with factory() as session:
+        policy_event = session.scalar(
+            select(PolicyEvaluationOutboxEventModel).where(
+                PolicyEvaluationOutboxEventModel.policy_evaluation_run_id == UUID(policy_run.id)
+            )
+        )
+    assert policy_event is not None
+    policy_event = _mark_policy_event_published(factory, policy_event.id)
+    assert (
+        ExecutePolicyEvaluation(policy_repository).execute(
+            ExecutePolicyEvaluationCommand(
+                event_id=str(policy_event.id),
+                tenant_id=source.tenant_id,
+                case_id=source.case_id,
+                policy_evaluation_run_id=policy_run.id,
+                correlation_id=policy_run.correlation_id,
+            )
+        )
+        == "SUCCEEDED"
+    )
+    review_repository = SQLAlchemyHumanReviewRepository(factory)
+    with factory() as session:
+        review_event = session.scalar(
+            select(HumanReviewRequestEventModel).where(
+                HumanReviewRequestEventModel.policy_evaluation_run_id == UUID(policy_run.id)
+            )
+        )
+    assert review_event is not None
+    review_event = _mark_review_event_processing(factory, review_event.id)
+    task, replayed = review_repository.create_from_policy_evaluation(
+        event_id=str(review_event.id),
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        policy_evaluation_run_id=policy_run.id,
+        correlation_id=policy_run.correlation_id,
+    )
+    assert replayed is False and task.status.value == "PENDING"
+
+    reviewer_role_id = uuid4()
+    reviewer_id = uuid4()
+    with factory.begin() as session:
+        session.add(RoleModel(id=reviewer_role_id, name=Role.REVIEWER.value))
+        session.add(
+            UserModel(
+                id=reviewer_id,
+                tenant_id=UUID(source.tenant_id),
+                email=f"reviewer-{reviewer_id.hex}@integration.test",
+                password_hash="integration-test-password-hash",
+                display_name="Assignment Reviewer",
+            )
+        )
+        session.flush()
+        session.add(
+            UserRoleModel(
+                tenant_id=UUID(source.tenant_id),
+                user_id=reviewer_id,
+                role_id=reviewer_role_id,
+            )
+        )
+
+    assignments = SQLAlchemyCaseAssignmentRepository(factory)
+    first = assignments.assign(
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        assignee_id=source.actor_id,
+        assigned_by=source.actor_id,
+        expected_version=0,
+        rationale="관리자가 최초 담당자를 배정합니다",
+    )
+    second = assignments.assign(
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        assignee_id=str(reviewer_id),
+        assigned_by=source.actor_id,
+        expected_version=first.version,
+        rationale="업무 분배를 위해 담당자를 변경합니다",
+    )
+    assert second.version == 2 and second.current_assignee_id == str(reviewer_id)
+    assert assignments.can_access(
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        actor_id=str(reviewer_id),
+    )
+    assert not assignments.can_access(
+        tenant_id=source.tenant_id,
+        case_id=source.case_id,
+        actor_id=source.actor_id,
+    )
+    with pytest.raises(CaseAssignmentVersionConflictError):
+        assignments.assign(
+            tenant_id=source.tenant_id,
+            case_id=source.case_id,
+            assignee_id=source.actor_id,
+            assigned_by=source.actor_id,
+            expected_version=0,
+            rationale="오래된 화면에서 잘못 재배정합니다",
+        )
+
+    with factory() as session:
+        persisted_task = session.get(HumanReviewTaskModel, UUID(task.id))
+        active_case_assignments = session.scalar(
+            select(func.count(CaseAssignmentModel.id)).where(
+                CaseAssignmentModel.case_id == UUID(source.case_id),
+                CaseAssignmentModel.released_at.is_(None),
+            )
+        )
+        action_count = session.scalar(
+            select(func.count(CaseAssignmentActionModel.id)).where(
+                CaseAssignmentActionModel.case_id == UUID(source.case_id)
+            )
+        )
+    assert persisted_task is not None
+    assert persisted_task.status == "CLAIMED"
+    assert persisted_task.current_assignee_id == reviewer_id
+    assert persisted_task.version == 3
+    assert (active_case_assignments, action_count) == (1, 2)
+
+    with pytest.raises(SQLAlchemyError), factory.begin() as session:
+        session.execute(
+            update(CaseAssignmentActionModel)
+            .where(CaseAssignmentActionModel.case_id == UUID(source.case_id))
+            .values(rationale="감사 기록 변경 시도")
+        )
+
+    engine = factory.kw["bind"]
+    assert isinstance(engine, Engine)
+    with engine.begin() as connection:
+        connection.execute(text("SET LOCAL ROLE csight_api_role"))
+        connection.execute(
+            text("SELECT set_config('app.tenant_id', :tenant_id, true)"),
+            {"tenant_id": source.tenant_id},
+        )
+        connection.execute(
+            text("SELECT set_config('app.actor_id', :actor_id, true)"),
+            {"actor_id": source.actor_id},
+        )
+        connection.execute(text("SELECT set_config('app.case_access_all', 'false', true)"))
+        assert (
+            connection.scalar(
+                text("SELECT count(*) FROM cases WHERE id = :case_id"),
+                {"case_id": source.case_id},
+            )
+            == 0
+        )
+        connection.execute(
+            text("SELECT set_config('app.actor_id', :actor_id, true)"),
+            {"actor_id": str(reviewer_id)},
+        )
+        assert (
+            connection.scalar(
+                text("SELECT count(*) FROM cases WHERE id = :case_id"),
+                {"case_id": source.case_id},
+            )
+            == 1
+        )
+        connection.execute(text("SELECT set_config('app.case_access_all', 'true', true)"))
+        assert (
+            connection.scalar(
+                text("SELECT count(*) FROM cases WHERE id = :case_id"),
+                {"case_id": source.case_id},
+            )
+            == 1
+        )
+
+
+def test_terminal_privacy_purge_redacts_human_text_reports_and_communications(
+    human_review_database: HumanReviewIntegrationContext,
+) -> None:
+    engine = human_review_database.engine
+    factory = human_review_database.factory
+    with factory() as session:
+        source = session.execute(
+            select(
+                ReviewReportModel.tenant_id,
+                ReviewReportModel.case_id,
+                CaseModel.created_by,
+            )
+            .join(
+                CaseModel,
+                (CaseModel.tenant_id == ReviewReportModel.tenant_id)
+                & (CaseModel.id == ReviewReportModel.case_id),
+            )
+            .where(ReviewReportModel.case_snapshot.op("?")("synthetic_commerce_context"))
+            .order_by(ReviewReportModel.generated_at)
+            .limit(1)
+        ).one_or_none()
+    assert source is not None
+    tenant_id, case_id, admin_id = source
+
+    reporting = SQLAlchemyPocReportingRepository(factory)
+    communication = reporting.create_customer_communication(
+        tenant_id=str(tenant_id),
+        case_id=str(case_id),
+        created_by=str(admin_id),
+    )
+    assert communication.side_effects_performed is False
+
+    with factory.begin() as session:
+        payload = session.scalar(
+            select(CaseSensitivePayloadModel)
+            .where(
+                CaseSensitivePayloadModel.tenant_id == tenant_id,
+                CaseSensitivePayloadModel.case_id == case_id,
+            )
+            .with_for_update()
+        )
+        assert payload is not None
+        now = max(datetime.now(UTC), payload.created_at + timedelta(seconds=2))
+        payload.expires_at = now - timedelta(seconds=1)
+
+    class Clock:
+        def now(self) -> datetime:
+            return now
+
+    class IDs:
+        def new_id(self) -> str:
+            return str(uuid4())
+
+    purge = PurgeExpiredSensitivePayloads(
+        uow_factory=create_privacy_lifecycle_unit_of_work_factory(engine),
+        clock=Clock(),
+        id_generator=IDs(),
+    ).execute(
+        principal=Principal(
+            user_id=str(admin_id),
+            tenant_id=str(tenant_id),
+            email="terminal-privacy-admin@example.test",
+            display_name="Terminal Privacy Admin",
+            roles=frozenset({Role.ADMIN}),
+        ),
+        execute=True,
+    )
+    assert purge.applied_count == 1 and purge.blocked_count == 0
+
+    with factory() as session:
+        payload = session.scalar(
+            select(CaseSensitivePayloadModel).where(
+                CaseSensitivePayloadModel.tenant_id == tenant_id,
+                CaseSensitivePayloadModel.case_id == case_id,
+            )
+        )
+        case = session.get(CaseModel, case_id)
+        actions = tuple(
+            session.scalars(
+                select(HumanReviewActionModel)
+                .join(
+                    HumanReviewTaskModel,
+                    (HumanReviewTaskModel.tenant_id == HumanReviewActionModel.tenant_id)
+                    & (HumanReviewTaskModel.id == HumanReviewActionModel.review_task_id),
+                )
+                .where(
+                    HumanReviewTaskModel.tenant_id == tenant_id,
+                    HumanReviewTaskModel.case_id == case_id,
+                )
+            )
+        )
+        decisions = tuple(
+            session.scalars(
+                select(HumanReviewDecisionModel)
+                .join(
+                    HumanReviewTaskModel,
+                    (HumanReviewTaskModel.tenant_id == HumanReviewDecisionModel.tenant_id)
+                    & (HumanReviewTaskModel.id == HumanReviewDecisionModel.review_task_id),
+                )
+                .where(
+                    HumanReviewTaskModel.tenant_id == tenant_id,
+                    HumanReviewTaskModel.case_id == case_id,
+                )
+            )
+        )
+        reports = tuple(
+            session.scalars(
+                select(ReviewReportModel).where(
+                    ReviewReportModel.tenant_id == tenant_id,
+                    ReviewReportModel.case_id == case_id,
+                )
+            )
+        )
+        communications = tuple(
+            session.scalars(
+                select(CustomerCommunicationSimulationModel).where(
+                    CustomerCommunicationSimulationModel.tenant_id == tenant_id,
+                    CustomerCommunicationSimulationModel.case_id == case_id,
+                )
+            )
+        )
+        event = session.scalar(
+            select(DataLifecycleEventModel).where(
+                DataLifecycleEventModel.tenant_id == tenant_id,
+                DataLifecycleEventModel.case_id == case_id,
+                DataLifecycleEventModel.event_type == "SENSITIVE_PAYLOAD_PURGED",
+            )
+        )
+        assert payload is not None and case is not None and event is not None
+        assert payload.terminal_content_purged_at == payload.purged_at
+        assert case.attributes == {}
+        assert actions and all(item.action_payload == {} for item in actions)
+        assert all(item.rationale in {None, "[PURGED_BY_RETENTION]"} for item in actions)
+        assert decisions and all(item.rationale == "[PURGED_BY_RETENTION]" for item in decisions)
+        assert reports and all(
+            item.data_scope["privacy_redaction_policy_version"]
+            == "terminal-content-redaction/1.0.0"
+            for item in reports
+        )
+        assert all("synthetic_commerce_context" not in item.case_snapshot for item in reports)
+        assert communications and all(
+            item.recipient_label == item.subject == item.body == "[PURGED_BY_RETENTION]"
+            for item in communications
+        )
+        assert event.details["terminal_content_redacted"] is True
+        assert event.details["terminal_redaction_receipt_sha256"]
+
+        marker_count = session.scalar(
+            text(
+                """
+                SELECT count(*) FROM (
+                    SELECT attributes::text AS value FROM cases
+                     WHERE tenant_id = :tenant_id AND id = :case_id
+                    UNION ALL SELECT action.rationale FROM human_review_actions AS action
+                     JOIN human_review_tasks AS task ON task.tenant_id = action.tenant_id
+                      AND task.id = action.review_task_id
+                     WHERE task.tenant_id = :tenant_id AND task.case_id = :case_id
+                    UNION ALL SELECT action.action_payload::text FROM human_review_actions AS action
+                     JOIN human_review_tasks AS task ON task.tenant_id = action.tenant_id
+                      AND task.id = action.review_task_id
+                     WHERE task.tenant_id = :tenant_id AND task.case_id = :case_id
+                    UNION ALL SELECT report.case_snapshot::text FROM review_reports AS report
+                     WHERE tenant_id = :tenant_id AND case_id = :case_id
+                    UNION ALL SELECT report.review_snapshot::text FROM review_reports AS report
+                     WHERE tenant_id = :tenant_id AND case_id = :case_id
+                    UNION ALL SELECT communication.body
+                     FROM customer_communication_simulations AS communication
+                     WHERE tenant_id = :tenant_id AND case_id = :case_id
+                ) AS values_to_scan WHERE value LIKE :marker
+                """
+            ),
+            {
+                "tenant_id": tenant_id,
+                "case_id": case_id,
+                "marker": f"%{TERMINAL_PRIVACY_MARKER}%",
+            },
+        )
+        assert marker_count == 0
+
+    assert reporting.get_review_report(tenant_id=str(tenant_id), case_id=str(case_id)) is not None
+    assert reporting.list_customer_communications(tenant_id=str(tenant_id), case_id=str(case_id))
+
+    with engine.begin() as connection:
+        transaction = connection.begin_nested()
+        try:
+            with pytest.raises(DBAPIError, match="customer-derived terminal content remains"):
+                connection.execute(
+                    update(CaseModel)
+                    .where(CaseModel.tenant_id == tenant_id, CaseModel.id == case_id)
+                    .values(attributes={"restored": TERMINAL_PRIVACY_MARKER})
+                )
+                connection.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
+        finally:
+            if transaction.is_active:
+                transaction.rollback()
 
 
 def _decision(rule_result_id: str) -> HumanDecisionRequest:

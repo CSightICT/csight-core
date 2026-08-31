@@ -15,6 +15,7 @@ from app.platform.human_review import (
     HumanDecisionRequest,
     HumanDecisionType,
     ReviewAction,
+    ReviewAssignee,
     ReviewPacket,
     ReviewPriority,
     ReviewTask,
@@ -30,6 +31,11 @@ class _Schema(BaseModel):
 
 class VersionRequest(_Schema):
     expected_version: int = Field(ge=1)
+
+
+class AssignRequest(VersionRequest):
+    assignee_id: str = Field(min_length=1)
+    rationale: str = Field(min_length=5, max_length=500)
 
 
 class ReleaseRequest(VersionRequest):
@@ -97,6 +103,21 @@ class ReviewTaskListResponse(_Schema):
     items: tuple[ReviewTaskResponse, ...]
 
 
+class ReviewAssigneeResponse(_Schema):
+    user_id: str
+    display_name: str
+    email: str
+    roles: tuple[str, ...]
+
+    @classmethod
+    def from_assignee(cls, assignee: ReviewAssignee) -> ReviewAssigneeResponse:
+        return cls.model_validate(assignee.model_dump(mode="python"))
+
+
+class ReviewAssigneeListResponse(_Schema):
+    items: tuple[ReviewAssigneeResponse, ...]
+
+
 class ReviewTaskDetailResponse(_Schema):
     task: ReviewTaskResponse
     packet: ReviewPacket
@@ -105,6 +126,8 @@ class ReviewTaskDetailResponse(_Schema):
     rule_results: tuple[dict[str, object], ...]
     citation_items: tuple[dict[str, object], ...]
     grounded_explanation: dict[str, object] | None
+    inquiry_summary: str | None
+    policy_similarity: tuple[dict[str, object], ...]
 
     @classmethod
     def from_detail(cls, detail: ReviewTaskDetail) -> ReviewTaskDetailResponse:
@@ -116,6 +139,8 @@ class ReviewTaskDetailResponse(_Schema):
             rule_results=detail.rule_results,
             citation_items=detail.citation_items,
             grounded_explanation=detail.grounded_explanation,
+            inquiry_summary=detail.inquiry_summary,
+            policy_similarity=detail.policy_similarity,
         )
 
 

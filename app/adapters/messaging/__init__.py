@@ -13,6 +13,7 @@ from app.adapters.messaging.celery import (
     CeleryExternalActionSimulationMessageQueue,
     CeleryGroundedExplanationMessageQueue,
     CeleryHumanReviewMessageQueue,
+    CeleryOperationalRecoveryMessageQueue,
     CeleryPolicyEvaluationMessageQueue,
     CeleryPolicyRetrievalMessageQueue,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "CeleryExternalActionSimulationMessageQueue",
     "CeleryGroundedExplanationMessageQueue",
     "CeleryHumanReviewMessageQueue",
+    "CeleryOperationalRecoveryMessageQueue",
     "CeleryPolicyEvaluationMessageQueue",
     "CeleryPolicyRetrievalMessageQueue",
     "RabbitMQReadinessProbe",

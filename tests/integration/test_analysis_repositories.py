@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import Engine, delete
+from sqlalchemy import Engine, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,10 @@ from app.adapters.persistence.models import (
     AnalysisStageAttemptModel,
     AnalysisStageRunModel,
     CaseModel,
+    CaseSensitivePayloadModel,
+    DataLifecycleEventModel,
     LLMExtractionResultModel,
+    OperationalFailureModel,
     OutboxEventModel,
     TenantModel,
     UserModel,
@@ -142,6 +145,16 @@ def analysis_context(
     finally:
         tenant_ids = [UUID(tenant_a), UUID(tenant_b)]
         with analysis_engine.begin() as connection:
+            # Operational failures are intentionally append-only.  The official
+            # integration runner drops its disposable database after the suite,
+            # so never weaken the production trigger merely to clean this fixture.
+            retained_tenant_ids = set(
+                connection.scalars(
+                    select(OperationalFailureModel.tenant_id).where(
+                        OperationalFailureModel.tenant_id.in_(tenant_ids)
+                    )
+                )
+            )
             connection.execute(
                 delete(OutboxEventModel).where(OutboxEventModel.tenant_id.in_(tenant_ids))
             )
@@ -166,9 +179,25 @@ def analysis_context(
             connection.execute(
                 delete(AnalysisRunModel).where(AnalysisRunModel.tenant_id.in_(tenant_ids))
             )
+            connection.execute(
+                delete(DataLifecycleEventModel).where(
+                    DataLifecycleEventModel.tenant_id.in_(tenant_ids)
+                )
+            )
+            connection.execute(
+                delete(CaseSensitivePayloadModel).where(
+                    CaseSensitivePayloadModel.tenant_id.in_(tenant_ids)
+                )
+            )
             connection.execute(delete(CaseModel).where(CaseModel.tenant_id.in_(tenant_ids)))
             connection.execute(delete(UserModel).where(UserModel.tenant_id.in_(tenant_ids)))
-            connection.execute(delete(TenantModel).where(TenantModel.id.in_(tenant_ids)))
+            removable_tenant_ids = [
+                tenant_id for tenant_id in tenant_ids if tenant_id not in retained_tenant_ids
+            ]
+            if removable_tenant_ids:
+                connection.execute(
+                    delete(TenantModel).where(TenantModel.id.in_(removable_tenant_ids))
+                )
 
 
 @dataclass(frozen=True, slots=True)

@@ -6,14 +6,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.platform.errors import ForbiddenError
 from app.platform.human_review import (
     AdditionalEvidenceReason,
     EscalationReason,
     HumanDecision,
     HumanDecisionRequest,
+    ReviewAssignee,
     ReviewTask,
 )
-from app.platform.tenant import Permission, Principal
+from app.platform.tenant import Permission, Principal, Role
 from app.ports.human_review import HumanReviewRepository, ReviewQueueQuery, ReviewTaskDetail
 
 
@@ -88,6 +90,20 @@ class ResolveTaskCommand(VersionedTaskCommand):
     correlation_id: str = Field(default="human-review-resolve", min_length=1, max_length=128)
 
 
+class AssignTaskCommand(VersionedTaskCommand):
+    assignee_id: str = Field(min_length=1)
+    rationale: str = Field(min_length=5, max_length=500)
+
+    @field_validator("assignee_id")
+    @classmethod
+    def validate_assignee_id(cls, value: str) -> str:
+        try:
+            UUID(value)
+        except ValueError as error:
+            raise ValueError("assignee_id must be a UUID") from error
+        return value
+
+
 class CreateReviewTaskFromPolicy:
     """Worker-safe task creation; this use case cannot create a human decision."""
 
@@ -132,6 +148,16 @@ class ListHumanReviewTasks:
         )
 
 
+class ListReviewAssignees:
+    def __init__(self, repository: HumanReviewRepository) -> None:
+        self._repository = repository
+
+    def execute(self, *, principal: Principal) -> tuple[ReviewAssignee, ...]:
+        if Role.ADMIN not in principal.roles:
+            raise ForbiddenError()
+        return self._repository.list_assignees(tenant_id=principal.tenant_id)
+
+
 class GetHumanReviewTask:
     def __init__(self, repository: HumanReviewRepository) -> None:
         self._repository = repository
@@ -143,6 +169,15 @@ class GetHumanReviewTask:
             from app.platform.human_review import ReviewTaskNotFoundError
 
             raise ReviewTaskNotFoundError()
+        if Role.REVIEWER in principal.roles and Role.ADMIN not in principal.roles:
+            assigned_to_actor = detail.task.current_assignee_id == principal.user_id
+            completed_by_actor = bool(
+                detail.decision is not None and detail.decision.decided_by == principal.user_id
+            )
+            if not assigned_to_actor and not completed_by_actor:
+                from app.platform.human_review import ReviewTaskNotFoundError
+
+                raise ReviewTaskNotFoundError()
         return detail
 
 
@@ -164,6 +199,19 @@ class HumanReviewActions:
             actor_id=principal.user_id,
             roles=principal.roles,
             expected_version=command.expected_version,
+        )
+
+    def assign(
+        self, *, principal: Principal, task_id: str, command: AssignTaskCommand
+    ) -> ReviewTask:
+        if Role.ADMIN not in principal.roles:
+            raise ForbiddenError()
+        return self._repository.assign(
+            tenant_id=principal.tenant_id,
+            task_id=task_id,
+            actor_id=principal.user_id,
+            roles=principal.roles,
+            **command.model_dump(),
         )
 
     def release(

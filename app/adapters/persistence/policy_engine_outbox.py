@@ -35,6 +35,7 @@ class DispatchPolicyEvaluationOutbox:
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
         retry_base: timedelta = DEFAULT_RETRY_BASE,
         retry_max: timedelta = DEFAULT_RETRY_MAX,
+        terminalize_run_on_failure: bool = True,
     ) -> None:
         self._dispatcher = ReliableSQLAlchemyOutboxDispatcher(
             session_factory=session_factory,
@@ -58,6 +59,7 @@ class DispatchPolicyEvaluationOutbox:
             max_attempts=max_attempts,
             retry_base=retry_base,
             retry_max=retry_max,
+            terminalize_run_on_failure=terminalize_run_on_failure,
         )
 
     def execute(self) -> DispatchOutboxResult:

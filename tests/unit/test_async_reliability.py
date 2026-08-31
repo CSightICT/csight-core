@@ -174,6 +174,7 @@ def _dispatcher(
     clock: _Clock,
     *,
     max_attempts: int = 5,
+    terminalize_run_on_failure: bool = True,
 ) -> ReliableSQLAlchemyOutboxDispatcher:
     return ReliableSQLAlchemyOutboxDispatcher(
         session_factory=factory,
@@ -197,6 +198,7 @@ def _dispatcher(
         retry_base=timedelta(seconds=5),
         retry_max=timedelta(seconds=20),
         now_factory=clock,
+        terminalize_run_on_failure=terminalize_run_on_failure,
     )
 
 
@@ -324,6 +326,33 @@ def test_terminal_publish_failure_fails_an_expired_running_aggregate() -> None:
         assert run.failure_code == "TEST_RUN_DISPATCH_FAILED"
 
 
+def test_strict_dispatcher_terminal_failure_leaves_run_for_operator_recovery() -> None:
+    factory = _factory()
+    _, _, run_id, event_id = _seed(
+        factory,
+        status="PROCESSING",
+        attempt_count=1,
+        claimed_at=NOW - timedelta(seconds=31),
+    )
+
+    result = _dispatcher(
+        factory,
+        _Queue(factory, fail=True),
+        _Clock(NOW),
+        max_attempts=2,
+        terminalize_run_on_failure=False,
+    ).execute()
+
+    assert result.model_dump() == {"claimed": 1, "published": 0, "retried": 0, "failed": 1}
+    with factory() as session:
+        event = session.get(_Outbox, event_id)
+        run = session.get(_Run, run_id)
+        assert event is not None and event.status == "FAILED"
+        assert event.failure_code == "TEST_OUTBOX_FAILED"
+        assert run is not None and run.status == "QUEUED"
+        assert run.failure_code is None and run.completed_at is None
+
+
 def test_terminal_publish_failure_preserves_an_active_broker_copy_lease() -> None:
     factory = _factory()
     _, _, run_id, event_id = _seed(
@@ -363,7 +392,7 @@ def test_revision_0012_is_linear_and_models_expose_reliability_columns() -> None
     revision = scripts.get_revision("20260827_0012_async_reliability")
     assert revision is not None
     assert revision.down_revision == "20260827_0011_human_review"
-    assert scripts.get_heads() == ["20260828_0016_communication_learning_assets"]
+    assert scripts.get_heads() == ["20260831_0034_analysis_model_route_snapshot"]
 
     run_columns = {"execution_attempt_count", "claim_token", "lease_expires_at"}
     for model in (

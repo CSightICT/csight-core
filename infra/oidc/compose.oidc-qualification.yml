@@ -1,0 +1,103 @@
+name: csight-oidc-qualification
+
+x-core-image: &core-image
+  image: csight-core:oidc-qualification
+  build:
+    context: ../..
+    dockerfile: infra/docker/Dockerfile
+
+x-database-environment: &database-environment
+  DATABASE_URL: postgresql+psycopg://csight_oidc:${OIDC_QUALIFICATION_DB_PASSWORD:?required}@postgres:5432/csight_oidc
+  ENVIRONMENT: test
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    environment:
+      POSTGRES_DB: csight_oidc
+      POSTGRES_USER: csight_oidc
+      POSTGRES_PASSWORD: ${OIDC_QUALIFICATION_DB_PASSWORD:?required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csight_oidc -d csight_oidc"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks: [qualification]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak@sha256:9d1f1b2b7261ff53c66cb1092dfcdc34a5fb77e81f9e6a6e75b8b6a795de8067
+    command:
+      - start-dev
+      - --import-realm
+      - --hostname=http://localhost:18080
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${OIDC_QUALIFICATION_ADMIN_USER:?required}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${OIDC_QUALIFICATION_ADMIN_PASSWORD:?required}
+      KC_HEALTH_ENABLED: "true"
+      OIDC_QUALIFICATION_USER_PASSWORD: ${OIDC_QUALIFICATION_USER_PASSWORD:?required}
+      JAVA_OPTS_KC_HEAP: -XX:MaxRAMPercentage=65
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    ports:
+      - 127.0.0.1:18080:8080
+    mem_limit: 1g
+    networks: [qualification]
+
+  migrator:
+    <<: *core-image
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    environment:
+      <<: *database-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [qualification]
+
+  seed:
+    <<: *core-image
+    command: ["uv", "run", "python", "-m", "app.bootstrap.seed", "--env-file", "/dev/null"]
+    environment:
+      <<: *database-environment
+      DEVELOPMENT_SEED_ENABLED: "true"
+      DEVELOPMENT_SEED_ADMIN_PASSWORD: ${OIDC_QUALIFICATION_SEED_ADMIN_PASSWORD:?required}
+      DEVELOPMENT_SEED_REVIEWER_PASSWORD: ${OIDC_QUALIFICATION_USER_PASSWORD:?required}
+      DEVELOPMENT_SEED_QUALITY_VIEWER_PASSWORD: ${OIDC_QUALIFICATION_SEED_VIEWER_PASSWORD:?required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [qualification]
+
+  api:
+    <<: *core-image
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+    environment:
+      <<: *database-environment
+      LEGACY_PASSWORD_AUTH_ENABLED: "false"
+      OIDC_ENABLED: "true"
+      OIDC_PROVIDER_KEY: keycloak-qualification
+      OIDC_ISSUER: http://localhost:18080/realms/csight-qualification
+      OIDC_CLIENT_ID: csight-qualification
+      OIDC_AUTHORIZATION_ENDPOINT: http://localhost:18080/realms/csight-qualification/protocol/openid-connect/auth
+      OIDC_TOKEN_ENDPOINT: http://keycloak:8080/realms/csight-qualification/protocol/openid-connect/token
+      OIDC_JWKS_URI: http://keycloak:8080/realms/csight-qualification/protocol/openid-connect/certs
+      OIDC_REDIRECT_URI: http://127.0.0.1:18000/auth/oidc/callback
+      OIDC_GROUP_MAPPINGS: '{"csight-reviewers":{"tenant_slug":"csight-demo","allowed_roles":["REVIEWER"]}}'
+      OIDC_RETURN_PATH_ALLOWLIST: /cases,/reviews
+      OIDC_TLS_VERIFY: "false"
+      OIDC_ALLOW_INSECURE_HTTP: "true"
+      OIDC_COOKIE_SECURE: "false"
+      OIDC_SESSION_ABSOLUTE_TIMEOUT_SECONDS: "30"
+      OIDC_SESSION_IDLE_TIMEOUT_SECONDS: "12"
+      OIDC_SESSION_EXPIRY_WARNING_SECONDS: "5"
+    ports:
+      - 127.0.0.1:18000:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [qualification]
+
+networks:
+  qualification:
+    driver: bridge

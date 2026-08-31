@@ -13,14 +13,23 @@ from app.interface.http.case_resolution_schemas import (
     ExternalActionIntentResponse,
     ExternalActionIntentsResponse,
 )
-from app.interface.http.dependencies import provide_current_principal, provide_sprint5c_services
-from app.interface.http.services import Sprint5CServiceContainer
+from app.interface.http.dependencies import (
+    provide_current_principal,
+    provide_sprint1_services,
+    provide_sprint5c_services,
+    require_case_access,
+)
+from app.interface.http.services import Sprint1ServiceContainer, Sprint5CServiceContainer
 from app.platform.tenant import Principal
 
 router = APIRouter(tags=["case-resolution"])
 
 
-@router.get("/api/v1/cases/{case_id}/resolution", response_model=CaseResolutionResponse)
+@router.get(
+    "/api/v1/cases/{case_id}/resolution",
+    response_model=CaseResolutionResponse,
+    dependencies=[Depends(require_case_access)],
+)
 def get_case_resolution(
     case_id: UUID,
     response: Response,
@@ -35,6 +44,7 @@ def get_case_resolution(
 @router.get(
     "/api/v1/cases/{case_id}/resolution/events",
     response_model=CaseResolutionEventsResponse,
+    dependencies=[Depends(require_case_access)],
 )
 def list_case_resolution_events(
     case_id: UUID,
@@ -55,6 +65,7 @@ def list_case_resolution_events(
 @router.get(
     "/api/v1/cases/{case_id}/external-action-intents",
     response_model=ExternalActionIntentsResponse,
+    dependencies=[Depends(require_case_access)],
 )
 def list_case_external_action_intents(
     case_id: UUID,
@@ -81,10 +92,15 @@ def get_external_action_intent(
     response: Response,
     principal: Annotated[Principal, Depends(provide_current_principal)],
     services: Annotated[Sprint5CServiceContainer, Depends(provide_sprint5c_services)],
+    sprint1_services: Annotated[Sprint1ServiceContainer, Depends(provide_sprint1_services)],
 ) -> ExternalActionIntentDetailResponse:
     result = services.get_external_action_intent.execute(
         principal=principal,
         intent_id=str(intent_id),
+    )
+    sprint1_services.authorize_case_access.execute(
+        principal=principal,
+        case_id=result.intent.case_id,
     )
     response.headers["Cache-Control"] = "no-store"
     return ExternalActionIntentDetailResponse.from_domain(result)

@@ -29,6 +29,7 @@ from app.platform.policy_reference import (
 
 POLICY_ACTIONS = frozenset({"REVIEW"})
 PRODUCT_CATEGORIES = frozenset({"GENERAL"})
+POLICY_SIMILARITY_REFERENCE_THRESHOLD = 0.65
 
 
 class EmbeddingProviderUnavailableError(CSightError):
@@ -112,6 +113,7 @@ class PolicySearchQuery(_StrictModel):
     # Internal evaluation may inspect a larger candidate pool. The public HTTP
     # contract keeps its independent top_k <= 20 boundary.
     top_k: int = Field(default=10, ge=1, le=50)
+    least_similar_k: int = Field(default=0, ge=0, le=3)
     filters: PolicySearchFilters = Field(default_factory=PolicySearchFilters)
 
     @property
@@ -225,6 +227,8 @@ class PolicyRetrievalResult(_StrictModel):
     as_of_date: date
     retrieval_profile: PolicyRetrievalProfile
     hits: tuple[PolicySearchHit, ...]
+    nearest_dense_hits: tuple[PolicySearchHit, ...] = ()
+    least_similar_hits: tuple[PolicySearchHit, ...] = ()
     latency_ms: float = Field(ge=0)
 
 

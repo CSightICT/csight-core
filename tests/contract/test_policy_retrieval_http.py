@@ -22,6 +22,7 @@ from app.platform.policy_retrieval import (
     RetrievalMode,
 )
 from app.platform.tenant import Principal, Role
+from tests.case_assignment_support import AllowCaseAccess
 
 pytestmark = pytest.mark.contract
 
@@ -121,6 +122,9 @@ def client(search: Search) -> TestClient:
         list_case_evidence=cast(Any, resolver),
         get_evidence_metadata=cast(Any, resolver),
         create_evidence_access_url=cast(Any, resolver),
+        get_case_assignment=cast(Any, resolver),
+        assign_case=cast(Any, resolver),
+        authorize_case_access=AllowCaseAccess(),  # pyright: ignore[reportArgumentType]
     )
     return TestClient(
         create_app(

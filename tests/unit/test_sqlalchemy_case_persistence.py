@@ -31,7 +31,9 @@ from app.platform.case import (
     IdempotencyRecord,
     RequestedAction,
 )
+from app.platform.errors import InconsistentPersistenceStateError
 from app.platform.evidence import EvidenceMetadata, EvidenceType, EvidenceUploadStatus
+from app.platform.privacy_lifecycle import PURGED_CUSTOMER_MESSAGE
 from app.ports.case_repository import CaseListCriteria
 from app.ports.unit_of_work import CaseUnitOfWork
 
@@ -120,7 +122,31 @@ def test_case_mapping_round_trip_normalizes_uuid_boundary() -> None:
     assert model.id == UUID(CASE_ID)
     assert model.tenant_id == UUID(TENANT_ID)
     assert model.created_by == UUID(USER_ID)
-    assert case_entity_from_model(model) == case
+    assert (
+        case_entity_from_model(
+            model,
+            sensitive_payload_id=UUID(CASE_ID),
+            sensitive_customer_message=case.customer_message,
+        )
+        == case
+    )
+
+
+def test_case_mapping_never_falls_back_to_legacy_sensitive_content() -> None:
+    model = case_model_from_entity(_case())
+
+    with pytest.raises(InconsistentPersistenceStateError, match="missing"):
+        case_entity_from_model(model)
+
+    purged = case_entity_from_model(
+        model,
+        sensitive_payload_id=UUID(CASE_ID),
+        sensitive_customer_message=None,
+        sensitive_purged_at=NOW + timedelta(days=30),
+    )
+
+    assert purged.customer_message == PURGED_CUSTOMER_MESSAGE
+    assert purged.customer_message != model.customer_message
 
 
 def test_history_evidence_and_idempotency_mapping_round_trip() -> None:

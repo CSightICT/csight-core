@@ -13,6 +13,11 @@ from app.platform.errors import ValidationError
 type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 
+MAX_ATTRIBUTES_BYTES = 64 * 1024
+MAX_ATTRIBUTES_DEPTH = 8
+MAX_ATTRIBUTES_KEYS = 256
+MAX_ATTRIBUTE_KEY_LENGTH = 128
+
 
 class CaseStatus(StrEnum):
     RECEIVED = "RECEIVED"
@@ -46,6 +51,16 @@ class RequestedAction(StrEnum):
     UNSPECIFIED = "UNSPECIFIED"
 
 
+class CaseSourceScope(StrEnum):
+    """Trusted provenance boundary for operational metrics and learning assets."""
+
+    SYNTHETIC_DEMO = "SYNTHETIC_DEMO"
+    SHADOW = "SHADOW"
+    IMPORTED = "IMPORTED"
+    PILOT_LIVE = "PILOT_LIVE"
+    NOT_ATTESTED = "NOT_ATTESTED"
+
+
 def _validate_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("datetime values must be timezone-aware")
@@ -53,23 +68,51 @@ def _validate_utc(value: datetime) -> datetime:
 
 
 def validate_json_object(value: dict[str, JsonValue]) -> dict[str, JsonValue]:
-    """Reject values that JSON cannot represent deterministically."""
+    """Reject unsafe or operationally unbounded Case attribute payloads.
 
-    def validate(item: JsonValue) -> None:
+    Case attributes remain extensible for versioned domain snapshots, but they
+    are not an unbounded document store.  Limits are deliberately enforced in
+    the technology-neutral boundary so HTTP, seeds, and background imports all
+    receive the same protection.
+    """
+
+    key_count = 0
+
+    def validate(item: JsonValue, *, depth: int) -> None:
+        nonlocal key_count
+        if depth > MAX_ATTRIBUTES_DEPTH:
+            raise ValueError(f"attributes must not exceed {MAX_ATTRIBUTES_DEPTH} levels")
         if isinstance(item, float) and not math.isfinite(item):
             raise ValueError("JSON numbers must be finite")
         if isinstance(item, list):
             for nested in item:
-                validate(nested)
+                validate(nested, depth=depth + 1)
         elif isinstance(item, dict):
-            for nested in item.values():
-                validate(nested)
+            key_count += len(item)
+            if key_count > MAX_ATTRIBUTES_KEYS:
+                raise ValueError(f"attributes must not exceed {MAX_ATTRIBUTES_KEYS} keys")
+            for key, nested in item.items():
+                if not key.strip():
+                    raise ValueError("attribute keys must not be blank")
+                if len(key) > MAX_ATTRIBUTE_KEY_LENGTH:
+                    raise ValueError(
+                        f"attribute keys must not exceed {MAX_ATTRIBUTE_KEY_LENGTH} characters"
+                    )
+                validate(nested, depth=depth + 1)
 
-    validate(value)
+    validate(value, depth=1)
     try:
-        json.dumps(value, allow_nan=False, sort_keys=True, separators=(",", ":"))
+        encoded = json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
     except (TypeError, ValueError) as exception:
         raise ValueError("attributes must be a JSON-compatible object") from exception
+    if len(encoded) > MAX_ATTRIBUTES_BYTES:
+        raise ValueError(f"attributes must not exceed {MAX_ATTRIBUTES_BYTES} UTF-8 bytes")
     if "synthetic_commerce_context" in value:
         from app.platform.commerce_context import validate_synthetic_commerce_context
 
@@ -89,6 +132,8 @@ class Case(BaseModel):
     customer_message: str = Field(min_length=1, max_length=20_000)
     requested_action: RequestedAction = RequestedAction.UNSPECIFIED
     attributes: dict[str, JsonValue] = Field(default_factory=dict)
+    source_scope: CaseSourceScope = CaseSourceScope.NOT_ATTESTED
+    source_provenance: str = Field(default="unattested/manual", min_length=1, max_length=255)
     created_by: str = Field(min_length=1)
     created_at: datetime
     updated_at: datetime
@@ -124,7 +169,20 @@ class Case(BaseModel):
         attributes: dict[str, JsonValue],
         created_by: str,
         now: datetime,
+        source_scope: CaseSourceScope | None = None,
+        source_provenance: str | None = None,
     ) -> Self:
+        inferred_scope = source_scope
+        inferred_provenance = source_provenance
+        if inferred_scope is None:
+            if "synthetic_commerce_context" in attributes:
+                inferred_scope = CaseSourceScope.SYNTHETIC_DEMO
+                inferred_provenance = inferred_provenance or "synthetic_commerce_context/1.0.0"
+            else:
+                inferred_scope = CaseSourceScope.NOT_ATTESTED
+                inferred_provenance = inferred_provenance or "unattested/manual"
+        resolved_scope = inferred_scope or CaseSourceScope.NOT_ATTESTED
+        resolved_provenance = inferred_provenance or f"trusted/{resolved_scope.value.lower()}"
         return cls(
             id=case_id,
             tenant_id=tenant_id,
@@ -133,6 +191,8 @@ class Case(BaseModel):
             customer_message=customer_message,
             requested_action=requested_action,
             attributes=attributes,
+            source_scope=resolved_scope,
+            source_provenance=resolved_provenance,
             created_by=created_by,
             created_at=now,
             updated_at=now,

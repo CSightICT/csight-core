@@ -17,6 +17,11 @@ from app.application.analysis import (
 )
 from app.application.outbox import DispatchOutbox
 from app.bootstrap.dependencies import build_llm_provider, build_vision_provider
+from app.bootstrap.model_activation import build_model_release_guard
+from app.bootstrap.model_routing import (
+    build_active_model_route_resolver,
+    build_pinned_model_route_guard,
+)
 from app.bootstrap.settings import Settings
 from app.domains.product_defect_cs import (
     PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
@@ -65,6 +70,7 @@ def build_sprint2_services(settings: Settings) -> Sprint2ServiceContainer:
             prompt_v2=_v2_prompt(settings),
             clock=clock,
             id_generator=id_generator,
+            model_route_resolver=build_active_model_route_resolver(settings),
         ),
         list_analysis_runs=ListAnalysisRuns(uow_factory=uow_factory),
         get_analysis_run=GetAnalysisRun(uow_factory=uow_factory),
@@ -86,6 +92,8 @@ def build_execute_text_extraction(settings: Settings) -> ExecuteTextExtraction:
         max_attempts=settings.celery_task_max_retries + 1,
         retry_base=timedelta(seconds=1),
         retry_max=timedelta(seconds=settings.celery_retry_backoff_max_seconds),
+        model_release_guard=build_model_release_guard(settings),
+        model_route_guard=build_pinned_model_route_guard(settings),
     )
 
 
@@ -128,6 +136,9 @@ def build_outbox_dispatcher(
         max_attempts=settings.analysis_outbox_max_attempts,
         retry_base=timedelta(seconds=settings.analysis_outbox_retry_base_seconds),
         retry_max=timedelta(seconds=settings.analysis_outbox_retry_max_seconds),
+        terminalize_run_on_failure=not (
+            settings.database_rls_required and settings.database_runtime_role == "dispatcher"
+        ),
     )
 
 

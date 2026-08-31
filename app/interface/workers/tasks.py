@@ -1,7 +1,10 @@
 """Thin Celery entrypoints for reference-only durable request events."""
 
 import math
+from collections.abc import Callable
+from contextlib import ExitStack
 from datetime import UTC, datetime
+from functools import wraps
 from typing import cast
 from uuid import UUID
 
@@ -9,6 +12,7 @@ from celery import Task
 from celery.exceptions import Reject
 from pydantic import ValidationError as PydanticValidationError
 
+from app.adapters.persistence.tenant_context import tenant_context, worker_event_context
 from app.application.analysis import ExecuteTextExtractionCommand
 from app.application.case_resolution import (
     CaseResolutionRequestedCommand,
@@ -52,18 +56,50 @@ logger = get_logger(__name__)
 # Compatibility seam retained for Sprint 2 worker tests and alternate composition.
 build_execute_text_extraction = build_execute_analysis_stage
 
+type WorkerTaskFunction = Callable[[Task, dict[str, object]], dict[str, object]]
+
+
+def _with_persistence_context(function: WorkerTaskFunction) -> WorkerTaskFunction:
+    """Bind only validated queue identifiers for the complete worker transaction path."""
+
+    @wraps(function)
+    def scoped(task: Task, payload: dict[str, object]) -> dict[str, object]:
+        with ExitStack() as stack:
+            tenant_id = _valid_tenant_id(payload)
+            event_id = _valid_event_id(payload)
+            if tenant_id is not None:
+                stack.enter_context(tenant_context(tenant_id))
+            if event_id is not None:
+                stack.enter_context(worker_event_context(event_id))
+            return function(task, payload)
+
+    return scoped
+
 
 @celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]
     bind=True,
     name=ANALYSIS_REQUESTED_TASK_NAME,
 )
+@_with_persistence_context
 def execute_text_extraction_task(
     task: Task,
     payload: dict[str, object],
 ) -> dict[str, object]:
     """Validate six opaque identifiers and delegate all work to the use case."""
 
-    command = ExecuteTextExtractionCommand.model_validate(payload)
+    try:
+        command = ExecuteTextExtractionCommand.model_validate(payload)
+    except PydanticValidationError:
+        event_id = _valid_event_id(payload)
+        if event_id is not None:
+            try:
+                build_execute_text_extraction(get_settings()).record_poison_event(event_id=event_id)
+            except Exception:
+                raise Reject(
+                    "invalid analysis payload could not be durably failed",
+                    requeue=True,
+                ) from None
+        raise Reject("analysis queue payload is invalid", requeue=False) from None
     try:
         task_id = cast(str | None, getattr(task.request, "id", None))
         with bind_log_context(
@@ -112,6 +148,7 @@ def execute_text_extraction_task(
     bind=True,
     name=POLICY_RETRIEVAL_REQUESTED_TASK_NAME,
 )
+@_with_persistence_context
 def execute_policy_retrieval_task(
     task: Task,
     payload: dict[str, object],
@@ -171,6 +208,7 @@ def execute_policy_retrieval_task(
     bind=True,
     name=GROUNDED_EXPLANATION_REQUESTED_TASK_NAME,
 )
+@_with_persistence_context
 def execute_grounded_explanation_task(
     task: Task,
     payload: dict[str, object],
@@ -230,6 +268,7 @@ def execute_grounded_explanation_task(
     bind=True,
     name=POLICY_EVALUATION_REQUESTED_TASK_NAME,
 )
+@_with_persistence_context
 def execute_policy_evaluation_task(
     task: Task,
     payload: dict[str, object],
@@ -289,6 +328,7 @@ def execute_policy_evaluation_task(
     bind=True,
     name=HUMAN_REVIEW_REQUESTED_TASK_NAME,
 )
+@_with_persistence_context
 def create_human_review_task(
     task: Task,
     payload: dict[str, object],
@@ -346,6 +386,7 @@ def create_human_review_task(
     bind=True,
     name=CASE_RESOLUTION_REQUESTED_TASK_NAME,
 )
+@_with_persistence_context
 def process_case_resolution_task(
     task: Task,
     payload: dict[str, object],
@@ -400,6 +441,7 @@ def process_case_resolution_task(
     bind=True,
     name=EXTERNAL_ACTION_SIMULATION_REQUESTED_TASK_NAME,
 )
+@_with_persistence_context
 def execute_external_action_simulation_task(
     task: Task,
     payload: dict[str, object],
@@ -482,6 +524,17 @@ def _lease_retry_countdown(error: ExecutionLeaseActiveError) -> int:
 
 def _valid_event_id(payload: dict[str, object]) -> str | None:
     value = payload.get("event_id")
+    if not isinstance(value, str):
+        return None
+    try:
+        UUID(value)
+    except ValueError:
+        return None
+    return value
+
+
+def _valid_tenant_id(payload: dict[str, object]) -> str | None:
+    value = payload.get("tenant_id")
     if not isinstance(value, str):
         return None
     try:

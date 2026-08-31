@@ -1,11 +1,18 @@
 """Composition root for infrastructure probes and Sprint 0 application services."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from os import getpid
 
 from app.adapters.llm import MLXLLMProvider, MockLLMProvider, VLLMLLMProvider
 from app.adapters.messaging import RabbitMQReadinessProbe
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.readiness import PostgresReadinessProbe
+from app.adapters.resilience import (
+    CircuitBreaker,
+    CircuitBreakingLLMProvider,
+    CircuitBreakingVisionProvider,
+)
 from app.adapters.storage import MinioReadinessProbe
 from app.adapters.vision import MockVisionProvider, RemoteVisionProvider
 from app.application.analyze_case import AnalyzeCase
@@ -20,12 +27,52 @@ class ProviderConfigurationError(RuntimeError):
     """Raised when a configured provider has no installed Sprint 0 adapter."""
 
 
+@dataclass(slots=True)
+class _ProviderCacheEntry:
+    settings: Settings
+    provider: object
+
+
+_PROCESS_PROVIDER_CACHE: dict[tuple[int, str], _ProviderCacheEntry] = {}
+
+
+def _cached_process_provider(
+    *,
+    kind: str,
+    settings: Settings,
+    factory: Callable[[], object],
+) -> object:
+    """Reuse a provider only inside the process that constructed it.
+
+    The PID key prevents a prefork worker from inheriting a parent's connection
+    pool.  Settings identity prevents tests or application instances with a
+    different configuration from sharing credentials or circuit state.
+    """
+
+    key = (getpid(), kind)
+    existing = _PROCESS_PROVIDER_CACHE.get(key)
+    if existing is not None and existing.settings is settings:
+        return existing.provider
+    provider = factory()
+    _PROCESS_PROVIDER_CACHE[key] = _ProviderCacheEntry(settings=settings, provider=provider)
+    return provider
+
+
 @dataclass(frozen=True, slots=True)
 class _UnavailableReadinessProbe:
     name: str
 
     def check(self) -> bool:
         return False
+
+
+@dataclass(frozen=True, slots=True)
+class _ConfigurationReadinessProbe:
+    name: str
+    configured: bool
+
+    def check(self) -> bool:
+        return self.configured
 
 
 def build_readiness_service(settings: Settings) -> ReadinessService:
@@ -67,6 +114,20 @@ def build_readiness_service(settings: Settings) -> ReadinessService:
     else:
         probes.append(_UnavailableReadinessProbe(name="minio"))
 
+    if settings.environment not in {"local", "test"}:
+        probes.append(
+            _ConfigurationReadinessProbe(
+                name="oidc_configuration",
+                configured=settings.oidc_is_configured,
+            )
+        )
+        probes.append(
+            _ConfigurationReadinessProbe(
+                name="telemetry_configuration",
+                configured=settings.otel_is_configured,
+            )
+        )
+
     return ReadinessService(probes=tuple(probes))
 
 
@@ -81,37 +142,61 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
         base_url = settings.llm_base_url_value
         if base_url is None:
             raise ProviderConfigurationError("LLM_BASE_URL is required for the vLLM adapter")
-        return VLLMLLMProvider(
-            base_url=base_url,
-            api_key=settings.llm_api_key_value,
-            model_id=settings.llm_model_id,
-            model_version=settings.llm_model_version,
-            model_revision=settings.llm_model_revision,
-            connect_timeout_seconds=settings.llm_connect_timeout_seconds,
-            read_timeout_seconds=settings.llm_read_timeout_seconds,
-            max_output_tokens=settings.llm_max_output_tokens,
-            max_output_chars=settings.llm_max_output_chars,
-            max_input_chars=settings.llm_max_input_chars,
-            temperature=settings.llm_temperature,
-            tls_verify=settings.llm_tls_verify,
+        return _as_llm_provider(
+            _cached_process_provider(
+                kind="llm",
+                settings=settings,
+                factory=lambda: CircuitBreakingLLMProvider(
+                    VLLMLLMProvider(
+                        base_url=base_url,
+                        api_key=settings.llm_api_key_value,
+                        model_id=settings.llm_model_id,
+                        model_version=settings.llm_model_version,
+                        model_revision=settings.llm_model_revision,
+                        connect_timeout_seconds=settings.llm_connect_timeout_seconds,
+                        read_timeout_seconds=settings.llm_read_timeout_seconds,
+                        max_output_tokens=settings.llm_max_output_tokens,
+                        max_output_chars=settings.llm_max_output_chars,
+                        max_input_chars=settings.llm_max_input_chars,
+                        temperature=settings.llm_temperature,
+                        tls_verify=settings.llm_tls_verify,
+                    ),
+                    breaker=CircuitBreaker(
+                        failure_threshold=settings.provider_circuit_failure_threshold,
+                        open_seconds=settings.provider_circuit_open_seconds,
+                    ),
+                ),
+            )
         )
     if settings.llm_provider == "mlx":
         base_url = settings.llm_base_url_value
         if base_url is None:
             raise ProviderConfigurationError("LLM_BASE_URL is required for the MLX adapter")
-        return MLXLLMProvider(
-            base_url=base_url,
-            api_key=settings.llm_api_key_value,
-            model_id=settings.llm_model_id,
-            model_version=settings.llm_model_version,
-            model_revision=settings.llm_model_revision,
-            connect_timeout_seconds=settings.llm_connect_timeout_seconds,
-            read_timeout_seconds=settings.llm_read_timeout_seconds,
-            max_output_tokens=settings.llm_max_output_tokens,
-            max_output_chars=settings.llm_max_output_chars,
-            max_input_chars=settings.llm_max_input_chars,
-            temperature=settings.llm_temperature,
-            tls_verify=settings.llm_tls_verify,
+        return _as_llm_provider(
+            _cached_process_provider(
+                kind="llm",
+                settings=settings,
+                factory=lambda: CircuitBreakingLLMProvider(
+                    MLXLLMProvider(
+                        base_url=base_url,
+                        api_key=settings.llm_api_key_value,
+                        model_id=settings.llm_model_id,
+                        model_version=settings.llm_model_version,
+                        model_revision=settings.llm_model_revision,
+                        connect_timeout_seconds=settings.llm_connect_timeout_seconds,
+                        read_timeout_seconds=settings.llm_read_timeout_seconds,
+                        max_output_tokens=settings.llm_max_output_tokens,
+                        max_output_chars=settings.llm_max_output_chars,
+                        max_input_chars=settings.llm_max_input_chars,
+                        temperature=settings.llm_temperature,
+                        tls_verify=settings.llm_tls_verify,
+                    ),
+                    breaker=CircuitBreaker(
+                        failure_threshold=settings.provider_circuit_failure_threshold,
+                        open_seconds=settings.provider_circuit_open_seconds,
+                    ),
+                ),
+            )
         )
     raise ProviderConfigurationError(
         f"LLM provider adapter is not available: {settings.llm_provider!r}"
@@ -133,18 +218,32 @@ def build_vision_provider(settings: Settings) -> VisionProvider:
             raise ProviderConfigurationError(
                 "VISION_BASE_URL is required for the remote Vision adapter"
             )
-        return RemoteVisionProvider(
-            base_url=base_url,
-            api_key=settings.vision_api_key_value,
-            model_id=settings.vision_model_id,
-            model_version=settings.vision_model_version,
-            model_revision=settings.vision_model_revision,
-            connect_timeout_seconds=settings.vision_connect_timeout_seconds,
-            read_timeout_seconds=settings.vision_read_timeout_seconds,
-            max_image_bytes=settings.vision_max_image_bytes,
-            analysis_task=VisionTask(settings.vision_task),
-            expected_assessment_threshold=settings.vision_assessment_expected_threshold,
-            tls_verify=settings.vision_tls_verify,
+        return _as_vision_provider(
+            _cached_process_provider(
+                kind="vision",
+                settings=settings,
+                factory=lambda: CircuitBreakingVisionProvider(
+                    RemoteVisionProvider(
+                        base_url=base_url,
+                        api_key=settings.vision_api_key_value,
+                        model_id=settings.vision_model_id,
+                        model_version=settings.vision_model_version,
+                        model_revision=settings.vision_model_revision,
+                        connect_timeout_seconds=settings.vision_connect_timeout_seconds,
+                        read_timeout_seconds=settings.vision_read_timeout_seconds,
+                        max_image_bytes=settings.vision_max_image_bytes,
+                        analysis_task=VisionTask(settings.vision_task),
+                        expected_assessment_threshold=(
+                            settings.vision_assessment_expected_threshold
+                        ),
+                        tls_verify=settings.vision_tls_verify,
+                    ),
+                    breaker=CircuitBreaker(
+                        failure_threshold=settings.provider_circuit_failure_threshold,
+                        open_seconds=settings.provider_circuit_open_seconds,
+                    ),
+                ),
+            )
         )
     raise ProviderConfigurationError(
         f"Vision provider adapter is not available: {settings.vision_provider!r}"
@@ -158,3 +257,15 @@ def build_analyze_case(settings: Settings) -> AnalyzeCase:
         llm_provider=build_llm_provider(settings),
         vision_provider=build_vision_provider(settings),
     )
+
+
+def _as_llm_provider(value: object) -> LLMProvider:
+    if not isinstance(value, LLMProvider):
+        raise TypeError("cached provider does not implement the LLM port")
+    return value
+
+
+def _as_vision_provider(value: object) -> VisionProvider:
+    if not isinstance(value, VisionProvider):
+        raise TypeError("cached provider does not implement the Vision port")
+    return value

@@ -1,5 +1,8 @@
 """Opt-in PostgreSQL integration tests for concrete Case repositories and UoW."""
 
+import base64
+import hashlib
+import json
 import os
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
@@ -11,28 +14,49 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import Engine, delete
-from sqlalchemy.exc import IntegrityError
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from fastapi.testclient import TestClient
+from sqlalchemy import Engine, delete, func, select
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
 from alembic import command as alembic_command
 from app.adapters.persistence.engine import clear_engine_cache, get_engine
+from app.adapters.persistence.identity import SQLAlchemyIdentityRepositoryFactoryAdapter
 from app.adapters.persistence.models import (
     CaseEvidenceModel,
     CaseModel,
+    CaseSensitivePayloadModel,
     CaseStatusHistoryModel,
+    DataLifecycleEventModel,
     IdempotencyRecordModel,
     TenantModel,
     UserModel,
 )
+from app.adapters.persistence.privacy_lifecycle import (
+    create_privacy_lifecycle_unit_of_work_factory,
+)
+from app.adapters.persistence.session import create_session_factory
 from app.adapters.persistence.unit_of_work import (
     SQLAlchemyCaseUnitOfWorkFactory,
     create_case_unit_of_work_factory,
 )
-from app.application.cases import CreateCase, CreateCaseCommand
+from app.adapters.security.signed_intake_signatures import (
+    ConfiguredSignedIntakeSourceRegistry,
+    Ed25519SignedIntakeSignatureVerifier,
+)
+from app.application.cases import (
+    CreateCase,
+    CreateCaseCommand,
+    CreateSignedIntakeCase,
+)
+from app.application.signed_intake import AuthenticateSignedIntake
 from app.bootstrap.settings import Settings
+from app.interface.http.signed_intake_services import SignedIntakeServiceContainer
+from app.main import create_app
 from app.platform.case import (
     Case,
+    CaseSourceScope,
     CaseStatus,
     CaseStatusTransition,
     IdempotencyRecord,
@@ -40,6 +64,11 @@ from app.platform.case import (
 )
 from app.platform.errors import IdempotencyKeyReusedError
 from app.platform.evidence import EvidenceMetadata, EvidenceType, EvidenceUploadStatus
+from app.platform.privacy_lifecycle import (
+    PURGED_CUSTOMER_MESSAGE,
+    LifecycleMutationStatus,
+)
+from app.platform.signed_intake import SignedIntakeProof, SignedIntakeSource
 from app.platform.tenant import Principal, Role
 from app.ports.case_repository import CaseListCriteria, IdempotencyClaim
 from app.ports.runtime import Clock, IdGenerator
@@ -135,6 +164,16 @@ def repository_context(repository_engine: Engine) -> Generator[RepositoryContext
             )
             connection.execute(
                 delete(CaseEvidenceModel).where(CaseEvidenceModel.tenant_id.in_(tenant_ids))
+            )
+            connection.execute(
+                delete(DataLifecycleEventModel).where(
+                    DataLifecycleEventModel.tenant_id.in_(tenant_ids)
+                )
+            )
+            connection.execute(
+                delete(CaseSensitivePayloadModel).where(
+                    CaseSensitivePayloadModel.tenant_id.in_(tenant_ids)
+                )
             )
             connection.execute(delete(CaseModel).where(CaseModel.tenant_id.in_(tenant_ids)))
             connection.execute(delete(UserModel).where(UserModel.tenant_id.in_(tenant_ids)))
@@ -463,6 +502,27 @@ def test_real_create_case_replays_scoped_idempotency_and_rolls_back_mismatch(
 
     assert replay.replayed is True
     assert replay.case == first.case
+    with Session(repository_context.engine) as session:
+        payload = session.scalars(
+            select(CaseSensitivePayloadModel).where(
+                CaseSensitivePayloadModel.tenant_id == UUID(repository_context.tenant_a),
+                CaseSensitivePayloadModel.case_id == UUID(first.case.id),
+            )
+        ).one()
+        lifecycle = session.scalars(
+            select(DataLifecycleEventModel).where(
+                DataLifecycleEventModel.tenant_id == UUID(repository_context.tenant_a),
+                DataLifecycleEventModel.case_id == UUID(first.case.id),
+            )
+        ).one()
+    assert payload.customer_message == first.case.customer_message
+    assert (
+        payload.payload_sha256
+        == hashlib.sha256(first.case.customer_message.encode("utf-8")).hexdigest()
+    )
+    assert payload.retention_policy_version == "development/30d"
+    assert lifecycle.event_type == "SENSITIVE_PAYLOAD_CREATED"
+    assert lifecycle.details["pii_included"] is False
     with pytest.raises(IdempotencyKeyReusedError):
         service.execute(
             principal=tenant_a_principal,
@@ -490,6 +550,137 @@ def test_real_create_case_replays_scoped_idempotency_and_rolls_back_mismatch(
             unit_of_work.cases.count(
                 tenant_id=repository_context.tenant_b,
                 criteria=CaseListCriteria(),
+            )
+            == 1
+        )
+
+
+def test_real_signed_intake_replay_writes_one_complete_case_bundle(
+    repository_context: RepositoryContext,
+) -> None:
+    private_key = Ed25519PrivateKey.generate()
+    source = SignedIntakeSource(
+        key_id="integration-key-1",
+        source_id="integration-crm",
+        tenant_id=repository_context.tenant_a,
+        actor_user_id=repository_context.user_a,
+        provenance="signed/integration/v1",
+    )
+    service = CreateSignedIntakeCase(
+        uow_factory=repository_context.factory,
+        clock=StaticClock(),
+        id_generator=UUIDGenerator(),
+    )
+    services = SignedIntakeServiceContainer(
+        authenticate=AuthenticateSignedIntake(
+            sources=ConfiguredSignedIntakeSourceRegistry({source.key_id: source}),
+            signatures=Ed25519SignedIntakeSignatureVerifier(
+                {source.key_id: private_key.public_key()}
+            ),
+            identities=SQLAlchemyIdentityRepositoryFactoryAdapter(
+                create_session_factory(repository_context.engine)
+            ),
+            clock=StaticClock(),
+        ),
+        create_case=service,
+        max_body_bytes=128 * 1024,
+    )
+    client = TestClient(
+        create_app(
+            Settings(_env_file=None),  # pyright: ignore[reportCallIssue]
+            signed_intake_services=services,
+        )
+    )
+
+    def payload(message: str) -> bytes:
+        return json.dumps(
+            {
+                "schema_version": "signed_case_intake/1.0.0",
+                "order_ref": "ORD-SIGNED-INTEGRATION",
+                "product_ref": "SKU-SIGNED-INTEGRATION",
+                "customer_message": message,
+                "requested_action": "EXCHANGE",
+                "attributes": {},
+            },
+            separators=(",", ":"),
+        ).encode()
+
+    def headers(body: bytes) -> dict[str, str]:
+        unsigned = SignedIntakeProof(
+            method="POST",
+            path="/api/v1/integrations/cases",
+            key_id=source.key_id,
+            event_id="integration-event-1",
+            timestamp=int(NOW.timestamp()),
+            body_sha256=hashlib.sha256(body).hexdigest(),
+            signature_base64=base64.b64encode(bytes(64)).decode(),
+        )
+        signature = base64.b64encode(private_key.sign(unsigned.canonical_bytes())).decode()
+        return {
+            "Content-Type": "application/json",
+            "X-CSight-Intake-Key-Id": unsigned.key_id,
+            "X-CSight-Intake-Event-Id": unsigned.event_id,
+            "X-CSight-Intake-Timestamp": str(unsigned.timestamp),
+            "X-CSight-Intake-Signature": signature,
+        }
+
+    body = payload("Signed integration customer message")
+    first = client.post(
+        "/api/v1/integrations/cases",
+        content=body,
+        headers=headers(body),
+    )
+    replay = client.post(
+        "/api/v1/integrations/cases",
+        content=body,
+        headers=headers(body),
+    )
+
+    assert first.status_code == 201
+    assert replay.status_code == 200
+    assert replay.json()["replayed"] is True
+    assert replay.json()["case_id"] == first.json()["case_id"]
+    assert first.json()["source_scope"] == CaseSourceScope.PILOT_LIVE.value
+    case_id = UUID(first.json()["case_id"])
+    with Session(repository_context.engine) as session:
+        case_count = session.scalar(
+            select(func.count()).select_from(CaseModel).where(CaseModel.id == case_id)
+        )
+        history_count = session.scalar(
+            select(func.count())
+            .select_from(CaseStatusHistoryModel)
+            .where(CaseStatusHistoryModel.case_id == case_id)
+        )
+        payload_count = session.scalar(
+            select(func.count())
+            .select_from(CaseSensitivePayloadModel)
+            .where(CaseSensitivePayloadModel.case_id == case_id)
+        )
+        idempotency_count = session.scalar(
+            select(func.count())
+            .select_from(IdempotencyRecordModel)
+            .where(
+                IdempotencyRecordModel.tenant_id == UUID(repository_context.tenant_a),
+                IdempotencyRecordModel.operation == "case.intake.signed.v1",
+            )
+        )
+    assert (case_count, history_count, payload_count, idempotency_count) == (1, 1, 1, 1)
+
+    conflicting_body = payload("Conflicting signed integration message")
+    conflict = client.post(
+        "/api/v1/integrations/cases",
+        content=conflicting_body,
+        headers=headers(conflicting_body),
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "IDEMPOTENCY_KEY_REUSED"
+
+    with Session(repository_context.engine) as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(CaseModel)
+                .where(CaseModel.tenant_id == UUID(repository_context.tenant_a))
             )
             == 1
         )
@@ -664,3 +855,179 @@ def test_postgresql_on_conflict_claim_has_one_winner_under_concurrency(
             )
             == 1
         )
+
+
+def test_expired_sensitive_payload_purge_is_atomic_idempotent_and_pii_free(
+    repository_context: RepositoryContext,
+) -> None:
+    case = _case(
+        case_id=str(uuid4()),
+        tenant_id=repository_context.tenant_a,
+        user_id=repository_context.user_a,
+        created_at=NOW,
+    )
+    with repository_context.factory() as unit_of_work:
+        unit_of_work.cases.add(tenant_id=case.tenant_id, case=case)
+        unit_of_work.commit()
+
+    lifecycle_factory = create_privacy_lifecycle_unit_of_work_factory(repository_context.engine)
+    purge_at = NOW + timedelta(days=31)
+    with lifecycle_factory() as unit_of_work:
+        page = unit_of_work.lifecycle.list_expired_sensitive_payloads(
+            tenant_id=repository_context.tenant_a,
+            expired_before=purge_at,
+            limit=10,
+        )
+    assert len(page.items) == 1
+    candidate = page.items[0]
+
+    with lifecycle_factory() as unit_of_work:
+        result = unit_of_work.lifecycle.purge_sensitive_payload(
+            candidate=candidate,
+            actor_id=repository_context.user_a,
+            correlation_id=str(uuid4()),
+            occurred_at=purge_at,
+        )
+        unit_of_work.commit()
+    assert result.status is LifecycleMutationStatus.APPLIED
+
+    with Session(repository_context.engine) as session:
+        legacy = session.get(CaseModel, UUID(case.id))
+        payload = session.scalar(
+            select(CaseSensitivePayloadModel).where(
+                CaseSensitivePayloadModel.tenant_id == UUID(repository_context.tenant_a),
+                CaseSensitivePayloadModel.case_id == UUID(case.id),
+            )
+        )
+        events = session.scalars(
+            select(DataLifecycleEventModel).where(
+                DataLifecycleEventModel.tenant_id == UUID(repository_context.tenant_a),
+                DataLifecycleEventModel.case_id == UUID(case.id),
+            )
+        ).all()
+    assert legacy is not None and legacy.customer_message == PURGED_CUSTOMER_MESSAGE
+    assert payload is not None
+    assert payload.customer_message is None
+    assert payload.purged_at == purge_at
+    assert payload.legacy_redacted_at == purge_at
+    purge_events = [event for event in events if event.event_type == "SENSITIVE_PAYLOAD_PURGED"]
+    assert len(purge_events) == 1
+    details = purge_events[0].details
+    assert details["outcome"] == "PURGED"
+    assert details["pii_included"] is False
+    assert details["legacy_copy_redacted"] is True
+    assert case.customer_message not in str(details)
+
+    with repository_context.factory() as unit_of_work:
+        retained_case = unit_of_work.cases.get(
+            tenant_id=repository_context.tenant_a,
+            case_id=case.id,
+        )
+    assert retained_case is not None
+    assert retained_case.customer_message == PURGED_CUSTOMER_MESSAGE
+
+    with lifecycle_factory() as unit_of_work:
+        replay = unit_of_work.lifecycle.purge_sensitive_payload(
+            candidate=candidate,
+            actor_id=repository_context.user_a,
+            correlation_id=str(uuid4()),
+            occurred_at=purge_at,
+        )
+        unit_of_work.rollback()
+    assert replay.status is LifecycleMutationStatus.ALREADY_APPLIED
+
+
+def test_deferred_sensitive_payload_trigger_rejects_dual_write_drift(
+    repository_context: RepositoryContext,
+) -> None:
+    case = _case(
+        case_id=str(uuid4()),
+        tenant_id=repository_context.tenant_a,
+        user_id=repository_context.user_a,
+        created_at=NOW,
+    )
+    with repository_context.factory() as unit_of_work:
+        unit_of_work.cases.add(tenant_id=case.tenant_id, case=case)
+        unit_of_work.commit()
+
+    with Session(repository_context.engine) as session:
+        row = session.get(CaseModel, UUID(case.id))
+        assert row is not None
+        row.customer_message = "drifted compatibility copy"
+        with pytest.raises(DBAPIError, match="dual-write mismatch"):
+            session.commit()
+
+
+def test_evidence_status_reconciliation_is_fenced_and_append_only(
+    repository_context: RepositoryContext,
+) -> None:
+    case = _case(
+        case_id=str(uuid4()),
+        tenant_id=repository_context.tenant_a,
+        user_id=repository_context.user_a,
+        created_at=NOW,
+    )
+    evidence = _evidence(
+        evidence_id=str(uuid4()),
+        context=repository_context,
+        case_id=case.id,
+        created_at=NOW,
+        sha256_character="a",
+    )
+    with repository_context.factory() as unit_of_work:
+        unit_of_work.cases.add(tenant_id=case.tenant_id, case=case)
+        unit_of_work.flush()
+        unit_of_work.evidence.add(tenant_id=evidence.tenant_id, evidence=evidence)
+        unit_of_work.commit()
+
+    lifecycle_factory = create_privacy_lifecycle_unit_of_work_factory(repository_context.engine)
+    reconciled_at = NOW + timedelta(hours=2)
+    with lifecycle_factory() as unit_of_work:
+        page = unit_of_work.lifecycle.list_evidence_for_reconciliation(
+            tenant_id=repository_context.tenant_a,
+            stale_pending_before=NOW + timedelta(hours=1),
+            limit=10,
+        )
+    record = next(item for item in page.items if item.id == evidence.id)
+
+    with lifecycle_factory() as unit_of_work:
+        result = unit_of_work.lifecycle.reconcile_evidence_status(
+            record=record,
+            target_status=EvidenceUploadStatus.AVAILABLE,
+            reason="stale_pending_object_valid",
+            actor_id=repository_context.user_a,
+            correlation_id=str(uuid4()),
+            occurred_at=reconciled_at,
+        )
+        unit_of_work.commit()
+    assert result.status is LifecycleMutationStatus.APPLIED
+
+    with Session(repository_context.engine) as session:
+        stored = session.get(CaseEvidenceModel, UUID(evidence.id))
+        events = session.scalars(
+            select(DataLifecycleEventModel).where(
+                DataLifecycleEventModel.tenant_id == UUID(repository_context.tenant_a),
+                DataLifecycleEventModel.case_id == UUID(case.id),
+                DataLifecycleEventModel.event_type == "EVIDENCE_RECONCILED",
+            )
+        ).all()
+    assert stored is not None and stored.upload_status == EvidenceUploadStatus.AVAILABLE.value
+    assert len(events) == 1
+    assert events[0].details == {
+        "reason": "stale_pending_object_valid",
+        "from_status": "PENDING",
+        "to_status": "AVAILABLE",
+        "pii_included": False,
+    }
+
+    with lifecycle_factory() as unit_of_work:
+        replay = unit_of_work.lifecycle.reconcile_evidence_status(
+            record=record,
+            target_status=EvidenceUploadStatus.AVAILABLE,
+            reason="stale_pending_object_valid",
+            actor_id=repository_context.user_a,
+            correlation_id=str(uuid4()),
+            occurred_at=reconciled_at,
+        )
+        unit_of_work.rollback()
+    assert replay.status is LifecycleMutationStatus.ALREADY_APPLIED

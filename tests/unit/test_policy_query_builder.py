@@ -20,6 +20,7 @@ from app.platform.query_builder import (
     PolicyQueryBuilderInput,
     PolicyQueryPlan,
     TrustedCaseMetadata,
+    build_policy_similarity_diagnostics,
     fuse_multi_query_hits,
 )
 
@@ -48,7 +49,13 @@ def _input() -> PolicyQueryBuilderInput:
     )
 
 
-def _hit(clause_id: str, *, document: str = "POLICY-1", version: str = "1.0.0") -> PolicySearchHit:
+def _hit(
+    clause_id: str,
+    *,
+    document: str = "POLICY-1",
+    version: str = "1.0.0",
+    dense_score: float | None = None,
+) -> PolicySearchHit:
     return PolicySearchHit(
         clause=PolicyClauseRecord(
             row_id=clause_id,
@@ -73,6 +80,7 @@ def _hit(clause_id: str, *, document: str = "POLICY-1", version: str = "1.0.0") 
         ),
         fusion_rank=1,
         fusion_score=0.1,
+        dense_score=dense_score,
     )
 
 
@@ -123,3 +131,70 @@ def test_multi_query_rrf_preserves_provenance_and_version_identity() -> None:
     assert fused[0].best_query_rank == 1
     assert fused[0].hit.clause.document_version == "1.0.0"
     assert fused[1].hit.clause.document_version == "2.0.0"
+
+
+def test_policy_similarity_diagnostics_keep_three_nearest_and_three_distinct_least() -> None:
+    nearest = tuple(
+        _hit(f"N{index}", dense_score=score) for index, score in enumerate((0.8, 0.64, 0.5, 0.4), 1)
+    )
+    least = tuple(
+        _hit(f"L{index}", dense_score=score) for index, score in enumerate((-0.2, 0.05, 0.1), 1)
+    )
+
+    diagnostics = build_policy_similarity_diagnostics(
+        nearest_results=(("Q1", nearest),),
+        least_results=(("Q1", least),),
+    )
+
+    assert [item.hit.clause.clause_id for item in diagnostics[:3]] == ["N2", "N1", "N3"]
+    assert diagnostics[0].reason_codes == ("BELOW_REFERENCE_THRESHOLD",)
+    assert diagnostics[1].reason_codes == ("ABOVE_REFERENCE_THRESHOLD",)
+    assert [item.hit.clause.clause_id for item in diagnostics[3:]] == ["L1", "L2", "L3"]
+    assert all("LOWEST_COSINE_SIMILARITY" in item.reason_codes for item in diagnostics[3:])
+
+
+def test_policy_similarity_preserves_zero_and_orders_by_reference_distance() -> None:
+    duplicate_zero = _hit("ZERO", dense_score=0.0)
+    diagnostics = build_policy_similarity_diagnostics(
+        nearest_results=(
+            (
+                "Q1",
+                (
+                    _hit("NEGATIVE", dense_score=-1.0),
+                    duplicate_zero,
+                    _hit("THRESHOLD", dense_score=0.65),
+                    _hit("TIE-HIGH", dense_score=0.8),
+                    _hit("TIE-LOW", dense_score=0.5),
+                ),
+            ),
+            ("Q2", (_hit("ZERO", dense_score=None),)),
+        ),
+        least_results=(
+            (
+                "Q1",
+                (
+                    _hit("LEAST-NEGATIVE", dense_score=-1.0),
+                    _hit("LEAST-ZERO", dense_score=0.0),
+                    _hit("LEAST-POSITIVE", dense_score=0.1),
+                ),
+            ),
+        ),
+    )
+
+    assert [item.hit.clause.clause_id for item in diagnostics[:3]] == [
+        "THRESHOLD",
+        "TIE-HIGH",
+        "TIE-LOW",
+    ]
+    by_clause = {item.hit.clause.clause_id: item for item in diagnostics}
+    assert by_clause["LEAST-ZERO"].cosine_similarity == 0.0
+
+    zero_only = build_policy_similarity_diagnostics(
+        nearest_results=(
+            ("Q1", (_hit("ZERO", dense_score=None),)),
+            ("Q2", (duplicate_zero,)),
+        ),
+        least_results=(),
+    )
+    assert zero_only[0].cosine_similarity == 0.0
+    assert zero_only[0].matched_query_ids == ("Q1", "Q2")

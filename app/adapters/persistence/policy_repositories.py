@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID, uuid4
 
-from sqlalchemy import ColumnElement, Select, and_, select, update
+from sqlalchemy import ColumnElement, Select, and_, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.adapters.persistence.models import (
@@ -80,6 +80,83 @@ class SQLAlchemyDenseRetriever:
                 .limit(query.top_k)
             )
             rows = session.execute(statement).all()
+        return tuple(
+            PolicySearchHit(
+                clause=to_policy_clause_record(clause),
+                dense_rank=rank,
+                dense_score=1.0 - float(distance_value),
+            )
+            for rank, (clause, distance_value) in enumerate(rows, start=1)
+        )
+
+    def retrieve_least_similar(
+        self,
+        *,
+        query: PolicySearchQuery,
+        query_vector: EmbeddingVector,
+        embedding_profile_id: str,
+    ) -> tuple[PolicySearchHit, ...]:
+        if query.least_similar_k == 0:
+            return ()
+        distance = PolicyClauseEmbeddingModel.embedding.cosine_distance(list(query_vector.values))
+        with self._session_factory() as session:
+            rows = session.execute(
+                select(PolicyClauseModel, distance.label("distance"))
+                .join(
+                    PolicyClauseEmbeddingModel,
+                    and_(
+                        PolicyClauseEmbeddingModel.tenant_id == PolicyClauseModel.tenant_id,
+                        PolicyClauseEmbeddingModel.policy_clause_row_id == PolicyClauseModel.id,
+                    ),
+                )
+                .where(
+                    PolicyClauseEmbeddingModel.embedding_profile_id == UUID(embedding_profile_id),
+                    *_filtered_clause_predicates(query),
+                )
+                .order_by(distance.desc(), PolicyClauseModel.id)
+                .limit(query.least_similar_k)
+            ).all()
+        return tuple(
+            PolicySearchHit(
+                clause=to_policy_clause_record(clause),
+                dense_rank=rank,
+                dense_score=1.0 - float(distance_value),
+            )
+            for rank, (clause, distance_value) in enumerate(rows, start=1)
+        )
+
+    def retrieve_closest_to_score(
+        self,
+        *,
+        query: PolicySearchQuery,
+        query_vector: EmbeddingVector,
+        embedding_profile_id: str,
+        reference_score: float,
+        limit: int,
+    ) -> tuple[PolicySearchHit, ...]:
+        distance = PolicyClauseEmbeddingModel.embedding.cosine_distance(list(query_vector.values))
+        similarity = 1.0 - distance
+        with self._session_factory() as session:
+            rows = session.execute(
+                select(PolicyClauseModel, distance.label("distance"))
+                .join(
+                    PolicyClauseEmbeddingModel,
+                    and_(
+                        PolicyClauseEmbeddingModel.tenant_id == PolicyClauseModel.tenant_id,
+                        PolicyClauseEmbeddingModel.policy_clause_row_id == PolicyClauseModel.id,
+                    ),
+                )
+                .where(
+                    PolicyClauseEmbeddingModel.embedding_profile_id == UUID(embedding_profile_id),
+                    *_filtered_clause_predicates(query),
+                )
+                .order_by(
+                    func.abs(similarity - reference_score),
+                    similarity.desc(),
+                    PolicyClauseModel.id,
+                )
+                .limit(limit)
+            ).all()
         return tuple(
             PolicySearchHit(
                 clause=to_policy_clause_record(clause),

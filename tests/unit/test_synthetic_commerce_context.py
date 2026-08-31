@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import UTC, datetime
 from typing import cast
 
 import pytest
 from pydantic import ValidationError
 
-from app.platform.case.models import JsonValue, validate_json_object
+from app.platform.case.models import (
+    Case,
+    CaseSourceScope,
+    JsonValue,
+    RequestedAction,
+    validate_json_object,
+)
 from app.platform.commerce_context import synthetic_commerce_snapshot
 
 
@@ -60,6 +67,35 @@ def test_reserved_commerce_context_is_validated_and_snapshotted() -> None:
     assert snapshot["data_classification"] == "SYNTHETIC_DEMO_ONLY"
     assert snapshot["customer"]["phone_masked"] == "010-****-4821"  # type: ignore[index]
     assert snapshot["order"]["paid_amount"] == "18900"  # type: ignore[index]
+
+
+@pytest.mark.unit
+def test_case_creation_fail_closed_and_infers_only_validated_synthetic_source() -> None:
+    now = datetime(2026, 8, 30, tzinfo=UTC)
+    unattested = Case.create(
+        case_id="case-live-unattested",
+        tenant_id="tenant-1",
+        order_ref="ORDER-1",
+        product_ref="SKU-1",
+        customer_message="문의",
+        requested_action=RequestedAction.REFUND,
+        attributes={},
+        created_by="user-1",
+        now=now,
+    )
+    synthetic = Case.create(
+        case_id="case-demo",
+        tenant_id="tenant-1",
+        order_ref="ORDER-2",
+        product_ref="SKU-2",
+        customer_message="합성 문의",
+        requested_action=RequestedAction.REFUND,
+        attributes={"synthetic_commerce_context": cast(JsonValue, _context())},
+        created_by="user-1",
+        now=now,
+    )
+    assert unattested.source_scope is CaseSourceScope.NOT_ATTESTED
+    assert synthetic.source_scope is CaseSourceScope.SYNTHETIC_DEMO
 
 
 @pytest.mark.unit

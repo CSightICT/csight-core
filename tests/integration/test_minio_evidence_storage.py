@@ -74,6 +74,13 @@ def test_private_object_round_trip_requires_a_short_lived_signature(
         assert stored.key == key
         assert stored.sha256 == sha256
         assert storage.exists(key) is True
+        inventory_item = storage.stat(key)
+        inventory_page = storage.list_keys(prefix=f"tenants/{tenant_id}/", limit=10)
+        assert inventory_item is not None
+        assert inventory_item.key == key
+        assert inventory_item.sha256 == sha256
+        assert key in inventory_page.keys
+        assert inventory_page.truncated is False
         assert storage.get(key, max_bytes=len(payload)) == payload
         with pytest.raises(StoredObjectIntegrityError, match="configured read limit"):
             storage.get(key, max_bytes=len(payload) - 1)
@@ -89,6 +96,49 @@ def test_private_object_round_trip_requires_a_short_lived_signature(
             urlopen(unsigned_url, timeout=5)
         assert error.value.code in {401, 403}
     finally:
-        storage.delete(key)
+        for version in storage.list_versions(key=key, limit=100).versions:
+            storage.delete_version(key=key, version_id=version.version_id)
 
     assert storage.exists(key) is False
+
+
+def test_versioned_erasure_removes_payload_versions_and_delete_marker(
+    minio_settings: Settings,
+) -> None:
+    storage = _storage(minio_settings)
+    tenant_id, case_id, evidence_id = (str(uuid4()) for _ in range(3))
+    key = f"tenants/{tenant_id}/cases/{case_id}/evidence/{evidence_id}/original"
+    first = b"synthetic-version-one"
+    second = b"synthetic-version-two"
+
+    try:
+        storage.put(
+            key=key,
+            content=BytesIO(first),
+            length=len(first),
+            content_type="image/png",
+            sha256=hashlib.sha256(first).hexdigest(),
+        )
+        storage.put(
+            key=key,
+            content=BytesIO(second),
+            length=len(second),
+            content_type="image/png",
+            sha256=hashlib.sha256(second).hexdigest(),
+        )
+        storage.delete(key)
+
+        page = storage.list_versions(key=key, limit=10)
+        assert page.truncated is False
+        assert len(page.versions) == 3
+        assert sum(item.is_delete_marker for item in page.versions) == 1
+        assert sum(not item.is_delete_marker for item in page.versions) == 2
+
+        for version in page.versions:
+            storage.delete_version(key=key, version_id=version.version_id)
+
+        assert storage.list_versions(key=key, limit=10).versions == ()
+        assert storage.exists(key) is False
+    finally:
+        for version in storage.list_versions(key=key, limit=100).versions:
+            storage.delete_version(key=key, version_id=version.version_id)

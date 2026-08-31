@@ -11,6 +11,7 @@ from app.platform.query_builder import (
     PolicyQueryBuilderInput,
     PolicyQueryPlan,
     PolicyRetrievalRun,
+    PolicySimilarityDiagnostic,
 )
 
 
@@ -29,6 +30,7 @@ class PolicyRetrievalRunDetail(BaseModel):
     run: PolicyRetrievalRun
     query_plan: PolicyQueryPlan | None = None
     hits: tuple[MultiQueryHit, ...] = ()
+    policy_similarity: tuple[PolicySimilarityDiagnostic, ...] = ()
     index_version: str
     base_retrieval_profile_hash: str
     multi_query_fusion_profile: str
@@ -76,6 +78,7 @@ class PolicyRetrievalRunRepository(Protocol):
         plan: PolicyQueryPlan,
         hits: tuple[MultiQueryHit, ...],
         raw_query_hash: str | None,
+        diagnostics: tuple[PolicySimilarityDiagnostic, ...] = (),
     ) -> bool: ...
 
     def fail(

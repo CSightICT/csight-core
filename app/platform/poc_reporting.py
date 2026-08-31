@@ -223,6 +223,10 @@ class DataAssetSummary(_Strict):
     )
     generated_at: datetime
     total_records: int = Field(ge=0)
+    eligible_records: int = Field(default=0, ge=0)
+    excluded_records: int = Field(default=0, ge=0)
+    eligible_source_scope: Literal["PILOT_LIVE"] = "PILOT_LIVE"
+    source_scope_distribution: dict[str, int] = Field(default_factory=dict)
     baseline_minimum: int = DATA_ASSET_BASELINE_MINIMUM
     drift_review_minimum: int = DATA_ASSET_DRIFT_MINIMUM
     readiness_status: Literal[
@@ -292,6 +296,9 @@ class PocMetric(_Strict):
 class PocSummary(_Strict):
     schema_version: Literal["poc_summary/1.0.0"] = POC_SUMMARY_SCHEMA_VERSION
     generated_at: datetime
+    eligible_source_scope: Literal["PILOT_LIVE"] = "PILOT_LIVE"
+    eligible_case_count: int = Field(default=0, ge=0)
+    excluded_case_count: int = Field(default=0, ge=0)
     review_time: PocMetric
     recommendation_difference_rate: PocMetric
     additional_evidence_request_rate: PocMetric

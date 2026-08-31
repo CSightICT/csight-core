@@ -1,0 +1,119 @@
+name: csight-restore-qualification
+
+x-postgres-image: &postgres-image
+  image: pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+
+x-minio-image: &minio-image
+  image: quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+
+x-isolated: &isolated
+  security_opt:
+    - no-new-privileges:true
+  networks:
+    - restore-qualification
+
+services:
+  source-postgres:
+    <<: [*postgres-image, *isolated]
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=1s
+      - -c
+      - archive_command=test ! -f /wal-archive/%f && cp %p /wal-archive/%f
+    environment:
+      POSTGRES_DB: csight
+      POSTGRES_USER: csight
+      POSTGRES_PASSWORD: restore-qualification-only
+    volumes:
+      - source-postgres-data:/var/lib/postgresql/data
+      - ${RESTORE_EVIDENCE_DIR:?Set RESTORE_EVIDENCE_DIR}/postgresql-wal-archive:/wal-archive
+      - ${RESTORE_EVIDENCE_DIR:?Set RESTORE_EVIDENCE_DIR}:/evidence
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U csight -d csight]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+
+  source-minio:
+    <<: [*minio-image, *isolated]
+    command: [server, /data]
+    environment:
+      MINIO_ROOT_USER: restorequalification
+      MINIO_ROOT_PASSWORD: restore-qualification-secret-only
+    volumes:
+      - source-minio-data:/data
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:9000/minio/health/live]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+
+  restored-postgres:
+    <<: [*postgres-image, *isolated]
+    profiles: [restore]
+    environment:
+      POSTGRES_DB: csight
+      POSTGRES_USER: csight
+      POSTGRES_PASSWORD: restore-qualification-only
+    volumes:
+      - restored-postgres-data:/var/lib/postgresql/data
+      - ${RESTORE_EVIDENCE_DIR:?Set RESTORE_EVIDENCE_DIR}/postgresql-wal-archive:/wal-archive:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U csight -d csight]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+      start_period: 5s
+
+  restored-minio:
+    <<: [*minio-image, *isolated]
+    profiles: [restore]
+    command: [server, /data]
+    environment:
+      MINIO_ROOT_USER: restorequalification
+      MINIO_ROOT_PASSWORD: restore-qualification-secret-only
+    volumes:
+      - restored-minio-data:/data
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:9000/minio/health/live]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+
+  utility:
+    image: csight-core:${CSIGHT_IMAGE_TAG:-dev}
+    profiles: [tools]
+    user: "0:0"
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgresql+psycopg://csight:restore-qualification-only@source-postgres:5432/csight
+      MINIO_ACCESS_KEY: restorequalification
+      MINIO_SECRET_KEY: restore-qualification-secret-only
+    volumes:
+      - ../../scripts:/qualification:ro
+      - ${RESTORE_EVIDENCE_DIR:?Set RESTORE_EVIDENCE_DIR}:/evidence
+      - source-minio-data:/source-minio-data:ro
+      - restored-minio-data:/restored-minio-data
+      - restored-postgres-data:/restored-postgres-data
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - restore-qualification
+
+networks:
+  restore-qualification:
+    internal: true
+
+volumes:
+  source-postgres-data:
+  source-minio-data:
+  restored-postgres-data:
+  restored-minio-data:

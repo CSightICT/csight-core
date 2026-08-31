@@ -39,6 +39,10 @@ from app.adapters.persistence.models import (
     TenantModel,
     UserModel,
 )
+from app.platform.analysis import (
+    AnalysisExecutionMode,
+    ShadowAnalysisDownstreamForbiddenError,
+)
 from app.platform.async_reliability import (
     AsyncEventIntegrityError,
     ExecutionAttemptsExhaustedError,
@@ -86,6 +90,19 @@ def _require_canonical_rule_set_order(value: PolicyRuleSet) -> None:
 
 
 class SQLAlchemyPolicyEngineRepository:
+    def get_analysis_execution_mode(
+        self, *, tenant_id: str, case_id: str, analysis_run_id: str
+    ) -> AnalysisExecutionMode | None:
+        with self._factory() as session:
+            value = session.scalar(
+                select(AnalysisRunModel.execution_mode).where(
+                    AnalysisRunModel.tenant_id == UUID(tenant_id),
+                    AnalysisRunModel.case_id == UUID(case_id),
+                    AnalysisRunModel.id == UUID(analysis_run_id),
+                )
+            )
+        return AnalysisExecutionMode(value) if value is not None else None
+
     def __init__(
         self,
         session_factory: sessionmaker[Session],
@@ -269,6 +286,11 @@ class SQLAlchemyPolicyEngineRepository:
                     AnalysisRunModel.status == "SUCCEEDED",
                 )
             )
+            if (
+                analysis is not None
+                and analysis.execution_mode == AnalysisExecutionMode.SHADOW.value
+            ):
+                raise ShadowAnalysisDownstreamForbiddenError()
             extraction = session.scalar(
                 select(LLMExtractionResultV2Model).where(
                     LLMExtractionResultV2Model.tenant_id == tenant_uuid,

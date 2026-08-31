@@ -11,6 +11,7 @@ from app.adapters.persistence.models import (
     UserModel,
     UserRoleModel,
 )
+from app.adapters.persistence.tenant_context import login_tenant_context, tenant_context
 from app.platform.tenant import Role, UserAccount
 
 
@@ -94,9 +95,21 @@ class SQLAlchemyIdentityRepositoryFactoryAdapter:
         self._session_factory = session_factory
 
     def find_for_login(self, *, tenant_slug: str, email: str) -> UserAccount | None:
-        with self._session_factory() as session:
+        normalized_slug = tenant_slug.strip().lower()
+        if not normalized_slug:
+            return None
+        # The login policy permits exactly one tenant slug before a trusted
+        # tenant UUID is known.  User and role rows remain invisible until the
+        # second, tenant-scoped transaction.
+        with login_tenant_context(normalized_slug), self._session_factory() as session:
+            tenant_id = session.scalar(
+                select(TenantModel.id).where(TenantModel.slug == normalized_slug)
+            )
+        if tenant_id is None:
+            return None
+        with tenant_context(str(tenant_id)), self._session_factory() as session:
             return SQLAlchemyIdentityRepository(session).find_for_login(
-                tenant_slug=tenant_slug,
+                tenant_slug=normalized_slug,
                 email=email,
             )
 
@@ -106,7 +119,9 @@ class SQLAlchemyIdentityRepositoryFactoryAdapter:
         tenant_id: str,
         subject: str,
     ) -> UserAccount | None:
-        with self._session_factory() as session:
+        if _optional_uuid(tenant_id) is None:
+            return None
+        with tenant_context(tenant_id), self._session_factory() as session:
             return SQLAlchemyIdentityRepository(session).get_by_tenant_and_subject(
                 tenant_id=tenant_id,
                 subject=subject,

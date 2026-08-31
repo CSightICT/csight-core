@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.platform.analysis.enums import (
     AnalysisAttemptStatus,
+    AnalysisExecutionMode,
     AnalysisPipeline,
     AnalysisRunStatus,
     AnalysisStageStatus,
@@ -73,6 +74,7 @@ class AnalysisRun(AnalysisEntity):
     case_id: str = Field(min_length=1)
     pipeline: AnalysisPipeline
     pipeline_version: str = Field(min_length=1, max_length=32)
+    execution_mode: AnalysisExecutionMode = AnalysisExecutionMode.PRIMARY
     trigger: AnalysisTrigger
     status: AnalysisRunStatus
     requested_by: str = Field(min_length=1)
@@ -96,6 +98,7 @@ class AnalysisStageRun(AnalysisEntity):
     id: str = Field(min_length=1)
     tenant_id: str = Field(min_length=1)
     analysis_run_id: str = Field(min_length=1)
+    model_route_plan_id: str | None = Field(default=None, min_length=1, max_length=64)
     stage_type: AnalysisStageType
     status: AnalysisStageStatus
     attempt_summary: AnalysisAttemptSummary = Field(default_factory=AnalysisAttemptSummary)

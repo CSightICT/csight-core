@@ -1,0 +1,42 @@
+name: csight-core
+
+# Limited-pilot evidence-security overlay. ClamAV is internal-only; the API is
+# the sole process that accepts Evidence uploads and therefore the sole Core
+# process that receives scanner configuration.
+services:
+  api:
+    environment:
+      EVIDENCE_IMAGE_SANITIZATION_ENABLED: "true"
+      EVIDENCE_MALWARE_SCANNER: clamav
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      CLAMAV_TIMEOUT_SECONDS: ${CLAMAV_TIMEOUT_SECONDS:-10}
+    depends_on:
+      clamav:
+        condition: service_healthy
+
+  clamav:
+    image: clamav/clamav:1.5.4@sha256:0e85467cb0d6e7d860a45035707741cd5ffc032ffefc6002a3510c75b6d07027
+    # The upstream 1.5.4 image currently publishes linux/amd64 only. The
+    # production target and RTX 4090 host are x86_64; Docker Desktop may use
+    # emulation solely for this Mac qualification.
+    platform: linux/amd64
+    expose:
+      - "3310"
+    volumes:
+      - clamav-database:/var/lib/clamav
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - clamdcheck.sh
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 360s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    networks:
+      - core
+
+volumes:
+  clamav-database:

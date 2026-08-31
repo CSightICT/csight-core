@@ -17,12 +17,19 @@ class CaseListCriteria:
     created_to: datetime | None = None
     page: int = 1
     page_size: int = 20
+    access_actor_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class IdempotencyClaim:
     claimed: bool
     record: IdempotencyRecord
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceClaim:
+    claimed: bool
+    evidence: EvidenceMetadata
 
 
 @runtime_checkable
@@ -46,6 +53,8 @@ class CaseStatusHistoryRepository(Protocol):
 @runtime_checkable
 class EvidenceRepository(Protocol):
     def add(self, *, tenant_id: str, evidence: EvidenceMetadata) -> None: ...
+
+    def claim(self, *, tenant_id: str, evidence: EvidenceMetadata) -> EvidenceClaim: ...
 
     def get(self, *, tenant_id: str, case_id: str, evidence_id: str) -> EvidenceMetadata | None: ...
 

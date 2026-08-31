@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Response
 from app.interface.http.dependencies import (
     provide_current_principal,
     provide_poc_reporting_services,
+    require_case_access,
 )
 from app.interface.http.poc_reporting_schemas import (
     CustomerCommunicationResponse,
@@ -29,6 +30,7 @@ def _no_store(response: Response) -> None:
 @router.get(
     "/api/v1/cases/{case_id}/review-report",
     response_model=ReviewReportResponse,
+    dependencies=[Depends(require_case_access)],
 )
 def get_case_review_report(
     case_id: UUID,
@@ -64,6 +66,7 @@ def get_poc_summary(
 @router.post(
     "/api/v1/cases/{case_id}/communication-simulations",
     response_model=CustomerCommunicationResponse,
+    dependencies=[Depends(require_case_access)],
 )
 def create_customer_communication_simulation(
     case_id: UUID,
@@ -85,6 +88,7 @@ def create_customer_communication_simulation(
 @router.get(
     "/api/v1/cases/{case_id}/communication-simulations",
     response_model=list[CustomerCommunicationResponse],
+    dependencies=[Depends(require_case_access)],
 )
 def list_customer_communication_simulations(
     case_id: UUID,

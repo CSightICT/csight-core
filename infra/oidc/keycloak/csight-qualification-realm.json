@@ -1,0 +1,80 @@
+{
+  "realm": "csight-qualification",
+  "enabled": true,
+  "displayName": "CSight OIDC Qualification",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": false,
+  "ssoSessionIdleTimeout": 120,
+  "ssoSessionMaxLifespan": 300,
+  "accessTokenLifespan": 60,
+  "groups": [
+    {
+      "name": "csight-reviewers"
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "csight-qualification",
+      "name": "CSight Qualification Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:18000/auth/oidc/callback"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:18000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "backchannel.logout.url": "http://api:8000/auth/oidc/backchannel-logout",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "http://127.0.0.1:18000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "reviewer@csight.demo",
+      "email": "reviewer@csight.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "OIDC",
+      "lastName": "Reviewer",
+      "groups": [
+        "/csight-reviewers"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${OIDC_QUALIFICATION_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

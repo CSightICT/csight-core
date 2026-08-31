@@ -2,6 +2,7 @@
 
 from app.platform.case.models import (
     Case,
+    CaseSourceScope,
     CaseStatus,
     CaseStatusTransition,
     DomainType,
@@ -13,6 +14,7 @@ from app.platform.case.models import (
 
 __all__ = [
     "Case",
+    "CaseSourceScope",
     "CaseStatus",
     "CaseStatusTransition",
     "DomainType",

@@ -1,0 +1,145 @@
+name: csight-pilot
+
+# This overlay is intentionally unusable on its own. The admitted order is:
+# compose.core.yml -> compose.rls.yml -> compose.evidence-security.yml -> this file.
+x-pilot-runtime-environment: &pilot-runtime-environment
+  ENVIRONMENT: pilot
+  DEVELOPMENT_SEED_ENABLED: "false"
+  OTEL_ENABLED: "true"
+  OTEL_EXPORTER: otlp_http
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?Set OTEL_EXPORTER_OTLP_ENDPOINT}
+  SENSITIVE_PAYLOAD_RETENTION_POLICY_VERSION: ${SENSITIVE_PAYLOAD_RETENTION_POLICY_VERSION:?Set SENSITIVE_PAYLOAD_RETENTION_POLICY_VERSION}
+  SENSITIVE_PAYLOAD_RETENTION_DAYS: ${SENSITIVE_PAYLOAD_RETENTION_DAYS:?Set SENSITIVE_PAYLOAD_RETENTION_DAYS}
+
+x-qualified-llm-identity: &qualified-llm-identity
+  LLM_PROVIDER: ${LLM_PROVIDER:?Set a qualified non-mock LLM_PROVIDER}
+  LLM_BASE_URL: ${LLM_BASE_URL:?Set LLM_BASE_URL}
+  LLM_MODEL_ID: ${LLM_MODEL_ID:?Set LLM_MODEL_ID}
+  LLM_MODEL_VERSION: ${LLM_MODEL_VERSION:?Set LLM_MODEL_VERSION}
+  LLM_MODEL_REVISION: ${LLM_MODEL_REVISION:?Set exact LLM_MODEL_REVISION}
+  MODEL_RELEASE_ENFORCEMENT: "true"
+  MODEL_RELEASE_SIGNING_PUBLIC_KEY_FILE: /run/config/model_release_public_key.pem
+  MODEL_RELEASE_SIGNING_KEY_ID: ${MODEL_RELEASE_SIGNING_KEY_ID:?Set MODEL_RELEASE_SIGNING_KEY_ID}
+  LLM_ARTIFACT_CONTENT_DIGEST: ${LLM_ARTIFACT_CONTENT_DIGEST:?Set LLM_ARTIFACT_CONTENT_DIGEST}
+  LLM_RUNTIME_IMAGE_DIGEST: ${LLM_RUNTIME_IMAGE_DIGEST:?Set LLM_RUNTIME_IMAGE_DIGEST}
+  LLM_DEPENDENCY_LOCK_DIGEST: ${LLM_DEPENDENCY_LOCK_DIGEST:?Set LLM_DEPENDENCY_LOCK_DIGEST}
+  LLM_SBOM_DIGEST: ${LLM_SBOM_DIGEST:?Set LLM_SBOM_DIGEST}
+
+x-qualified-vision-identity: &qualified-vision-identity
+  VISION_PROVIDER: ${VISION_PROVIDER:?Set a qualified non-mock VISION_PROVIDER}
+  VISION_BASE_URL: ${VISION_BASE_URL:?Set VISION_BASE_URL}
+  VISION_MODEL_ID: ${VISION_MODEL_ID:?Set VISION_MODEL_ID}
+  VISION_MODEL_VERSION: ${VISION_MODEL_VERSION:?Set VISION_MODEL_VERSION}
+  VISION_MODEL_REVISION: ${VISION_MODEL_REVISION:?Set VISION_MODEL_REVISION}
+  EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:?Set EMBEDDING_BASE_URL}
+
+x-model-release-config: &model-release-config
+  configs:
+    - source: model-release-public-key
+      target: /run/config/model_release_public_key.pem
+      mode: 0444
+
+x-api-public-configs: &api-public-configs
+  configs:
+    - source: model-release-public-key
+      target: /run/config/model_release_public_key.pem
+      mode: 0444
+    - source: signed-intake-public-key
+      target: /run/config/signed_intake_public_key.pem
+      mode: 0444
+
+services:
+  api:
+    <<: *api-public-configs
+    environment:
+      <<: [*pilot-runtime-environment, *qualified-llm-identity, *qualified-vision-identity]
+      DATABASE_RLS_REQUIRED: "true"
+      # The HTTP process registers provider-backed use cases but does not execute model calls.
+      # Explicit empty overrides are required because compose.core.yml carries both keys.
+      LLM_API_KEY: ""
+      VISION_API_KEY: ""
+      MODEL_ROUTE_ENFORCEMENT: "true"
+      LEGACY_PASSWORD_AUTH_ENABLED: "false"
+      OIDC_ENABLED: "true"
+      OIDC_ISSUER: ${OIDC_ISSUER:?Set OIDC_ISSUER}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?Set OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_AUTHORIZATION_ENDPOINT: ${OIDC_AUTHORIZATION_ENDPOINT:?Set OIDC_AUTHORIZATION_ENDPOINT}
+      OIDC_TOKEN_ENDPOINT: ${OIDC_TOKEN_ENDPOINT:?Set OIDC_TOKEN_ENDPOINT}
+      OIDC_JWKS_URI: ${OIDC_JWKS_URI:?Set OIDC_JWKS_URI}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:?Set OIDC_REDIRECT_URI}
+      OIDC_GROUP_MAPPINGS: '${OIDC_GROUP_MAPPINGS:?Set OIDC_GROUP_MAPPINGS}'
+      OIDC_TLS_VERIFY: "true"
+      OIDC_ALLOW_INSECURE_HTTP: "false"
+      OIDC_COOKIE_SECURE: "true"
+      SIGNED_INTAKE_ENABLED: "true"
+      SIGNED_INTAKE_SOURCES: '${SIGNED_INTAKE_SOURCES:?Set exactly one signed intake source}'
+      SIGNED_INTAKE_MAX_BODY_BYTES: "${SIGNED_INTAKE_MAX_BODY_BYTES:?Set SIGNED_INTAKE_MAX_BODY_BYTES}"
+      SIGNED_INTAKE_CLOCK_SKEW_SECONDS: "${SIGNED_INTAKE_CLOCK_SKEW_SECONDS:?Set SIGNED_INTAKE_CLOCK_SKEW_SECONDS}"
+      MINIO_PRESIGNED_ENDPOINT: ${MINIO_PRESIGNED_ENDPOINT:?Set MINIO_PRESIGNED_ENDPOINT}
+      MINIO_PRESIGNED_SECURE: "true"
+      EVIDENCE_IMAGE_SANITIZATION_ENABLED: "true"
+      EVIDENCE_MALWARE_SCANNER: clamav
+      CLAMAV_HOST: clamav
+      OPERATIONS_FAILURE_RECOVERY_MUTATIONS_ENABLED: "false"
+
+  worker-model:
+    <<: *model-release-config
+    environment:
+      <<: [*pilot-runtime-environment, *qualified-llm-identity, *qualified-vision-identity]
+      DATABASE_RLS_REQUIRED: "true"
+      LLM_API_KEY: ${LLM_API_KEY:?Set LLM_API_KEY}
+      VISION_API_KEY: ${VISION_API_KEY:?Set VISION_API_KEY}
+      MODEL_ROUTE_ENFORCEMENT: "true"
+      MODEL_ROUTE_DEPLOYMENT_ID: ${MODEL_ROUTE_DEPLOYMENT_ID:?Set MODEL_ROUTE_DEPLOYMENT_ID}
+
+  worker-retrieval:
+    <<: *model-release-config
+    environment:
+      <<: [*pilot-runtime-environment, *qualified-llm-identity]
+      DATABASE_RLS_REQUIRED: "true"
+      LLM_API_KEY: ${LLM_API_KEY:?Set LLM_API_KEY}
+      VISION_PROVIDER: mock
+      VISION_API_KEY: ""
+      MODEL_ROUTE_ENFORCEMENT: "false"
+
+  worker-decision:
+    environment:
+      <<: *pilot-runtime-environment
+      DATABASE_RLS_REQUIRED: "true"
+      LLM_PROVIDER: mock
+      LLM_API_KEY: ""
+      VISION_PROVIDER: mock
+      VISION_API_KEY: ""
+      MODEL_RELEASE_ENFORCEMENT: "false"
+      MODEL_ROUTE_ENFORCEMENT: "false"
+
+  dispatcher:
+    environment:
+      <<: *pilot-runtime-environment
+      DATABASE_RLS_REQUIRED: "true"
+      LLM_PROVIDER: mock
+      LLM_API_KEY: ""
+      VISION_PROVIDER: mock
+      VISION_API_KEY: ""
+      MODEL_RELEASE_ENFORCEMENT: "false"
+      MODEL_ROUTE_ENFORCEMENT: "false"
+
+  privacy-lifecycle:
+    environment:
+      <<: *pilot-runtime-environment
+      DATABASE_RLS_REQUIRED: "true"
+      LLM_PROVIDER: mock
+      LLM_API_KEY: ""
+      VISION_PROVIDER: mock
+      VISION_API_KEY: ""
+      MODEL_RELEASE_ENFORCEMENT: "false"
+      MODEL_ROUTE_ENFORCEMENT: "false"
+      PRIVACY_LIFECYCLE_AUTOMATION_ENABLED: "true"
+      PRIVACY_LIFECYCLE_TENANT_ID: ${PRIVACY_LIFECYCLE_TENANT_ID:?Set PRIVACY_LIFECYCLE_TENANT_ID}
+
+configs:
+  model-release-public-key:
+    file: ${MODEL_RELEASE_SIGNING_PUBLIC_KEY_HOST_FILE:?Set MODEL_RELEASE_SIGNING_PUBLIC_KEY_HOST_FILE}
+  signed-intake-public-key:
+    file: ${SIGNED_INTAKE_PUBLIC_KEY_HOST_FILE:?Set SIGNED_INTAKE_PUBLIC_KEY_HOST_FILE}

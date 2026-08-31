@@ -61,9 +61,16 @@ REQUESTED_ACTIONS = (
     "OTHER",
     "UNSPECIFIED",
 )
+CASE_SOURCE_SCOPES = (
+    "SYNTHETIC_DEMO",
+    "SHADOW",
+    "IMPORTED",
+    "PILOT_LIVE",
+    "NOT_ATTESTED",
+)
 EVIDENCE_TYPES = ("TEXT", "IMAGE", "DOCUMENT", "AUDIO", "METADATA")
 EVIDENCE_UPLOAD_STATUSES = ("PENDING", "AVAILABLE", "FAILED")
-IDEMPOTENCY_OPERATIONS = ("case.create.v1",)
+IDEMPOTENCY_OPERATIONS = ("case.create.v1", "case.intake.signed.v1")
 IDEMPOTENCY_RESOURCE_TYPES = ("case",)
 ANALYSIS_PIPELINES = (
     "product_defect_text_extraction",
@@ -79,6 +86,7 @@ ANALYSIS_RUN_STATUSES = (
     "SUCCEEDED",
     "FAILED",
 )
+ANALYSIS_EXECUTION_MODES = ("PRIMARY", "SHADOW")
 ANALYSIS_STAGE_TYPES = (
     "TEXT_EXTRACTION",
     "VISION_ANALYSIS",
@@ -163,6 +171,8 @@ HUMAN_REVIEW_STATUSES = (
 )
 HUMAN_REVIEW_ACTIONS = (
     "CREATED",
+    "ASSIGNED",
+    "REASSIGNED",
     "CLAIMED",
     "RELEASED",
     "EVIDENCE_REQUESTED",
@@ -194,6 +204,38 @@ EXTERNAL_ACTION_TYPES = ("REFUND", "EXCHANGE", "RESHIPMENT", "REPAIR")
 EXTERNAL_ACTION_MODES = ("DRY_RUN", "LIVE")
 EXTERNAL_ACTION_SIMULATION_ATTEMPT_STATUSES = ("RUNNING", "SUCCEEDED", "FAILED")
 EXTERNAL_ACTION_SIMULATION_OUTCOMES = ("VALIDATED", "FAILED")
+OPERATIONAL_FAILURE_PIPELINES = (
+    "analysis",
+    "policy_retrieval",
+    "grounded_explanation",
+    "policy_evaluation",
+    "human_review",
+    "case_resolution",
+    "action_simulation",
+    "failure_recovery",
+)
+OPERATIONAL_FAILURE_KINDS = ("DISPATCH", "CONSUMER")
+OPERATIONAL_FAILURE_SOURCES = (
+    "outbox_events",
+    "policy_retrieval_outbox_events",
+    "grounded_explanation_outbox_events",
+    "policy_evaluation_outbox_events",
+    "human_review_request_events",
+    "case_resolution_request_events",
+    "external_action_simulation_request_events",
+    "operational_failure_recovery_events",
+)
+OPERATIONAL_FAILURE_RESOLUTION_ACTIONS = ("REPLAYED", "CANCELLED")
+OPERATIONAL_FAILURE_REASON_CODES = ("OPERATOR_REPLAY", "OPERATOR_CANCELLED")
+OPERATIONAL_RECOVERY_TOPICS = (
+    "analysis.requested.v1",
+    "policy_retrieval.requested.v1",
+    "grounded_explanation.requested.v1",
+    "policy_evaluation.requested.v1",
+    "human_review.requested.v1",
+    "case_resolution.requested.v1",
+    "external_action.simulation_requested.v1",
+)
 
 
 def _sql_values(values: tuple[str, ...]) -> str:
@@ -364,6 +406,12 @@ class CaseModel(TimestampMixin, Base):
             name="fk_cases_tenant_id_created_by_users",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ("tenant_id", "current_assignee_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_cases_current_assignee",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
             f"domain_type IN ({_sql_values(DOMAIN_TYPES)})",
             name="domain_type_allowed",
@@ -376,11 +424,25 @@ class CaseModel(TimestampMixin, Base):
             f"requested_action IN ({_sql_values(REQUESTED_ACTIONS)})",
             name="requested_action_allowed",
         ),
+        CheckConstraint(
+            f"source_scope IN ({_sql_values(CASE_SOURCE_SCOPES)})",
+            name="source_scope_allowed",
+        ),
+        CheckConstraint(
+            "length(btrim(source_provenance)) BETWEEN 1 AND 255",
+            name="source_provenance_nonempty",
+        ),
         CheckConstraint("length(btrim(order_ref)) > 0", name="order_ref_nonempty"),
         CheckConstraint("length(btrim(product_ref)) > 0", name="product_ref_nonempty"),
         CheckConstraint(
             "length(btrim(customer_message)) > 0",
             name="customer_message_nonempty",
+        ),
+        CheckConstraint("assignment_version >= 0", name="assignment_version_nonnegative"),
+        CheckConstraint(
+            "(assignment_version = 0 AND current_assignee_id IS NULL) OR "
+            "(assignment_version > 0 AND current_assignee_id IS NOT NULL)",
+            name="assignment_projection_consistent",
         ),
         UniqueConstraint("tenant_id", "id", name="uq_cases_tenant_id_id"),
         Index("ix_cases_tenant_created_id", "tenant_id", "created_at", "id"),
@@ -393,6 +455,13 @@ class CaseModel(TimestampMixin, Base):
         ),
         Index("ix_cases_tenant_product_ref", "tenant_id", "product_ref"),
         Index("ix_cases_tenant_order_ref", "tenant_id", "order_ref"),
+        Index(
+            "ix_cases_tenant_source_scope_created",
+            "tenant_id",
+            "source_scope",
+            "created_at",
+            "id",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
@@ -416,7 +485,243 @@ class CaseModel(TimestampMixin, Base):
         nullable=False,
         server_default=text("'{}'::jsonb"),
     )
+    source_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="NOT_ATTESTED")
+    source_provenance: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="unattested/direct-adapter"
+    )
     created_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    current_assignee_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    assignment_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+
+class CaseAssignmentModel(CreatedAtMixin, Base):
+    __tablename__ = "case_assignments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_case_assignments_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "assignee_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_case_assignments_assignee",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "assigned_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_case_assignments_assigner",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "assignment_type IN ('ADMIN_ASSIGNMENT','ADMIN_REASSIGNMENT','REVIEW_TASK_BACKFILL')",
+            name="type_allowed",
+        ),
+        CheckConstraint("length(btrim(rationale)) BETWEEN 5 AND 500", name="rationale_length"),
+        CheckConstraint(
+            "released_at IS NULL OR released_at >= assigned_at",
+            name="released_after_assigned",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_case_assignments_tenant_id"),
+        Index(
+            "uq_case_assignments_current",
+            "tenant_id",
+            "case_id",
+            unique=True,
+            postgresql_where=text("released_at IS NULL"),
+        ),
+        Index("ix_case_assignments_assignee", "tenant_id", "assignee_id", "assigned_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    assignee_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    assigned_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    assignment_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    rationale: Mapped[str] = mapped_column(String(500), nullable=False)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CaseAssignmentActionModel(CreatedAtMixin, Base):
+    __tablename__ = "case_assignment_actions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_case_assignment_actions_case",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "actor_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_case_assignment_actions_actor",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "to_assignee_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_case_assignment_actions_to_assignee",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "action_type IN ('ASSIGNED','REASSIGNED','BACKFILLED')",
+            name="type_allowed",
+        ),
+        CheckConstraint("resulting_version = expected_version + 1", name="version_step"),
+        CheckConstraint("length(btrim(rationale)) BETWEEN 5 AND 500", name="rationale_length"),
+        UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "resulting_version",
+            name="uq_case_assignment_actions_version",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_case_assignment_actions_tenant_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    action_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    from_assignee_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    to_assignee_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    actor_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    rationale: Mapped[str] = mapped_column(String(500), nullable=False)
+    expected_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    resulting_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CaseSensitivePayloadModel(TimestampMixin, Base):
+    """Restricted lifecycle record for customer-provided Case text.
+
+    ``cases.customer_message`` remains during the expand/dual-write compatibility
+    window.  This table is the restricted read/purge boundary and keeps a
+    non-reversible digest after the payload is purged.
+    """
+
+    __tablename__ = "case_sensitive_payloads"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_case_sensitive_payloads_tenant_case",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "schema_version = 'case_sensitive_payload/1.0.0'",
+            name="schema_version_supported",
+        ),
+        CheckConstraint("payload_sha256 ~ '^[0-9a-f]{64}$'", name="payload_sha256_valid"),
+        CheckConstraint(
+            "length(btrim(retention_policy_version)) > 0",
+            name="retention_policy_nonempty",
+        ),
+        CheckConstraint("expires_at > created_at", name="expiry_after_creation"),
+        CheckConstraint(
+            "(purged_at IS NULL AND customer_message IS NOT NULL "
+            "AND length(btrim(customer_message)) > 0 AND legacy_redacted_at IS NULL "
+            "AND analysis_text_purged_at IS NULL AND terminal_content_purged_at IS NULL) OR "
+            "(purged_at IS NOT NULL AND customer_message IS NULL "
+            "AND legacy_redacted_at = purged_at AND analysis_text_purged_at = purged_at "
+            "AND terminal_content_purged_at = purged_at)",
+            name="purge_state_consistent",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_case_sensitive_payloads_tenant_id"),
+        UniqueConstraint("tenant_id", "case_id", name="uq_case_sensitive_payloads_tenant_case"),
+        Index(
+            "ix_case_sensitive_payloads_expiry",
+            "tenant_id",
+            "expires_at",
+            "case_id",
+            postgresql_where=text("purged_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    customer_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    retention_policy_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    legacy_redacted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    analysis_text_purged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    terminal_content_purged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class DataLifecycleEventModel(Base):
+    """Append-only, PII-free audit event for sensitive data lifecycle changes."""
+
+    __tablename__ = "data_lifecycle_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "case_id"),
+            ("cases.tenant_id", "cases.id"),
+            name="fk_data_lifecycle_events_tenant_case",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "schema_version = 'data_lifecycle_event/1.0.0'",
+            name="schema_version_supported",
+        ),
+        CheckConstraint(
+            "event_type IN ('SENSITIVE_PAYLOAD_CREATED', 'SENSITIVE_PAYLOAD_MIGRATED', "
+            "'SENSITIVE_PAYLOAD_PURGED', "
+            "'EVIDENCE_RECONCILED', 'EVIDENCE_PURGE_REQUESTED', 'EVIDENCE_PURGED')",
+            name="event_type_allowed",
+        ),
+        CheckConstraint(
+            "resource_type IN ('CASE_SENSITIVE_PAYLOAD', 'EVIDENCE')",
+            name="resource_type_allowed",
+        ),
+        CheckConstraint("jsonb_typeof(details) = 'object'", name="details_object"),
+        CheckConstraint("content_hash ~ '^[0-9a-f]{64}$'", name="content_hash_valid"),
+        CheckConstraint(
+            "operation_key IS NULL OR "
+            "(length(btrim(operation_key)) > 0 AND length(operation_key) <= 255)",
+            name="operation_key_valid",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_data_lifecycle_events_tenant_id"),
+        Index(
+            "ix_data_lifecycle_events_tenant_case_time",
+            "tenant_id",
+            "case_id",
+            "occurred_at",
+            "id",
+        ),
+        Index(
+            "uq_data_lifecycle_events_tenant_operation_key",
+            "tenant_id",
+            "operation_key",
+            unique=True,
+            postgresql_where=text("operation_key IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    retention_policy_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    correlation_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    details: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class CaseEvidenceModel(TimestampMixin, Base):
@@ -468,6 +773,19 @@ class CaseEvidenceModel(TimestampMixin, Base):
             "object_key",
             name="uq_case_evidence_storage_bucket_object_key",
         ),
+        UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "idempotency_key",
+            name="uq_case_evidence_tenant_case_idempotency_key",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "idempotency_key",
+            "sha256",
+            name="uq_case_evidence_tenant_case_idempotency_sha256",
+        ),
         Index(
             "ix_case_evidence_tenant_case_created_id",
             "tenant_id",
@@ -499,6 +817,7 @@ class CaseEvidenceModel(TimestampMixin, Base):
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
 
 
@@ -643,6 +962,10 @@ class AnalysisRunModel(TimestampMixin, Base):
             f"status IN ({_sql_values(ANALYSIS_RUN_STATUSES)})",
             name="status_allowed",
         ),
+        CheckConstraint(
+            f"execution_mode IN ({_sql_values(ANALYSIS_EXECUTION_MODES)})",
+            name="execution_mode_allowed",
+        ),
         CheckConstraint("length(btrim(correlation_id)) > 0", name="correlation_id_nonempty"),
         CheckConstraint("length(btrim(idempotency_key)) > 0", name="idempotency_key_nonempty"),
         CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="request_hash_lower_hex"),
@@ -690,6 +1013,12 @@ class AnalysisRunModel(TimestampMixin, Base):
             "id",
         ),
         Index(
+            "ix_analysis_runs_admission_nonterminal",
+            "tenant_id",
+            "id",
+            postgresql_where=text("status IN ('QUEUED','RUNNING','RETRY_WAITING')"),
+        ),
+        Index(
             "ix_analysis_runs_tenant_case_pipeline_created_id",
             "tenant_id",
             "case_id",
@@ -705,6 +1034,9 @@ class AnalysisRunModel(TimestampMixin, Base):
     case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     pipeline_name: Mapped[str] = mapped_column(String(128), nullable=False)
     pipeline_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    execution_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'PRIMARY'")
+    )
     trigger_type: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     requested_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
@@ -732,6 +1064,12 @@ class AnalysisStageRunModel(TimestampMixin, Base):
             ("tenant_id", "analysis_run_id"),
             ("analysis_runs.tenant_id", "analysis_runs.id"),
             name="fk_analysis_stage_runs_tenant_id_analysis_run_id_analysis_runs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "model_route_plan_id"),
+            ("llm_model_route_plans.tenant_id", "llm_model_route_plans.id"),
+            name="fk_analysis_stage_runs_tenant_route_plan",
             ondelete="RESTRICT",
         ),
         CheckConstraint(
@@ -824,6 +1162,12 @@ class AnalysisStageRunModel(TimestampMixin, Base):
             "id",
         ),
         Index(
+            "ix_analysis_stage_runs_tenant_model_route_plan",
+            "tenant_id",
+            "model_route_plan_id",
+            postgresql_where=text("model_route_plan_id IS NOT NULL"),
+        ),
+        Index(
             "ix_analysis_stage_runs_running_lease",
             "lease_expires_at",
             "id",
@@ -840,6 +1184,7 @@ class AnalysisStageRunModel(TimestampMixin, Base):
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     analysis_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    model_route_plan_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     stage_type: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
@@ -2073,6 +2418,60 @@ class PolicyRetrievalRunHitModel(CreatedAtMixin, Base):
     per_query_ranks: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
 
 
+class PolicyRetrievalSimilarityModel(CreatedAtMixin, Base):
+    __tablename__ = "policy_retrieval_similarity_evidence"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "retrieval_run_id"),
+            ("policy_retrieval_runs.tenant_id", "policy_retrieval_runs.id"),
+            name="fk_policy_retrieval_similarity_run",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "policy_clause_row_id"),
+            ("policy_clauses.tenant_id", "policy_clauses.id"),
+            name="fk_policy_retrieval_similarity_clause",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("similarity_group IN ('NEAREST','LEAST')", name="group_allowed"),
+        CheckConstraint("rank BETWEEN 1 AND 3", name="rank_valid"),
+        CheckConstraint("cosine_similarity BETWEEN -1.0 AND 1.0", name="cosine_similarity_valid"),
+        CheckConstraint("reference_threshold BETWEEN -1.0 AND 1.0", name="reference_value_valid"),
+        UniqueConstraint(
+            "tenant_id",
+            "retrieval_run_id",
+            "similarity_group",
+            "rank",
+            name="uq_policy_retrieval_similarity_rank",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "retrieval_run_id",
+            "similarity_group",
+            "policy_clause_row_id",
+            name="uq_policy_retrieval_similarity_clause",
+        ),
+        Index(
+            "ix_policy_retrieval_similarity_run_group",
+            "tenant_id",
+            "retrieval_run_id",
+            "similarity_group",
+            "rank",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    policy_clause_row_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    similarity_group: Mapped[str] = mapped_column(String(16), nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    cosine_similarity: Mapped[float] = mapped_column(Float, nullable=False)
+    reference_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    threshold_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    matched_query_ids: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+    reason_codes: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
+
+
 class PolicyRetrievalOutboxEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, Base):
     __tablename__ = "policy_retrieval_outbox_events"
     __table_args__ = (
@@ -2883,8 +3282,10 @@ class HumanReviewTaskModel(TimestampMixin, Base):
         CheckConstraint(f"status IN ({_sql_values(HUMAN_REVIEW_STATUSES)})", name="status_allowed"),
         CheckConstraint("version >= 1", name="version_positive"),
         CheckConstraint(
-            "(status = 'CLAIMED' AND current_assignee_id IS NOT NULL) OR "
-            "(status <> 'CLAIMED' AND current_assignee_id IS NULL)",
+            "(status IN ('CLAIMED','WAITING_FOR_EVIDENCE') "
+            "AND current_assignee_id IS NOT NULL) OR "
+            "(status NOT IN ('CLAIMED','WAITING_FOR_EVIDENCE') "
+            "AND current_assignee_id IS NULL)",
             name="assignee_status_consistent",
         ),
         CheckConstraint(
@@ -3101,7 +3502,9 @@ class HumanReviewAssignmentModel(CreatedAtMixin, Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint(
-            "assignment_type IN ('SELF_CLAIM','ADMIN_ASSIGNMENT','ESCALATION_CLAIM')",
+            "assignment_type IN "
+            "('SELF_CLAIM','ADMIN_ASSIGNMENT','ESCALATION_CLAIM','WAITING_OWNER_RECOVERY',"
+            "'CASE_ASSIGNMENT_INHERITANCE')",
             name="type_allowed",
         ),
         CheckConstraint(
@@ -3975,12 +4378,285 @@ class CaseLearningAssetModel(Base):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class OperationalFailureModel(Base):
+    """PII-free, append-only database dead-letter record."""
+
+    __tablename__ = "operational_failures"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id",),
+            ("tenants.id",),
+            name="fk_operational_failures_tenant",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"pipeline IN ({_sql_values(OPERATIONAL_FAILURE_PIPELINES)})",
+            name="pipeline_allowed",
+        ),
+        CheckConstraint(
+            f"failure_kind IN ({_sql_values(OPERATIONAL_FAILURE_KINDS)})",
+            name="kind_allowed",
+        ),
+        CheckConstraint(
+            f"source_table IN ({_sql_values(OPERATIONAL_FAILURE_SOURCES)})",
+            name="source_allowed",
+        ),
+        CheckConstraint(
+            "failure_code ~ '^[A-Z][A-Z0-9_]{1,127}$'",
+            name="code_safe",
+        ),
+        CheckConstraint(
+            "length(btrim(correlation_id)) BETWEEN 1 AND 128",
+            name="correlation_nonempty",
+        ),
+        CheckConstraint(
+            "NOT replayable OR failure_kind = 'DISPATCH'",
+            name="replayable_dispatch_only",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_operational_failures_tenant_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "source_table",
+            "source_event_id",
+            "failure_kind",
+            "failure_code",
+            "occurred_at",
+            name="uq_operational_failures_occurrence",
+        ),
+        Index(
+            "ix_operational_failures_tenant_occurred",
+            "tenant_id",
+            "occurred_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    pipeline: Mapped[str] = mapped_column(String(32), nullable=False)
+    failure_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_table: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_event_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    source_run_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    source_stage_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    failure_code: Mapped[str] = mapped_column(String(128), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    replayable: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
+class OperationalFailureRecoveryRunModel(CreatedAtMixin, Base):
+    """Immutable operator-requested recovery execution."""
+
+    __tablename__ = "operational_failure_recovery_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "failure_id"),
+            ("operational_failures.tenant_id", "operational_failures.id"),
+            name="fk_failure_recovery_runs_failure",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "requested_by"),
+            ("users.tenant_id", "users.id"),
+            name="fk_failure_recovery_runs_user",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "length(btrim(idempotency_key)) BETWEEN 1 AND 255",
+            name="key_nonempty",
+        ),
+        CheckConstraint(
+            "request_hash ~ '^[0-9a-f]{64}$'",
+            name="hash_valid",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_failure_recovery_runs_tenant_id"),
+        UniqueConstraint("tenant_id", "failure_id", name="uq_failure_recovery_runs_failure"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    failure_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    requested_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class OperationalFailureRecoveryEventModel(CreatedAtMixin, Base):
+    """Mutable outbox envelope containing identifiers from one failed delivery."""
+
+    __tablename__ = "operational_failure_recovery_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "failure_id"),
+            ("operational_failures.tenant_id", "operational_failures.id"),
+            name="fk_failure_recovery_events_failure",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "recovery_run_id"),
+            (
+                "operational_failure_recovery_runs.tenant_id",
+                "operational_failure_recovery_runs.id",
+            ),
+            name="fk_failure_recovery_events_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"topic IN ({_sql_values(OPERATIONAL_RECOVERY_TOPICS)})",
+            name="topic_allowed",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(payload) = 'object' AND "
+            "payload ?& ARRAY['event_id','tenant_id','case_id','correlation_id']",
+            name="payload_identifiers",
+        ),
+        CheckConstraint(
+            "(payload - ARRAY['event_id','tenant_id','case_id','correlation_id',"
+            "'analysis_run_id','stage_run_id','retrieval_run_id',"
+            "'grounded_explanation_run_id','policy_evaluation_run_id','resolution_id',"
+            "'external_action_intent_id']) = '{}'::jsonb",
+            name="payload_allowlist",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')",
+            name="status_allowed",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempts_nonnegative"),
+        CheckConstraint(
+            "(status = 'PENDING' AND claimed_at IS NULL AND claim_token IS NULL "
+            "AND claimed_by IS NULL AND published_at IS NULL AND failed_at IS NULL) OR "
+            "(status = 'PROCESSING' AND claimed_at IS NOT NULL AND claim_token IS NOT NULL "
+            "AND claimed_by IS NOT NULL AND published_at IS NULL AND failed_at IS NULL "
+            "AND attempt_count > 0) OR "
+            "(status = 'PUBLISHED' AND claimed_at IS NULL AND claim_token IS NULL "
+            "AND claimed_by IS NULL AND published_at IS NOT NULL AND failed_at IS NULL "
+            "AND attempt_count > 0) OR "
+            "(status = 'FAILED' AND claimed_at IS NULL AND claim_token IS NULL "
+            "AND claimed_by IS NULL AND published_at IS NULL AND failed_at IS NOT NULL "
+            "AND failure_code IS NOT NULL AND last_error IS NOT NULL AND attempt_count > 0)",
+            name="state_consistent",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_failure_recovery_events_tenant_id"),
+        UniqueConstraint("tenant_id", "recovery_run_id", name="uq_failure_recovery_events_run"),
+        Index(
+            "ix_failure_recovery_events_pending",
+            "available_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_failure_recovery_events_processing",
+            "claimed_at",
+            "id",
+            postgresql_where=text("status = 'PROCESSING'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    failure_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    recovery_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    topic: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claim_token: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    claimed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OperationalFailureResolutionModel(CreatedAtMixin, Base):
+    """Exactly one immutable replay or cancellation decision for a failure."""
+
+    __tablename__ = "operational_failure_resolutions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ("tenant_id", "failure_id"),
+            ("operational_failures.tenant_id", "operational_failures.id"),
+            name="fk_failure_resolutions_failure",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "actor_id"),
+            ("users.tenant_id", "users.id"),
+            name="fk_failure_resolutions_user",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ("tenant_id", "recovery_run_id"),
+            (
+                "operational_failure_recovery_runs.tenant_id",
+                "operational_failure_recovery_runs.id",
+            ),
+            name="fk_failure_resolutions_recovery_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            f"action IN ({_sql_values(OPERATIONAL_FAILURE_RESOLUTION_ACTIONS)})",
+            name="action_allowed",
+        ),
+        CheckConstraint(
+            f"reason_code IN ({_sql_values(OPERATIONAL_FAILURE_REASON_CODES)})",
+            name="reason_allowed",
+        ),
+        CheckConstraint(
+            "(action = 'REPLAYED' AND recovery_run_id IS NOT NULL "
+            "AND reason_code = 'OPERATOR_REPLAY') OR "
+            "(action = 'CANCELLED' AND recovery_run_id IS NULL "
+            "AND reason_code = 'OPERATOR_CANCELLED')",
+            name="action_consistent",
+        ),
+        CheckConstraint(
+            "request_hash ~ '^[0-9a-f]{64}$' AND content_hash ~ '^[0-9a-f]{64}$'",
+            name="hashes_valid",
+        ),
+        UniqueConstraint("tenant_id", "id", name="uq_failure_resolutions_tenant_id"),
+        UniqueConstraint("tenant_id", "failure_id", name="uq_failure_resolutions_failure"),
+        UniqueConstraint(
+            "tenant_id",
+            "action",
+            "idempotency_key",
+            name="uq_failure_resolutions_idempotency",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    failure_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    recovery_run_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 PERSISTENCE_MODELS = (
     TenantModel,
     UserModel,
     RoleModel,
     UserRoleModel,
     CaseModel,
+    CaseAssignmentModel,
+    CaseAssignmentActionModel,
+    CaseSensitivePayloadModel,
+    DataLifecycleEventModel,
     CaseEvidenceModel,
     CaseStatusHistoryModel,
     IdempotencyRecordModel,
@@ -4041,4 +4717,8 @@ PERSISTENCE_MODELS = (
     ReviewReportModel,
     CustomerCommunicationSimulationModel,
     CaseLearningAssetModel,
+    OperationalFailureModel,
+    OperationalFailureRecoveryRunModel,
+    OperationalFailureRecoveryEventModel,
+    OperationalFailureResolutionModel,
 )

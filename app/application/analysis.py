@@ -5,7 +5,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.platform.analysis import (
     MULTIMODAL_ANALYSIS_PIPELINE_VERSION,
@@ -13,9 +13,11 @@ from app.platform.analysis import (
     TEXT_EXTRACTION_V2_PIPELINE_VERSION,
     VISION_INPUT_SCHEMA_VERSION,
     VISION_OUTPUT_SCHEMA_VERSION,
+    AnalysisAdmissionLimitExceededError,
     AnalysisAttemptStatus,
     AnalysisAttemptSummary,
     AnalysisEvidenceSnapshot,
+    AnalysisExecutionMode,
     AnalysisFailure,
     AnalysisMaxRetriesExceededError,
     AnalysisPipeline,
@@ -54,8 +56,22 @@ from app.platform.errors import (
     CaseNotFoundError,
     IdempotencyKeyReusedError,
     InconsistentPersistenceStateError,
+    SensitivePayloadUnavailableError,
 )
 from app.platform.evidence import EvidenceType, EvidenceUploadStatus
+from app.platform.model_activation import (
+    ActiveModelReleaseRequiredError,
+    ModelReleaseIdentityMismatchError,
+    ModelReleaseSignatureInvalidError,
+    ModelReleaseTask,
+)
+from app.platform.model_routing import (
+    ModelRouteDeploymentIdentityMismatchError,
+    PinnedModelActivationRequiredError,
+    PinnedModelRoutePlanMismatchError,
+    PinnedModelRoutePlanRequiredError,
+)
+from app.platform.privacy_lifecycle import is_purged_customer_message
 from app.platform.tenant import Permission, Principal
 from app.ports.analysis_repository import (
     AnalysisRunListCriteria,
@@ -63,6 +79,8 @@ from app.ports.analysis_repository import (
     AnalysisUnitOfWorkFactory,
 )
 from app.ports.llm import LLMProvider
+from app.ports.model_activation import ModelReleaseExecutionGuard
+from app.ports.model_routing import ActiveModelRouteResolver, PinnedModelRouteExecutionGuard
 from app.ports.runtime import Clock, IdGenerator
 from app.ports.storage import ReadableObjectStorage
 from app.ports.vision import VisionProvider
@@ -76,6 +94,21 @@ DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_RETRY_BASE = timedelta(seconds=5)
 DEFAULT_RETRY_MAX = timedelta(minutes=5)
 DEFAULT_RETRY_JITTER_RATIO = 0.2
+ANALYSIS_GLOBAL_NONTERMINAL_LIMIT = 4
+ANALYSIS_TENANT_NONTERMINAL_LIMIT = 4
+ANALYSIS_ADMISSION_RETRY_AFTER_SECONDS = 5
+
+
+_ExecutionFailure = (
+    AnalysisProviderError
+    | ActiveModelReleaseRequiredError
+    | ModelReleaseIdentityMismatchError
+    | ModelReleaseSignatureInvalidError
+    | ModelRouteDeploymentIdentityMismatchError
+    | PinnedModelActivationRequiredError
+    | PinnedModelRoutePlanMismatchError
+    | PinnedModelRoutePlanRequiredError
+)
 
 
 class _ApplicationDTO(BaseModel):
@@ -85,6 +118,7 @@ class _ApplicationDTO(BaseModel):
 class StartTextAnalysisCommand(_ApplicationDTO):
     pipeline: AnalysisPipeline
     pipeline_version: str = Field(min_length=1, max_length=32)
+    execution_mode: AnalysisExecutionMode = AnalysisExecutionMode.PRIMARY
     idempotency_key: str = Field(min_length=1, max_length=255, repr=False)
     correlation_id: str = Field(min_length=1, max_length=128)
 
@@ -168,6 +202,10 @@ def canonical_analysis_request_hash(
         "pipeline_version": command.pipeline_version,
         "trigger": AnalysisTrigger.USER_REQUEST.value,
     }
+    # Preserve hashes for all pre-mode PRIMARY requests while making SHADOW a
+    # behavior-bearing idempotency dimension.
+    if command.execution_mode is AnalysisExecutionMode.SHADOW:
+        payload["execution_mode"] = command.execution_mode.value
     encoded = json.dumps(
         payload,
         ensure_ascii=False,
@@ -220,6 +258,7 @@ class StartTextAnalysis:
         prompt_v2: PromptManifest | None = None,
         clock: Clock,
         id_generator: IdGenerator,
+        model_route_resolver: ActiveModelRouteResolver | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._provider = provider
@@ -228,6 +267,7 @@ class StartTextAnalysis:
         self._prompt_v2 = prompt_v2
         self._clock = clock
         self._id_generator = id_generator
+        self._model_route_resolver = model_route_resolver
 
     def execute(
         self,
@@ -268,6 +308,7 @@ class StartTextAnalysis:
             case_id=case_id,
             pipeline=command.pipeline,
             pipeline_version=command.pipeline_version,
+            execution_mode=command.execution_mode,
             trigger=AnalysisTrigger.USER_REQUEST,
             status=AnalysisRunStatus.QUEUED,
             requested_by=principal.user_id,
@@ -324,6 +365,8 @@ class StartTextAnalysis:
             case = uow.cases.get(tenant_id=principal.tenant_id, case_id=case_id)
             if case is None:
                 raise CaseNotFoundError()
+            if is_purged_customer_message(case.customer_message):
+                raise SensitivePayloadUnavailableError()
             principal.require(Permission.ANALYSIS_CREATE)
 
             image_evidence = ()
@@ -355,6 +398,29 @@ class StartTextAnalysis:
                 if existing is None:
                     raise InconsistentPersistenceStateError()
                 return StartTextAnalysisResult(run=existing, replayed=True)
+
+            if is_text_v2 and self._model_route_resolver is not None:
+                resolved_route = self._model_route_resolver.execute(
+                    tenant_id=principal.tenant_id,
+                    task=ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+                    execution_mode=command.execution_mode,
+                )
+                stage = stage.model_copy(
+                    update={"model_route_plan_id": resolved_route.route_plan.id}
+                )
+
+            admission = uow.analysis_runs.lock_admission_counts(tenant_id=principal.tenant_id)
+            if (
+                admission.global_nonterminal >= ANALYSIS_GLOBAL_NONTERMINAL_LIMIT
+                or admission.tenant_nonterminal >= ANALYSIS_TENANT_NONTERMINAL_LIMIT
+            ):
+                raise AnalysisAdmissionLimitExceededError(
+                    global_nonterminal=admission.global_nonterminal,
+                    tenant_nonterminal=admission.tenant_nonterminal,
+                    global_limit=ANALYSIS_GLOBAL_NONTERMINAL_LIMIT,
+                    tenant_limit=ANALYSIS_TENANT_NONTERMINAL_LIMIT,
+                    retry_after_seconds=ANALYSIS_ADMISSION_RETRY_AFTER_SECONDS,
+                )
 
             uow.analysis_runs.add(tenant_id=principal.tenant_id, run=run)
             # Persist the aggregate root before composite-FK snapshot/result children.
@@ -515,6 +581,8 @@ class ExecuteTextExtraction:
         retry_base: timedelta = DEFAULT_RETRY_BASE,
         retry_max: timedelta = DEFAULT_RETRY_MAX,
         retry_jitter_ratio: float = DEFAULT_RETRY_JITTER_RATIO,
+        model_release_guard: ModelReleaseExecutionGuard | None = None,
+        model_route_guard: PinnedModelRouteExecutionGuard | None = None,
     ) -> None:
         if claim_ttl.total_seconds() <= 0:
             raise ValueError("claim_ttl must be positive")
@@ -538,6 +606,8 @@ class ExecuteTextExtraction:
         self._retry_base = retry_base
         self._retry_max = retry_max
         self._retry_jitter_ratio = retry_jitter_ratio
+        self._model_release_guard = model_release_guard
+        self._model_route_guard = model_route_guard
 
     def execute(
         self,
@@ -576,6 +646,7 @@ class ExecuteTextExtraction:
                 return _execution_result(command=command, status=stage.status)
 
             is_v2 = stage.output_schema_version == "2.0"
+            execution_mode = run.execution_mode
             existing_result = (
                 uow.extraction_results_v2.get_by_run(
                     tenant_id=command.tenant_id,
@@ -713,6 +784,26 @@ class ExecuteTextExtraction:
         response = None
         response_v2 = None
         try:
+            if is_v2 and self._model_route_guard is not None:
+                if claimed_stage.model_route_plan_id is None:
+                    raise PinnedModelRoutePlanRequiredError()
+                self._model_route_guard.execute(
+                    tenant_id=command.tenant_id,
+                    route_plan_id=claimed_stage.model_route_plan_id,
+                    task=ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+                    execution_mode=execution_mode,
+                )
+            elif is_v2 and self._model_release_guard is not None:
+                self._model_release_guard.execute(
+                    tenant_id=command.tenant_id,
+                    execution_mode=execution_mode,
+                    task=ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+                )
+            if is_purged_customer_message(case.customer_message):
+                raise LLMProviderRequestRejectedError(
+                    provider=claimed_stage.provider_name,
+                    message="the retained Case no longer has customer prose",
+                )
             self._require_execution_snapshot(stage=claimed_stage)
             if is_v2:
                 if self._prompt_v2 is None:
@@ -744,7 +835,16 @@ class ExecuteTextExtraction:
                     provider=claimed_stage.provider_name,
                 )
                 provider_metadata = response.metadata
-        except AnalysisProviderError as error:
+        except (
+            AnalysisProviderError,
+            ActiveModelReleaseRequiredError,
+            ModelReleaseIdentityMismatchError,
+            ModelReleaseSignatureInvalidError,
+            ModelRouteDeploymentIdentityMismatchError,
+            PinnedModelActivationRequiredError,
+            PinnedModelRoutePlanMismatchError,
+            PinnedModelRoutePlanRequiredError,
+        ) as error:
             return self._persist_provider_failure(
                 command=command,
                 claim_token=claim_token,
@@ -873,6 +973,83 @@ class ExecuteTextExtraction:
             stage_run_id=command.stage_run_id,
             status=AnalysisStageStatus.SUCCEEDED,
         )
+
+    def record_poison_event(self, *, event_id: str) -> None:
+        """Persist a safe terminal audit for one malformed broker delivery."""
+
+        now = self._clock.now().astimezone(UTC)
+        failure = AnalysisFailure(
+            code="ANALYSIS_QUEUE_PAYLOAD_INVALID",
+            message="The analysis queue payload failed validation.",
+            retryable=False,
+        )
+        with self._uow_factory() as uow:
+            event = uow.outbox.get_for_update(event_id=event_id)
+            if event is None:
+                return
+            terminal_event = False
+            try:
+                requested = AnalysisRequestedEvent.model_validate(event.payload)
+            except ValidationError:
+                terminal_event = True
+            else:
+                run = uow.analysis_runs.get_for_update(
+                    tenant_id=requested.tenant_id,
+                    case_id=requested.case_id,
+                    analysis_run_id=requested.analysis_run_id,
+                )
+                stage = uow.stage_runs.get(
+                    tenant_id=requested.tenant_id,
+                    analysis_run_id=requested.analysis_run_id,
+                    stage_run_id=requested.stage_run_id,
+                )
+                if run is None or stage is None:
+                    terminal_event = True
+                elif not run.status.is_terminal and stage.status in {
+                    AnalysisStageStatus.QUEUED,
+                    AnalysisStageStatus.RETRY_WAITING,
+                }:
+                    transitioned_stage = uow.stage_runs.transition(
+                        tenant_id=requested.tenant_id,
+                        analysis_run_id=requested.analysis_run_id,
+                        stage_run_id=requested.stage_run_id,
+                        expected_status=stage.status,
+                        target_status=AnalysisStageStatus.FAILED,
+                        now=now,
+                        failure=failure,
+                    )
+                    if transitioned_stage is None:
+                        raise InconsistentPersistenceStateError()
+                    target_run = aggregate_run_status(
+                        uow.stage_runs.list(
+                            tenant_id=requested.tenant_id,
+                            analysis_run_id=requested.analysis_run_id,
+                        )
+                    )
+                    if (
+                        target_run is not run.status
+                        and uow.analysis_runs.transition(
+                            tenant_id=requested.tenant_id,
+                            analysis_run_id=requested.analysis_run_id,
+                            expected_status=run.status,
+                            target_status=target_run,
+                            now=now,
+                            failure=failure if target_run is AnalysisRunStatus.FAILED else None,
+                        )
+                        is None
+                    ):
+                        raise InconsistentPersistenceStateError()
+                    terminal_event = True
+            recorded = uow.outbox.record_consumer_failure(
+                event_id=event_id,
+                last_error=failure.code,
+                now=now,
+                terminal=terminal_event,
+            )
+            if recorded is None:
+                raise InconsistentPersistenceStateError()
+            uow.flush()
+            uow.commit()
 
     def _fail_expired_attempt_limit(
         self,
@@ -1015,7 +1192,7 @@ class ExecuteTextExtraction:
         command: ExecuteTextExtractionCommand,
         claim_token: str,
         attempt_number: int,
-        error: AnalysisProviderError,
+        error: _ExecutionFailure,
     ) -> ExecuteTextExtractionResult:
         now = self._clock.now().astimezone(UTC)
         retryable = error.retryable and attempt_number < self._max_attempts
@@ -1705,6 +1882,9 @@ class ExecuteRequestedAnalysisStage:
         if stage.stage_type is AnalysisStageType.VISION_ANALYSIS:
             return self._vision.execute(command=command)
         return _execution_result(command=command, status=stage.status)
+
+    def record_poison_event(self, *, event_id: str) -> None:
+        self._text.record_poison_event(event_id=event_id)
 
 
 def _require_case_then_permission(

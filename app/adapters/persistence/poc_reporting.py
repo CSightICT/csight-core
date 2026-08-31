@@ -8,7 +8,7 @@ from typing import cast
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
-from sqlalchemy import and_, func, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.adapters.persistence.human_review import verify_human_decision_integrity
@@ -105,6 +105,7 @@ class SQLAlchemyPocReportingRepository:
         if tenant_uuid is None:
             return _empty_summary()
         with self._factory() as session:
+            eligible_case_count, excluded_case_count = _case_scope_counts(session, tenant_uuid)
             review_time = _review_time_metric(session, tenant_uuid)
             recommendation_difference = _recommendation_difference_metric(session, tenant_uuid)
             additional_evidence = _additional_evidence_metric(session, tenant_uuid)
@@ -113,6 +114,8 @@ class SQLAlchemyPocReportingRepository:
             analysis_failure, analysis_partial = _analysis_terminal_metrics(session, tenant_uuid)
         return PocSummary(
             generated_at=datetime.now(UTC),
+            eligible_case_count=eligible_case_count,
+            excluded_case_count=excluded_case_count,
             review_time=review_time,
             recommendation_difference_rate=recommendation_difference,
             additional_evidence_request_rate=additional_evidence,
@@ -206,7 +209,7 @@ class SQLAlchemyPocReportingRepository:
     def get_data_asset_summary(self, *, tenant_id: str) -> DataAssetSummary:
         tenant_uuid = _optional_uuid(tenant_id)
         if tenant_uuid is None:
-            return _data_asset_summary(())
+            return build_data_asset_summary(())
         with self._factory() as session:
             rows = tuple(
                 session.scalars(
@@ -218,7 +221,7 @@ class SQLAlchemyPocReportingRepository:
                     )
                 )
             )
-        return _data_asset_summary(tuple(_to_case_learning_asset(row) for row in rows))
+        return build_data_asset_summary(tuple(_to_case_learning_asset(row) for row in rows))
 
 
 def create_review_report_for_terminal_transition(
@@ -490,9 +493,8 @@ def create_review_report_for_terminal_transition(
         dry_run_snapshot=_dry_run_snapshot(intent, result),
         qualification_snapshot=cast(dict[str, JsonValue], packet.qualification_snapshot),
         data_scope={
-            "case_data_scope": (
-                "SYNTHETIC_DEMO_ONLY" if commerce_snapshot is not None else "NOT_ATTESTED"
-            ),
+            "case_data_scope": case_row.source_scope,
+            "source_provenance": case_row.source_provenance,
             "commerce_context_included": commerce_snapshot is not None,
             "direct_contact_values_included": False,
             "policy_source_type": rule_set.source_type,
@@ -585,6 +587,8 @@ def _add_case_learning_asset(session: Session, report: ReviewReport) -> CaseLear
             "postal_address_included": False,
             "human_rationale_included": False,
             "source_report_hash": report.content_hash,
+            "source_scope": _report_source_scope(report),
+            "source_provenance": report.data_scope.get("source_provenance"),
         },
         created_at=report.generated_at,
     )
@@ -617,6 +621,12 @@ def _create_degraded_review_report(
 ) -> ReviewReportModel:
     """Persist a minimal failure snapshot without trusting corrupted source content."""
 
+    case_row = session.scalar(
+        select(CaseModel).where(
+            CaseModel.tenant_id == resolution.tenant_id,
+            CaseModel.id == resolution.case_id,
+        )
+    )
     report = ReviewReport.create(
         report_id=str(uuid4()),
         tenant_id=str(resolution.tenant_id),
@@ -655,7 +665,10 @@ def _create_degraded_review_report(
         dry_run_snapshot={"source_integrity": "UNAVAILABLE"},
         qualification_snapshot={"source_integrity": "UNAVAILABLE"},
         data_scope={
-            "case_data_scope": "NOT_ATTESTED",
+            "case_data_scope": case_row.source_scope if case_row is not None else "NOT_ATTESTED",
+            "source_provenance": (
+                case_row.source_provenance if case_row is not None else "unattested/missing-case"
+            ),
             "report_generation": "DEGRADED_INTEGRITY_FAILURE_SNAPSHOT",
             "source_content_included": False,
         },
@@ -670,6 +683,7 @@ def _review_time_metric(session: Session, tenant_id: UUID) -> PocMetric:
             select(func.count(HumanReviewTaskModel.id)).where(
                 HumanReviewTaskModel.tenant_id == tenant_id,
                 HumanReviewTaskModel.status == "RESOLVED",
+                HumanReviewTaskModel.case_id.in_(_eligible_case_ids(tenant_id)),
             )
         )
         or 0
@@ -699,6 +713,7 @@ def _review_time_metric(session: Session, tenant_id: UUID) -> PocMetric:
             HumanReviewAssignmentModel.tenant_id == tenant_id,
             HumanReviewAssignmentModel.released_at.is_not(None),
             HumanReviewTaskModel.status == "RESOLVED",
+            HumanReviewTaskModel.case_id.in_(_eligible_case_ids(tenant_id)),
         )
     ).one()
     return PocMetric.from_fraction(
@@ -718,7 +733,10 @@ def _recommendation_difference_metric(session: Session, tenant_id: UUID) -> PocM
             func.count(HumanReviewDecisionModel.id).filter(
                 HumanReviewDecisionModel.outcome_relation.in_(_COMPARABLE_RELATIONS)
             ),
-        ).where(HumanReviewDecisionModel.tenant_id == tenant_id)
+        ).where(
+            HumanReviewDecisionModel.tenant_id == tenant_id,
+            HumanReviewDecisionModel.review_task_id.in_(_eligible_review_task_ids(tenant_id)),
+        )
     ).one()
     denominator = int(comparable or 0)
     return PocMetric.from_fraction(
@@ -733,7 +751,8 @@ def _additional_evidence_metric(session: Session, tenant_id: UUID) -> PocMetric:
     task_count = int(
         session.scalar(
             select(func.count(HumanReviewTaskModel.id)).where(
-                HumanReviewTaskModel.tenant_id == tenant_id
+                HumanReviewTaskModel.tenant_id == tenant_id,
+                HumanReviewTaskModel.case_id.in_(_eligible_case_ids(tenant_id)),
             )
         )
         or 0
@@ -743,6 +762,7 @@ def _additional_evidence_metric(session: Session, tenant_id: UUID) -> PocMetric:
             select(func.count(func.distinct(HumanReviewActionModel.review_task_id))).where(
                 HumanReviewActionModel.tenant_id == tenant_id,
                 HumanReviewActionModel.action_type == "EVIDENCE_REQUESTED",
+                HumanReviewActionModel.review_task_id.in_(_eligible_review_task_ids(tenant_id)),
             )
         )
         or 0
@@ -772,6 +792,7 @@ def _action_input_missing_metric(session: Session, tenant_id: UUID) -> PocMetric
         )
         .where(
             CaseResolutionModel.tenant_id == tenant_id,
+            CaseResolutionModel.case_id.in_(_eligible_case_ids(tenant_id)),
             HumanReviewDecisionModel.decision_type.in_(_APPROVAL_DECISIONS),
         )
     ).one()
@@ -793,7 +814,10 @@ def _dry_run_success_metric(session: Session, tenant_id: UUID) -> PocMetric:
             func.count(ExternalActionSimulationResultModel.id).filter(
                 ExternalActionSimulationResultModel.outcome.in_(("VALIDATED", "FAILED"))
             ),
-        ).where(ExternalActionSimulationResultModel.tenant_id == tenant_id)
+        ).where(
+            ExternalActionSimulationResultModel.tenant_id == tenant_id,
+            ExternalActionSimulationResultModel.case_id.in_(_eligible_case_ids(tenant_id)),
+        )
     ).one()
     denominator = int(terminal or 0)
     return PocMetric.from_fraction(
@@ -812,7 +836,10 @@ def _analysis_terminal_metrics(session: Session, tenant_id: UUID) -> tuple[PocMe
             func.count(AnalysisRunModel.id).filter(
                 AnalysisRunModel.status.in_(_TERMINAL_ANALYSIS_STATUSES)
             ),
-        ).where(AnalysisRunModel.tenant_id == tenant_id)
+        ).where(
+            AnalysisRunModel.tenant_id == tenant_id,
+            AnalysisRunModel.case_id.in_(_eligible_case_ids(tenant_id)),
+        )
     ).one()
     denominator = int(terminal or 0)
     failure_metric = PocMetric.from_fraction(
@@ -1060,25 +1087,34 @@ def _to_case_learning_asset(row: CaseLearningAssetModel) -> CaseLearningAsset:
     )
 
 
-def _data_asset_summary(records: tuple[CaseLearningAsset, ...]) -> DataAssetSummary:
+def build_data_asset_summary(records: tuple[CaseLearningAsset, ...]) -> DataAssetSummary:
     total = len(records)
-    if total < DATA_ASSET_BASELINE_MINIMUM:
+    scope_distribution: dict[str, int] = {}
+    eligible_records: list[CaseLearningAsset] = []
+    for record in records:
+        scope = _asset_source_scope(record)
+        scope_distribution[scope] = scope_distribution.get(scope, 0) + 1
+        if scope == "PILOT_LIVE":
+            eligible_records.append(record)
+    eligible = len(eligible_records)
+    excluded = total - eligible
+    if eligible < DATA_ASSET_BASELINE_MINIMUM:
         readiness = "COLLECTING_BASELINE"
-    elif total < DATA_ASSET_DRIFT_MINIMUM:
+    elif eligible < DATA_ASSET_DRIFT_MINIMUM:
         readiness = "COLLECTING_COMPARISON"
     else:
         readiness = "READY_FOR_DRIFT_REVIEW"
 
     def distribution(section: str, key: str) -> dict[str, int]:
         counts: dict[str, int] = {}
-        for record in records:
+        for record in eligible_records:
             source = getattr(record, section)
             value = _string(source.get(key)) or "미기록"
             counts[value] = counts.get(value, 0) + 1
         return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
 
     model_distribution: dict[str, int] = {}
-    for record in records:
+    for record in eligible_records:
         model = _string(record.version_snapshot.get("vision_model")) or "미기록"
         version = _string(record.version_snapshot.get("vision_model_version"))
         label = f"{model} · {version}" if version else model
@@ -1086,8 +1122,11 @@ def _data_asset_summary(records: tuple[CaseLearningAsset, ...]) -> DataAssetSumm
     return DataAssetSummary(
         generated_at=datetime.now(UTC),
         total_records=total,
+        eligible_records=eligible,
+        excluded_records=excluded,
+        source_scope_distribution=dict(sorted(scope_distribution.items())),
         readiness_status=readiness,
-        drift_evaluation_available=total >= DATA_ASSET_DRIFT_MINIMUM,
+        drift_evaluation_available=eligible >= DATA_ASSET_DRIFT_MINIMUM,
         decision_distribution=distribution("label_snapshot", "human_decision"),
         resolution_distribution=distribution("label_snapshot", "resolution_status"),
         product_distribution=distribution("feature_snapshot", "product_ref"),
@@ -1095,8 +1134,47 @@ def _data_asset_summary(records: tuple[CaseLearningAsset, ...]) -> DataAssetSumm
             sorted(model_distribution.items(), key=lambda item: (-item[1], item[0]))
         ),
         policy_version_distribution=distribution("version_snapshot", "policy_rule_set_version"),
-        recent_records=records[:20],
+        recent_records=tuple(eligible_records[:20]),
     )
+
+
+def _asset_source_scope(record: CaseLearningAsset) -> str:
+    value = _string(record.privacy_scope.get("source_scope"))
+    if value == "SYNTHETIC_DEMO_ONLY":
+        return "SYNTHETIC_DEMO"
+    return value or "NOT_ATTESTED"
+
+
+def _report_source_scope(report: ReviewReport) -> str:
+    value = _string(report.data_scope.get("case_data_scope"))
+    if value == "SYNTHETIC_DEMO_ONLY":
+        return "SYNTHETIC_DEMO"
+    return value or "NOT_ATTESTED"
+
+
+def _eligible_case_ids(tenant_id: UUID) -> Select[tuple[UUID]]:
+    return select(CaseModel.id).where(
+        CaseModel.tenant_id == tenant_id,
+        CaseModel.source_scope == "PILOT_LIVE",
+    )
+
+
+def _eligible_review_task_ids(tenant_id: UUID) -> Select[tuple[UUID]]:
+    return select(HumanReviewTaskModel.id).where(
+        HumanReviewTaskModel.tenant_id == tenant_id,
+        HumanReviewTaskModel.case_id.in_(_eligible_case_ids(tenant_id)),
+    )
+
+
+def _case_scope_counts(session: Session, tenant_id: UUID) -> tuple[int, int]:
+    eligible, total = session.execute(
+        select(
+            func.count(CaseModel.id).filter(CaseModel.source_scope == "PILOT_LIVE"),
+            func.count(CaseModel.id),
+        ).where(CaseModel.tenant_id == tenant_id)
+    ).one()
+    eligible_count = int(eligible or 0)
+    return eligible_count, int(total or 0) - eligible_count
 
 
 def _record(value: object) -> dict[str, object]:

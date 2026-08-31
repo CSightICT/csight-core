@@ -16,6 +16,7 @@ from app.adapters.persistence.models import (
     CustomerCommunicationSimulationModel,
     ReviewReportModel,
 )
+from app.adapters.persistence.poc_reporting import build_data_asset_summary
 from app.platform.poc_reporting import (
     CaseLearningAsset,
     CustomerCommunicationSimulation,
@@ -174,6 +175,31 @@ def test_case_learning_asset_excludes_pii_by_contract() -> None:
     encoded = asset.model_dump_json()
     assert "phone" not in encoded
     assert "address" not in encoded
+
+
+def test_synthetic_assets_never_make_pilot_drift_review_ready() -> None:
+    records = tuple(
+        CaseLearningAsset.create(
+            asset_id=f"asset-{index}",
+            tenant_id="tenant-1",
+            case_id=f"case-{index}",
+            review_report_id=f"report-{index}",
+            subject_pseudonym=None,
+            feature_snapshot={"product_ref": "SKU-1"},
+            label_snapshot={"human_decision": "APPROVE_REFUND"},
+            version_snapshot={"policy_rule_set_version": "1.0.0"},
+            privacy_scope={"source_scope": "SYNTHETIC_DEMO"},
+            created_at=datetime(2026, 8, 28, tzinfo=UTC),
+        )
+        for index in range(60)
+    )
+    summary = build_data_asset_summary(records)
+    assert summary.total_records == 60
+    assert summary.eligible_records == 0
+    assert summary.excluded_records == 60
+    assert summary.drift_evaluation_available is False
+    assert summary.readiness_status == "COLLECTING_BASELINE"
+    assert summary.recent_records == ()
 
 
 def test_communication_and_learning_mappings_enforce_immutable_safety_boundaries() -> None:

@@ -90,6 +90,29 @@ curl -fsS http://127.0.0.1:8080/web-health
 make down
 ```
 
+### macOS 원클릭 서버 제어
+
+바탕화면의 `CSight 서버 제어.app`을 더블클릭하면 터미널 명령 없이 다음 작업을 선택할 수 있습니다.
+
+- `서버 켜기 (빠른 시작)`: 정책 검색용 Qwen Embedding을 먼저 시작하고 모델 로딩 완료 후 기존 이미지로 전체 Core 스택 시작
+- `코드 반영 후 켜기`: Embedding 준비 후 이미지를 다시 빌드하고 Migration을 적용한 뒤 전체 Core 스택 시작
+- `서버 상태 확인`: 실행 서비스 수와 API·상담원 화면·정책 검색 엔진·`doongdoong.org` 상태 표시
+- `상담원 화면 열기`: `http://127.0.0.1:8080` 열기
+- `서버 끄기`: 공개 시연 연결, Docker Core와 앱이 시작한 Embedding을 정지하고 PostgreSQL·RabbitMQ·MinIO Named Volume 보존
+
+현재 시연 프로필은 `LLM_PROVIDER=mock`, `VISION_PROVIDER=mock`이며 정책 검색만 host-native
+Embedding `127.0.0.1:8091`을 필수로 사용합니다. 제어 앱은 stale PID를 그대로 신뢰하지 않고 실제
+프로세스와 `/health`, `/v1/models`를 확인합니다. Embedding은 macOS의 분리 실행 세션에서 유지되므로
+제어 대화상자가 닫혀도 종료되지 않으며, 첫 실행에서는 모델 로딩을 최대 3분간 기다립니다.
+Core가 준비되면 기존 macOS Cloudflare Tunnel 실행 항목을 확인해 `https://doongdoong.org`도 함께
+연결하며, 종료할 때는 설정 파일을 삭제하지 않고 실행만 멈춥니다.
+
+앱이 호출하는 실제 제어 로직은
+[`scripts/csight_server_control.sh`](scripts/csight_server_control.sh), macOS 대화상자 원본은
+[`scripts/csight_server_control.applescript`](scripts/csight_server_control.applescript)에 있습니다.
+프로젝트 폴더를 다른 경로로 옮기면 AppleScript의 `controllerPath`를 새 경로로 바꾼 뒤 앱을 다시
+컴파일해야 합니다.
+
 ## 개발 명령
 
 | 목적 | 명령 |
@@ -443,6 +466,21 @@ Sprint 2.5의 재현 가능한 GPU Node 자산은 [`infra/llm`](infra/llm/README
 Tailscale private address에만 bind하고 인증을 필수로 하며, Core readiness에는 포함하지
 않습니다. Qwen은 text-only, non-thinking 구조화 추출에만 사용하고 Vision 결함 분석 대체재로
 사용하지 않습니다.
+
+현재 4090 후보와 승격 차단 사유는 `make verify-qwen4090-candidates`로 확인합니다. 온라인
+준비 단계에서는 `make audit-qwen4090-hub`로 모든 후보의 정확한 Hugging Face revision,
+license, base-model lineage와 safetensors byte 합계도 matrix와 대조합니다. 이 감사는 메타데이터만
+읽고 모델을 다운로드하거나 활성화하지 않습니다. 실제 제품
+프로필을 요구하는 배포 관문은 `make require-qwen4090-release`이며, 자격 후보가 없으면 fail
+closed합니다. 이 검사는 모델을 다운로드하거나 활성화하지 않습니다.
+
+실제 Qwen Extraction v2 비교는
+[`QWEN4090_QUALIFICATION_GUIDE.md`](docs/llm/QWEN4090_QUALIFICATION_GUIDE.md)의
+`Dev → profile freeze → sealed Test` 순서만 사용합니다. 결과 패키지는 합성 record ID와 지표만
+남기며 입력 문장, 모델 prediction, provider response/request ID, reasoning은 저장하지 않습니다.
+실행 후보는 먼저 `make verify-qwen4090-compose-profiles`로 matrix 정합성을 확인하고
+`make start-qwen4090-candidate QWEN4090_CANDIDATE_ID=...`로 하나만 Shadow 기동합니다. 이 명령은
+Core의 PRIMARY 설정이나 최종결정 경로를 바꾸지 않습니다.
 
 ```bash
 unset CSIGHT_ACCESS_TOKEN CSIGHT_CASE_ID CSIGHT_ANALYSIS_KEY CSIGHT_ANALYSIS_RUN_ID

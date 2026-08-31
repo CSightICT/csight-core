@@ -34,6 +34,7 @@ from app.platform.errors import (
 )
 from app.platform.evidence import EvidenceMetadata, EvidenceType, EvidenceUploadStatus
 from app.platform.tenant import Permission, Principal, Role
+from tests.case_assignment_support import AllowCaseAccess
 
 pytestmark = pytest.mark.unit
 
@@ -178,6 +179,7 @@ class FakeAddImageEvidence:
     declared_content_type: str | None = None
     evidence_type: EvidenceType | None = None
     content: bytes = b""
+    idempotency_key: str | None = None
 
     def execute(
         self,
@@ -188,6 +190,7 @@ class FakeAddImageEvidence:
         filename: str | None,
         declared_content_type: str | None,
         evidence_type: EvidenceType = EvidenceType.IMAGE,
+        idempotency_key: str | None = None,
     ) -> EvidenceMetadata:
         principal.require(Permission.EVIDENCE_UPLOAD)
         if filename == "too-large.png":
@@ -195,6 +198,7 @@ class FakeAddImageEvidence:
         self.filename = filename
         self.declared_content_type = declared_content_type
         self.evidence_type = evidence_type
+        self.idempotency_key = idempotency_key
         self.content = content.read()
         return _evidence()
 
@@ -289,6 +293,9 @@ def _build_http_context(
         get_evidence_metadata=FakeGetEvidenceMetadata(),
         create_evidence_access_url=FakeCreateEvidenceAccessUrl(),
         read_evidence_content=FakeReadEvidenceContent(),
+        get_case_assignment=FakeGetCase(),  # pyright: ignore[reportArgumentType]
+        assign_case=FakeGetCase(),  # pyright: ignore[reportArgumentType]
+        authorize_case_access=AllowCaseAccess(),  # pyright: ignore[reportArgumentType]
     )
     settings = Settings(
         _env_file=None,  # pyright: ignore[reportCallIssue]
@@ -513,7 +520,7 @@ def test_evidence_upload_list_metadata_and_access_url(
 ) -> None:
     uploaded = http_context.client.post(
         "/api/v1/cases/case-1/evidence",
-        headers=_authorization(),
+        headers={**_authorization(), "Idempotency-Key": "evidence-upload-1"},
         data={"evidence_type": "IMAGE"},
         files={"file": ("image.png", b"png-data", "image/png")},
     )
@@ -535,6 +542,7 @@ def test_evidence_upload_list_metadata_and_access_url(
     assert http_context.add_evidence.filename == "image.png"
     assert http_context.add_evidence.declared_content_type == "image/png"
     assert http_context.add_evidence.evidence_type is EvidenceType.IMAGE
+    assert http_context.add_evidence.idempotency_key == "evidence-upload-1"
     assert http_context.add_evidence.content == b"png-data"
 
     assert listed.status_code == 200

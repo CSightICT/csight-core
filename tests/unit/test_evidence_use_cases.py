@@ -30,11 +30,14 @@ from app.platform.errors import (
     EmptyFileError,
     EvidenceUploadFailedError,
     ForbiddenError,
+    IdempotencyKeyReusedError,
     StorageUnavailableError,
+    UnsafeEvidenceError,
 )
 from app.platform.evidence import EvidenceMetadata, EvidenceUploadStatus
 from app.platform.tenant import Principal, Role
-from app.ports.case_repository import CaseListCriteria, IdempotencyClaim
+from app.ports.case_repository import CaseListCriteria, EvidenceClaim, IdempotencyClaim
+from app.ports.evidence_security import ImageSanitizer, MalwareDetectedError, SanitizedImage
 from app.ports.file_inspection import EmptyFileError as InspectionEmptyFileError
 from app.ports.file_inspection import ImageInspectionResult
 from app.ports.observability import CompensationStep
@@ -89,6 +92,19 @@ class Evidence:
         if tenant_id != evidence.tenant_id:
             raise ValueError("evidence tenant mismatch")
         self.items[(evidence.tenant_id, evidence.case_id, evidence.id)] = evidence
+
+    def claim(self, *, tenant_id: str, evidence: EvidenceMetadata) -> EvidenceClaim:
+        if evidence.idempotency_key is None:
+            raise AssertionError("claim requires idempotency_key")
+        for item in self.items.values():
+            if (
+                item.tenant_id,
+                item.case_id,
+                item.idempotency_key,
+            ) == (tenant_id, evidence.case_id, evidence.idempotency_key):
+                return EvidenceClaim(claimed=False, evidence=item)
+        self.add(tenant_id=tenant_id, evidence=evidence)
+        return EvidenceClaim(claimed=True, evidence=evidence)
 
     def get(self, *, tenant_id: str, case_id: str, evidence_id: str) -> EvidenceMetadata | None:
         return self.items.get((tenant_id, case_id, evidence_id))
@@ -178,6 +194,7 @@ class Inspector:
     def __init__(self) -> None:
         self.calls = 0
         self.error: Exception | None = None
+        self.sha256 = hashlib.sha256(b"content").hexdigest()
 
     def inspect(
         self,
@@ -196,7 +213,7 @@ class Inspector:
             extension="png",
             content_type="image/png",
             size_bytes=7,
-            sha256=hashlib.sha256(b"content").hexdigest(),
+            sha256=self.sha256,
             width=8,
             height=6,
         )
@@ -318,6 +335,7 @@ def build_service(
     storage: Storage,
     inspector: Inspector,
     observer: RecordingCompensationObserver | None = None,
+    sanitizer: ImageSanitizer | None = None,
 ) -> AddImageEvidence:
     return AddImageEvidence(
         uow_factory=Factory(uow),
@@ -327,7 +345,22 @@ def build_service(
         clock=StaticClock(),
         id_generator=OneId(),
         compensation_observer=observer or RecordingCompensationObserver(),
+        image_sanitizer=sanitizer,
     )
+
+
+class Sanitizer:
+    def __init__(self, *, error: Exception | None = None) -> None:
+        self.calls = 0
+        self.error = error
+
+    def sanitize(self, content: BinaryIO) -> SanitizedImage:
+        assert content.read() == b"content"
+        content.seek(0)
+        self.calls += 1
+        if self.error is not None:
+            raise self.error
+        return SanitizedImage(content=b"cleaned", image_format="PNG")
 
 
 def test_image_upload_uses_opaque_key_and_becomes_available() -> None:
@@ -351,6 +384,100 @@ def test_image_upload_uses_opaque_key_and_becomes_available() -> None:
     assert "secret" not in result.object_key
     assert storage.put_keys == [expected_key]
     assert uow.evidence.statuses == [EvidenceUploadStatus.AVAILABLE]
+
+
+def test_image_upload_stores_only_sanitized_bytes_when_gate_is_configured() -> None:
+    case = make_case()
+    uow, storage, inspector = UnitOfWork(case), Storage(), Inspector()
+    sanitizer = Sanitizer()
+
+    result = build_service(uow, storage, inspector, sanitizer=sanitizer).execute(
+        principal=principal(),
+        case_id=case.id,
+        content=BytesIO(b"content"),
+        filename="photo.png",
+        declared_content_type="image/png",
+    )
+
+    assert sanitizer.calls == 1
+    assert inspector.calls == 1
+    assert storage.contents[result.object_key] == b"cleaned"
+
+
+def test_image_upload_scans_original_before_any_image_inspection() -> None:
+    case = make_case()
+    uow, storage, inspector = UnitOfWork(case), Storage(), Inspector()
+    sanitizer = Sanitizer(error=MalwareDetectedError("rejected"))
+
+    with pytest.raises(UnsafeEvidenceError):
+        build_service(uow, storage, inspector, sanitizer=sanitizer).execute(
+            principal=principal(),
+            case_id=case.id,
+            content=BytesIO(b"content"),
+            filename="photo.png",
+            declared_content_type="image/png",
+        )
+
+    assert sanitizer.calls == 1
+    assert inspector.calls == 0
+    assert storage.put_keys == []
+    assert uow.evidence.items == {}
+
+
+def test_image_upload_idempotency_reuses_one_row_and_one_object() -> None:
+    case = make_case()
+    uow, storage, inspector = UnitOfWork(case), Storage(), Inspector()
+    service = build_service(uow, storage, inspector)
+
+    first = service.execute(
+        principal=principal(),
+        case_id=case.id,
+        content=BytesIO(b"content"),
+        filename="photo.png",
+        declared_content_type="image/png",
+        idempotency_key="upload-1",
+    )
+    replay = service.execute(
+        principal=principal(),
+        case_id=case.id,
+        content=BytesIO(b"content"),
+        filename="photo.png",
+        declared_content_type="image/png",
+        idempotency_key="upload-1",
+    )
+
+    assert replay.id == first.id
+    assert replay.upload_status is EvidenceUploadStatus.AVAILABLE
+    assert len(uow.evidence.items) == 1
+    assert storage.put_keys == [first.object_key]
+
+
+def test_image_upload_idempotency_rejects_different_content_hash() -> None:
+    case = make_case()
+    uow, storage, inspector = UnitOfWork(case), Storage(), Inspector()
+    service = build_service(uow, storage, inspector)
+    service.execute(
+        principal=principal(),
+        case_id=case.id,
+        content=BytesIO(b"content"),
+        filename="photo.png",
+        declared_content_type="image/png",
+        idempotency_key="upload-1",
+    )
+    inspector.sha256 = "b" * 64
+
+    with pytest.raises(IdempotencyKeyReusedError):
+        service.execute(
+            principal=principal(),
+            case_id=case.id,
+            content=BytesIO(b"different"),
+            filename="photo.png",
+            declared_content_type="image/png",
+            idempotency_key="upload-1",
+        )
+
+    assert len(uow.evidence.items) == 1
+    assert len(storage.put_keys) == 1
 
 
 def test_upload_checks_tenant_and_permission_before_inspecting_bytes() -> None:

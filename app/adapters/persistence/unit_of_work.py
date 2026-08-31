@@ -47,9 +47,19 @@ from app.ports.case_repository import (
 class SQLAlchemyCaseUnitOfWork:
     """One explicit SQLAlchemy session shared by all Case repositories."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(
+        self,
+        session: Session,
+        *,
+        sensitive_payload_retention_policy_version: str = "development/30d",
+        sensitive_payload_retention_days: int = 30,
+    ) -> None:
         self._session = session
-        self.cases: CaseRepository = SQLAlchemyCaseRepository(session)
+        self.cases: CaseRepository = SQLAlchemyCaseRepository(
+            session,
+            sensitive_payload_retention_policy_version=(sensitive_payload_retention_policy_version),
+            sensitive_payload_retention_days=sensitive_payload_retention_days,
+        )
         self.evidence: EvidenceRepository = SQLAlchemyEvidenceRepository(session)
         self.status_history: CaseStatusHistoryRepository = SQLAlchemyCaseStatusHistoryRepository(
             session
@@ -82,11 +92,27 @@ class SQLAlchemyCaseUnitOfWork:
 
 
 class SQLAlchemyCaseUnitOfWorkFactory:
-    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        *,
+        sensitive_payload_retention_policy_version: str = "development/30d",
+        sensitive_payload_retention_days: int = 30,
+    ) -> None:
         self._session_factory = session_factory
+        self._sensitive_payload_retention_policy_version = (
+            sensitive_payload_retention_policy_version
+        )
+        self._sensitive_payload_retention_days = sensitive_payload_retention_days
 
     def __call__(self) -> SQLAlchemyCaseUnitOfWork:
-        return SQLAlchemyCaseUnitOfWork(self._session_factory())
+        return SQLAlchemyCaseUnitOfWork(
+            self._session_factory(),
+            sensitive_payload_retention_policy_version=(
+                self._sensitive_payload_retention_policy_version
+            ),
+            sensitive_payload_retention_days=self._sensitive_payload_retention_days,
+        )
 
 
 class SQLAlchemyAnalysisUnitOfWork(AnalysisUnitOfWork):
@@ -151,8 +177,17 @@ class SQLAlchemyAnalysisUnitOfWorkFactory:
         return SQLAlchemyAnalysisUnitOfWork(self._session_factory())
 
 
-def create_case_unit_of_work_factory(engine: Engine) -> SQLAlchemyCaseUnitOfWorkFactory:
-    return SQLAlchemyCaseUnitOfWorkFactory(create_session_factory(engine))
+def create_case_unit_of_work_factory(
+    engine: Engine,
+    *,
+    sensitive_payload_retention_policy_version: str = "development/30d",
+    sensitive_payload_retention_days: int = 30,
+) -> SQLAlchemyCaseUnitOfWorkFactory:
+    return SQLAlchemyCaseUnitOfWorkFactory(
+        create_session_factory(engine),
+        sensitive_payload_retention_policy_version=sensitive_payload_retention_policy_version,
+        sensitive_payload_retention_days=sensitive_payload_retention_days,
+    )
 
 
 def create_analysis_unit_of_work_factory(engine: Engine) -> SQLAlchemyAnalysisUnitOfWorkFactory:

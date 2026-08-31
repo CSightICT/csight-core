@@ -30,6 +30,7 @@ from app.platform.poc_reporting import (
     ReviewReport,
 )
 from app.platform.tenant import Principal, Role
+from tests.case_assignment_support import AllowCaseAccess
 
 pytestmark = pytest.mark.unit
 NOW = datetime(2026, 8, 27, tzinfo=UTC)
@@ -168,6 +169,9 @@ def _client(repository: _Repository) -> TestClient:
         list_case_evidence=unused,
         get_evidence_metadata=unused,
         create_evidence_access_url=unused,
+        get_case_assignment=unused,
+        assign_case=unused,
+        authorize_case_access=AllowCaseAccess(),  # pyright: ignore[reportArgumentType]
     )
     reporting = PocReportingServiceContainer(
         get_case_review_report=GetCaseReviewReport(repository),  # pyright: ignore[reportArgumentType]

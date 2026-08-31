@@ -47,6 +47,7 @@ class EvidenceMetadata(BaseModel):
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     width: int = Field(gt=0)
     height: int = Field(gt=0)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
     created_by: str = Field(min_length=1)
     created_at: datetime
     updated_at: datetime

@@ -83,6 +83,34 @@ class AnalysisPipelineNotSupportedError(AnalysisError):
     code = "ANALYSIS_PIPELINE_NOT_SUPPORTED"
 
 
+class AnalysisAdmissionLimitExceededError(AnalysisError):
+    """A new nonterminal run would exceed the serialized admission budget."""
+
+    code = "ANALYSIS_ADMISSION_LIMIT_EXCEEDED"
+
+    def __init__(
+        self,
+        *,
+        global_nonterminal: int,
+        tenant_nonterminal: int,
+        global_limit: int,
+        tenant_limit: int,
+        retry_after_seconds: int,
+    ) -> None:
+        self.global_nonterminal = global_nonterminal
+        self.tenant_nonterminal = tenant_nonterminal
+        self.global_limit = global_limit
+        self.tenant_limit = tenant_limit
+        self.retry_after_seconds = retry_after_seconds
+        super().__init__(self.code)
+
+
+class ShadowAnalysisDownstreamForbiddenError(AnalysisError):
+    """Observation-only analysis cannot create a decision-bearing workflow."""
+
+    code = "SHADOW_ANALYSIS_DOWNSTREAM_FORBIDDEN"
+
+
 class AnalysisAlreadyTerminalError(AnalysisError):
     code = "ANALYSIS_ALREADY_TERMINAL"
 

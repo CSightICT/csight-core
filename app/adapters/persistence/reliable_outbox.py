@@ -90,6 +90,7 @@ class ReliableSQLAlchemyOutboxDispatcher:
         retry_max: timedelta = DEFAULT_RETRY_MAX,
         now_factory: Callable[[], datetime] = utc_now,
         claim_token_factory: Callable[[], UUID] = uuid4,
+        terminalize_run_on_failure: bool = True,
     ) -> None:
         if not claimed_by.strip():
             raise ValueError("claimed_by must not be blank")
@@ -111,6 +112,7 @@ class ReliableSQLAlchemyOutboxDispatcher:
         self._retry_max = retry_max
         self._now_factory = now_factory
         self._claim_token_factory = claim_token_factory
+        self._terminalize_run_on_failure = terminalize_run_on_failure
 
     def execute(self) -> DispatchOutboxResult:
         claim_token = self._claim_token_factory()
@@ -292,7 +294,8 @@ class ReliableSQLAlchemyOutboxDispatcher:
             )
             if result.rowcount != 1:
                 return False
-            self._fail_unrecoverable_run(session=session, event=event, now=now)
+            if self._terminalize_run_on_failure:
+                self._fail_unrecoverable_run(session=session, event=event, now=now)
         return True
 
     def _fail_unrecoverable_run(

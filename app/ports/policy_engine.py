@@ -7,6 +7,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.platform.analysis import AnalysisExecutionMode
 from app.platform.policy_engine import (
     PolicyEvaluation,
     PolicyEvaluationInput,
@@ -33,6 +34,10 @@ class PolicyEvaluationRunDetail(_DTO):
 
 
 class PolicyEngineRepository(Protocol):
+    def get_analysis_execution_mode(
+        self, *, tenant_id: str, case_id: str, analysis_run_id: str
+    ) -> AnalysisExecutionMode | None: ...
+
     def create(
         self,
         *,

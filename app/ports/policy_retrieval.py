@@ -98,6 +98,24 @@ class DenseRetriever(Protocol):
         embedding_profile_id: str,
     ) -> tuple[PolicySearchHit, ...]: ...
 
+    def retrieve_least_similar(
+        self,
+        *,
+        query: PolicySearchQuery,
+        query_vector: EmbeddingVector,
+        embedding_profile_id: str,
+    ) -> tuple[PolicySearchHit, ...]: ...
+
+    def retrieve_closest_to_score(
+        self,
+        *,
+        query: PolicySearchQuery,
+        query_vector: EmbeddingVector,
+        embedding_profile_id: str,
+        reference_score: float,
+        limit: int,
+    ) -> tuple[PolicySearchHit, ...]: ...
+
 
 class HybridRetriever(Protocol):
     def fuse(

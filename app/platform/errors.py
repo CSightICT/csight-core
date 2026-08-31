@@ -65,6 +65,16 @@ class InvalidImageContentError(CSightError):
     default_message = "The uploaded file is not a valid supported image."
 
 
+class UnsafeEvidenceError(CSightError):
+    code = "UNSAFE_EVIDENCE"
+    default_message = "The uploaded evidence did not pass the security scan."
+
+
+class EvidenceSecurityUnavailableError(CSightError):
+    code = "EVIDENCE_SECURITY_UNAVAILABLE"
+    default_message = "Evidence security scanning is temporarily unavailable."
+
+
 class ImageDimensionLimitExceededError(CSightError):
     code = "IMAGE_DIMENSION_LIMIT_EXCEEDED"
     default_message = "The uploaded image exceeds the configured pixel limit."
@@ -95,3 +105,25 @@ class InconsistentPersistenceStateError(CSightError):
 
     code = "INCONSISTENT_PERSISTENCE_STATE"
     default_message = "The persisted resource state is inconsistent."
+
+
+class SensitivePayloadUnavailableError(CSightError):
+    """The retained Case shell no longer has customer prose available for new work."""
+
+    code = "SENSITIVE_PAYLOAD_UNAVAILABLE"
+    default_message = "The customer inquiry is no longer available under its retention policy."
+
+
+class OperationalFailureNotFoundError(CSightError):
+    code = "OPERATIONAL_FAILURE_NOT_FOUND"
+    default_message = "The requested operational failure was not found."
+
+
+class OperationalFailureAlreadyResolvedError(CSightError):
+    code = "OPERATIONAL_FAILURE_ALREADY_RESOLVED"
+    default_message = "The operational failure already has a terminal recovery action."
+
+
+class OperationalFailureNotReplayableError(CSightError):
+    code = "OPERATIONAL_FAILURE_NOT_REPLAYABLE"
+    default_message = "The operational failure cannot be replayed safely."

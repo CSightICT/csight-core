@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import timedelta
 from typing import BinaryIO, Protocol, cast
 
@@ -11,7 +11,12 @@ from minio import Minio
 from minio.error import S3Error
 from urllib3 import PoolManager, Timeout
 
-from app.ports.storage import StoredObject
+from app.ports.storage import (
+    ObjectInventoryPage,
+    ObjectVersionInventoryPage,
+    StoredObject,
+    StoredObjectVersion,
+)
 
 _MAX_PRESIGN_TTL = timedelta(days=7)
 _MISSING_OBJECT_CODES = frozenset({"NoSuchKey", "NoSuchObject", "NotFound"})
@@ -34,6 +39,17 @@ class _ObjectStat(Protocol):
     def metadata(self) -> Mapping[str, object] | None: ...
 
 
+class _ListedObject(Protocol):
+    @property
+    def object_name(self) -> str | None: ...
+
+    @property
+    def version_id(self) -> str | None: ...
+
+    @property
+    def is_delete_marker(self) -> bool | None: ...
+
+
 class _MinioClient(Protocol):
     def put_object(
         self,
@@ -47,7 +63,20 @@ class _MinioClient(Protocol):
 
     def stat_object(self, bucket_name: str, object_name: str) -> _ObjectStat: ...
 
-    def remove_object(self, bucket_name: str, object_name: str) -> None: ...
+    def remove_object(
+        self,
+        bucket_name: str,
+        object_name: str,
+        version_id: str | None = None,
+    ) -> None: ...
+
+    def list_objects(
+        self,
+        bucket_name: str,
+        prefix: str | None = None,
+        recursive: bool = False,
+        include_version: bool = False,
+    ) -> Iterable[_ListedObject]: ...
 
     def presigned_get_object(
         self,
@@ -174,6 +203,91 @@ class MinioObjectStorage:
             raise
         return True
 
+    def stat(self, key: str) -> StoredObject | None:
+        """Return bounded, non-secret metadata for reconciliation."""
+
+        _validate_object_key(key)
+        try:
+            value = self._internal_client.stat_object(self._bucket, key)
+        except S3Error as exc:
+            if exc.code in _MISSING_OBJECT_CODES:
+                return None
+            raise
+        sha256 = _sha256_from_metadata(value.metadata)
+        if value.size is None or value.content_type is None or sha256 is None:
+            return StoredObject(
+                bucket=self._bucket,
+                key=key,
+                content_type=value.content_type or "application/octet-stream",
+                size_bytes=value.size or 0,
+                sha256=sha256 or "0" * 64,
+            )
+        return StoredObject(
+            bucket=self._bucket,
+            key=key,
+            content_type=value.content_type,
+            size_bytes=value.size,
+            sha256=sha256,
+        )
+
+    def list_keys(self, *, prefix: str, limit: int) -> ObjectInventoryPage:
+        """Return a deterministic bounded key page without object payloads."""
+
+        _validate_object_prefix(prefix)
+        if not 1 <= limit <= 10_000:
+            raise ValueError("Object inventory limit must be between 1 and 10000")
+        keys: list[str] = []
+        truncated = False
+        for item in self._internal_client.list_objects(
+            self._bucket,
+            prefix=prefix,
+            recursive=True,
+        ):
+            key = item.object_name
+            if key is None:
+                continue
+            _validate_object_key(key)
+            if len(keys) == limit:
+                truncated = True
+                break
+            keys.append(key)
+        return ObjectInventoryPage(keys=tuple(sorted(keys)), truncated=truncated)
+
+    def list_versions(self, *, key: str, limit: int) -> ObjectVersionInventoryPage:
+        """List recoverable versions for exactly one key, including delete markers."""
+
+        _validate_object_key(key)
+        if not 1 <= limit <= 10_000:
+            raise ValueError("Object version inventory limit must be between 1 and 10000")
+        versions: list[StoredObjectVersion] = []
+        truncated = False
+        for item in self._internal_client.list_objects(
+            self._bucket,
+            prefix=key,
+            recursive=True,
+            include_version=True,
+        ):
+            if item.object_name != key:
+                continue
+            if len(versions) == limit:
+                truncated = True
+                break
+            versions.append(
+                StoredObjectVersion(
+                    key=key,
+                    version_id=item.version_id,
+                    is_delete_marker=bool(item.is_delete_marker),
+                )
+            )
+        versions.sort(key=lambda item: (item.version_id or "", item.is_delete_marker))
+        return ObjectVersionInventoryPage(versions=tuple(versions), truncated=truncated)
+
+    def delete_version(self, *, key: str, version_id: str | None) -> None:
+        _validate_object_key(key)
+        if version_id is not None and (not version_id.strip() or len(version_id) > 1024):
+            raise ValueError("Object version ID is invalid")
+        self._internal_client.remove_object(self._bucket, key, version_id=version_id)
+
     def get(self, key: str, *, max_bytes: int) -> bytes:
         _validate_object_key(key)
         if max_bytes <= 0:
@@ -242,6 +356,13 @@ def _validate_object_key(key: str) -> None:
     parts = key.split("/")
     if any(part in {"", ".", ".."} for part in parts):
         raise ValueError("Object key contains an unsafe path segment")
+
+
+def _validate_object_prefix(prefix: str) -> None:
+    if not prefix or prefix.startswith("/") or "\x00" in prefix:
+        raise ValueError("Object prefix is invalid")
+    trimmed = prefix[:-1] if prefix.endswith("/") else prefix
+    _validate_object_key(trimmed)
 
 
 def _normalized_content_type(value: str | None) -> str | None:

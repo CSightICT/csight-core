@@ -16,11 +16,17 @@ from app.application.analysis import (
     deterministic_retry_delay,
 )
 from app.application.outbox import DispatchOutbox
-from app.domains.product_defect_cs.prompts import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT
+from app.domains.product_defect_cs.prompts import (
+    PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+    PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
+)
 from app.platform.analysis import (
     TEXT_EXTRACTION_PIPELINE_VERSION,
+    TEXT_EXTRACTION_V2_PIPELINE_VERSION,
+    AnalysisAdmissionLimitExceededError,
     AnalysisAttemptStatus,
     AnalysisAttemptSummary,
+    AnalysisExecutionMode,
     AnalysisFailure,
     AnalysisPipeline,
     AnalysisRequestedEvent,
@@ -36,12 +42,21 @@ from app.platform.analysis import (
     OutboxStatus,
 )
 from app.platform.case import Case, RequestedAction
+from app.platform.model_activation import (
+    ActiveModelReleaseRequiredError,
+    ModelReleaseIdentityMismatchError,
+    ModelReleaseTask,
+)
+from app.platform.model_routing import PinnedModelRoutePlanRequiredError
 from app.platform.tenant import Principal, Role
 from app.ports.analysis_repository import (
+    AnalysisAdmissionCounts,
     AnalysisRequestIdempotencyClaim,
     AnalysisUnitOfWorkFactory,
 )
 from app.ports.message_queue import MessageQueue
+from app.ports.model_activation import ModelReleaseExecutionGuard
+from app.ports.model_routing import ActiveModelRouteResolver, PinnedModelRouteExecutionGuard
 
 NOW = datetime(2026, 8, 26, 3, 0, tzinfo=UTC)
 
@@ -85,12 +100,25 @@ def _uow() -> MagicMock:
     uow = MagicMock()
     uow.__enter__.return_value = uow
     uow.__exit__.return_value = None
+    uow.analysis_runs.lock_admission_counts.return_value = AnalysisAdmissionCounts(
+        global_nonterminal=0,
+        tenant_nonterminal=0,
+    )
     return uow
 
 
 def _factory(*uows: MagicMock) -> AnalysisUnitOfWorkFactory:
     factory = MagicMock(side_effect=uows)
     return cast(AnalysisUnitOfWorkFactory, factory)
+
+
+def _claim_new_analysis(
+    *,
+    tenant_id: str,
+    record: AnalysisRequestIdempotencyRecord,
+) -> AnalysisRequestIdempotencyClaim:
+    del tenant_id
+    return AnalysisRequestIdempotencyClaim(claimed=True, record=record)
 
 
 def _principal() -> Principal:
@@ -207,15 +235,20 @@ def _analysis_service(
     provider: MockLLMProvider,
     ids: Iterable[str],
     max_attempts: int = 3,
+    model_release_guard: ModelReleaseExecutionGuard | None = None,
+    model_route_guard: PinnedModelRouteExecutionGuard | None = None,
 ) -> ExecuteTextExtraction:
     return ExecuteTextExtraction(
         uow_factory=uow_factory,
         provider=provider,
         prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        prompt_v2=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
         clock=StaticClock(),
         id_generator=SequenceIds(ids),
         max_attempts=max_attempts,
         retry_jitter_ratio=0,
+        model_release_guard=model_release_guard,
+        model_route_guard=model_route_guard,
     )
 
 
@@ -283,6 +316,8 @@ def test_start_creates_run_stage_idempotency_and_reference_only_outbox_atomicall
 
     assert result.run.id == "run-1"
     assert result.run.status is AnalysisRunStatus.QUEUED
+    assert result.run.execution_mode is AnalysisExecutionMode.PRIMARY
+    uow.analysis_runs.lock_admission_counts.assert_called_once_with(tenant_id="tenant-1")
     uow.analysis_runs.add.assert_called_once()
     uow.stage_runs.add.assert_called_once()
     persisted_event = uow.outbox.add.call_args.kwargs["event"]
@@ -312,9 +347,198 @@ def test_canonical_hash_ignores_retry_correlation_but_includes_case() -> None:
     assert canonical_analysis_request_hash(case_id="case-1", command=first) == (
         canonical_analysis_request_hash(case_id="case-1", command=second)
     )
+    assert canonical_analysis_request_hash(case_id="case-1", command=first) == (
+        "99453e020aa62209b159a226f538d8a27cb08ee12836cdbcb543c68b98b614c7"
+    )
     assert canonical_analysis_request_hash(case_id="case-1", command=first) != (
         canonical_analysis_request_hash(case_id="case-2", command=first)
     )
+
+
+def test_shadow_mode_is_persisted_and_is_an_idempotency_dimension() -> None:
+    uow = _uow()
+    uow.cases.get.return_value = _case()
+    uow.request_idempotency.claim.side_effect = _claim_new_analysis
+    primary = StartTextAnalysisCommand(
+        pipeline=AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION,
+        pipeline_version=TEXT_EXTRACTION_PIPELINE_VERSION,
+        idempotency_key="idempotency-1",
+        correlation_id="correlation-1",
+    )
+    shadow = primary.model_copy(update={"execution_mode": AnalysisExecutionMode.SHADOW})
+    service = StartTextAnalysis(
+        uow_factory=_factory(uow),
+        provider=MockLLMProvider(),
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        clock=StaticClock(),
+        id_generator=SequenceIds(("run-1", "stage-1", "event-1", "claim-1")),
+    )
+
+    result = service.execute(principal=_principal(), case_id="case-1", command=shadow)
+
+    assert result.run.execution_mode is AnalysisExecutionMode.SHADOW
+    assert canonical_analysis_request_hash(case_id="case-1", command=shadow) != (
+        canonical_analysis_request_hash(case_id="case-1", command=primary)
+    )
+
+
+def test_new_analysis_is_rejected_at_serialized_nonterminal_limit() -> None:
+    uow = _uow()
+    uow.cases.get.return_value = _case()
+    uow.request_idempotency.claim.side_effect = _claim_new_analysis
+    uow.analysis_runs.lock_admission_counts.return_value = AnalysisAdmissionCounts(
+        global_nonterminal=4,
+        tenant_nonterminal=2,
+    )
+    service = StartTextAnalysis(
+        uow_factory=_factory(uow),
+        provider=MockLLMProvider(),
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        clock=StaticClock(),
+        id_generator=SequenceIds(("run-1", "stage-1", "event-1", "claim-1")),
+    )
+
+    with pytest.raises(AnalysisAdmissionLimitExceededError) as raised:
+        service.execute(
+            principal=_principal(),
+            case_id="case-1",
+            command=StartTextAnalysisCommand(
+                pipeline=AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION,
+                pipeline_version=TEXT_EXTRACTION_PIPELINE_VERSION,
+                idempotency_key="idempotency-1",
+                correlation_id="correlation-1",
+            ),
+        )
+
+    assert raised.value.global_limit == 4
+    assert raised.value.tenant_limit == 4
+    uow.analysis_runs.add.assert_not_called()
+    uow.commit.assert_not_called()
+
+
+def test_existing_idempotent_replay_bypasses_full_admission_budget() -> None:
+    uow = _uow()
+    uow.cases.get.return_value = _case()
+    command = StartTextAnalysisCommand(
+        pipeline=AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION,
+        pipeline_version=TEXT_EXTRACTION_PIPELINE_VERSION,
+        idempotency_key="idempotency-1",
+        correlation_id="correlation-1",
+    )
+    request_hash = canonical_analysis_request_hash(case_id="case-1", command=command)
+    uow.request_idempotency.claim.return_value = AnalysisRequestIdempotencyClaim(
+        claimed=False,
+        record=AnalysisRequestIdempotencyRecord(
+            id="existing-claim",
+            tenant_id="tenant-1",
+            case_id="case-1",
+            idempotency_key="idempotency-1",
+            request_hash=request_hash,
+            analysis_run_id="run-1",
+            created_at=NOW,
+            expires_at=NOW + timedelta(hours=1),
+        ),
+    )
+    uow.analysis_runs.get.return_value = _run(AnalysisRunStatus.QUEUED)
+    uow.analysis_runs.lock_admission_counts.side_effect = AssertionError(
+        "replay must return before admission"
+    )
+    service = StartTextAnalysis(
+        uow_factory=_factory(uow),
+        provider=MockLLMProvider(),
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        clock=StaticClock(),
+        id_generator=SequenceIds(("unused-run", "unused-stage", "unused-event", "unused-claim")),
+    )
+
+    result = service.execute(principal=_principal(), case_id="case-1", command=command)
+
+    assert result.replayed is True
+    assert result.run.id == "run-1"
+    uow.analysis_runs.lock_admission_counts.assert_not_called()
+    uow.analysis_runs.add.assert_not_called()
+
+
+def test_v2_start_snapshots_active_route_only_after_new_idempotency_claim() -> None:
+    uow = _uow()
+    uow.cases.get.return_value = _case()
+    uow.request_idempotency.claim.side_effect = _claim_new_analysis
+    resolver = MagicMock()
+    resolver.execute.return_value.route_plan.id = "route-plan-1"
+    service = StartTextAnalysis(
+        uow_factory=_factory(uow),
+        provider=MockLLMProvider(),
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        prompt_v2=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
+        clock=StaticClock(),
+        id_generator=SequenceIds(("run-1", "stage-1", "event-1", "claim-1")),
+        model_route_resolver=cast(ActiveModelRouteResolver, resolver),
+    )
+    command = StartTextAnalysisCommand(
+        pipeline=AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION,
+        pipeline_version=TEXT_EXTRACTION_V2_PIPELINE_VERSION,
+        execution_mode=AnalysisExecutionMode.SHADOW,
+        idempotency_key="idempotency-v2-route",
+        correlation_id="correlation-v2-route",
+    )
+
+    service.execute(principal=_principal(), case_id="case-1", command=command)
+
+    resolver.execute.assert_called_once_with(
+        tenant_id="tenant-1",
+        task=ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+        execution_mode=AnalysisExecutionMode.SHADOW,
+    )
+    stage = uow.stage_runs.add.call_args.kwargs["stage_run"]
+    assert stage.model_route_plan_id == "route-plan-1"
+
+
+def test_v2_idempotent_replay_returns_before_route_resolution_or_provider_call() -> None:
+    uow = _uow()
+    uow.cases.get.return_value = _case()
+    command = StartTextAnalysisCommand(
+        pipeline=AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION,
+        pipeline_version=TEXT_EXTRACTION_V2_PIPELINE_VERSION,
+        idempotency_key="idempotency-v2-route",
+        correlation_id="correlation-v2-route",
+    )
+    request_hash = canonical_analysis_request_hash(case_id="case-1", command=command)
+    uow.request_idempotency.claim.return_value = AnalysisRequestIdempotencyClaim(
+        claimed=False,
+        record=AnalysisRequestIdempotencyRecord(
+            id="existing-claim",
+            tenant_id="tenant-1",
+            case_id="case-1",
+            idempotency_key=command.idempotency_key,
+            request_hash=request_hash,
+            analysis_run_id="run-1",
+            created_at=NOW,
+            expires_at=NOW + timedelta(hours=1),
+        ),
+    )
+    uow.analysis_runs.get.return_value = _run(AnalysisRunStatus.QUEUED).model_copy(
+        update={"pipeline_version": TEXT_EXTRACTION_V2_PIPELINE_VERSION}
+    )
+    resolver = MagicMock()
+    resolver.execute.side_effect = AssertionError("replay must not resolve the current route")
+    provider = MockLLMProvider()
+    provider.extract_text_v2 = MagicMock(wraps=provider.extract_text_v2)
+    service = StartTextAnalysis(
+        uow_factory=_factory(uow),
+        provider=provider,
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        prompt_v2=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2,
+        clock=StaticClock(),
+        id_generator=SequenceIds(("unused-run", "unused-stage", "unused-event", "unused-claim")),
+        model_route_resolver=cast(ActiveModelRouteResolver, resolver),
+    )
+
+    result = service.execute(principal=_principal(), case_id="case-1", command=command)
+
+    assert result.replayed is True
+    resolver.execute.assert_not_called()
+    provider.extract_text_v2.assert_not_called()
+    uow.stage_runs.add.assert_not_called()
 
 
 def test_execute_text_extraction_persists_success_with_fenced_completion() -> None:
@@ -514,6 +738,98 @@ def test_provider_permanent_or_exhausted_error_fails_without_new_outbox(
     assert transition["target_status"] is AnalysisStageStatus.FAILED
     assert transition["failure"].code == expected_code
     failure_uow.outbox.add.assert_not_called()
+
+
+def test_v2_release_guard_failure_terminalizes_without_calling_provider() -> None:
+    prompt = PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+    claimed = _stage().model_copy(
+        update={
+            "prompt_name": prompt.name,
+            "prompt_version": prompt.version,
+            "prompt_content_hash": prompt.content_hash,
+            "input_schema_version": prompt.input_schema_version,
+            "output_schema_version": prompt.output_schema_version,
+        }
+    )
+    claim_uow = _uow()
+    failure_uow = _uow()
+    _configure_claim_uow(claim_uow, stage=claimed)
+    claim_uow.extraction_results_v2.get_by_run.return_value = None
+    _configure_completion_uow(failure_uow, stage=claimed)
+    failure_uow.extraction_results_v2.get_by_run.return_value = None
+    provider = MockLLMProvider()
+    provider.extract_text_v2 = MagicMock(wraps=provider.extract_text_v2)
+    guard = MagicMock()
+    guard.execute.side_effect = ActiveModelReleaseRequiredError()
+    service = _analysis_service(
+        uow_factory=_factory(claim_uow, failure_uow),
+        provider=provider,
+        ids=("claim-1", "attempt-1"),
+        model_release_guard=cast(ModelReleaseExecutionGuard, guard),
+    )
+
+    result = service.execute(command=_command())
+
+    assert result.disposition is ExecutionDisposition.FAILED
+    provider.extract_text_v2.assert_not_called()
+    transition = failure_uow.stage_runs.transition_if_claimed.call_args.kwargs
+    assert transition["failure"].code == "ACTIVE_MODEL_RELEASE_REQUIRED"
+    assert transition["failure"].retryable is False
+    failure_uow.outbox.add.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("guard_error", "expected_code"),
+    [
+        (PinnedModelRoutePlanRequiredError(), "PINNED_MODEL_ROUTE_PLAN_REQUIRED"),
+        (ModelReleaseIdentityMismatchError(), "MODEL_RELEASE_IDENTITY_MISMATCH"),
+    ],
+)
+def test_v2_pinned_route_guard_failure_terminalizes_without_calling_provider(
+    guard_error: Exception,
+    expected_code: str,
+) -> None:
+    prompt = PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+    claimed = _stage().model_copy(
+        update={
+            "model_route_plan_id": "route-plan-1",
+            "prompt_name": prompt.name,
+            "prompt_version": prompt.version,
+            "prompt_content_hash": prompt.content_hash,
+            "input_schema_version": prompt.input_schema_version,
+            "output_schema_version": prompt.output_schema_version,
+        }
+    )
+    claim_uow = _uow()
+    failure_uow = _uow()
+    _configure_claim_uow(claim_uow, stage=claimed)
+    claim_uow.extraction_results_v2.get_by_run.return_value = None
+    _configure_completion_uow(failure_uow, stage=claimed)
+    failure_uow.extraction_results_v2.get_by_run.return_value = None
+    provider = MockLLMProvider()
+    provider.extract_text_v2 = MagicMock(wraps=provider.extract_text_v2)
+    guard = MagicMock()
+    guard.execute.side_effect = guard_error
+    service = _analysis_service(
+        uow_factory=_factory(claim_uow, failure_uow),
+        provider=provider,
+        ids=("claim-1", "attempt-1"),
+        model_route_guard=cast(PinnedModelRouteExecutionGuard, guard),
+    )
+
+    result = service.execute(command=_command())
+
+    assert result.disposition is ExecutionDisposition.FAILED
+    guard.execute.assert_called_once_with(
+        tenant_id="tenant-1",
+        route_plan_id="route-plan-1",
+        task=ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
+        execution_mode=AnalysisExecutionMode.PRIMARY,
+    )
+    provider.extract_text_v2.assert_not_called()
+    transition = failure_uow.stage_runs.transition_if_claimed.call_args.kwargs
+    assert transition["failure"].code == expected_code
+    assert transition["failure"].retryable is False
 
 
 def test_retry_delay_is_deterministic_exponential_and_bounded() -> None:

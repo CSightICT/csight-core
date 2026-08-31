@@ -58,6 +58,7 @@ from app.platform.analysis.schemas import (
 )
 from app.platform.errors import InconsistentPersistenceStateError
 from app.ports.analysis_repository import (
+    AnalysisAdmissionCounts,
     AnalysisRequestIdempotencyClaim,
     AnalysisRunListCriteria,
 )
@@ -166,6 +167,7 @@ def analysis_run_model_from_entity(run: AnalysisRun) -> AnalysisRunModel:
         case_id=_required_uuid(run.case_id),
         pipeline_name=run.pipeline.value,
         pipeline_version=run.pipeline_version,
+        execution_mode=run.execution_mode.value,
         trigger_type=run.trigger.value,
         status=run.status.value,
         requested_by=_required_uuid(run.requested_by),
@@ -189,6 +191,7 @@ def analysis_run_entity_from_model(model: AnalysisRunModel) -> AnalysisRun:
             "case_id": str(model.case_id),
             "pipeline": model.pipeline_name,
             "pipeline_version": model.pipeline_version,
+            "execution_mode": model.execution_mode,
             "trigger": model.trigger_type,
             "status": model.status,
             "requested_by": str(model.requested_by),
@@ -214,6 +217,11 @@ def stage_run_model_from_entity(stage: AnalysisStageRun) -> AnalysisStageRunMode
         id=_required_uuid(stage.id),
         tenant_id=_required_uuid(stage.tenant_id),
         analysis_run_id=_required_uuid(stage.analysis_run_id),
+        model_route_plan_id=(
+            _required_uuid(stage.model_route_plan_id)
+            if stage.model_route_plan_id is not None
+            else None
+        ),
         stage_type=stage.stage_type.value,
         status=stage.status.value,
         attempt_count=stage.attempt_summary.attempt_count,
@@ -246,6 +254,9 @@ def stage_run_entity_from_model(model: AnalysisStageRunModel) -> AnalysisStageRu
             "id": str(model.id),
             "tenant_id": str(model.tenant_id),
             "analysis_run_id": str(model.analysis_run_id),
+            "model_route_plan_id": (
+                str(model.model_route_plan_id) if model.model_route_plan_id is not None else None
+            ),
             "stage_type": model.stage_type,
             "status": model.status,
             "attempt_summary": {
@@ -654,6 +665,29 @@ class SQLAlchemyAnalysisRunRepository:
     def add(self, *, tenant_id: str, run: AnalysisRun) -> None:
         _require_tenant_scope(tenant_id=tenant_id, entity_tenant_id=run.tenant_id)
         self._session.add(analysis_run_model_from_entity(run))
+
+    def lock_admission_counts(self, *, tenant_id: str) -> AnalysisAdmissionCounts:
+        """Serialize all new-run admissions and count current nonterminal runs."""
+
+        tenant_uuid = _required_uuid(tenant_id)
+        # The shared two-int advisory key serializes both global and per-tenant
+        # checks until this Unit of Work commits or rolls back.
+        self._session.execute(select(func.pg_advisory_xact_lock(1_129_538_375, 1)))
+        nonterminal = (
+            AnalysisRunStatus.QUEUED.value,
+            AnalysisRunStatus.RUNNING.value,
+            AnalysisRunStatus.RETRY_WAITING.value,
+        )
+        global_count, tenant_count = self._session.execute(
+            select(
+                func.count(AnalysisRunModel.id),
+                func.count(AnalysisRunModel.id).filter(AnalysisRunModel.tenant_id == tenant_uuid),
+            ).where(AnalysisRunModel.status.in_(nonterminal))
+        ).one()
+        return AnalysisAdmissionCounts(
+            global_nonterminal=int(global_count),
+            tenant_nonterminal=int(tenant_count),
+        )
 
     def get(
         self,
@@ -1432,6 +1466,15 @@ class SQLAlchemyOutboxEventRepository:
         _require_tenant_scope(tenant_id=tenant_id, entity_tenant_id=event.tenant_id)
         self._session.add(outbox_model_from_entity(event))
 
+    def get_for_update(self, *, event_id: str) -> OutboxEvent | None:
+        event_uuid = _optional_uuid(event_id)
+        if event_uuid is None:
+            return None
+        model = self._session.scalars(
+            select(OutboxEventModel).where(OutboxEventModel.id == event_uuid).with_for_update()
+        ).one_or_none()
+        return outbox_entity_from_model(model) if model is not None else None
+
     def _recover_stale(
         self,
         *,
@@ -1593,6 +1636,34 @@ class SQLAlchemyOutboxEventRepository:
                 "updated_at": now,
             },
         )
+
+    def record_consumer_failure(
+        self,
+        *,
+        event_id: str,
+        last_error: str,
+        now: datetime,
+        terminal: bool,
+    ) -> OutboxEvent | None:
+        event_uuid = _optional_uuid(event_id)
+        if event_uuid is None:
+            return None
+        model = self._session.scalars(
+            select(OutboxEventModel).where(OutboxEventModel.id == event_uuid).with_for_update()
+        ).one_or_none()
+        if model is None:
+            return None
+        if terminal:
+            model.status = OutboxStatus.FAILED.value
+            model.attempt_count = max(1, model.attempt_count)
+            model.claimed_at = None
+            model.claim_token = None
+            model.claimed_by = None
+            model.published_at = None
+        model.last_error = _sanitize_error(last_error)
+        model.updated_at = now
+        self._session.flush()
+        return outbox_entity_from_model(model)
 
     def _finish_claim(
         self,

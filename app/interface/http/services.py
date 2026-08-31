@@ -16,6 +16,7 @@ from app.application.analysis import (
     StartTextAnalysisResult,
 )
 from app.application.auth import LoginCommand, LoginResult
+from app.application.case_assignment import AssignCase, AuthorizeCaseAccess, GetCaseAssignment
 from app.application.case_resolution import (
     GetCaseResolution,
     GetExternalActionIntent,
@@ -38,6 +39,7 @@ from app.application.human_review import (
     GetHumanReviewTask,
     HumanReviewActions,
     ListHumanReviewTasks,
+    ListReviewAssignees,
 )
 from app.application.policy_engine import (
     GetPolicyEvaluation,
@@ -100,6 +102,7 @@ class AddImageEvidenceService(Protocol):
         filename: str | None,
         declared_content_type: str | None,
         evidence_type: EvidenceType = EvidenceType.IMAGE,
+        idempotency_key: str | None = None,
     ) -> EvidenceMetadata: ...
 
 
@@ -191,6 +194,9 @@ class Sprint1ServiceContainer:
     list_cases: ListCasesService
     get_case: GetCaseService
     get_case_status_history: GetCaseStatusHistoryService
+    get_case_assignment: GetCaseAssignment
+    assign_case: AssignCase
+    authorize_case_access: AuthorizeCaseAccess
     add_image_evidence: AddImageEvidenceService
     list_case_evidence: ListCaseEvidenceService
     get_evidence_metadata: GetEvidenceMetadataService
@@ -247,6 +253,7 @@ class Sprint5BServiceContainer:
     """Human-only review queue and action services."""
 
     list_tasks: ListHumanReviewTasks
+    list_assignees: ListReviewAssignees
     get_task: GetHumanReviewTask
     actions: HumanReviewActions
 

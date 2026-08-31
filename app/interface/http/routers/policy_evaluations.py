@@ -5,7 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 
 from app.application.policy_engine import StartPolicyEvaluationCommand
-from app.interface.http.dependencies import provide_current_principal, provide_sprint5a_services
+from app.interface.http.dependencies import (
+    provide_current_principal,
+    provide_sprint5a_services,
+    require_case_access,
+)
 from app.interface.http.policy_evaluation_schemas import (
     PolicyEvaluationRunDetailResponse,
     PolicyEvaluationRunListResponse,
@@ -20,6 +24,7 @@ from app.platform.tenant import Principal
 router = APIRouter(
     prefix="/api/v1/cases/{case_id}/policy-evaluation-runs",
     tags=["policy-evaluations"],
+    dependencies=[Depends(require_case_access)],
 )
 
 

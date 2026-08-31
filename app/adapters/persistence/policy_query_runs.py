@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4, uuid5
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.adapters.persistence.async_events import (
@@ -24,6 +24,7 @@ from app.adapters.persistence.models import (
     AnalysisRunModel,
     CaseEvidenceModel,
     CaseModel,
+    CaseSensitivePayloadModel,
     LLMExtractionResultV2Model,
     PolicyClauseModel,
     PolicyIndexVersionModel,
@@ -32,6 +33,7 @@ from app.adapters.persistence.models import (
     PolicyRetrievalRunHitModel,
     PolicyRetrievalRunModel,
     PolicyRetrievalRunQueryModel,
+    PolicyRetrievalSimilarityModel,
 )
 from app.adapters.persistence.policy_repositories import to_policy_clause_record
 from app.platform.analysis.llm_v2 import (
@@ -45,8 +47,15 @@ from app.platform.async_reliability import (
     ExecutionAttemptsExhaustedError,
     ExecutionLeaseActiveError,
 )
-from app.platform.errors import CaseNotFoundError, IdempotencyKeyReusedError, ValidationError
+from app.platform.errors import (
+    CaseNotFoundError,
+    IdempotencyKeyReusedError,
+    InconsistentPersistenceStateError,
+    SensitivePayloadUnavailableError,
+    ValidationError,
+)
 from app.platform.policy_retrieval import PolicySearchHit, stable_json_hash
+from app.platform.privacy_lifecycle import PURGED_CUSTOMER_MESSAGE
 from app.platform.query_builder import (
     MultiQueryHit,
     PolicyQuery,
@@ -54,6 +63,8 @@ from app.platform.query_builder import (
     PolicyQueryPlan,
     PolicyQueryPurpose,
     PolicyRetrievalRun,
+    PolicySimilarityDiagnostic,
+    PolicySimilarityGroup,
     QueryFilterHints,
     QueryRank,
     QueryStrategy,
@@ -63,6 +74,24 @@ from app.platform.query_builder import (
 from app.ports.policy_query_runs import PolicyRetrievalExecutionSource, PolicyRetrievalRunDetail
 
 _NAMESPACE = UUID("ebd83a36-7c53-4d31-9ea0-c9517878be48")
+
+
+def _tenant_case_statement(*, tenant_id: UUID, case_id: UUID) -> Select[tuple[CaseModel]]:
+    """Build the mandatory tenant-scoped Case lookup used by read and claim paths."""
+
+    return select(CaseModel).where(
+        CaseModel.tenant_id == tenant_id,
+        CaseModel.id == case_id,
+    )
+
+
+def _tenant_case_message_statement(*, tenant_id: UUID, case_id: UUID) -> Select[tuple[str | None]]:
+    """Build the tenant-scoped sensitive-message lookup for a retrieval detail."""
+
+    return select(CaseSensitivePayloadModel.customer_message).where(
+        CaseSensitivePayloadModel.tenant_id == tenant_id,
+        CaseSensitivePayloadModel.case_id == case_id,
+    )
 
 
 class SQLAlchemyPolicyRetrievalRunRepository:
@@ -115,6 +144,22 @@ class SQLAlchemyPolicyRetrievalRunRepository:
             )
             if case_row is None:
                 raise CaseNotFoundError()
+            payload_row = session.scalar(
+                select(CaseSensitivePayloadModel).where(
+                    CaseSensitivePayloadModel.tenant_id == tenant_uuid,
+                    CaseSensitivePayloadModel.case_id == case_uuid,
+                )
+            )
+            if payload_row is None:
+                raise InconsistentPersistenceStateError(
+                    "The Case is missing its required sensitive-payload lifecycle record."
+                )
+            if payload_row.purged_at is not None:
+                raise SensitivePayloadUnavailableError()
+            if payload_row.customer_message is None:
+                raise InconsistentPersistenceStateError(
+                    "The active sensitive-payload lifecycle record has no content."
+                )
             analysis = session.scalar(
                 select(AnalysisRunModel).where(
                     AnalysisRunModel.tenant_id == tenant_uuid,
@@ -225,7 +270,10 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                 .order_by(PolicyRetrievalRunQueryModel.position)
             ).all()
             case_message = session.scalar(
-                select(CaseModel.customer_message).where(CaseModel.id == row.case_id)
+                _tenant_case_message_statement(
+                    tenant_id=row.tenant_id,
+                    case_id=row.case_id,
+                )
             )
             plan = _to_plan(queries, case_message) if queries else None
             hit_rows = session.execute(
@@ -241,11 +289,42 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                 .order_by(PolicyRetrievalRunHitModel.rank)
             ).all()
             hits = tuple(_to_hit(hit, clause) for hit, clause in hit_rows)
+            similarity_rows = session.execute(
+                select(PolicyRetrievalSimilarityModel, PolicyClauseModel)
+                .join(
+                    PolicyClauseModel,
+                    PolicyClauseModel.id == PolicyRetrievalSimilarityModel.policy_clause_row_id,
+                )
+                .where(
+                    PolicyRetrievalSimilarityModel.tenant_id == row.tenant_id,
+                    PolicyRetrievalSimilarityModel.retrieval_run_id == row.id,
+                )
+                .order_by(
+                    PolicyRetrievalSimilarityModel.similarity_group,
+                    PolicyRetrievalSimilarityModel.rank,
+                )
+            ).all()
             assert index is not None
             return PolicyRetrievalRunDetail(
                 run=_to_run(row),
                 query_plan=plan,
                 hits=hits,
+                policy_similarity=tuple(
+                    PolicySimilarityDiagnostic(
+                        hit=PolicySearchHit(
+                            clause=to_policy_clause_record(clause),
+                            dense_score=evidence.cosine_similarity,
+                        ),
+                        group=PolicySimilarityGroup(evidence.similarity_group),
+                        rank=evidence.rank,
+                        cosine_similarity=evidence.cosine_similarity,
+                        reference_threshold=evidence.reference_threshold,
+                        threshold_version=evidence.threshold_version,
+                        matched_query_ids=tuple(str(value) for value in evidence.matched_query_ids),
+                        reason_codes=tuple(str(value) for value in evidence.reason_codes),
+                    )
+                    for evidence, clause in similarity_rows
+                ),
                 index_version=index.index_version,
                 base_retrieval_profile_hash=row.base_retrieval_profile_hash,
                 multi_query_fusion_profile=(
@@ -395,7 +474,18 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                     row.claim_token = claim_token
                     row.lease_expires_at = now + self._lease_ttl
                     row.execution_attempt_count += 1
-                    case = session.get(CaseModel, row.case_id)
+                    case = session.scalar(
+                        _tenant_case_statement(
+                            tenant_id=tenant_uuid,
+                            case_id=row.case_id,
+                        )
+                    )
+                    payload = session.scalar(
+                        select(CaseSensitivePayloadModel).where(
+                            CaseSensitivePayloadModel.tenant_id == tenant_uuid,
+                            CaseSensitivePayloadModel.case_id == row.case_id,
+                        )
+                    )
                     result = session.get(LLMExtractionResultV2Model, row.text_result_id)
                     assert case is not None and result is not None
                     image_count = session.scalar(
@@ -420,10 +510,17 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                         }
                     )
                     attributes = case.attributes
+                    customer_message = (
+                        payload.customer_message
+                        if payload is not None
+                        and payload.purged_at is None
+                        and payload.customer_message is not None
+                        else PURGED_CUSTOMER_MESSAGE
+                    )
                     source = PolicyRetrievalExecutionSource(
                         run=_to_run(row),
                         claim_token=str(claim_token),
-                        customer_message=case.customer_message,
+                        customer_message=customer_message,
                         builder_input=PolicyQueryBuilderInput(
                             extraction=extraction,
                             completeness=CompletenessResult(
@@ -460,6 +557,7 @@ class SQLAlchemyPolicyRetrievalRunRepository:
         plan: PolicyQueryPlan,
         hits: tuple[MultiQueryHit, ...],
         raw_query_hash: str | None,
+        diagnostics: tuple[PolicySimilarityDiagnostic, ...] = (),
     ) -> bool:
         tenant_uuid, run_uuid = UUID(tenant_id), UUID(run_id)
         now = datetime.now(UTC)
@@ -523,6 +621,23 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                         per_query_ranks=[
                             value.model_dump(mode="json") for value in hit.per_query_ranks
                         ],
+                        created_at=now,
+                    )
+                )
+            for diagnostic in diagnostics:
+                session.add(
+                    PolicyRetrievalSimilarityModel(
+                        id=uuid4(),
+                        tenant_id=tenant_uuid,
+                        retrieval_run_id=run_uuid,
+                        policy_clause_row_id=UUID(diagnostic.hit.clause.row_id),
+                        similarity_group=diagnostic.group.value,
+                        rank=diagnostic.rank,
+                        cosine_similarity=diagnostic.cosine_similarity,
+                        reference_threshold=diagnostic.reference_threshold,
+                        threshold_version=diagnostic.threshold_version,
+                        matched_query_ids=list(diagnostic.matched_query_ids),
+                        reason_codes=list(diagnostic.reason_codes),
                         created_at=now,
                     )
                 )

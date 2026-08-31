@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, MetaData, Table, create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
@@ -24,7 +25,7 @@ pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[2]
 REVISION_0013 = "20260827_0013_case_resolution_external_action"
 REVISION_0014 = "20260827_0014_review_report_poc_metrics"
-REVISION_HEAD = "20260828_0016_communication_learning_assets"
+REVISION_HEAD = "head"
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,4 +193,6 @@ def test_review_report_migration_round_trip_and_drift(
         "uq_case_learning_assets_report_schema",
     } <= _constraints(engine, "case_learning_assets")
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == REVISION_HEAD
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
+            ScriptDirectory.from_config(config).get_current_head()
+        )

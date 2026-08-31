@@ -5,7 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 
 from app.application.grounding import StartGroundedExplanationCommand
-from app.interface.http.dependencies import provide_current_principal, provide_sprint4c3a_services
+from app.interface.http.dependencies import (
+    provide_current_principal,
+    provide_sprint4c3a_services,
+    require_case_access,
+)
 from app.interface.http.grounding_schemas import (
     GroundedExplanationRunDetailResponse,
     GroundedExplanationRunListResponse,
@@ -19,6 +23,7 @@ from app.platform.tenant import Principal
 router = APIRouter(
     prefix="/api/v1/cases/{case_id}/grounded-explanation-runs",
     tags=["grounded-policy-explanations"],
+    dependencies=[Depends(require_case_access)],
 )
 
 

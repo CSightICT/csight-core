@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.application.analysis import AnalysisRunDetail, AnalysisRunPage
 from app.platform.analysis import (
+    AnalysisExecutionMode,
     AnalysisFailure,
     AnalysisPipeline,
     AnalysisRun,
@@ -40,6 +41,7 @@ class StartTextAnalysisRequest(BaseModel):
 
     pipeline: AnalysisPipeline
     pipeline_version: str = Field(min_length=1, max_length=32)
+    execution_mode: AnalysisExecutionMode = AnalysisExecutionMode.PRIMARY
 
 
 class AnalysisRunListParameters(BaseModel):
@@ -76,6 +78,7 @@ class AnalysisRunResponse(BaseModel):
     case_id: str
     pipeline: AnalysisPipeline
     pipeline_version: str
+    execution_mode: AnalysisExecutionMode
     trigger: AnalysisTrigger
     status: AnalysisRunStatus
     requested_by: str
@@ -94,6 +97,7 @@ class AnalysisRunResponse(BaseModel):
             case_id=run.case_id,
             pipeline=run.pipeline,
             pipeline_version=run.pipeline_version,
+            execution_mode=run.execution_mode,
             trigger=run.trigger,
             status=run.status,
             requested_by=run.requested_by,

@@ -25,6 +25,7 @@ infra/vision_e3/.server.pid
 .env
 .env.*
 !.env.example
+!infra/pilot/.env.pilot.example
 *.env
 .secrets/
 credentials*.json

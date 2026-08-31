@@ -5,6 +5,7 @@ from __future__ import annotations
 from time import perf_counter
 
 from app.platform.policy_retrieval import (
+    POLICY_SIMILARITY_REFERENCE_THRESHOLD,
     PolicyRetrievalResult,
     PolicySearchQuery,
     RetrievalMode,
@@ -75,6 +76,8 @@ class SearchPolicyClauses:
             )
         lexical_hits = ()
         dense_hits = ()
+        least_similar_hits = ()
+        reference_closest_hits = ()
         if query.mode in {
             RetrievalMode.LEXICAL,
             RetrievalMode.HYBRID,
@@ -97,6 +100,19 @@ class SearchPolicyClauses:
                 query_vector=query_vector,
                 embedding_profile_id=profile.embedding_profile_id,
             )
+            if query.least_similar_k:
+                reference_closest_hits = self._dense.retrieve_closest_to_score(
+                    query=query,
+                    query_vector=query_vector,
+                    embedding_profile_id=profile.embedding_profile_id,
+                    reference_score=POLICY_SIMILARITY_REFERENCE_THRESHOLD,
+                    limit=3,
+                )
+                least_similar_hits = self._dense.retrieve_least_similar(
+                    query=query,
+                    query_vector=query_vector,
+                    embedding_profile_id=profile.embedding_profile_id,
+                )
         if query.mode is RetrievalMode.LEXICAL:
             hits = lexical_hits
         elif query.mode is RetrievalMode.DENSE:
@@ -152,6 +168,8 @@ class SearchPolicyClauses:
             as_of_date=query.as_of_date,
             retrieval_profile=profile,
             hits=hits,
+            nearest_dense_hits=reference_closest_hits or dense_hits[:3],
+            least_similar_hits=least_similar_hits,
             latency_ms=(perf_counter() - started) * 1000.0,
         )
 

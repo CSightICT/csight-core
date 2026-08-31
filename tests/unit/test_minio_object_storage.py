@@ -24,13 +24,21 @@ class FakeObjectStat:
     metadata: dict[str, object] | None
 
 
+@dataclass(frozen=True, slots=True)
+class FakeListedObject:
+    object_name: str | None
+    version_id: str | None = None
+    is_delete_marker: bool | None = False
+
+
 class FakeMinioClient:
     def __init__(self) -> None:
         self.objects: set[tuple[str, str]] = set()
         self.object_stats: dict[tuple[str, str], FakeObjectStat] = {}
         self.put_calls: list[tuple[str, str, bytes, int, str, dict[str, str] | None]] = []
         self.stat_calls: list[tuple[str, str]] = []
-        self.remove_calls: list[tuple[str, str]] = []
+        self.remove_calls: list[tuple[str, str, str | None]] = []
+        self.object_versions: dict[tuple[str, str], list[FakeListedObject]] = {}
         self.presign_calls: list[tuple[str, str, timedelta]] = []
         self.bucket_ready = True
         self.stat_error: S3Error | None = None
@@ -72,10 +80,43 @@ class FakeMinioClient:
             FakeObjectStat(size=0, content_type=None, metadata=None),
         )
 
-    def remove_object(self, bucket_name: str, object_name: str) -> None:
-        self.remove_calls.append((bucket_name, object_name))
+    def remove_object(
+        self,
+        bucket_name: str,
+        object_name: str,
+        version_id: str | None = None,
+    ) -> None:
+        self.remove_calls.append((bucket_name, object_name, version_id))
+        if version_id is not None:
+            versions = self.object_versions.get((bucket_name, object_name), [])
+            self.object_versions[(bucket_name, object_name)] = [
+                item for item in versions if item.version_id != version_id
+            ]
+            if self.object_versions[(bucket_name, object_name)]:
+                return
         self.objects.discard((bucket_name, object_name))
         self.object_stats.pop((bucket_name, object_name), None)
+
+    def list_objects(
+        self,
+        bucket_name: str,
+        prefix: str | None = None,
+        recursive: bool = False,
+        include_version: bool = False,
+    ) -> tuple[FakeListedObject, ...]:
+        assert recursive is True
+        if include_version:
+            return tuple(
+                version
+                for (bucket, key), versions in sorted(self.object_versions.items())
+                if bucket == bucket_name and (prefix is None or key.startswith(prefix))
+                for version in versions
+            )
+        return tuple(
+            FakeListedObject(object_name=key)
+            for bucket, key in sorted(self.objects)
+            if bucket == bucket_name and (prefix is None or key.startswith(prefix))
+        )
 
     def presigned_get_object(
         self,
@@ -203,7 +244,59 @@ def test_exists_and_delete_use_internal_client() -> None:
     assert storage.exists("tenant/case/evidence.png") is True
     storage.delete("tenant/case/evidence.png")
     assert storage.exists("tenant/case/evidence.png") is False
-    assert internal.remove_calls == [("evidence", "tenant/case/evidence.png")]
+    assert internal.remove_calls == [("evidence", "tenant/case/evidence.png", None)]
+
+
+def test_version_inventory_and_exact_deletion_include_delete_markers() -> None:
+    internal = FakeMinioClient()
+    storage = _storage(internal)
+    key = "tenants/tenant-a/cases/case-a/evidence/evidence-a/original"
+    internal.objects.add(("evidence", key))
+    internal.object_versions[("evidence", key)] = [
+        FakeListedObject(key, "version-2", False),
+        FakeListedObject(key, "delete-marker", True),
+        FakeListedObject(key, "version-1", False),
+    ]
+
+    page = storage.list_versions(key=key, limit=10)
+    for version in page.versions:
+        storage.delete_version(key=key, version_id=version.version_id)
+
+    assert page.truncated is False
+    assert {item.version_id for item in page.versions} == {
+        "version-1",
+        "version-2",
+        "delete-marker",
+    }
+    assert storage.list_versions(key=key, limit=10).versions == ()
+    assert internal.remove_calls == [
+        ("evidence", key, "delete-marker"),
+        ("evidence", key, "version-1"),
+        ("evidence", key, "version-2"),
+    ]
+
+
+def test_inventory_stat_and_bounded_listing_return_metadata_only() -> None:
+    internal = FakeMinioClient()
+    storage = _storage(internal)
+    first = "tenants/tenant-a/cases/case-a/evidence/evidence-a/original"
+    second = "tenants/tenant-a/cases/case-b/evidence/evidence-b/original"
+    internal.objects.update({("evidence", first), ("evidence", second)})
+    internal.object_stats[("evidence", first)] = FakeObjectStat(
+        size=12,
+        content_type="image/png",
+        metadata={"x-amz-meta-sha256": "a" * 64},
+    )
+
+    metadata = storage.stat(first)
+    page = storage.list_keys(prefix="tenants/tenant-a/", limit=1)
+
+    assert metadata is not None
+    assert metadata.key == first
+    assert metadata.size_bytes == 12
+    assert metadata.sha256 == "a" * 64
+    assert page.keys == (first,)
+    assert page.truncated is True
 
 
 def test_exists_only_suppresses_missing_object_errors() -> None:

@@ -63,7 +63,7 @@ def test_migration_0010_is_single_head_and_contains_all_policy_tables() -> None:
     config.set_main_option("script_location", str(Path("alembic")))
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision("20260827_0010_policy_engine")
-    assert scripts.get_heads() == ["20260828_0016_communication_learning_assets"]
+    assert scripts.get_heads() == ["20260831_0034_analysis_model_route_snapshot"]
     assert revision is not None and revision.down_revision == "20260827_0009"
     source = Path("alembic/versions/20260827_0010_policy_engine.py").read_text()
     for table in (

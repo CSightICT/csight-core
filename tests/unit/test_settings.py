@@ -1,9 +1,12 @@
 """Settings validation and secret-handling tests."""
 
+from pathlib import Path
+
 import pytest
 from pydantic import SecretStr, ValidationError
 
 from app.bootstrap.settings import Settings
+from app.platform.tenant import Role
 
 pytestmark = pytest.mark.unit
 
@@ -17,10 +20,25 @@ def test_defaults_use_mock_providers_without_infrastructure_secrets() -> None:
     assert settings.vision_task == "QUALITY_AND_DEFECT_DETECTION"
     assert settings.vision_assessment_expected_threshold is None
     assert settings.database_url is None
+    assert settings.database_password_file is None
+    assert settings.database_runtime_role == "legacy_owner"
+    assert settings.database_rls_required is False
     assert settings.rabbitmq_url is None
     assert settings.jwt_secret_key is None
     assert settings.jwt_algorithm == "HS256"
     assert settings.jwt_access_token_expire_minutes == 30
+    assert settings.legacy_password_enabled is True
+    assert settings.oidc_enabled is False
+    assert settings.oidc_is_configured is False
+    assert settings.oidc_allow_insecure_http is False
+    assert settings.oidc_session_absolute_timeout_seconds == 8 * 60 * 60
+    assert settings.oidc_session_idle_timeout_seconds == 30 * 60
+    assert settings.oidc_session_expiry_warning_seconds == 5 * 60
+    assert settings.signed_intake_enabled is False
+    assert settings.signed_intake_sources == {}
+    assert settings.signed_intake_is_configured is False
+    assert settings.signed_intake_clock_skew_seconds == 300
+    assert settings.signed_intake_max_body_bytes == 128 * 1024
     assert settings.development_seed_enabled is False
     assert settings.development_seed_admin_password is None
     assert settings.development_seed_reviewer_password is None
@@ -35,10 +53,16 @@ def test_defaults_use_mock_providers_without_infrastructure_secrets() -> None:
     assert settings.allowed_image_mime_types == {"image/jpeg", "image/png", "image/webp"}
     assert settings.allowed_image_extensions == {"jpg", "jpeg", "png", "webp"}
     assert settings.max_image_pixels == 40_000_000
+    assert settings.sensitive_payload_retention_policy_version_value == "development/30d"
+    assert settings.sensitive_payload_retention_days_value == 30
     assert settings.llm_api_key is None
     assert settings.llm_model_id == "csight-mock-llm"
     assert settings.llm_model_version == "0.1.0"
     assert settings.llm_model_revision is None
+    assert settings.model_release_enforcement is False
+    assert settings.model_route_enforcement is False
+    assert settings.model_route_deployment_id is None
+    assert settings.model_release_signing_public_key_file is None
     assert settings.vision_model_revision is None
     assert settings.llm_connect_timeout_seconds == 5.0
     assert settings.llm_read_timeout_seconds == 120.0
@@ -58,6 +82,165 @@ def test_defaults_use_mock_providers_without_infrastructure_secrets() -> None:
     assert settings.analysis_outbox_retry_max_seconds == 60.0
 
 
+def test_signed_intake_configuration_is_tenant_bound_and_requires_rls_outside_local(
+    tmp_path: Path,
+) -> None:
+    source = {
+        "crm-key-1": {
+            "source_id": "customer-crm",
+            "tenant_id": "00000000-0000-4000-8000-000000000101",
+            "actor_user_id": "00000000-0000-4000-8000-000000000102",
+            "provenance": "signed/crm/v1",
+            "public_key_file": str(tmp_path / "crm-public.pem"),
+        }
+    }
+    local = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        database_url=SecretStr("postgresql+psycopg://api@db/csight"),
+        signed_intake_enabled=True,
+        signed_intake_sources=source,
+        sensitive_payload_retention_policy_version="pilot/30d",
+        sensitive_payload_retention_days=30,
+    )
+    assert local.signed_intake_is_configured is True
+    assert str(local.signed_intake_sources["crm-key-1"].tenant_id).endswith("0101")
+
+    with pytest.raises(ValidationError, match="RLS-enforced API database role"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            environment="pilot",
+            database_url=SecretStr("postgresql+psycopg://owner@db/csight"),
+            signed_intake_enabled=True,
+            signed_intake_sources=source,
+            sensitive_payload_retention_policy_version="pilot/30d",
+            sensitive_payload_retention_days=30,
+        )
+
+
+def test_non_local_vllm_requires_signed_release_enforcement() -> None:
+    with pytest.raises(ValidationError, match="Non-local vLLM requires"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            environment="pilot",
+            llm_provider="vllm",
+            llm_base_url="https://llm.example.test/v1",
+        )
+
+
+def test_non_local_environment_rejects_legacy_password_auth() -> None:
+    with pytest.raises(ValidationError, match="must be false outside local/test"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            environment="pilot",
+            legacy_password_auth_enabled=True,
+        )
+
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        environment="pilot",
+    )
+    assert settings.legacy_password_enabled is False
+
+
+def test_signed_release_enforcement_requires_exact_runtime_identity(tmp_path: Path) -> None:
+    public_key = tmp_path / "release-key.pem"
+    public_key.write_text("placeholder", encoding="utf-8")
+    with pytest.raises(ValidationError, match="exact 40-character commit hash"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            database_url=SecretStr("postgresql+psycopg://worker@db/csight"),
+            llm_provider="vllm",
+            llm_base_url="https://llm.example.test/v1",
+            model_release_enforcement=True,
+            model_release_signing_public_key_file=public_key,
+            model_release_signing_key_id="release-key-1",
+            llm_model_revision="floating-main",
+            llm_artifact_content_digest="sha256:" + "a" * 64,
+            llm_runtime_image_digest="sha256:" + "b" * 64,
+            llm_dependency_lock_digest="sha256:" + "c" * 64,
+            llm_sbom_digest="sha256:" + "d" * 64,
+        )
+
+
+def test_model_route_enforcement_is_role_aware_and_requires_signed_release(
+    tmp_path: Path,
+) -> None:
+    release = {
+        "database_url": SecretStr("postgresql+psycopg://runtime@db/csight"),
+        "database_rls_required": True,
+        "llm_provider": "vllm",
+        "llm_base_url": "https://llm.example.test/v1",
+        "model_release_enforcement": True,
+        "model_release_signing_public_key_file": tmp_path / "release-key.pem",
+        "model_release_signing_key_id": "release-key-1",
+        "llm_model_revision": "a" * 40,
+        "llm_artifact_content_digest": "sha256:" + "b" * 64,
+        "llm_runtime_image_digest": "sha256:" + "c" * 64,
+        "llm_dependency_lock_digest": "sha256:" + "d" * 64,
+        "llm_sbom_digest": "sha256:" + "e" * 64,
+    }
+    api = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        **release,
+        database_runtime_role="api",
+        model_route_enforcement=True,
+    )
+    worker = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        **release,
+        database_runtime_role="worker",
+        model_route_enforcement=True,
+        model_route_deployment_id="onprem-4090-primary",
+    )
+
+    assert api.model_route_deployment_id is None
+    assert worker.model_route_deployment_id == "onprem-4090-primary"
+
+    with pytest.raises(ValidationError, match="requires MODEL_RELEASE_ENFORCEMENT"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            database_runtime_role="api",
+            model_route_enforcement=True,
+        )
+    with pytest.raises(ValidationError, match="Worker MODEL_ROUTE_ENFORCEMENT requires"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            **release,
+            database_runtime_role="worker",
+            model_route_enforcement=True,
+        )
+    with pytest.raises(ValidationError, match="API process must not receive"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            **release,
+            database_runtime_role="api",
+            model_route_enforcement=True,
+            model_route_deployment_id="onprem-4090-primary",
+        )
+    with pytest.raises(ValidationError, match="may only be set"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            model_route_deployment_id="onprem-4090-primary",
+        )
+
+
+def test_rls_required_rejects_owner_and_migration_profiles() -> None:
+    with pytest.raises(ValidationError, match="requires an api, worker, or dispatcher"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            database_rls_required=True,
+            database_runtime_role="legacy_owner",
+        )
+
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        database_url=SecretStr("postgresql+psycopg://runtime@db/csight"),
+        database_rls_required=True,
+        database_runtime_role="api",
+    )
+    assert settings.database_runtime_role == "api"
+
+
 def test_settings_normalize_environment_values_and_hide_secrets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -70,6 +253,43 @@ def test_settings_normalize_environment_values_and_hide_secrets(
     assert settings.llm_provider == "mock"
     assert settings.database_url_value is not None
     assert "user:password" not in repr(settings)
+
+
+def test_database_password_file_injects_and_escapes_secret(tmp_path: Path) -> None:
+    password_file = tmp_path / "database-password"
+    password_file.write_text("p@ss:word/with%reserved\n", encoding="utf-8")
+
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        database_url=SecretStr("postgresql+psycopg://runtime@db:5432/csight"),
+        database_password_file=password_file,
+    )
+
+    resolved = settings.database_url_value
+    assert resolved is not None
+    assert "p%40ss%3Aword%2Fwith%25reserved" in resolved
+    assert "p@ss:word" not in repr(settings)
+
+
+def test_database_password_file_contract_fails_closed(tmp_path: Path) -> None:
+    missing = tmp_path / "missing-password"
+    with pytest.raises(ValidationError, match="cannot be read"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            database_url=SecretStr("postgresql+psycopg://runtime@db:5432/csight"),
+            database_password_file=missing,
+            database_runtime_role="api",
+            database_rls_required=True,
+        )
+
+    password_file = tmp_path / "database-password"
+    password_file.write_text("separate-secret", encoding="utf-8")
+    with pytest.raises(ValidationError, match="must omit its password"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            database_url=SecretStr("postgresql+psycopg://runtime:inline@db:5432/csight"),
+            database_password_file=password_file,
+        )
 
 
 def test_jwt_settings_normalize_and_hide_secret() -> None:
@@ -93,6 +313,100 @@ def test_short_jwt_secret_is_rejected() -> None:
         Settings(
             _env_file=None,  # pyright: ignore[reportCallIssue]
             jwt_secret_key=SecretStr("too-short"),
+        )
+
+
+def test_oidc_environment_mapping_is_typed_secret_redacted_and_fully_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OIDC_ENABLED", "true")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:secret@db:5432/csight")
+    monkeypatch.setenv("OIDC_ISSUER", "https://idp.example.test")
+    monkeypatch.setenv("OIDC_CLIENT_ID", "csight-client")
+    monkeypatch.setenv("OIDC_CLIENT_SECRET", "private-client-secret")
+    monkeypatch.setenv("OIDC_AUTHORIZATION_ENDPOINT", "https://idp.example.test/authorize")
+    monkeypatch.setenv("OIDC_TOKEN_ENDPOINT", "https://idp.example.test/token")
+    monkeypatch.setenv("OIDC_JWKS_URI", "https://idp.example.test/jwks")
+    monkeypatch.setenv(
+        "OIDC_REDIRECT_URI",
+        "https://csight.example.test/auth/oidc/callback",
+    )
+    monkeypatch.setenv(
+        "OIDC_GROUP_MAPPINGS",
+        '{"idp/reviewers":{"tenant_slug":"tenant-a","allowed_roles":["REVIEWER"]}}',
+    )
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
+
+    assert settings.oidc_is_configured is True
+    assert settings.oidc_group_mappings["idp/reviewers"].allowed_roles == {Role.REVIEWER}
+    assert settings.oidc_client_secret_value == "private-client-secret"
+    assert "private-client-secret" not in repr(settings)
+
+
+def test_oidc_callback_timeout_and_https_contracts_fail_closed() -> None:
+    with pytest.raises(ValidationError, match="/auth/oidc/callback"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            oidc_redirect_uri="https://csight.example.test/wrong-callback",
+        )
+    with pytest.raises(ValidationError, match="idle and warning"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            oidc_session_absolute_timeout_seconds=300,
+            oidc_session_idle_timeout_seconds=301,
+        )
+    insecure = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        oidc_enabled=True,
+        database_url=SecretStr("postgresql+psycopg://user:secret@db:5432/csight"),
+        oidc_issuer="http://idp.example.test",
+        oidc_client_id="csight-client",
+        oidc_authorization_endpoint="http://idp.example.test/authorize",
+        oidc_token_endpoint="http://idp.example.test/token",
+        oidc_jwks_uri="http://idp.example.test/jwks",
+        oidc_redirect_uri="http://csight.example.test/auth/oidc/callback",
+        oidc_group_mappings={
+            "idp/reviewers": {
+                "tenant_slug": "tenant-a",
+                "allowed_roles": ["REVIEWER"],
+            }
+        },
+    )
+    assert insecure.oidc_is_configured is False
+    assert "OIDC_HTTPS_ENDPOINTS" in insecure.oidc_configuration_missing
+
+
+def test_oidc_insecure_http_requires_explicit_local_or_test_opt_in() -> None:
+    values = {
+        "oidc_enabled": True,
+        "database_url": SecretStr("postgresql+psycopg://user:secret@db:5432/csight"),
+        "oidc_issuer": "http://idp.test:8080/realms/csight",
+        "oidc_client_id": "csight-client",
+        "oidc_authorization_endpoint": "http://127.0.0.1:18080/authorize",
+        "oidc_token_endpoint": "http://keycloak:8080/token",
+        "oidc_jwks_uri": "http://keycloak:8080/jwks",
+        "oidc_redirect_uri": "http://127.0.0.1:18000/auth/oidc/callback",
+        "oidc_group_mappings": {
+            "idp/reviewers": {
+                "tenant_slug": "tenant-a",
+                "allowed_roles": ["REVIEWER"],
+            }
+        },
+        "oidc_allow_insecure_http": True,
+    }
+
+    qualification = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        environment="test",
+        **values,
+    )
+    assert qualification.oidc_is_configured is True
+
+    with pytest.raises(ValidationError, match="only be enabled in local/test"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            environment="production",
+            **values,
         )
 
 
@@ -164,6 +478,98 @@ def test_upload_limits_are_bounded() -> None:
             _env_file=None,  # pyright: ignore[reportCallIssue]
             max_image_pixels=178_956_971,
         )
+
+
+def test_clamav_scanner_requires_host_and_normalizes_configuration() -> None:
+    with pytest.raises(ValidationError, match="CLAMAV_HOST"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            evidence_malware_scanner="clamav",
+        )
+
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        evidence_image_sanitization_enabled=True,
+        evidence_malware_scanner=" CLAMAV ",
+        clamav_host=" scanner.internal ",
+    )
+
+    assert settings.evidence_malware_scanner == "clamav"
+    assert settings.clamav_host == "scanner.internal"
+
+
+def test_sensitive_payload_retention_is_explicit_outside_local_and_paired() -> None:
+    production = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        environment="production",
+    )
+    assert production.sensitive_payload_retention_policy_version_value is None
+    assert production.sensitive_payload_retention_days_value is None
+
+    with pytest.raises(ValidationError, match="must be configured together"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            sensitive_payload_retention_days=90,
+        )
+
+    configured = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        environment="production",
+        sensitive_payload_retention_policy_version=" customer-a/90d ",
+        sensitive_payload_retention_days=90,
+    )
+    assert configured.sensitive_payload_retention_policy_version_value == "customer-a/90d"
+    assert configured.sensitive_payload_retention_days_value == 90
+
+
+def test_retention_automation_requires_explicit_tenant_policy_and_strict_nonlocal_db() -> None:
+    tenant_id = "00000000-0000-4000-8000-000000000001"
+    disabled = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        privacy_lifecycle_tenant_id=" ",
+    )
+    assert disabled.privacy_lifecycle_tenant_id is None
+
+    with pytest.raises(ValidationError, match="PRIVACY_LIFECYCLE_TENANT_ID"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            privacy_lifecycle_automation_enabled=True,
+            sensitive_payload_retention_policy_version="customer/90d",
+            sensitive_payload_retention_days=90,
+            database_url=SecretStr("postgresql+psycopg://runtime@db/csight"),
+        )
+
+    with pytest.raises(ValidationError, match="explicit"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            privacy_lifecycle_automation_enabled=True,
+            privacy_lifecycle_tenant_id=tenant_id,
+            database_url=SecretStr("postgresql+psycopg://runtime@db/csight"),
+        )
+
+    with pytest.raises(ValidationError, match="RLS-enforced API"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            environment="pilot",
+            privacy_lifecycle_automation_enabled=True,
+            privacy_lifecycle_tenant_id=tenant_id,
+            sensitive_payload_retention_policy_version="customer/90d",
+            sensitive_payload_retention_days=90,
+            database_url=SecretStr("postgresql+psycopg://runtime@db/csight"),
+        )
+
+    configured = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        environment="pilot",
+        privacy_lifecycle_automation_enabled=True,
+        privacy_lifecycle_tenant_id=tenant_id,
+        sensitive_payload_retention_policy_version="customer/90d",
+        sensitive_payload_retention_days=90,
+        database_url=SecretStr("postgresql+psycopg://runtime@db/csight"),
+        database_runtime_role="api",
+        database_rls_required=True,
+    )
+    assert str(configured.privacy_lifecycle_tenant_id) == tenant_id
 
 
 def test_image_allowlists_are_normalized_and_reject_unsupported_types(

@@ -94,7 +94,7 @@ def test_effect_aggregation_selects_highest_precedence_and_is_order_independent(
             ReviewActionType.EVIDENCE_REQUESTED,
             ReviewTaskStatus.WAITING_FOR_EVIDENCE,
         ),
-        (ReviewTaskStatus.WAITING_FOR_EVIDENCE, ReviewActionType.RESUMED, ReviewTaskStatus.PENDING),
+        (ReviewTaskStatus.WAITING_FOR_EVIDENCE, ReviewActionType.RESUMED, ReviewTaskStatus.CLAIMED),
         (ReviewTaskStatus.CLAIMED, ReviewActionType.ESCALATED, ReviewTaskStatus.ESCALATED),
         (ReviewTaskStatus.ESCALATED, ReviewActionType.CLAIMED, ReviewTaskStatus.CLAIMED),
         (ReviewTaskStatus.CLAIMED, ReviewActionType.RESOLVED, ReviewTaskStatus.RESOLVED),

@@ -1,17 +1,22 @@
 """Tenant-scoped SQLAlchemy repositories for Case and Evidence workflows."""
 
-from datetime import datetime
+import hashlib
+from datetime import datetime, timedelta
 from typing import cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from sqlalchemy import ColumnElement, func, select, update
+from sqlalchemy import ColumnElement, exists, func, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.orm import Session
 
 from app.adapters.persistence.models import (
     CaseEvidenceModel,
     CaseModel,
+    CaseSensitivePayloadModel,
     CaseStatusHistoryModel,
+    DataLifecycleEventModel,
+    HumanReviewDecisionModel,
+    HumanReviewTaskModel,
     IdempotencyRecordModel,
 )
 from app.platform.case import (
@@ -22,7 +27,8 @@ from app.platform.case import (
 )
 from app.platform.errors import InconsistentPersistenceStateError
 from app.platform.evidence import EvidenceMetadata, EvidenceUploadStatus
-from app.ports.case_repository import CaseListCriteria, IdempotencyClaim
+from app.platform.privacy_lifecycle import PURGED_CUSTOMER_MESSAGE
+from app.ports.case_repository import CaseListCriteria, EvidenceClaim, IdempotencyClaim
 
 
 def _required_uuid(value: str) -> UUID:
@@ -56,13 +62,37 @@ def case_model_from_entity(case: Case) -> CaseModel:
         customer_message=case.customer_message,
         requested_action=case.requested_action.value,
         attributes=cast(dict[str, object], case.attributes),
+        source_scope=case.source_scope.value,
+        source_provenance=case.source_provenance,
         created_by=_required_uuid(case.created_by),
         created_at=case.created_at,
         updated_at=case.updated_at,
     )
 
 
-def case_entity_from_model(model: CaseModel) -> Case:
+def case_entity_from_model(
+    model: CaseModel,
+    *,
+    sensitive_payload_id: UUID | None = None,
+    sensitive_customer_message: str | None = None,
+    sensitive_purged_at: datetime | None = None,
+) -> Case:
+    if sensitive_payload_id is None:
+        raise InconsistentPersistenceStateError(
+            "The Case is missing its required sensitive-payload lifecycle record."
+        )
+    if sensitive_purged_at is None:
+        if sensitive_customer_message is None:
+            raise InconsistentPersistenceStateError(
+                "The active sensitive-payload lifecycle record has no content."
+            )
+        customer_message = sensitive_customer_message
+    else:
+        if sensitive_customer_message is not None:
+            raise InconsistentPersistenceStateError(
+                "The purged sensitive-payload lifecycle record still has content."
+            )
+        customer_message = PURGED_CUSTOMER_MESSAGE
     return Case.model_validate(
         {
             "id": str(model.id),
@@ -71,14 +101,67 @@ def case_entity_from_model(model: CaseModel) -> Case:
             "status": model.status,
             "order_ref": model.order_ref,
             "product_ref": model.product_ref,
-            "customer_message": model.customer_message,
+            "customer_message": customer_message,
             "requested_action": model.requested_action,
             "attributes": cast(dict[str, JsonValue], model.attributes),
+            "source_scope": model.source_scope,
+            "source_provenance": model.source_provenance,
             "created_by": str(model.created_by),
             "created_at": model.created_at,
             "updated_at": model.updated_at,
         }
     )
+
+
+def _sensitive_models_from_case(
+    case: Case,
+    *,
+    retention_policy_version: str,
+    retention_days: int,
+) -> tuple[CaseSensitivePayloadModel, DataLifecycleEventModel]:
+    if not retention_policy_version.strip():
+        raise ValueError("sensitive payload retention policy version must not be blank")
+    if retention_days < 1:
+        raise ValueError("sensitive payload retention days must be positive")
+    tenant_id = _required_uuid(case.tenant_id)
+    case_id = _required_uuid(case.id)
+    payload_hash = hashlib.sha256(case.customer_message.encode("utf-8")).hexdigest()
+    payload = CaseSensitivePayloadModel(
+        id=case_id,
+        tenant_id=tenant_id,
+        case_id=case_id,
+        schema_version="case_sensitive_payload/1.0.0",
+        customer_message=case.customer_message,
+        payload_sha256=payload_hash,
+        retention_policy_version=retention_policy_version,
+        expires_at=case.created_at + timedelta(days=retention_days),
+        purged_at=None,
+        legacy_redacted_at=None,
+        created_at=case.created_at,
+        updated_at=case.updated_at,
+    )
+    event_id = uuid4()
+    event_content = (
+        f"{case.tenant_id}:{case.id}:{payload.id}:{retention_policy_version}:"
+        f"{case.created_at.isoformat()}"
+    )
+    event = DataLifecycleEventModel(
+        id=event_id,
+        tenant_id=tenant_id,
+        case_id=case_id,
+        schema_version="data_lifecycle_event/1.0.0",
+        event_type="SENSITIVE_PAYLOAD_CREATED",
+        resource_type="CASE_SENSITIVE_PAYLOAD",
+        resource_id=payload.id,
+        retention_policy_version=retention_policy_version,
+        actor_id=_required_uuid(case.created_by),
+        correlation_id=event_id,
+        details={"source": "case.create.v1", "pii_included": False},
+        occurred_at=case.created_at,
+        content_hash=hashlib.sha256(event_content.encode("utf-8")).hexdigest(),
+        operation_key=None,
+    )
+    return payload, event
 
 
 def history_model_from_entity(transition: CaseStatusTransition) -> CaseStatusHistoryModel:
@@ -124,6 +207,7 @@ def evidence_model_from_entity(evidence: EvidenceMetadata) -> CaseEvidenceModel:
         sha256=evidence.sha256,
         width=evidence.width,
         height=evidence.height,
+        idempotency_key=evidence.idempotency_key,
         created_by=_required_uuid(evidence.created_by),
         created_at=evidence.created_at,
         updated_at=evidence.updated_at,
@@ -146,6 +230,7 @@ def evidence_entity_from_model(model: CaseEvidenceModel) -> EvidenceMetadata:
             "sha256": model.sha256,
             "width": model.width,
             "height": model.height,
+            "idempotency_key": model.idempotency_key,
             "created_by": str(model.created_by),
             "created_at": model.created_at,
             "updated_at": model.updated_at,
@@ -200,28 +285,85 @@ def _case_filters(
         filters.append(CaseModel.created_at >= criteria.created_from)
     if criteria.created_to is not None:
         filters.append(CaseModel.created_at <= criteria.created_to)
+    if criteria.access_actor_id is not None:
+        actor_uuid = _optional_uuid(criteria.access_actor_id)
+        if actor_uuid is None:
+            filters.append(CaseModel.id.is_(None))
+        else:
+            filters.append(
+                (CaseModel.current_assignee_id == actor_uuid)
+                | exists(
+                    select(HumanReviewDecisionModel.id)
+                    .join(
+                        HumanReviewTaskModel,
+                        (HumanReviewTaskModel.tenant_id == HumanReviewDecisionModel.tenant_id)
+                        & (HumanReviewTaskModel.id == HumanReviewDecisionModel.review_task_id),
+                    )
+                    .where(
+                        HumanReviewDecisionModel.tenant_id == tenant_id,
+                        HumanReviewTaskModel.case_id == CaseModel.id,
+                        HumanReviewDecisionModel.decided_by == actor_uuid,
+                    )
+                )
+            )
     return filters
 
 
 class SQLAlchemyCaseRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(
+        self,
+        session: Session,
+        *,
+        sensitive_payload_retention_policy_version: str = "development/30d",
+        sensitive_payload_retention_days: int = 30,
+    ) -> None:
         self._session = session
+        self._sensitive_payload_retention_policy_version = (
+            sensitive_payload_retention_policy_version
+        )
+        self._sensitive_payload_retention_days = sensitive_payload_retention_days
 
     def add(self, *, tenant_id: str, case: Case) -> None:
         _require_matching_tenant_scope(tenant_id=tenant_id, entity_tenant_id=case.tenant_id)
-        self._session.add(case_model_from_entity(case))
+        payload, lifecycle_event = _sensitive_models_from_case(
+            case,
+            retention_policy_version=self._sensitive_payload_retention_policy_version,
+            retention_days=self._sensitive_payload_retention_days,
+        )
+        self._session.add_all((case_model_from_entity(case), payload, lifecycle_event))
 
     def get(self, *, tenant_id: str, case_id: str) -> Case | None:
         tenant_uuid = _optional_uuid(tenant_id)
         case_uuid = _optional_uuid(case_id)
         if tenant_uuid is None or case_uuid is None:
             return None
-        statement = select(CaseModel).where(
-            CaseModel.tenant_id == tenant_uuid,
-            CaseModel.id == case_uuid,
+        statement = (
+            select(
+                CaseModel,
+                CaseSensitivePayloadModel.id,
+                CaseSensitivePayloadModel.customer_message,
+                CaseSensitivePayloadModel.purged_at,
+            )
+            .outerjoin(
+                CaseSensitivePayloadModel,
+                (CaseSensitivePayloadModel.tenant_id == CaseModel.tenant_id)
+                & (CaseSensitivePayloadModel.case_id == CaseModel.id),
+            )
+            .where(
+                CaseModel.tenant_id == tenant_uuid,
+                CaseModel.id == case_uuid,
+            )
         )
-        model = self._session.scalars(statement).one_or_none()
-        return case_entity_from_model(model) if model is not None else None
+        row = self._session.execute(statement).one_or_none()
+        if row is None:
+            return None
+        model, payload_id, sensitive_message, purged_at = row
+        return case_entity_from_model(
+            model,
+            sensitive_payload_id=payload_id,
+            sensitive_customer_message=sensitive_message,
+            sensitive_purged_at=purged_at,
+        )
 
     def list(self, *, tenant_id: str, criteria: CaseListCriteria) -> tuple[Case, ...]:
         tenant_uuid = _optional_uuid(tenant_id)
@@ -230,13 +372,33 @@ class SQLAlchemyCaseRepository:
         if criteria.page < 1 or criteria.page_size < 1:
             raise ValueError("page and page_size must be positive")
         statement = (
-            select(CaseModel)
+            select(
+                CaseModel,
+                CaseSensitivePayloadModel.id,
+                CaseSensitivePayloadModel.customer_message,
+                CaseSensitivePayloadModel.purged_at,
+            )
+            .outerjoin(
+                CaseSensitivePayloadModel,
+                (CaseSensitivePayloadModel.tenant_id == CaseModel.tenant_id)
+                & (CaseSensitivePayloadModel.case_id == CaseModel.id),
+            )
             .where(*_case_filters(tenant_uuid, criteria))
             .order_by(CaseModel.created_at.desc(), CaseModel.id.desc())
             .offset((criteria.page - 1) * criteria.page_size)
             .limit(criteria.page_size)
         )
-        return tuple(case_entity_from_model(model) for model in self._session.scalars(statement))
+        items: list[Case] = []
+        for model, payload_id, sensitive_message, purged_at in self._session.execute(statement):
+            items.append(
+                case_entity_from_model(
+                    model,
+                    sensitive_payload_id=payload_id,
+                    sensitive_customer_message=sensitive_message,
+                    sensitive_purged_at=purged_at,
+                )
+            )
+        return tuple(items)
 
     def count(self, *, tenant_id: str, criteria: CaseListCriteria) -> int:
         tenant_uuid = _optional_uuid(tenant_id)
@@ -288,6 +450,52 @@ class SQLAlchemyEvidenceRepository:
             entity_tenant_id=evidence.tenant_id,
         )
         self._session.add(evidence_model_from_entity(evidence))
+
+    def claim(self, *, tenant_id: str, evidence: EvidenceMetadata) -> EvidenceClaim:
+        """Atomically claim an Evidence upload idempotency key.
+
+        The caller has already inspected and hashed the bytes. A conflicting key
+        is returned to the application so it can compare the immutable SHA-256
+        without ever storing the request body in an idempotency record.
+        """
+
+        tenant_uuid = _require_matching_tenant_scope(
+            tenant_id=tenant_id,
+            entity_tenant_id=evidence.tenant_id,
+        )
+        if evidence.idempotency_key is None:
+            raise ValueError("Evidence claim requires an idempotency key")
+        values = {
+            column.name: getattr(evidence_model_from_entity(evidence), column.name)
+            for column in CaseEvidenceModel.__table__.columns
+        }
+        statement = (
+            postgresql_insert(CaseEvidenceModel)
+            .values(**values)
+            .on_conflict_do_nothing(constraint="uq_case_evidence_tenant_case_idempotency_key")
+            .returning(CaseEvidenceModel)
+        )
+        claimed_model = self._session.scalars(statement).one_or_none()
+        if claimed_model is not None:
+            return EvidenceClaim(
+                claimed=True,
+                evidence=evidence_entity_from_model(claimed_model),
+            )
+        existing = self._session.scalars(
+            select(CaseEvidenceModel).where(
+                CaseEvidenceModel.tenant_id == tenant_uuid,
+                CaseEvidenceModel.case_id == _required_uuid(evidence.case_id),
+                CaseEvidenceModel.idempotency_key == evidence.idempotency_key,
+            )
+        ).one_or_none()
+        if existing is None:
+            raise InconsistentPersistenceStateError(
+                "Evidence idempotency conflicted without a matching scoped row."
+            )
+        return EvidenceClaim(
+            claimed=False,
+            evidence=evidence_entity_from_model(existing),
+        )
 
     def get(
         self,

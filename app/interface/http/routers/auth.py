@@ -19,9 +19,10 @@ from app.interface.http.sprint1_schemas import (
 from app.platform.tenant import Principal
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
+legacy_password_router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 
 
-@router.post(
+@legacy_password_router.post(
     "/token",
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,

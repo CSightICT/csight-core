@@ -13,12 +13,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0036과 Query Build/Search의 독립 durable v2 event·worker 경계를 구현하고 실제 PostgreSQL 경로를 검증했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
-| 진행 중 작업 | Query Build/Search v2 구현·push와 최신 `cd6471cd628e` clean RC image/candidate 검증을 완료했다. 다음은 파일럿 외부 입력 없이 수행 가능한 OIDC·ClamAV·OTel·복원·queue isolation qualification의 현재 재현성을 순서대로 점검하는 것이다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, off-host 저장소·경보 수신자·20-session 부하 증거는 계속 차단 항목이다. |
-| 마지막 갱신일 | 2026-08-31 16:27 KST, Asia/Seoul |
+| 진행 중 작업 | Query Build/Search v2와 `cd6471cd628e` clean RC candidate 검증, 로컬 OIDC·이미지 보안·OTel·복원·queue isolation qualification을 완료했다. 다음 우선순위는 실제 20-session/20-workflow terminal·mutation 부하, 외부 경보 수신자, 암호화 immutable off-host 복원 2회, release-eligible 모델과 SHADOW 100건이다. 고객 IdP/public key/retention/policy/support 입력 전에는 pilot을 시작하지 않는다. |
+| 마지막 갱신일 | 2026-08-31 16:37 KST, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private. migration 0036과 Query Build/Search v2 구현 `55fe72b146c4`, 검증 원장 `cd6471cd628e`까지 `origin/codex/operator-console-product-direction`에 push; PR·`develop/main` 병합 없음 |
-| 로컬 Git | `codex/operator-console-product-direction`; HEAD와 원격은 `cd6471cd628e`로 일치. clean worktree `/Users/ckdlsxor/Desktop/CSight_rc_cd6471c`와 새 RC image/volume을 보존했고 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md`는 제외했다. |
-| 마지막 검증 관측 | 2026-08-31 16:27 KST, Ruff/format/Pyright PASS, 비통합 backend 1023 PASS/6 SKIPPED, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, 빈 DB 0001→0036·0036→0035→0036·drift PASS. 최신 RC candidate의 DB는 0036, 9개 장기 서비스 healthy/restart 0, API dependency readiness와 Web 200, model/retrieval worker queue 분리까지 PASS했다. 실행 중 데모 9개 서비스와 DB/image 0034는 그대로 정상이며 디스크는 39 GiB다. |
+| 원격 저장소 | `CSightICT/csight-core` — Private. migration 0036과 Query Build/Search v2 구현 `55fe72b146c4`, RC 검증 원장 `cd6471cd628e`, 로컬 자격 증거 영속화 `9461b31`과 이 상태 원장을 `origin/codex/operator-console-product-direction`에 push; PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; 작업 종료 시 HEAD와 원격 일치를 재검증한다. clean worktree `/Users/ckdlsxor/Desktop/CSight_rc_cd6471c`와 새 RC image/volume을 보존했고 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md`는 제외했다. |
+| 마지막 검증 관측 | 2026-08-31 16:37 KST, 전체 Ruff/format/Pyright PASS, 자격 증거 영속화 집중 unit 6 PASS. 앞선 비통합 backend 1023 PASS/6 SKIPPED, PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, migration lifecycle·drift와 RC candidate 9서비스 healthy/restart 0도 유지한다. 로컬 OIDC, ClamAV 이미지 보안, OTel, 복원, read/queue isolation runner는 PASS했지만 외부 경보·off-host 복원 2회·20 terminal workflow·mutation p95는 아직 미자격이다. 실행 중 데모 9개 서비스와 DB/image 0034는 그대로 정상이며 디스크는 39 GiB다. |
 | 마지막 GitHub 관측 | 2026-08-28 23:02 KST, `origin/codex/operator-console-product-direction`의 `3daaa7bff56fa0e25f7ca69bf6bc31d68a2cdb79`에 대한 CI Run #33177793237 PASS. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
@@ -3884,3 +3884,35 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 다음 행동: 외부 입력이 필요 없는 qualification runner부터 현재 RC에서 재실행 가능 여부를 확인한다.
   실제 고객 IdP/public key/retention/policy/support, release-eligible 모델, immutable off-host 저장소와
   경보 수신자가 필요한 gate는 입력 전까지 FAIL/BLOCKED로 유지한다.
+
+### 2026-08-31 16:37 KST — Local Pilot Qualification Reproduction
+
+- 부하·queue 격리: 현재 데모의 조회 API를 20개 동시 client로 endpoint별 600회 호출해 오류 0,
+  Case worst p95 115.121ms, Review worst p95 85.395ms를 기록했다. 별도 합성 RabbitMQ/Celery 경로에서
+  120초 모델 작업 2건이 대기·실행 중일 때 decision task 20건의 queue wait p95는 502.792ms,
+  유실·중복과 사업 side effect는 0건이었다. 이는 read와 lane isolation 자격이며 mutation p95와
+  20개 실제 workflow terminal 자격은 아니다.
+- OIDC·이미지 보안: 격리 Keycloak에서 Authorization Code+PKCE, role mapping, return path, CSRF,
+  idle expiry, group 제거·계정 비활성화 뒤 신규 로그인 차단과 기존 session 회수가 모두 PASS했다.
+  ClamAV 경로는 clean image 저장·재인코딩·EXIF 제거, EICAR decode 전 422, 손상·과대 파일 거부와
+  scanner outage fail-closed가 PASS했다. 실제 고객 IdP와 실제 고객 이미지를 사용한 결과는 아니다.
+- 관측성: 로컬 Collector/Prometheus/Alertmanager receiver에서 trace·안전한 metric label,
+  firing→수신 확인→resolved와 Collector 장애 중 Core HTTP 200·복구 후 재수집이 PASS했다. 외부 알림은
+  보내지 않았고 실제 운영 paging destination은 미자격이다.
+- 복원: 합성 격리 환경에서 PostgreSQL base/WAL, MinIO version/delete marker, 정책·모델·프롬프트·설정
+  5개 artifact binding과 tamper reject를 검증했다. 측정 RPO 0.0125분, RTO 0.1397분이지만 암호화
+  immutable off-host copy는 미자격이고 target host에서 독립 key로 2회 반복해야 한다.
+- 증거 영속화: 기존 load·observability·restore JSON에 더해 OIDC 결과를
+  `local-data/oidc-qualification/latest/qualification-report.json`, 이미지 보안 healthy/outage 결과를
+  `local-data/evidence-security-qualification/latest/`에 저장하도록 runner를 보강했다. 디렉터리는
+  mode 0700, JSON은 0600이고 PII·Secret을 포함하지 않는다. 관련 shell syntax, 전체 Ruff/format/Pyright,
+  집중 unit 6건과 diff check가 PASS했으며 변경은 `9461b31`로 현재 기능 브랜치에 push했다.
+- 보존/경계: 자격 runner의 임시 container와 volume은 모두 정리됐고 기존 데모 9개 service는 계속
+  healthy, DB/image는 0034, 디스크 가용 공간은 39 GiB다. 실제 외부 GPU·환불·메일·결제·CRM 동작은
+  0회이며 사용자 소유 문서, 원본 이미지, checkpoint, RC volume/image와
+  `kaputt_best_vision_architecture.md`를 보존했다.
+- 다음 행동: ① 실제 OIDC/RLS pilot profile에서 20-session/20-workflow와 mutation p95를 측정하고,
+  ② 외부 경보 수신자 전달·사람 확인을 실연하며, ③ 암호화 immutable off-host 복원을 target host에서
+  독립 key로 2회 수행한다. 이후 release-eligible 모델과 signed SHADOW 100건, rollback/DLQ 훈련을
+  완료한다. 고객 IdP/public key/retention/policy/support 입력과 모든 fresh gate가 없으면 pilot start는
+  계속 BLOCKED다.

@@ -1,7 +1,9 @@
 import {
   decodeAnalysisDetail,
   decodeAnalysisRun,
+  decodeAuthCapabilities,
   decodeCaseDetail,
+  decodeCaseAssignment,
   decodeCasePage,
   decodeCustomerCommunication,
   decodeCustomerCommunications,
@@ -12,6 +14,12 @@ import {
   decodeGroundingRuns,
   decodeIntentDetail,
   decodeIntentList,
+  decodeOperatorCasePage,
+  decodeOperatorReviewPage,
+  decodeOperationsFailures,
+  decodeOperationsOverview,
+  decodeOnboardingReadiness,
+  decodeOidcSession,
   decodePocSummary,
   decodePolicyDetail,
   decodePolicyEvaluationRuns,
@@ -19,16 +27,20 @@ import {
   decodeResolution,
   decodeRetrievalDetail,
   decodeReviewActionResult,
+  decodeReviewAssignees,
   decodeReviewReport,
   decodeReviewTaskDetail,
   decodeReviewTasks,
   decodeToken,
+  decodeWorkflowSnapshot,
 } from "./decoders";
 import type {
   AnalysisDetail,
   AnalysisRun,
   ApiProblem,
+  AuthCapabilities,
   CaseDetail,
+  CaseAssignment,
   CasePage,
   CustomerCommunicationSimulation,
   CurrentUser,
@@ -39,6 +51,13 @@ import type {
   ExternalActionIntentDetail,
   GroundingDetail,
   GroundingRun,
+  OperatorCasePage,
+  OperatorQueueParams,
+  OperatorReviewPage,
+  OperationsFailures,
+  OperationsOverview,
+  OnboardingReadiness,
+  OidcSessionResponse,
   PocSummary,
   PolicyDetail,
   PolicyEvaluationRun,
@@ -46,11 +65,14 @@ import type {
   ResolutionView,
   RetrievalDetail,
   ReviewActionResult,
+  ReviewAssignee,
   ReviewReport,
   ReviewTask,
   ReviewTaskDetail,
   TokenResponse,
+  WorkflowSnapshot,
 } from "./contracts";
+import { sessionVault } from "../auth/sessionVault";
 import { tokenVault } from "../auth/tokenVault";
 
 export class ApiError extends Error {
@@ -77,6 +99,7 @@ export function onSessionExpired(listener: SessionExpiredListener): () => void {
 
 function emitSessionExpired(): void {
   tokenVault.clear();
+  sessionVault.clear();
   expiredListeners.forEach((listener) => listener());
 }
 
@@ -112,14 +135,15 @@ async function request(path: string, options: RequestOptions = {}): Promise<unkn
   }
   if (options.auth !== false) {
     const token = tokenVault.get();
-    if (!token) {
-      emitSessionExpired();
-      throw new ApiError({ status: 401, code: "SESSION_EXPIRED", message: "다시 로그인해 주세요." });
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const method = (options.method ?? "GET").toUpperCase();
+    if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+      const csrfToken = sessionVault.csrf();
+      if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
     }
-    headers.set("Authorization", `Bearer ${token}`);
   }
   if (options.idempotencyKey) headers.set("Idempotency-Key", options.idempotencyKey);
-  const response = await fetch(path, { ...options, headers });
+  const response = await fetch(path, { ...options, headers, credentials: "same-origin" });
   if (!response.ok) {
     if (response.status === 401 && options.auth !== false) emitSessionExpired();
     throw await parseError(response);
@@ -130,14 +154,13 @@ async function request(path: string, options: RequestOptions = {}): Promise<unkn
 
 async function requestImageBlob(path: string): Promise<Blob> {
   const token = tokenVault.get();
-  if (!token) {
-    emitSessionExpired();
-    throw new ApiError({ status: 401, code: "SESSION_EXPIRED", message: "다시 로그인해 주세요." });
-  }
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(path, {
     method: "GET",
     cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "same-origin",
+    headers,
   });
   if (!response.ok) {
     if (response.status === 401) emitSessionExpired();
@@ -164,6 +187,17 @@ async function requestImageBlob(path: string): Promise<Blob> {
 
 const json = (value: unknown): string => JSON.stringify(value);
 
+function operatorQueueQuery(params: OperatorQueueParams): string {
+  const query = new URLSearchParams({
+    view: params.view,
+    sort: params.sort,
+    limit: String(params.limit ?? 25),
+  });
+  if (params.q) query.set("q", params.q);
+  if (params.cursor) query.set("cursor", params.cursor);
+  return query.toString();
+}
+
 export interface CreateCaseInput {
   order_ref: string;
   product_ref: string;
@@ -181,6 +215,15 @@ export interface ResolveInput {
 }
 
 export const api = {
+  async authCapabilities(): Promise<AuthCapabilities> {
+    return decodeAuthCapabilities(await request("/auth/capabilities", { auth: false, cache: "no-store" }));
+  },
+  async oidcSession(): Promise<OidcSessionResponse> {
+    return decodeOidcSession(await request("/auth/session", { auth: false, cache: "no-store" }));
+  },
+  async oidcLogout(): Promise<void> {
+    await request("/auth/logout", { method: "POST" });
+  },
   async login(input: { tenant_slug: string; email: string; password: string }): Promise<TokenResponse> {
     return decodeToken(await request("/api/v1/auth/token", {
       method: "POST", auth: false, body: json(input),
@@ -191,6 +234,17 @@ export const api = {
   },
   async listCases(search = ""): Promise<CasePage> {
     return decodeCasePage(await request(`/api/v1/cases${search}`));
+  },
+  async listOperatorCases(params: OperatorQueueParams): Promise<OperatorCasePage> {
+    return decodeOperatorCasePage(await request(`/api/v1/operator/cases?${operatorQueueQuery(params)}`));
+  },
+  async listOperatorReviews(params: OperatorQueueParams): Promise<OperatorReviewPage> {
+    return decodeOperatorReviewPage(await request(`/api/v1/operator/reviews?${operatorQueueQuery(params)}`));
+  },
+  async assignCase(caseId: string, input: { expected_version: number; assignee_id: string; rationale: string }): Promise<CaseAssignment> {
+    return decodeCaseAssignment(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/assignment`, {
+      method: "POST", body: json(input),
+    })) as CaseAssignment;
   },
   async getCase(caseId: string): Promise<CaseDetail> {
     return decodeCaseDetail(await request(`/api/v1/cases/${encodeURIComponent(caseId)}`));
@@ -276,8 +330,28 @@ export const api = {
   async listCaseReviewTasks(caseId: string): Promise<ReviewTask[]> {
     return decodeReviewTasks(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/human-review-tasks`));
   },
+  async getWorkflowSnapshot(caseId: string): Promise<WorkflowSnapshot> {
+    return decodeWorkflowSnapshot(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/workflow-snapshot`));
+  },
+  async getOperationsOverview(): Promise<OperationsOverview> {
+    return decodeOperationsOverview(await request("/api/v1/operations/overview"));
+  },
+  async getOperationsFailures(lookbackHours = 24): Promise<OperationsFailures> {
+    return decodeOperationsFailures(await request(`/api/v1/operations/failures?lookback_hours=${encodeURIComponent(String(lookbackHours))}`));
+  },
+  async getOnboardingReadiness(): Promise<OnboardingReadiness> {
+    return decodeOnboardingReadiness(await request("/api/v1/operations/onboarding-readiness"));
+  },
   async getReviewTask(taskId: string): Promise<ReviewTaskDetail> {
     return decodeReviewTaskDetail(await request(`/api/v1/human-review-tasks/${encodeURIComponent(taskId)}`));
+  },
+  async listReviewAssignees(): Promise<ReviewAssignee[]> {
+    return decodeReviewAssignees(await request("/api/v1/human-review-assignees"));
+  },
+  async assignReviewTask(taskId: string, input: { expected_version: number; assignee_id: string; rationale: string }): Promise<ReviewActionResult> {
+    return decodeReviewActionResult(await request(`/api/v1/human-review-tasks/${encodeURIComponent(taskId)}/assign`, {
+      method: "POST", body: json(input),
+    }));
   },
   async reviewAction(taskId: string, action: string, body: Record<string, unknown>): Promise<ReviewActionResult> {
     return decodeReviewActionResult(await request(`/api/v1/human-review-tasks/${encodeURIComponent(taskId)}/${action}`, {

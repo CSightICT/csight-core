@@ -1,4 +1,12 @@
-import type { AnalysisDetail, GroundingDetail, PolicyDetail, RetrievalDetail, ReviewTask } from "../api/contracts";
+import type {
+  AnalysisDetail,
+  GroundingDetail,
+  PolicyDetail,
+  RetrievalDetail,
+  ReviewTask,
+  WorkflowComponentSnapshot,
+  WorkflowSnapshot,
+} from "../api/contracts";
 import { checkpointStore, newOpaqueKey, type WorkflowCheckpoint } from "../recovery/workflowCheckpoint";
 
 const TERMINAL = new Set(["SUCCEEDED", "PARTIAL_SUCCESS", "FAILED"]);
@@ -14,6 +22,7 @@ export interface WorkflowApi {
   startPolicy(caseId: string, analysisId: string, asOfDate: string, key: string): Promise<{ policy_evaluation_run_id: string }>;
   getPolicy(caseId: string, runId: string): Promise<PolicyDetail>;
   listCaseReviewTasks(caseId: string): Promise<ReviewTask[]>;
+  getWorkflowSnapshot(caseId: string): Promise<WorkflowSnapshot>;
 }
 
 export type WorkflowStage = "TEXT_V2" | "RAW_TOP3" | "GROUNDING" | "POLICY" | "REVIEW";
@@ -30,6 +39,7 @@ export interface WorkflowResult {
 export interface WorkflowOptions {
   pollMs?: number;
   maxPolls?: number;
+  maxWaitMs?: number;
   onProgress?: (progress: WorkflowProgress) => void;
   signal?: AbortSignal;
 }
@@ -53,19 +63,40 @@ function assertSucceeded(stage: string, status: string): void {
   if (!SUCCESS.has(status)) throw new Error(`${stage} 단계가 ${status} 상태로 종료되어 다음 단계로 진행하지 않았습니다.`);
 }
 
-async function poll<T>(
-  load: () => Promise<T>,
-  statusOf: (value: T) => string,
-  options: { pollMs: number; maxPolls: number; signal: AbortSignal | undefined },
-): Promise<T> {
+type SnapshotComponent = Exclude<keyof WorkflowSnapshot, "case_id" | "case_status" | "terminal" | "degraded" | "retry_at" | "last_good" | "correlation_id" | "stages">;
+
+function nextDelay(baseMs: number, attempt: number): number {
+  if (baseMs <= 0) return 0;
+  return Math.min(30_000, baseMs * (2 ** Math.min(attempt, 6)));
+}
+
+async function waitForComponent(
+  client: WorkflowApi,
+  caseId: string,
+  componentName: SnapshotComponent,
+  expectedRunId: string | null,
+  options: {
+    pollMs: number;
+    maxPolls: number;
+    maxWaitMs: number;
+    signal: AbortSignal | undefined;
+    requireTerminal: boolean;
+  },
+): Promise<WorkflowComponentSnapshot> {
+  const startedAt = Date.now();
   for (let count = 0; count < options.maxPolls; count += 1) {
     requireActive(options.signal);
-    const value = await load();
-    const status = statusOf(value);
-    if (TERMINAL.has(status) || SUCCESS.has(status)) return value;
-    await pause(options.pollMs, options.signal);
+    const snapshot = await client.getWorkflowSnapshot(caseId);
+    const component = snapshot[componentName];
+    if (
+      component
+      && (expectedRunId === null || component.run_id === expectedRunId)
+      && (!options.requireTerminal || TERMINAL.has(component.status) || SUCCESS.has(component.status))
+    ) return component;
+    if (Date.now() - startedAt >= options.maxWaitMs) break;
+    await pause(nextDelay(options.pollMs, count), options.signal);
   }
-  throw new Error("처리 시간이 예상보다 길어졌습니다. 저장된 실행 ID로 다시 확인해 주세요.");
+  throw new Error("최대 대기시간을 넘겼습니다. 마지막 정상 결과는 보존되며 나중에 다시 열어 확인할 수 있습니다.");
 }
 
 export async function runPolicyWorkflow(
@@ -74,7 +105,12 @@ export async function runPolicyWorkflow(
   asOfDate: string,
   options: WorkflowOptions = {},
 ): Promise<WorkflowResult> {
-  const settings = { pollMs: options.pollMs ?? 1400, maxPolls: options.maxPolls ?? 180, signal: options.signal };
+  const settings = {
+    pollMs: options.pollMs ?? 1000,
+    maxPolls: options.maxPolls ?? 20,
+    maxWaitMs: options.maxWaitMs ?? 120_000,
+    signal: options.signal,
+  };
   let checkpoint = checkpointStore.load(caseId);
 
   const textKey = checkpoint.idempotencyKeys.analysisV2 ?? newOpaqueKey();
@@ -86,11 +122,10 @@ export async function runPolicyWorkflow(
     const started = await client.startAnalysis(caseId, "product_defect_text_extraction", "2.0.0", textKey);
     checkpoint = checkpointStore.patch(caseId, { analysisV2RunId: started.analysis_run_id });
   }
-  const analysis = await poll(
-    () => client.getAnalysis(caseId, checkpoint.analysisV2RunId!),
-    (value) => value.run.status,
-    settings,
+  await waitForComponent(
+    client, caseId, "analysis", checkpoint.analysisV2RunId!, { ...settings, requireTerminal: true },
   );
+  const analysis = await client.getAnalysis(caseId, checkpoint.analysisV2RunId!);
   options.onProgress?.({ stage: "TEXT_V2", status: analysis.run.status, message: "텍스트 분석 결과를 확인했습니다." });
   assertSucceeded("텍스트 분석", analysis.run.status);
 
@@ -101,11 +136,10 @@ export async function runPolicyWorkflow(
     const started = await client.startRetrieval(caseId, checkpoint.analysisV2RunId!, asOfDate, retrievalKey);
     checkpoint = checkpointStore.patch(caseId, { retrievalRunId: started.id });
   }
-  const retrieval = await poll(
-    () => client.getRetrieval(caseId, checkpoint.retrievalRunId!),
-    (value) => value.run.status,
-    settings,
+  await waitForComponent(
+    client, caseId, "policy_retrieval", checkpoint.retrievalRunId!, { ...settings, requireTerminal: true },
   );
+  const retrieval = await client.getRetrieval(caseId, checkpoint.retrievalRunId!);
   options.onProgress?.({ stage: "RAW_TOP3", status: retrieval.run.status, message: "정책 후보와 인용 근거를 찾았습니다." });
   assertSucceeded("정책 검색", retrieval.run.status);
 
@@ -116,11 +150,10 @@ export async function runPolicyWorkflow(
     const started = await client.startGrounding(caseId, checkpoint.retrievalRunId!, groundingKey);
     checkpoint = checkpointStore.patch(caseId, { groundingRunId: started.id });
   }
-  const grounding = await poll(
-    () => client.getGrounding(caseId, checkpoint.groundingRunId!),
-    (value) => value.run.status,
-    settings,
+  await waitForComponent(
+    client, caseId, "grounded_explanation", checkpoint.groundingRunId!, { ...settings, requireTerminal: true },
   );
+  const grounding = await client.getGrounding(caseId, checkpoint.groundingRunId!);
   options.onProgress?.({ stage: "GROUNDING", status: grounding.run.status, message: "인용과 설명의 연결을 검증했습니다." });
   assertSucceeded("근거 연결", grounding.run.status);
 
@@ -131,20 +164,20 @@ export async function runPolicyWorkflow(
     const started = await client.startPolicy(caseId, checkpoint.analysisV2RunId!, asOfDate, policyKey);
     checkpoint = checkpointStore.patch(caseId, { policyEvaluationRunId: started.policy_evaluation_run_id });
   }
-  const policy = await poll(
-    () => client.getPolicy(caseId, checkpoint.policyEvaluationRunId!),
-    (value) => value.run.status,
-    settings,
+  await waitForComponent(
+    client, caseId, "policy_evaluation", checkpoint.policyEvaluationRunId!, { ...settings, requireTerminal: true },
   );
+  const policy = await client.getPolicy(caseId, checkpoint.policyEvaluationRunId!);
   options.onProgress?.({ stage: "POLICY", status: policy.run.status, message: "정책 평가를 마쳤습니다." });
   assertSucceeded("정책 평가", policy.run.status);
 
-  let reviewTask: ReviewTask | null = null;
-  for (let count = 0; count < 12 && !reviewTask; count += 1) {
-    const tasks = await client.listCaseReviewTasks(caseId);
-    reviewTask = tasks.find((task) => task.policy_evaluation_run_id === checkpoint.policyEvaluationRunId) ?? null;
-    if (!reviewTask) await pause(settings.pollMs, settings.signal);
-  }
+  await waitForComponent(
+    client, caseId, "review", null, { ...settings, requireTerminal: false },
+  );
+  const tasks = await client.listCaseReviewTasks(caseId);
+  const reviewTask = tasks.find(
+    (task) => task.policy_evaluation_run_id === checkpoint.policyEvaluationRunId,
+  ) ?? null;
   options.onProgress?.({
     stage: "REVIEW", status: reviewTask ? reviewTask.status : "PENDING",
     message: reviewTask ? "사람 검토 작업이 준비됐습니다." : "검토 작업 생성이 지연되고 있습니다.",

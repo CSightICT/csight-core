@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { AnalysisDetail, GroundingDetail, PolicyDetail, RetrievalDetail, ReviewTask } from "../api/contracts";
+import type { AnalysisDetail, GroundingDetail, PolicyDetail, RetrievalDetail, ReviewTask, WorkflowSnapshot } from "../api/contracts";
 import { runPolicyWorkflow, type WorkflowApi } from "./runPolicyWorkflow";
 
 const analysis = {
@@ -46,11 +46,30 @@ const policy = {
 } as PolicyDetail;
 const review = { id: "review-1", case_id: "case-1", policy_evaluation_run_id: "policy-1", status: "PENDING" } as ReviewTask;
 
+function snapshot(component: Partial<WorkflowSnapshot>): WorkflowSnapshot {
+  return {
+    case_id: "case-1", case_status: "REVIEW_PENDING", terminal: false, degraded: false,
+    retry_at: null, last_good: "CASE_RECEIVED", correlation_id: "correlation-1",
+    analysis: null, stages: [], policy_retrieval: null, grounded_explanation: null,
+    policy_evaluation: null, review: null, resolution: null, report: null,
+    ...component,
+  };
+}
+
 describe("policy workflow", () => {
   it("waits for grounding before policy and keeps RAW/top-3 fixed", async () => {
     const calls: string[] = [];
     const client: WorkflowApi = {
       startAnalysis: vi.fn(async (_case, pipeline, version) => { calls.push(`analysis:${pipeline}:${version}`); return { analysis_run_id: "analysis-1" }; }),
+      getWorkflowSnapshot: vi.fn(async () => {
+        calls.push("snapshot:get");
+        const snapshotCount = calls.filter((item) => item === "snapshot:get").length;
+        if (snapshotCount === 1) return snapshot({ analysis: { run_id: "analysis-1", status: "SUCCEEDED", started_at: null, completed_at: null, failure_code: null, correlation_id: "correlation-1" } });
+        if (snapshotCount === 2) return snapshot({ policy_retrieval: { run_id: "retrieval-1", status: "SUCCEEDED", started_at: null, completed_at: null, failure_code: null, correlation_id: "correlation-1" } });
+        if (snapshotCount === 3) return snapshot({ grounded_explanation: { run_id: "grounding-1", status: "SUCCEEDED", started_at: null, completed_at: null, failure_code: null, correlation_id: "correlation-1" } });
+        if (snapshotCount === 4) return snapshot({ policy_evaluation: { run_id: "policy-1", status: "SUCCEEDED", started_at: null, completed_at: null, failure_code: null, correlation_id: "correlation-1" } });
+        return snapshot({ review: { run_id: "review-1", status: "PENDING", started_at: null, completed_at: null, failure_code: null, correlation_id: "correlation-1" } });
+      }),
       getAnalysis: vi.fn(async () => { calls.push("analysis:get"); return analysis; }),
       startRetrieval: vi.fn(async () => { calls.push("retrieval:RAW:3"); return { id: "retrieval-1" }; }),
       getRetrieval: vi.fn(async () => { calls.push("retrieval:get"); return retrieval; }),
@@ -62,8 +81,9 @@ describe("policy workflow", () => {
     };
     const result = await runPolicyWorkflow(client, "case-1", "2026-08-27", { pollMs: 0, maxPolls: 1 });
     expect(calls).toEqual([
-      "analysis:product_defect_text_extraction:2.0.0", "analysis:get", "retrieval:RAW:3", "retrieval:get",
-      "grounding:start", "grounding:get", "policy:start", "policy:get", "review:get",
+      "analysis:product_defect_text_extraction:2.0.0", "snapshot:get", "analysis:get",
+      "retrieval:RAW:3", "snapshot:get", "retrieval:get", "grounding:start", "snapshot:get",
+      "grounding:get", "policy:start", "snapshot:get", "policy:get", "snapshot:get", "review:get",
     ]);
     expect(result.reviewTask?.id).toBe("review-1");
   });
@@ -71,6 +91,7 @@ describe("policy workflow", () => {
   it("stops before retrieval when Text v2 only partially succeeds", async () => {
     const client = {
       startAnalysis: vi.fn(async () => ({ analysis_run_id: "analysis-1" })),
+      getWorkflowSnapshot: vi.fn(async () => snapshot({ analysis: { run_id: "analysis-1", status: "PARTIAL_SUCCESS", started_at: null, completed_at: null, failure_code: "PARTIAL", correlation_id: "correlation-1" } })),
       getAnalysis: vi.fn(async () => ({ ...analysis, run: { ...analysis.run, status: "PARTIAL_SUCCESS" } })),
       startRetrieval: vi.fn(), getRetrieval: vi.fn(), startGrounding: vi.fn(), getGrounding: vi.fn(),
       startPolicy: vi.fn(), getPolicy: vi.fn(), listCaseReviewTasks: vi.fn(),

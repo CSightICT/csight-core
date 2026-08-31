@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tokenVault } from "../auth/tokenVault";
 import type { Evidence } from "../api/contracts";
 import { server } from "../test/server";
-import { EvidencePreview } from "./EvidencePreview";
+import { EvidencePreview, type EvidencePreviewStatus } from "./EvidencePreview";
 
 const evidence: Evidence = {
   evidence_id: "evidence-1",
@@ -41,9 +41,9 @@ afterEach(() => {
 });
 afterAll(() => server.close());
 
-function renderPreview() {
+function renderPreview(onStatusChange?: (evidenceId: string, status: EvidencePreviewStatus) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}><EvidencePreview caseId="case-1" evidence={evidence} /></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><EvidencePreview caseId="case-1" evidence={evidence} {...(onStatusChange ? { onStatusChange } : {})} /></QueryClientProvider>);
 }
 
 describe("EvidencePreview", () => {
@@ -68,6 +68,23 @@ describe("EvidencePreview", () => {
     expect(revokeObjectUrl).toHaveBeenCalledWith("blob:https://doongdoong.org/evidence-preview-1");
   });
 
+  it("reports loading and only becomes ready after the browser decodes the image", async () => {
+    server.use(http.get("/api/v1/cases/case-1/evidence/evidence-1/content", () => new HttpResponse(
+      new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+      { headers: { "Content-Type": "image/jpeg" } },
+    )));
+    tokenVault.set("preview-token", 600);
+    const onStatusChange = vi.fn();
+    renderPreview(onStatusChange);
+
+    const image = await screen.findByRole("img", { name: "rank-054.jpg 증거 미리보기" });
+    expect(onStatusChange).toHaveBeenCalledWith("evidence-1", "LOADING");
+    expect(onStatusChange).not.toHaveBeenCalledWith("evidence-1", "READY");
+
+    fireEvent.load(image);
+    await waitFor(() => expect(onStatusChange).toHaveBeenCalledWith("evidence-1", "READY"));
+  });
+
   it("falls back to metadata without leaving a broken image when decoding fails", async () => {
     server.use(http.get("/api/v1/cases/case-1/evidence/evidence-1/content", () => new HttpResponse(
       new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
@@ -83,6 +100,27 @@ describe("EvidencePreview", () => {
     expect(screen.getByText("rank-054.jpg")).toBeVisible();
     expect(screen.getByRole("button", { name: /다시 시도/ })).toBeVisible();
     view.unmount();
+  });
+
+  it("reports a failed fetch and returns to ready only after retry and decode", async () => {
+    let attempt = 0;
+    server.use(http.get("/api/v1/cases/case-1/evidence/evidence-1/content", () => {
+      attempt += 1;
+      return attempt === 1
+        ? new HttpResponse("<html>not evidence</html>", { headers: { "Content-Type": "text/html" } })
+        : new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { headers: { "Content-Type": "image/jpeg" } });
+    }));
+    tokenVault.set("preview-token", 600);
+    const onStatusChange = vi.fn();
+    renderPreview(onStatusChange);
+
+    const retry = await screen.findByRole("button", { name: /다시 시도/ });
+    await waitFor(() => expect(onStatusChange).toHaveBeenCalledWith("evidence-1", "FAILED"));
+    fireEvent.click(retry);
+    const image = await screen.findByRole("img", { name: "rank-054.jpg 증거 미리보기" });
+    expect(onStatusChange).not.toHaveBeenLastCalledWith("evidence-1", "READY");
+    fireEvent.load(image);
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("evidence-1", "READY"));
   });
 
   it("rejects a non-image response and exposes no original link", async () => {

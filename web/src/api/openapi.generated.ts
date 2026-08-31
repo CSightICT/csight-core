@@ -62,6 +62,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Current User */
+        get: operations["get_current_user_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/token": {
         parameters: {
             query?: never;
@@ -79,15 +96,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/me": {
+    "/auth/capabilities": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Current User */
-        get: operations["get_current_user_api_v1_auth_me_get"];
+        /** Get Auth Capabilities */
+        get: operations["_get_auth_capabilities_auth_capabilities_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -142,6 +159,24 @@ export interface paths {
         get: operations["get_case_status_history_api_v1_cases__case_id__status_history_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cases/{case_id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Case Assignment */
+        get: operations["get_case_assignment_api_v1_cases__case_id__assignment_get"];
+        put?: never;
+        /** Assign Case */
+        post: operations["assign_case_api_v1_cases__case_id__assignment_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -545,6 +580,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/human-review-tasks/{task_id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign Task */
+        post: operations["assign_task_api_v1_human_review_tasks__task_id__assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/human-review-tasks/{task_id}/claim": {
         parameters: {
             query?: never;
@@ -664,15 +716,316 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/human-review-assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Assignees */
+        get: operations["list_assignees_api_v1_human_review_assignees_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Operator Cases */
+        get: operations["list_operator_cases_api_v1_operator_cases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Operator Reviews */
+        get: operations["list_operator_reviews_api_v1_operator_reviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cases/{case_id}/workflow-snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workflow Snapshot */
+        get: operations["get_workflow_snapshot_api_v1_cases__case_id__workflow_snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/onboarding-readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Onboarding Readiness */
+        get: operations["get_onboarding_readiness_api_v1_operations_onboarding_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operations Overview */
+        get: operations["get_operations_overview_api_v1_operations_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operations Failures */
+        get: operations["get_operations_failures_api_v1_operations_failures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/failures/{failure_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay Operational Failure */
+        post: operations["replay_operational_failure_api_v1_operations_failures__failure_id__replay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/failures/{failure_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Operational Failure */
+        post: operations["cancel_operational_failure_api_v1_operations_failures__failure_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/model-releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Model Release */
+        post: operations["register_model_release_api_v1_operations_model_releases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/model-releases/{release_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Model Release */
+        post: operations["activate_model_release_api_v1_operations_model_releases__release_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/model-activations/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Active Model Release */
+        get: operations["get_active_model_release_api_v1_operations_model_activations_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/model-route-plans/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Model Route */
+        post: operations["activate_model_route_api_v1_operations_model_route_plans_activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/model-route-plans/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Active Model Route */
+        get: operations["get_active_model_route_api_v1_operations_model_route_plans_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivateModelReleaseRequest */
+        ActivateModelReleaseRequest: {
+            execution_mode: components["schemas"]["AnalysisExecutionMode"];
+            /** Expected Current Activation Id */
+            expected_current_activation_id?: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** ActivateModelRouteRequest */
+        ActivateModelRouteRequest: {
+            task: components["schemas"]["ModelReleaseTask"];
+            execution_mode: components["schemas"]["AnalysisExecutionMode"];
+            /** Model Activation Id */
+            model_activation_id: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /** Expected Current Route Plan Id */
+            expected_current_route_plan_id?: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** ActiveLLMRelease */
+        ActiveLLMRelease: {
+            release: components["schemas"]["RegisteredLLMRelease"];
+            activation: components["schemas"]["ModelActivationEvent"];
+        };
+        /** ActiveModelReleaseResponse */
+        ActiveModelReleaseResponse: {
+            task: components["schemas"]["ModelReleaseTask"];
+            execution_mode: components["schemas"]["AnalysisExecutionMode"];
+            active: components["schemas"]["ActiveLLMRelease"];
+        };
+        /** ActiveModelRouteResponse */
+        ActiveModelRouteResponse: {
+            route_plan: components["schemas"]["ModelRoutePlan"];
+            active_release: components["schemas"]["ActiveLLMRelease"];
+        };
+        /** ActiveVersionResponse */
+        ActiveVersionResponse: {
+            kind: components["schemas"]["OperationsVersionKind"];
+            /** Component */
+            component: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+            /** Revision */
+            revision: string | null;
+            /** Numeric Value */
+            numeric_value: number | null;
+            source: components["schemas"]["OperationsVersionSource"];
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+        };
         /**
          * AdditionalEvidenceReason
          * @enum {string}
          */
         AdditionalEvidenceReason: "IMAGE_REQUIRED" | "DEFECT_AREA_NOT_VISIBLE" | "IMAGE_TOO_DARK" | "IMAGE_BLURRED" | "PRODUCT_NOT_VISIBLE" | "ORDER_REFERENCE_REQUIRED" | "PRODUCT_REFERENCE_REQUIRED" | "DESCRIPTION_INSUFFICIENT" | "OTHER";
+        /**
+         * AnalysisExecutionMode
+         * @description Immutable boundary between production workflow and observation-only runs.
+         * @enum {string}
+         */
+        AnalysisExecutionMode: "PRIMARY" | "SHADOW";
         /**
          * AnalysisFailureResponse
          * @description Failure projection that deliberately omits internal/provider messages.
@@ -731,6 +1084,7 @@ export interface components {
             pipeline: components["schemas"]["AnalysisPipeline"];
             /** Pipeline Version */
             pipeline_version: string;
+            execution_mode: components["schemas"]["AnalysisExecutionMode"];
             trigger: components["schemas"]["AnalysisTrigger"];
             status: components["schemas"]["AnalysisRunStatus"];
             /** Requested By */
@@ -830,6 +1184,31 @@ export interface components {
          * @enum {string}
          */
         AnalysisTrigger: "USER_REQUEST";
+        /** AssignCaseRequest */
+        AssignCaseRequest: {
+            /** Assignee Id */
+            assignee_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Rationale */
+            rationale: string;
+        };
+        /** AssignRequest */
+        AssignRequest: {
+            /** Expected Version */
+            expected_version: number;
+            /** Assignee Id */
+            assignee_id: string;
+            /** Rationale */
+            rationale: string;
+        };
+        /** AuthCapabilitiesResponse */
+        AuthCapabilitiesResponse: {
+            /** Oidc Enabled */
+            oidc_enabled: boolean;
+            /** Legacy Password Enabled */
+            legacy_password_enabled: boolean;
+        };
         /** Body_add_image_evidence_api_v1_cases__case_id__evidence_post */
         Body_add_image_evidence_api_v1_cases__case_id__evidence_post: {
             /**
@@ -866,6 +1245,27 @@ export interface components {
             /** Y2 */
             y2: number;
         };
+        /** CaseAssignmentResponse */
+        CaseAssignmentResponse: {
+            /** Case Id */
+            case_id: string;
+            /** Current Assignee Id */
+            current_assignee_id: string | null;
+            /** Version */
+            version: number;
+            /** Assigned By */
+            assigned_by: string | null;
+            assignment_type: components["schemas"]["CaseAssignmentType"] | null;
+            /** Rationale */
+            rationale: string | null;
+            /** Assigned At */
+            assigned_at: string | null;
+        };
+        /**
+         * CaseAssignmentType
+         * @enum {string}
+         */
+        CaseAssignmentType: "ADMIN_ASSIGNMENT" | "ADMIN_REASSIGNMENT" | "REVIEW_TASK_BACKFILL";
         /** CaseDetailResponse */
         CaseDetailResponse: {
             /** Case Id */
@@ -1057,6 +1457,26 @@ export interface components {
          * @enum {string}
          */
         ClauseType: "RULE" | "EXCEPTION" | "EVIDENCE_REQUIREMENT" | "ESCALATION" | "DEFINITION" | "PROCEDURE";
+        /** ComponentFailureSummaryResponse */
+        ComponentFailureSummaryResponse: {
+            component: components["schemas"]["OperationsComponent"];
+            /** Failed Count */
+            failed_count: number;
+            /** Partial Success Count */
+            partial_success_count: number;
+            /** Retry Count */
+            retry_count: number;
+            /** Stalled Count */
+            stalled_count: number;
+            /** Oldest Signal At */
+            oldest_signal_at: string | null;
+            /** Latest Signal At */
+            latest_signal_at: string | null;
+            /** Last Healthy At */
+            last_healthy_at: string | null;
+            /** Top Failure Codes */
+            top_failure_codes: components["schemas"]["FailureCodeCountResponse"][];
+        };
         /**
          * CoordinateSystem
          * @enum {string}
@@ -1149,6 +1569,16 @@ export interface components {
             generated_at: string;
             /** Total Records */
             total_records: number;
+            /** Eligible Records */
+            eligible_records: number;
+            /** Excluded Records */
+            excluded_records: number;
+            /** Eligible Source Scope */
+            eligible_source_scope: string;
+            /** Source Scope Distribution */
+            source_scope_distribution: {
+                [key: string]: number;
+            };
             /** Baseline Minimum */
             baseline_minimum: number;
             /** Drift Review Minimum */
@@ -1487,6 +1917,13 @@ export interface components {
          * @enum {string}
          */
         ExtractionIssueType: "DENT" | "CRACK" | "BREAKAGE" | "LEAKAGE" | "MISSING_COMPONENT" | "WRONG_ITEM" | "CONTAMINATION" | "FUNCTIONAL_FAILURE" | "PACKAGING_DAMAGE" | "OTHER" | "UNKNOWN";
+        /** FailureCodeCountResponse */
+        FailureCodeCountResponse: {
+            /** Code */
+            code: string;
+            /** Count */
+            count: number;
+        };
         /** GroundedExplanationRunDetailResponse */
         GroundedExplanationRunDetailResponse: {
             run: components["schemas"]["GroundedExplanationRunResponse"];
@@ -1679,6 +2116,97 @@ export interface components {
              */
             created_at: string;
         };
+        /** LLMReleaseManifest */
+        LLMReleaseManifest: {
+            /**
+             * Schema Version
+             * @default llm_release_manifest/1.0.0
+             * @constant
+             */
+            schema_version: "llm_release_manifest/1.0.0";
+            /** Candidate Id */
+            candidate_id: string;
+            /** Package Name */
+            package_name: string;
+            /** Package Version */
+            package_version: string;
+            task: components["schemas"]["ModelReleaseTask"];
+            /** Artifact */
+            artifact: string;
+            /** Artifact Revision */
+            artifact_revision: string;
+            /** Artifact Content Digest */
+            artifact_content_digest: string;
+            /** Runtime Image */
+            runtime_image: string;
+            /** Runtime Image Digest */
+            runtime_image_digest: string;
+            /** Dependency Lock Digest */
+            dependency_lock_digest: string;
+            /** Sbom Digest */
+            sbom_digest: string;
+            /** Served Model Name */
+            served_model_name: string;
+            /** Model Version */
+            model_version: string;
+            /** Prompt Name */
+            prompt_name: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Prompt Content Hash */
+            prompt_content_hash: string;
+            /** Input Schema Version */
+            input_schema_version: string;
+            /** Output Schema Version */
+            output_schema_version: string;
+            /**
+             * Device Profile
+             * @default onprem-cuda
+             * @constant
+             */
+            device_profile: "onprem-cuda";
+            /** Precision */
+            precision: string;
+            /** Max Context Tokens */
+            max_context_tokens: number;
+            /** Max Num Sequences */
+            max_num_sequences: number;
+            /** Gpu Memory Utilization */
+            gpu_memory_utilization: number;
+            /** Kv Cache Dtype */
+            kv_cache_dtype: string;
+            /**
+             * Language Model Only
+             * @default true
+             * @constant
+             */
+            language_model_only: true;
+            /**
+             * Automatic Cross Model Fallback
+             * @default false
+             * @constant
+             */
+            automatic_cross_model_fallback: false;
+            /** Qualification Dataset Digest */
+            qualification_dataset_digest: string;
+            /** Qualification Result Digest */
+            qualification_result_digest: string;
+            /** Candidate Matrix Digest */
+            candidate_matrix_digest: string;
+            /** Candidate Assessment Digest */
+            candidate_assessment_digest: string;
+            /**
+             * Release Status
+             * @default RELEASE_ELIGIBLE
+             * @constant
+             */
+            release_status: "RELEASE_ELIGIBLE";
+            /**
+             * Qualified At
+             * Format: date-time
+             */
+            qualified_at: string;
+        };
         /** LLMTextClaim */
         LLMTextClaim: {
             type: components["schemas"]["ExtractionIssueType"];
@@ -1800,6 +2328,344 @@ export interface components {
          * @enum {string}
          */
         MissingInformation: "PRODUCT_REFERENCE" | "ORDER_REFERENCE" | "DEFECT_TYPE" | "DEFECT_LOCATION" | "CUSTOMER_REQUEST" | "IMAGE_EVIDENCE" | "ADDITIONAL_DESCRIPTION";
+        /** ModelActivationEvent */
+        ModelActivationEvent: {
+            /** Id */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            task: components["schemas"]["ModelReleaseTask"];
+            execution_mode: components["schemas"]["AnalysisExecutionMode"];
+            /** Model Release Id */
+            model_release_id: string;
+            /** Previous Activation Id */
+            previous_activation_id?: string | null;
+            /** Activated By */
+            activated_by: string;
+            /** Reason */
+            reason: string;
+            /** Idempotency Key */
+            idempotency_key: string;
+            /** Request Hash */
+            request_hash: string;
+            /**
+             * Activated At
+             * Format: date-time
+             */
+            activated_at: string;
+        };
+        /** ModelActivationResponse */
+        ModelActivationResponse: {
+            activation: components["schemas"]["ModelActivationEvent"];
+            /** Idempotent Replay */
+            idempotent_replay: boolean;
+        };
+        /**
+         * ModelReleaseTask
+         * @enum {string}
+         */
+        ModelReleaseTask: "PRODUCT_DEFECT_TEXT_EXTRACTION_V2" | "POLICY_QUERY_BUILDER_V1" | "GROUNDED_POLICY_EXPLANATION_V1";
+        /** ModelRouteActivationResponse */
+        ModelRouteActivationResponse: {
+            route_plan: components["schemas"]["ModelRoutePlan"];
+            /** Idempotent Replay */
+            idempotent_replay: boolean;
+        };
+        /**
+         * ModelRoutePlan
+         * @description One immutable link from a tenant task to an approved release activation.
+         */
+        ModelRoutePlan: {
+            /**
+             * Schema Version
+             * @default model_route_plan/1.0.0
+             * @constant
+             */
+            schema_version: "model_route_plan/1.0.0";
+            /** Id */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            task: components["schemas"]["ModelReleaseTask"];
+            execution_mode: components["schemas"]["AnalysisExecutionMode"];
+            /** Model Activation Id */
+            model_activation_id: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /** Previous Route Plan Id */
+            previous_route_plan_id?: string | null;
+            /**
+             * Automatic Cross Model Fallback
+             * @default false
+             * @constant
+             */
+            automatic_cross_model_fallback: false;
+            /** Activated By */
+            activated_by: string;
+            /** Reason */
+            reason: string;
+            /** Idempotency Key */
+            idempotency_key: string;
+            /** Request Hash */
+            request_hash: string;
+            /**
+             * Activated At
+             * Format: date-time
+             */
+            activated_at: string;
+        };
+        /**
+         * OnboardingGateCode
+         * @enum {string}
+         */
+        OnboardingGateCode: "ACTIVE_OPERATOR_STAFFING" | "SIGNED_INTAKE_SOURCE" | "RETENTION_AUTOMATION" | "OIDC_TENANT_MAPPING" | "ACTIVE_POLICY_RUNTIME" | "PRIMARY_MODEL_ROUTES";
+        /**
+         * OnboardingGateStatus
+         * @enum {string}
+         */
+        OnboardingGateStatus: "PASS" | "FAIL";
+        /** OnboardingReadinessGateResponse */
+        OnboardingReadinessGateResponse: {
+            code: components["schemas"]["OnboardingGateCode"];
+            status: components["schemas"]["OnboardingGateStatus"];
+            /** Description */
+            description: string;
+        };
+        /** OnboardingReadinessResponse */
+        OnboardingReadinessResponse: {
+            /** Pilot Ready */
+            pilot_ready: boolean;
+            /** Gates */
+            gates: components["schemas"]["OnboardingReadinessGateResponse"][];
+        };
+        /**
+         * OperationalFailureAction
+         * @enum {string}
+         */
+        OperationalFailureAction: "REPLAYED" | "CANCELLED";
+        /**
+         * OperationalFailureKind
+         * @enum {string}
+         */
+        OperationalFailureKind: "DISPATCH" | "CONSUMER";
+        /**
+         * OperationalFailurePipeline
+         * @enum {string}
+         */
+        OperationalFailurePipeline: "analysis" | "policy_retrieval" | "grounded_explanation" | "policy_evaluation" | "human_review" | "case_resolution" | "action_simulation" | "failure_recovery";
+        /** OperationalFailureResolutionResponse */
+        OperationalFailureResolutionResponse: {
+            /** Failure Id */
+            failure_id: string;
+            action: components["schemas"]["OperationalFailureAction"];
+            /** Recovery Run Id */
+            recovery_run_id: string | null;
+            /** Recovery Event Id */
+            recovery_event_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Idempotent Replay */
+            idempotent_replay: boolean;
+        };
+        /** OperationalFailureResponse */
+        OperationalFailureResponse: {
+            /** Failure Id */
+            failure_id: string;
+            pipeline: components["schemas"]["OperationalFailurePipeline"];
+            failure_kind: components["schemas"]["OperationalFailureKind"];
+            /** Failure Code */
+            failure_code: string;
+            /** Source Event Id */
+            source_event_id: string;
+            /** Source Run Id */
+            source_run_id: string | null;
+            /** Source Stage Id */
+            source_stage_id: string | null;
+            /** Correlation Id */
+            correlation_id: string;
+            /** Replayable */
+            replayable: boolean;
+            status: components["schemas"]["OperationalFailureStatus"];
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Recovery Run Id */
+            recovery_run_id: string | null;
+            /** Recovery Event Id */
+            recovery_event_id: string | null;
+        };
+        /**
+         * OperationalFailureStatus
+         * @enum {string}
+         */
+        OperationalFailureStatus: "OPEN" | "REPLAYED" | "CANCELLED";
+        /**
+         * OperationsComponent
+         * @enum {string}
+         */
+        OperationsComponent: "analysis" | "policy_retrieval" | "grounded_explanation" | "policy_evaluation" | "human_review" | "case_resolution" | "action_simulation";
+        /** OperationsFailuresResponse */
+        OperationsFailuresResponse: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Lookback Seconds */
+            lookback_seconds: number;
+            /** Total Failed Count */
+            total_failed_count: number;
+            /** Total Partial Success Count */
+            total_partial_success_count: number;
+            /** Total Retry Count */
+            total_retry_count: number;
+            /** Total Stalled Count */
+            total_stalled_count: number;
+            /** Components */
+            components: components["schemas"]["ComponentFailureSummaryResponse"][];
+            /** Items */
+            items: components["schemas"]["OperationalFailureResponse"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** OperationsOverviewResponse */
+        OperationsOverviewResponse: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Stalled After Seconds */
+            stalled_after_seconds: number;
+            /** Total Backlog Count */
+            total_backlog_count: number;
+            /** Total Stalled Count */
+            total_stalled_count: number;
+            /** Queues */
+            queues: components["schemas"]["QueueOperationsResponse"][];
+            /** Processing */
+            processing: components["schemas"]["ProcessingOperationsResponse"][];
+            /** Active Versions */
+            active_versions: components["schemas"]["ActiveVersionResponse"][];
+        };
+        /**
+         * OperationsQueue
+         * @enum {string}
+         */
+        OperationsQueue: "analysis_dispatch" | "policy_retrieval" | "grounded_explanation" | "policy_evaluation" | "human_review" | "case_resolution" | "action_simulation";
+        /**
+         * OperationsVersionKind
+         * @enum {string}
+         */
+        OperationsVersionKind: "model" | "prompt" | "policy" | "threshold" | "index";
+        /**
+         * OperationsVersionSource
+         * @enum {string}
+         */
+        OperationsVersionSource: "active_record" | "latest_run_snapshot" | "latest_succeeded_result";
+        /** OperatorCaseItemResponse */
+        OperatorCaseItemResponse: {
+            /** Case Id */
+            case_id: string;
+            /** Case Status */
+            case_status: string;
+            /** Order Ref */
+            order_ref: string;
+            /** Product Ref */
+            product_ref: string;
+            /** Requested Action */
+            requested_action: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Review Task Id */
+            review_task_id: string | null;
+            /** Review Status */
+            review_status: string | null;
+            /** Review Priority */
+            review_priority: string | null;
+            /** Assignee Id */
+            assignee_id: string | null;
+            /** Assignment Version */
+            assignment_version: number;
+            /** Resolution Status */
+            resolution_status: string | null;
+            /** Report Id */
+            report_id: string | null;
+            /** Report Generated At */
+            report_generated_at: string | null;
+        };
+        /** OperatorCasePageResponse */
+        OperatorCasePageResponse: {
+            /** Items */
+            items: components["schemas"]["OperatorCaseItemResponse"][];
+            counts: components["schemas"]["QueueCountsResponse"];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** OperatorReviewItemResponse */
+        OperatorReviewItemResponse: {
+            /** Review Task Id */
+            review_task_id: string;
+            /** Case Id */
+            case_id: string;
+            /** Case Status */
+            case_status: string;
+            /** Order Ref */
+            order_ref: string;
+            /** Product Ref */
+            product_ref: string;
+            /** Requested Action */
+            requested_action: string;
+            /** Task Type */
+            task_type: string;
+            /** Priority */
+            priority: string;
+            /** Status */
+            status: string;
+            /** Assignee Id */
+            assignee_id: string | null;
+            /** Version */
+            version: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Resolution Status */
+            resolution_status: string | null;
+            /** Report Id */
+            report_id: string | null;
+            /** Report Generated At */
+            report_generated_at: string | null;
+        };
+        /** OperatorReviewPageResponse */
+        OperatorReviewPageResponse: {
+            /** Items */
+            items: components["schemas"]["OperatorReviewItemResponse"][];
+            counts: components["schemas"]["QueueCountsResponse"];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
         /**
          * OutcomeRelation
          * @enum {string}
@@ -1826,6 +2692,12 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
+            /** Eligible Source Scope */
+            eligible_source_scope: string;
+            /** Eligible Case Count */
+            eligible_case_count: number;
+            /** Excluded Case Count */
+            excluded_case_count: number;
             review_time: components["schemas"]["PocMetricResponse"];
             recommendation_difference_rate: components["schemas"]["PocMetricResponse"];
             additional_evidence_request_rate: components["schemas"]["PocMetricResponse"];
@@ -2077,6 +2949,26 @@ export interface components {
          * @enum {string}
          */
         ProbeStatus: "ok" | "unavailable";
+        /** ProcessingOperationsResponse */
+        ProcessingOperationsResponse: {
+            component: components["schemas"]["OperationsComponent"];
+            /** Backlog Count */
+            backlog_count: number;
+            /** Running Count */
+            running_count: number;
+            /** Retry Count */
+            retry_count: number;
+            /** Partial Success Count */
+            partial_success_count: number;
+            /** Failed Count */
+            failed_count: number;
+            /** Stalled Count */
+            stalled_count: number;
+            /** Oldest Backlog Age Seconds */
+            oldest_backlog_age_seconds: number | null;
+            /** Last Healthy At */
+            last_healthy_at: string | null;
+        };
         /**
          * ProviderExecutionResponse
          * @description Provider metrics without the provider's internal request identifier.
@@ -2102,6 +2994,53 @@ export interface components {
          * @enum {string}
          */
         QueryStrategy: "RAW" | "DETERMINISTIC" | "LLM";
+        /** QueueCountsResponse */
+        QueueCountsResponse: {
+            /** All */
+            all: number;
+            /** My */
+            my: number;
+            /** Unassigned */
+            unassigned: number;
+            /** Urgent */
+            urgent: number;
+            /** Waiting Evidence */
+            waiting_evidence: number;
+            /** Complete */
+            complete: number;
+        };
+        /** QueueOperationsResponse */
+        QueueOperationsResponse: {
+            queue: components["schemas"]["OperationsQueue"];
+            /** Backlog Count */
+            backlog_count: number;
+            /** Pending Count */
+            pending_count: number;
+            /** Processing Count */
+            processing_count: number;
+            /** Published Unconsumed Count */
+            published_unconsumed_count: number;
+            /** Failed Count */
+            failed_count: number;
+            /** Retry Count */
+            retry_count: number;
+            /** Stalled Count */
+            stalled_count: number;
+            /** Oldest Backlog Age Seconds */
+            oldest_backlog_age_seconds: number | null;
+            /** Last Healthy At */
+            last_healthy_at: string | null;
+        };
+        /**
+         * QueueSort
+         * @enum {string}
+         */
+        QueueSort: "newest" | "oldest";
+        /**
+         * QueueView
+         * @enum {string}
+         */
+        QueueView: "all" | "my" | "unassigned" | "urgent" | "waiting_evidence" | "complete";
         /** ReadyResponse */
         ReadyResponse: {
             /**
@@ -2115,6 +3054,41 @@ export interface components {
             dependencies: {
                 [key: string]: components["schemas"]["ProbeStatus"];
             };
+        };
+        /** RegisterModelReleaseRequest */
+        RegisterModelReleaseRequest: {
+            manifest: components["schemas"]["LLMReleaseManifest"];
+            /** Signing Key Id */
+            signing_key_id: string;
+            /**
+             * Signature Algorithm
+             * @default ED25519
+             * @constant
+             */
+            signature_algorithm: "ED25519";
+            /** Signature Base64 */
+            signature_base64: string;
+        };
+        /** RegisteredLLMRelease */
+        RegisteredLLMRelease: {
+            /** Id */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            signed_manifest: components["schemas"]["SignedLLMReleaseManifest"];
+            /** Registered By */
+            registered_by: string;
+            /**
+             * Registered At
+             * Format: date-time
+             */
+            registered_at: string;
+        };
+        /** RegisteredModelReleaseResponse */
+        RegisteredModelReleaseResponse: {
+            release: components["schemas"]["RegisteredLLMRelease"];
+            /** Idempotent Replay */
+            idempotent_replay: boolean;
         };
         /** ReleaseRequest */
         ReleaseRequest: {
@@ -2225,7 +3199,23 @@ export interface components {
          * ReviewActionType
          * @enum {string}
          */
-        ReviewActionType: "CREATED" | "CLAIMED" | "RELEASED" | "EVIDENCE_REQUESTED" | "RESUMED" | "ESCALATED" | "RESOLVED";
+        ReviewActionType: "CREATED" | "ASSIGNED" | "REASSIGNED" | "CLAIMED" | "RELEASED" | "EVIDENCE_REQUESTED" | "RESUMED" | "ESCALATED" | "RESOLVED";
+        /** ReviewAssigneeListResponse */
+        ReviewAssigneeListResponse: {
+            /** Items */
+            items: components["schemas"]["ReviewAssigneeResponse"][];
+        };
+        /** ReviewAssigneeResponse */
+        ReviewAssigneeResponse: {
+            /** User Id */
+            user_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Roles */
+            roles: string[];
+        };
         /** ReviewPacket */
         ReviewPacket: {
             /** Id */
@@ -2364,6 +3354,12 @@ export interface components {
             grounded_explanation: {
                 [key: string]: unknown;
             } | null;
+            /** Inquiry Summary */
+            inquiry_summary: string | null;
+            /** Policy Similarity */
+            policy_similarity: {
+                [key: string]: unknown;
+            }[];
         };
         /** ReviewTaskListResponse */
         ReviewTaskListResponse: {
@@ -2417,6 +3413,20 @@ export interface components {
          * @enum {string}
          */
         Role: "ADMIN" | "REVIEWER" | "QUALITY_VIEWER";
+        /** SignedLLMReleaseManifest */
+        SignedLLMReleaseManifest: {
+            manifest: components["schemas"]["LLMReleaseManifest"];
+            /** Signing Key Id */
+            signing_key_id: string;
+            /**
+             * Signature Algorithm
+             * @default ED25519
+             * @constant
+             */
+            signature_algorithm: "ED25519";
+            /** Signature Base64 */
+            signature_base64: string;
+        };
         /**
          * SimulationAttemptStatus
          * @enum {string}
@@ -2446,6 +3456,7 @@ export interface components {
         StartPolicyRetrievalRunRequest: {
             /** Analysis Run Id */
             analysis_run_id: string;
+            /** @default RAW */
             strategy: components["schemas"]["QueryStrategy"];
             /**
              * As Of Date
@@ -2454,7 +3465,7 @@ export interface components {
             as_of_date: string;
             /**
              * Top K
-             * @default 10
+             * @default 3
              */
             top_k: number;
         };
@@ -2466,6 +3477,8 @@ export interface components {
             pipeline: components["schemas"]["AnalysisPipeline"];
             /** Pipeline Version */
             pipeline_version: string;
+            /** @default PRIMARY */
+            execution_mode: components["schemas"]["AnalysisExecutionMode"];
         };
         /** StatusHistoryListResponse */
         StatusHistoryListResponse: {
@@ -2649,6 +3662,60 @@ export interface components {
          * @enum {string}
          */
         VisionImageAssessmentOutcome: "HIGH_CONFIDENCE_DEFECT_CANDIDATE" | "BELOW_HIGH_CONFIDENCE_THRESHOLD";
+        /** WorkflowComponentResponse */
+        WorkflowComponentResponse: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Started At */
+            started_at: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /** Failure Code */
+            failure_code: string | null;
+            /** Correlation Id */
+            correlation_id: string | null;
+        };
+        /** WorkflowSnapshotResponse */
+        WorkflowSnapshotResponse: {
+            /** Case Id */
+            case_id: string;
+            /** Case Status */
+            case_status: string;
+            /** Terminal */
+            terminal: boolean;
+            /** Degraded */
+            degraded: boolean;
+            /** Retry At */
+            retry_at: string | null;
+            /** Last Good */
+            last_good: string;
+            /** Correlation Id */
+            correlation_id: string | null;
+            analysis: components["schemas"]["WorkflowComponentResponse"] | null;
+            /** Stages */
+            stages: components["schemas"]["WorkflowStageResponse"][];
+            policy_retrieval: components["schemas"]["WorkflowComponentResponse"] | null;
+            grounded_explanation: components["schemas"]["WorkflowComponentResponse"] | null;
+            policy_evaluation: components["schemas"]["WorkflowComponentResponse"] | null;
+            review: components["schemas"]["WorkflowComponentResponse"] | null;
+            resolution: components["schemas"]["WorkflowComponentResponse"] | null;
+            report: components["schemas"]["WorkflowComponentResponse"] | null;
+        };
+        /** WorkflowStageResponse */
+        WorkflowStageResponse: {
+            /** Stage Type */
+            stage_type: string;
+            /** Status */
+            status: string;
+            /** Attempt Count */
+            attempt_count: number;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /** Failure Code */
+            failure_code: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -2727,6 +3794,44 @@ export interface operations {
             };
         };
     };
+    get_current_user_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUserResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     issue_access_token_api_v1_auth_token_post: {
         parameters: {
             query?: never;
@@ -2778,7 +3883,7 @@ export interface operations {
             };
         };
     };
-    get_current_user_api_v1_auth_me_get: {
+    _get_auth_capabilities_auth_capabilities_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2793,25 +3898,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CurrentUserResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Service Unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AuthCapabilitiesResponse"];
                 };
             };
         };
@@ -2966,7 +4053,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
             };
             cookie?: never;
@@ -3034,7 +4120,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
             };
             cookie?: never;
@@ -3084,6 +4169,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_case_assignment_api_v1_cases__case_id__assignment_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opaque Case ID */
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseAssignmentResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assign_case_api_v1_cases__case_id__assignment_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opaque Case ID */
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseAssignmentResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Service Unavailable */
@@ -3359,7 +4593,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
             };
             cookie?: never;
@@ -3425,9 +4658,11 @@ export interface operations {
     add_image_evidence_api_v1_cases__case_id__evidence_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Optional tenant-and-Case-scoped Evidence upload key. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
             };
             cookie?: never;
@@ -3467,6 +4702,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3517,7 +4761,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
                 /** @description Opaque Evidence ID */
                 evidence_id: string;
@@ -3587,7 +4830,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
                 /** @description Opaque Evidence ID */
                 evidence_id: string;
@@ -3666,7 +4908,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
                 /** @description Opaque Evidence ID */
                 evidence_id: string;
@@ -3752,7 +4993,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
             };
             cookie?: never;
@@ -3823,7 +5063,6 @@ export interface operations {
                 "Idempotency-Key": string;
             };
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
             };
             cookie?: never;
@@ -3905,6 +5144,17 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description The transaction-safe nonterminal run budget is full. */
+            429: {
+                headers: {
+                    /** @description Seconds before retrying a new admission. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Service Unavailable */
             503: {
                 headers: {
@@ -3921,7 +5171,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Opaque Case ID */
                 case_id: string;
                 /** @description Opaque Analysis Run ID */
                 analysis_run_id: string;
@@ -4551,6 +5800,41 @@ export interface operations {
             };
         };
     };
+    assign_task_api_v1_human_review_tasks__task_id__assign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     claim_task_api_v1_human_review_tasks__task_id__claim_post: {
         parameters: {
             query?: never;
@@ -4788,6 +6072,660 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_assignees_api_v1_human_review_assignees_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAssigneeListResponse"];
+                };
+            };
+        };
+    };
+    list_operator_cases_api_v1_operator_cases_get: {
+        parameters: {
+            query?: {
+                view?: components["schemas"]["QueueView"];
+                sort?: components["schemas"]["QueueSort"];
+                q?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorCasePageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_operator_reviews_api_v1_operator_reviews_get: {
+        parameters: {
+            query?: {
+                view?: components["schemas"]["QueueView"];
+                sort?: components["schemas"]["QueueSort"];
+                q?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorReviewPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workflow_snapshot_api_v1_cases__case_id__workflow_snapshot_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowSnapshotResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_onboarding_readiness_api_v1_operations_onboarding_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingReadinessResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_operations_overview_api_v1_operations_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationsOverviewResponse"];
+                };
+            };
+        };
+    };
+    get_operations_failures_api_v1_operations_failures_get: {
+        parameters: {
+            query?: {
+                /** @description Failure signal lookback in whole hours (1-168). */
+                lookback_hours?: number;
+                /** @description Maximum durable failure records returned (1-100). */
+                limit?: number;
+                /** @description Opaque failure-page cursor. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationsFailuresResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replay_operational_failure_api_v1_operations_failures__failure_id__replay_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required tenant-scoped recovery mutation key. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Opaque operational failure ID. */
+                failure_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Idempotent replay of the same recovery request. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationalFailureResolutionResponse"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationalFailureResolutionResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel_operational_failure_api_v1_operations_failures__failure_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required tenant-scoped recovery mutation key. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Opaque operational failure ID. */
+                failure_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationalFailureResolutionResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    register_model_release_api_v1_operations_model_releases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterModelReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisteredModelReleaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_model_release_api_v1_operations_model_releases__release_id__activate_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required tenant-scoped recovery mutation key. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivateModelReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelActivationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_active_model_release_api_v1_operations_model_activations_active_get: {
+        parameters: {
+            query: {
+                task: components["schemas"]["ModelReleaseTask"];
+                execution_mode: components["schemas"]["AnalysisExecutionMode"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveModelReleaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_model_route_api_v1_operations_model_route_plans_activate_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required tenant/task/mode-scoped model route activation key. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivateModelRouteRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay of the same model route activation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRouteActivationResponse"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRouteActivationResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_active_model_route_api_v1_operations_model_route_plans_active_get: {
+        parameters: {
+            query: {
+                task: components["schemas"]["ModelReleaseTask"];
+                execution_mode: components["schemas"]["AnalysisExecutionMode"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveModelRouteResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

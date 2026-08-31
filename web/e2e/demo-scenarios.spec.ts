@@ -2,6 +2,41 @@ import { expect, test } from "@playwright/test";
 
 import { installApi, login, navigateInSession } from "./fixtures/api";
 
+test("0. 관리자는 문의 접수 단계에서 담당자를 배정하고 목록에서 즉시 확인한다", async ({ page }) => {
+  await installApi(page, "vision-timeout");
+  await login(page, "admin@demo.test");
+
+  const assignment = page.getByRole("combobox", { name: /문의 담당자/ });
+  await expect(assignment).toBeVisible();
+  await assignment.selectOption("user-1");
+
+  await expect(assignment).toHaveValue("user-1");
+  await expect(page.getByText("관리자", { exact: true }).first()).toBeVisible();
+});
+
+test("0-1. 담당자는 배정 대기와 본인 완료 문의를 분리하고 한 화면에서 정책 근거를 확인한다", async ({ page }) => {
+  await installApi(page, "needs-input");
+  await login(page, "reviewer@demo.test");
+
+  await expect(page.getByRole("link", { name: "문의 대기" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "내 문의 처리 현황" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "문의 대기" })).toBeVisible();
+  await expect(page.getByText("해당 업무가 없습니다")).toBeVisible();
+
+  await page.getByRole("link", { name: "내 문의 처리 현황" }).click();
+  await expect(page.getByRole("heading", { name: "내 문의 처리 현황" })).toBeVisible();
+  await page.getByRole("link", { name: /일반 정책 검토 · 문의 번호/ }).click();
+
+  await expect(page.getByRole("heading", { name: "문의 검토 요약" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "고객 첨부 사진" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "문의 내용 요약" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "적절하다고 본 정책 근거" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "임계값에 가장 가까운 정책 3개" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "가장 부적합한 정책 3개" })).toBeVisible();
+  await expect(page.getByText("부적격 이유:")).toHaveCount(3);
+  await expect(page.getByRole("tab")).toHaveCount(0);
+});
+
 test("1. 완전한 Repair 결정은 부작용 없는 DRY-RUN 검증 결과로 표시된다", async ({ page }) => {
   await installApi(page, "validated");
   await login(page);
@@ -9,6 +44,11 @@ test("1. 완전한 Repair 결정은 부작용 없는 DRY-RUN 검증 결과로 �
   await expect(page.getByTestId("quick-review-panel")).toContainText("준비도 100%");
   await expect(page.getByText("모델 정확도가 아닌 정책·근거·입력 준비도입니다.")).toBeVisible();
   await page.getByRole("button", { name: /수리 허용/ }).click();
+  const confirmation = page.getByRole("alertdialog", { name: /수리 승인/ });
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation.getByText(/지난주 CSight Commerce에서 주문한 무선 청소기/)).toBeVisible();
+  await expect(confirmation.getByText("수리 승인", { exact: true }).last()).toBeVisible();
+  await confirmation.getByRole("button", { name: "수리 승인 최종 결정 기록" }).click();
   await page.waitForURL("**/cases/case-validated/report");
   await expect(page.getByRole("heading", { name: "최종 검토 보고서" })).toBeVisible();
   await expect(page.getByText("수리 승인")).toBeVisible();

@@ -3,15 +3,16 @@ import type { Page, Route } from "@playwright/test";
 export type DemoScenario = "validated" | "needs-input" | "evidence" | "safety" | "vision-timeout";
 
 const now = "2026-08-27T06:00:00Z";
-const previewPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X8xL4QAAAABJRU5ErkJggg==", "base64");
+const previewPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGPUashlYGBgYgADAAz7ARtxcqT5AAAAAElFTkSuQmCC", "base64");
 
 function taskFor(scenario: DemoScenario) {
   const status = scenario === "evidence" ? "WAITING_FOR_EVIDENCE" : scenario === "validated" || scenario === "needs-input" ? "RESOLVED" : scenario === "safety" ? "CLAIMED" : "PENDING";
+  const ownedByReviewer = status === "CLAIMED" || status === "WAITING_FOR_EVIDENCE";
   return {
     id: `task-${scenario}`, case_id: `case-${scenario}`, policy_evaluation_run_id: `policy-${scenario}`,
     task_type: scenario === "safety" ? "SAFETY_REVIEW" : scenario === "evidence" ? "EVIDENCE_REVIEW" : "STANDARD_REVIEW",
     priority: scenario === "safety" ? "CRITICAL" : "NORMAL", status,
-    current_assignee_id: status === "CLAIMED" ? "user-1" : null, version: 2,
+    current_assignee_id: ownedByReviewer ? "user-1" : null, version: 2,
     mapping_rule_name: "policy_evaluation_to_human_review", mapping_rule_version: "1.0.0",
     created_at: now, updated_at: now, resolved_at: status === "RESOLVED" ? now : null,
   };
@@ -94,6 +95,22 @@ function reviewDetail(scenario: DemoScenario, task = taskFor(scenario)) {
       text: "상품 하자 문의는 주문 정보와 제출된 증거를 확인한 뒤 담당자의 검토를 거쳐 반품·교환·수리 권고 후보로 분류한다.",
     }],
     grounded_explanation: { summary: "가상 사내 정책의 상품 하자 검토 조항이 현재 문의의 주문 정보와 제출 증거 범위를 뒷받침합니다." },
+    inquiry_summary: `${caseFor(scenario).product_ref} 상품의 상태와 요청 조치를 정책 근거에 따라 검토해야 하는 문의입니다.`,
+    policy_similarity: [
+      ["NEAREST", 1, 0.91, "CSCC-OPS-4.2", "상품 하자 검토", "주문 정보와 제출 증거를 확인한 뒤 담당자가 처리 후보를 검토합니다."],
+      ["NEAREST", 2, 0.82, "CSCC-OPS-4.3", "교환·수리 선택", "상품 상태와 고객 요청을 함께 확인해 교환 또는 수리 후보를 검토합니다."],
+      ["NEAREST", 3, 0.74, "CSCC-OPS-2.1", "접수 정보 확인", "주문 번호와 상품 정보가 접수 내용과 일치하는지 확인합니다."],
+      ["LEAST", 1, 0.08, "CSCC-OPS-9.1", "회원 등급 변경", "회원 등급과 혜택 변경에 관한 운영 기준입니다."],
+      ["LEAST", 2, 0.12, "CSCC-OPS-8.2", "배송지 변경", "출고 전 배송지 수정 요청에 관한 운영 기준입니다."],
+      ["LEAST", 3, 0.16, "CSCC-OPS-7.3", "쿠폰 재발급", "프로모션 쿠폰 재발급 조건에 관한 운영 기준입니다."],
+    ].map(([group, rank, cosine_similarity, policy_clause_id, title, text]) => ({
+      group, rank, cosine_similarity, reference_threshold: 0.65,
+      threshold_version: "policy_similarity_reference/1.0.0",
+      reason_codes: group === "LEAST"
+        ? ["LOWEST_COSINE_SIMILARITY", "POLICY_CONTEXT_MISMATCH"]
+        : [Number(cosine_similarity) >= 0.65 ? "ABOVE_REFERENCE_THRESHOLD" : "BELOW_REFERENCE_THRESHOLD"],
+      policy_clause_id, title, text,
+    })),
   };
 }
 
@@ -173,6 +190,12 @@ export async function installApi(page: Page, scenario: DemoScenario) {
   let quickReportReady = scenario !== "validated";
   const policyRuns = policyRunsFor(scenario);
   const textRun = textRunFor(scenario);
+  await page.route("**/auth/session", (route) => json(route, {
+    error: { code: "AUTHENTICATION_REQUIRED", message: "No OIDC fixture session." },
+  }, 401));
+  await page.route("**/auth/capabilities", (route) => json(route, {
+    oidc_enabled: false, legacy_password_enabled: true,
+  }));
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -183,12 +206,103 @@ export async function installApi(page: Page, scenario: DemoScenario) {
       return json(route, { access_token: `token-${role}`, token_type: "bearer", expires_in: 3600 });
     }
     if (path === "/api/v1/auth/me") return json(route, { user_id: "user-1", tenant_id: "tenant-1", email: `${role.toLowerCase()}@demo.test`, display_name: role === "ADMIN" ? "관리자" : "검토자", roles: [role] });
+    if (path === "/api/v1/operator/cases") {
+      const item = caseFor(scenario);
+      const unassigned = ["PENDING", "ESCALATED"].includes(activeTask.status) && !activeTask.current_assignee_id;
+      const waiting = activeTask.status === "WAITING_FOR_EVIDENCE";
+      const complete = activeTask.status === "RESOLVED" && quickReportReady;
+      const assignedToMe = !complete && activeTask.current_assignee_id === "user-1";
+      const view = url.searchParams.get("view") ?? "all";
+      const visible = view === "all"
+        || (view === "my" && assignedToMe)
+        || (view === "unassigned" && unassigned)
+        || (view === "urgent" && activeTask.priority === "CRITICAL")
+        || (view === "waiting_evidence" && waiting)
+        || (view === "complete" && complete);
+      return json(route, {
+        items: visible ? [{
+          case_id: item.case_id, case_status: item.status, order_ref: item.order_ref, product_ref: item.product_ref,
+          requested_action: item.requested_action, created_at: item.created_at, updated_at: activeTask.updated_at,
+          review_task_id: activeTask.id, review_status: activeTask.status, review_priority: activeTask.priority,
+          assignee_id: activeTask.current_assignee_id, assignment_version: activeTask.current_assignee_id ? 1 : 0, resolution_status: complete ? "ACTION_DRY_RUN_VALIDATED" : null,
+          report_id: complete ? "report-1" : null, report_generated_at: complete ? now : null,
+        }] : [],
+        counts: { all: 1, my: assignedToMe ? 1 : 0, unassigned: unassigned ? 1 : 0, urgent: activeTask.priority === "CRITICAL" ? 1 : 0, waiting_evidence: waiting ? 1 : 0, complete: complete ? 1 : 0 },
+        next_cursor: null,
+      });
+    }
+    if (path === "/api/v1/human-review-assignees") return json(route, { items: [{ user_id: "user-1", display_name: "관리자", email: "admin@demo.test", roles: ["ADMIN"] }] });
+    if (path === `/api/v1/cases/case-${scenario}/assignment` && request.method() === "POST") {
+      const body = request.postDataJSON() as { assignee_id: string; expected_version: number; rationale: string };
+      activeTask.current_assignee_id = body.assignee_id;
+      if (activeTask.status === "PENDING") activeTask.status = "CLAIMED";
+      activeTask.version += 1;
+      activeTask.updated_at = now;
+      return json(route, {
+        case_id: `case-${scenario}`, current_assignee_id: body.assignee_id,
+        version: body.expected_version + 1, assigned_by: "user-1",
+        assignment_type: body.expected_version === 0 ? "ADMIN_ASSIGNMENT" : "ADMIN_REASSIGNMENT",
+        rationale: body.rationale, assigned_at: now,
+      });
+    }
+    if (path === "/api/v1/operator/reviews") {
+      const item = caseFor(scenario);
+      const assignedToMe = ["CLAIMED", "WAITING_FOR_EVIDENCE"].includes(activeTask.status) && activeTask.current_assignee_id === "user-1";
+      const unassigned = ["PENDING", "ESCALATED"].includes(activeTask.status) && !activeTask.current_assignee_id;
+      const waiting = activeTask.status === "WAITING_FOR_EVIDENCE";
+      const complete = activeTask.status === "RESOLVED";
+      const view = url.searchParams.get("view") ?? "all";
+      const visible = view === "all"
+        || (view === "my" && assignedToMe)
+        || (view === "unassigned" && unassigned)
+        || (view === "urgent" && activeTask.priority === "CRITICAL")
+        || (view === "waiting_evidence" && waiting)
+        || (view === "complete" && complete);
+      return json(route, {
+        items: visible ? [{
+          review_task_id: activeTask.id, case_id: activeTask.case_id, case_status: item.status,
+          order_ref: item.order_ref, product_ref: item.product_ref, requested_action: item.requested_action,
+          task_type: activeTask.task_type, priority: activeTask.priority, status: activeTask.status,
+          assignee_id: activeTask.current_assignee_id, version: activeTask.version, created_at: activeTask.created_at,
+          updated_at: activeTask.updated_at, resolution_status: null, report_id: null, report_generated_at: null,
+        }] : [],
+        counts: { all: 1, my: activeTask.current_assignee_id === "user-1" ? 1 : 0, unassigned: activeTask.current_assignee_id ? 0 : 1, urgent: activeTask.priority === "CRITICAL" ? 1 : 0, waiting_evidence: activeTask.status === "WAITING_FOR_EVIDENCE" ? 1 : 0, complete: activeTask.status === "RESOLVED" ? 1 : 0 },
+        next_cursor: null,
+      });
+    }
     if (path === "/api/v1/cases" && request.method() === "GET") {
       const item = caseFor(scenario);
       const { customer_message: _message, attributes: _attributes, created_by: _createdBy, evidence: _evidence, status_history: _history, latest_analysis_run: _latest, ...summary } = item;
       return json(route, { items: [summary], page: 1, page_size: 100, total: 1 });
     }
     if (path === `/api/v1/cases/case-${scenario}/human-review-tasks`) return json(route, { items: [activeTask] });
+    if (path === `/api/v1/cases/case-${scenario}/workflow-snapshot`) return json(route, {
+      case_id: `case-${scenario}`, case_status: "REVIEW_PENDING", terminal: false,
+      degraded: scenario === "vision-timeout", retry_at: null, last_good: "HUMAN_REVIEW",
+      correlation_id: `correlation-${scenario}`, stages: [],
+      analysis: {
+        run_id: `text-${scenario}`, status: "SUCCEEDED", started_at: now, completed_at: now,
+        failure_code: null, correlation_id: `correlation-${scenario}`,
+      },
+      policy_retrieval: {
+        run_id: `retrieval-${scenario}`, status: "SUCCEEDED", started_at: now, completed_at: now,
+        failure_code: null, correlation_id: `correlation-${scenario}`,
+      },
+      grounded_explanation: {
+        run_id: `grounding-${scenario}`, status: "SUCCEEDED", started_at: now, completed_at: now,
+        failure_code: null, correlation_id: `correlation-${scenario}`,
+      },
+      policy_evaluation: {
+        run_id: `policy-${scenario}`, status: "SUCCEEDED", started_at: now, completed_at: now,
+        failure_code: null, correlation_id: `correlation-${scenario}`,
+      },
+      review: {
+        run_id: activeTask.id, status: activeTask.status, started_at: now,
+        completed_at: activeTask.resolved_at, failure_code: null,
+        correlation_id: `correlation-${scenario}`,
+      },
+      resolution: null, report: null,
+    });
     if (path === `/api/v1/cases/case-${scenario}/resolution/events`) return json(route, { items: scenario === "validated" || scenario === "needs-input" ? [{ event_id: "resolution-event-1" }] : [] });
     if (path === `/api/v1/cases/case-${scenario}/external-action-intents`) {
       if (scenario === "validated") return json(route, { items: [{

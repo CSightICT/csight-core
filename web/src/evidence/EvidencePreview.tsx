@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, FileImage, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "../api/client";
 import type { Evidence } from "../api/contracts";
@@ -21,51 +21,87 @@ function EvidenceFallback({ loading, canRetry, onRetry }: {
   </div>;
 }
 
-function EvidenceBlobImage({ content, evidence, onRetry }: {
+export type EvidencePreviewStatus = "LOADING" | "READY" | "FAILED" | "NOT_APPLICABLE";
+
+function EvidenceBlobImage({ content, evidence, failed, onFailed, onReady, onRetry }: {
   content: Blob;
   evidence: Evidence;
+  failed: boolean;
+  onFailed: () => void;
+  onReady: () => void;
   onRetry: () => void;
 }) {
-  const [objectUrl] = useState(() => URL.createObjectURL(content));
-  const [imageFailed, setImageFailed] = useState(false);
-  useEffect(() => () => URL.revokeObjectURL(objectUrl), [objectUrl]);
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    if (failed) return undefined;
+    const nextObjectUrl = URL.createObjectURL(content);
+    linkRef.current?.setAttribute("href", nextObjectUrl);
+    imageRef.current?.setAttribute("src", nextObjectUrl);
+    return () => URL.revokeObjectURL(nextObjectUrl);
+  }, [content, failed]);
 
-  if (imageFailed) return <EvidenceFallback loading={false} canRetry onRetry={onRetry} />;
+  if (failed) return <EvidenceFallback loading={false} canRetry onRetry={onRetry} />;
   return <a
+    ref={linkRef}
     className="evidence-preview-image"
-    href={objectUrl}
     target="_blank"
     rel="noopener noreferrer"
     aria-label={`${evidence.original_filename} 원본 새 탭에서 열기`}
   >
     <img
-      src={objectUrl}
+      ref={imageRef}
       alt={`${evidence.original_filename} 증거 미리보기`}
       loading="lazy"
       decoding="async"
       referrerPolicy="no-referrer"
-      onError={() => setImageFailed(true)}
+      onLoad={onReady}
+      onError={onFailed}
     />
     <span><ExternalLink size={16} /> 원본 열기</span>
   </a>;
 }
 
-export function EvidencePreview({ caseId, evidence }: { caseId: string; evidence: Evidence }) {
+export function EvidencePreview({ caseId, evidence, onStatusChange }: {
+  caseId: string;
+  evidence: Evidence;
+  onStatusChange?: (evidenceId: string, status: EvidencePreviewStatus) => void;
+}) {
   const availableImage = evidence.upload_status === "AVAILABLE" && evidence.evidence_type === "IMAGE";
   const contentQuery = useQuery({
     queryKey: ["evidence-content", caseId, evidence.evidence_id],
     queryFn: () => api.getEvidenceContent(caseId, evidence.evidence_id),
     enabled: availableImage,
     retry: false,
+    staleTime: Infinity,
     gcTime: 0,
   });
-  const retry = () => { void contentQuery.refetch(); };
+  const [imageOutcome, setImageOutcome] = useState<{ key: number; status: "READY" | "FAILED" } | null>(null);
+  const contentKey = contentQuery.dataUpdatedAt;
+  const decodeStatus = imageOutcome?.key === contentKey ? imageOutcome.status : "LOADING";
+  const status: EvidencePreviewStatus = evidence.evidence_type !== "IMAGE"
+    ? "NOT_APPLICABLE"
+    : !availableImage || contentQuery.isError
+      ? "FAILED"
+      : contentQuery.isPending || contentQuery.isFetching || !contentQuery.data
+        ? "LOADING"
+        : decodeStatus;
+  useEffect(() => {
+    onStatusChange?.(evidence.evidence_id, status);
+  }, [evidence.evidence_id, onStatusChange, status]);
+  const retry = () => {
+    setImageOutcome(null);
+    void contentQuery.refetch();
+  };
 
   return <article className="evidence-preview" data-testid={`evidence-preview-${evidence.evidence_id}`}>
-    {contentQuery.data ? <EvidenceBlobImage
+    {contentQuery.data && !contentQuery.isError ? <EvidenceBlobImage
       content={contentQuery.data}
       evidence={evidence}
+      failed={decodeStatus === "FAILED"}
       key={contentQuery.dataUpdatedAt}
+      onFailed={() => setImageOutcome({ key: contentKey, status: "FAILED" })}
+      onReady={() => setImageOutcome({ key: contentKey, status: "READY" })}
       onRetry={retry}
     /> : <EvidenceFallback
       loading={contentQuery.isPending && availableImage}

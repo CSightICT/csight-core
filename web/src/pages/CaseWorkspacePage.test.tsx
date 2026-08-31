@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { AnalysisRun } from "../api/contracts";
 import { tokenVault } from "../auth/tokenVault";
@@ -37,6 +37,14 @@ const visionOld = run("vision-old", "product_defect_multimodal_analysis", "1.0.0
 const visionLatest = run("vision-latest", "product_defect_multimodal_analysis", "1.0.0", "2026-08-27T23:59:00Z");
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+beforeEach(() => {
+  server.use(http.get("/api/v1/cases/:caseId/workflow-snapshot", ({ params }) => HttpResponse.json({
+    case_id: String(params.caseId), case_status: "OPEN", terminal: false, degraded: false,
+    retry_at: null, last_good: "CASE_RECEIVED", correlation_id: null, analysis: null, stages: [],
+    policy_retrieval: null, grounded_explanation: null, policy_evaluation: null, review: null,
+    resolution: null, report: null,
+  })));
+});
 afterEach(() => {
   server.resetHandlers();
   tokenVault.clear();
@@ -274,6 +282,7 @@ describe("CaseWorkspacePage", () => {
     let groundingLoads = 0;
     let policyLoads = 0;
     let reviewLoads = 0;
+    let snapshotLoads = 0;
     const lifecycle = {
       case_id: "case-1", correlation_id: "correlation-active", created_at: now,
       started_at: now, completed_at: null, failure_code: null, failure_message: null,
@@ -307,6 +316,25 @@ describe("CaseWorkspacePage", () => {
     });
 
     server.use(
+      http.get("/api/v1/cases/case-1/workflow-snapshot", () => {
+        snapshotLoads += 1;
+        const active = snapshotLoads === 1;
+        const component = (runId: string, status: string) => ({
+          run_id: runId, status, started_at: now, completed_at: status === "SUCCEEDED" ? now : null,
+          failure_code: null, correlation_id: "correlation-active",
+        });
+        return HttpResponse.json({
+          case_id: "case-1", case_status: "REVIEW_PENDING", terminal: false, degraded: false,
+          retry_at: null, last_good: active ? "ANALYSIS" : "POLICY_EVALUATION",
+          correlation_id: "correlation-active", stages: [],
+          analysis: component("text-latest", "SUCCEEDED"),
+          policy_retrieval: component("retrieval-active", active ? "QUEUED" : "SUCCEEDED"),
+          grounded_explanation: component("grounding-active", active ? "RUNNING" : "SUCCEEDED"),
+          policy_evaluation: component("policy-active", active ? "RUNNING" : "SUCCEEDED"),
+          review: active ? null : component("review-active", "PENDING"),
+          resolution: null, report: null,
+        });
+      }),
       http.get("/api/v1/cases/case-1/analysis-runs", () => HttpResponse.json({
         items: [textLatest], page: 1, page_size: 100, total: 1,
       })),
@@ -377,7 +405,7 @@ describe("CaseWorkspacePage", () => {
     </Routes></MemoryRouter></QueryClientProvider>);
 
     expect(await screen.findByText("서버의 진행 중 실행 복구")).toBeVisible();
-    expect(screen.getByText("담당자 검토를 준비하고 있습니다")).toBeVisible();
+    expect(await screen.findByText("담당자 검토를 준비하고 있습니다")).toBeVisible();
     expect(screen.queryByText("STALE_REVIEW")).not.toBeInTheDocument();
     await waitFor(() => expect(JSON.parse(sessionStorage.getItem("csight.workflow.v1") ?? "{}")).toMatchObject({
       caseId: "case-1", analysisV2RunId: "text-latest", retrievalRunId: "retrieval-active",

@@ -80,6 +80,52 @@
         }
       }
     },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Get Current User",
+        "operationId": "get_current_user_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/token": {
       "post": {
         "tags": [
@@ -141,50 +187,25 @@
         }
       }
     },
-    "/api/v1/auth/me": {
+    "/auth/capabilities": {
       "get": {
         "tags": [
           "authentication"
         ],
-        "summary": "Get Current User",
-        "operationId": "get_current_user_api_v1_auth_me_get",
+        "summary": " Get Auth Capabilities",
+        "operationId": "_get_auth_capabilities_auth_capabilities_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CurrentUserResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/AuthCapabilitiesResponse"
                 }
               }
             }
           }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/cases": {
@@ -499,12 +520,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           }
         ],
         "responses": {
@@ -590,12 +607,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           }
         ],
         "responses": {
@@ -662,6 +675,206 @@
         }
       }
     },
+    "/api/v1/cases/{case_id}/assignment": {
+      "get": {
+        "tags": [
+          "cases"
+        ],
+        "summary": "Get Case Assignment",
+        "operationId": "get_case_assignment_api_v1_cases__case_id__assignment_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "Opaque Case ID",
+              "title": "Case Id"
+            },
+            "description": "Opaque Case ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseAssignmentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cases"
+        ],
+        "summary": "Assign Case",
+        "operationId": "assign_case_api_v1_cases__case_id__assignment_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "Opaque Case ID",
+              "title": "Case Id"
+            },
+            "description": "Opaque Case ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseAssignmentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/cases/{case_id}/resolution": {
       "get": {
         "tags": [
@@ -681,7 +894,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Case Id"
             }
           }
@@ -729,7 +941,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Case Id"
             }
           }
@@ -777,7 +988,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Case Id"
             }
           }
@@ -873,7 +1083,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Case Id"
             }
           }
@@ -947,7 +1156,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Case Id"
             }
           }
@@ -993,7 +1201,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
               "title": "Case Id"
             }
           }
@@ -1071,12 +1278,28 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional tenant-and-Case-scoped Evidence upload key.",
+              "title": "Idempotency-Key"
             },
-            "description": "Opaque Case ID"
+            "description": "Optional tenant-and-Case-scoped Evidence upload key."
           }
         ],
         "requestBody": {
@@ -1129,6 +1352,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "413": {
             "content": {
@@ -1190,12 +1423,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           }
         ],
         "responses": {
@@ -1281,12 +1510,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           },
           {
             "name": "evidence_id",
@@ -1385,12 +1610,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           },
           {
             "name": "evidence_id",
@@ -1499,12 +1720,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           },
           {
             "name": "evidence_id",
@@ -1611,12 +1828,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           },
           {
             "name": "Idempotency-Key",
@@ -1744,6 +1957,24 @@
             },
             "description": "Unprocessable Entity"
           },
+          "429": {
+            "description": "The transaction-safe nonterminal run budget is full.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds before retrying a new admission.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "503": {
             "content": {
               "application/json": {
@@ -1774,12 +2005,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           },
           {
             "name": "status",
@@ -1920,12 +2147,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "description": "Opaque Case ID",
               "title": "Case Id"
-            },
-            "description": "Opaque Case ID"
+            }
           },
           {
             "name": "analysis_run_id",
@@ -2955,6 +3178,63 @@
         }
       }
     },
+    "/api/v1/human-review-tasks/{task_id}/assign": {
+      "post": {
+        "tags": [
+          "human-review"
+        ],
+        "summary": "Assign Task",
+        "operationId": "assign_task_api_v1_human_review_tasks__task_id__assign_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewActionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/human-review-tasks/{task_id}/claim": {
       "post": {
         "tags": [
@@ -3343,10 +3623,1281 @@
           }
         }
       }
+    },
+    "/api/v1/human-review-assignees": {
+      "get": {
+        "tags": [
+          "human-review"
+        ],
+        "summary": "List Assignees",
+        "operationId": "list_assignees_api_v1_human_review_assignees_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewAssigneeListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/operator/cases": {
+      "get": {
+        "tags": [
+          "operator"
+        ],
+        "summary": "List Operator Cases",
+        "operationId": "list_operator_cases_api_v1_operator_cases_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueueView",
+              "default": "all"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueueSort",
+              "default": "newest"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorCasePageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/reviews": {
+      "get": {
+        "tags": [
+          "operator"
+        ],
+        "summary": "List Operator Reviews",
+        "operationId": "list_operator_reviews_api_v1_operator_reviews_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueueView",
+              "default": "all"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueueSort",
+              "default": "newest"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorReviewPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cases/{case_id}/workflow-snapshot": {
+      "get": {
+        "tags": [
+          "operator"
+        ],
+        "summary": "Get Workflow Snapshot",
+        "operationId": "get_workflow_snapshot_api_v1_cases__case_id__workflow_snapshot_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowSnapshotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operations/onboarding-readiness": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Get Onboarding Readiness",
+        "operationId": "get_onboarding_readiness_api_v1_operations_onboarding_readiness_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingReadinessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/operations/overview": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Get Operations Overview",
+        "operationId": "get_operations_overview_api_v1_operations_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsOverviewResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/operations/failures": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Get Operations Failures",
+        "operationId": "get_operations_failures_api_v1_operations_failures_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lookback_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Failure signal lookback in whole hours (1-168).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 168,
+              "default": 24,
+              "title": "Lookback Hours"
+            },
+            "description": "Failure signal lookback in whole hours (1-168)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Maximum durable failure records returned (1-100).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum durable failure records returned (1-100)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque failure-page cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque failure-page cursor."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsFailuresResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operations/failures/{failure_id}/replay": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Replay Operational Failure",
+        "operationId": "replay_operational_failure_api_v1_operations_failures__failure_id__replay_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "failure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "description": "Opaque operational failure ID.",
+              "title": "Failure Id"
+            },
+            "description": "Opaque operational failure ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "\\S",
+              "description": "Required tenant-scoped recovery mutation key.",
+              "title": "Idempotency-Key"
+            },
+            "description": "Required tenant-scoped recovery mutation key."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Idempotent replay of the same recovery request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalFailureResolutionResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalFailureResolutionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/operations/failures/{failure_id}/cancel": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Cancel Operational Failure",
+        "operationId": "cancel_operational_failure_api_v1_operations_failures__failure_id__cancel_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "failure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "description": "Opaque operational failure ID.",
+              "title": "Failure Id"
+            },
+            "description": "Opaque operational failure ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "\\S",
+              "description": "Required tenant-scoped recovery mutation key.",
+              "title": "Idempotency-Key"
+            },
+            "description": "Required tenant-scoped recovery mutation key."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalFailureResolutionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/operations/model-releases": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Register Model Release",
+        "operationId": "register_model_release_api_v1_operations_model_releases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterModelReleaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredModelReleaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/operations/model-releases/{release_id}/activate": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Activate Model Release",
+        "operationId": "activate_model_release_api_v1_operations_model_releases__release_id__activate_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "release_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Release Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "\\S",
+              "description": "Required tenant-scoped recovery mutation key.",
+              "title": "Idempotency-Key"
+            },
+            "description": "Required tenant-scoped recovery mutation key."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateModelReleaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActivationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operations/model-activations/active": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Get Active Model Release",
+        "operationId": "get_active_model_release_api_v1_operations_model_activations_active_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ModelReleaseTask"
+            }
+          },
+          {
+            "name": "execution_mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalysisExecutionMode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveModelReleaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operations/model-route-plans/activate": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Activate Model Route",
+        "operationId": "activate_model_route_api_v1_operations_model_route_plans_activate_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "\\S",
+              "description": "Required tenant/task/mode-scoped model route activation key.",
+              "title": "Idempotency-Key"
+            },
+            "description": "Required tenant/task/mode-scoped model route activation key."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateModelRouteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Idempotent replay of the same model route activation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRouteActivationResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRouteActivationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/operations/model-route-plans/active": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Get Active Model Route",
+        "operationId": "get_active_model_route_api_v1_operations_model_route_plans_active_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ModelReleaseTask"
+            }
+          },
+          {
+            "name": "execution_mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalysisExecutionMode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveModelRouteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActivateModelReleaseRequest": {
+        "properties": {
+          "execution_mode": {
+            "$ref": "#/components/schemas/AnalysisExecutionMode"
+          },
+          "expected_current_activation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Current Activation Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "execution_mode",
+          "reason"
+        ],
+        "title": "ActivateModelReleaseRequest"
+      },
+      "ActivateModelRouteRequest": {
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/ModelReleaseTask"
+          },
+          "execution_mode": {
+            "$ref": "#/components/schemas/AnalysisExecutionMode"
+          },
+          "model_activation_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Model Activation Id"
+          },
+          "deployment_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$",
+            "title": "Deployment Id"
+          },
+          "expected_current_route_plan_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Current Route Plan Id"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task",
+          "execution_mode",
+          "model_activation_id",
+          "deployment_id",
+          "reason"
+        ],
+        "title": "ActivateModelRouteRequest"
+      },
+      "ActiveLLMRelease": {
+        "properties": {
+          "release": {
+            "$ref": "#/components/schemas/RegisteredLLMRelease"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/ModelActivationEvent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "release",
+          "activation"
+        ],
+        "title": "ActiveLLMRelease"
+      },
+      "ActiveModelReleaseResponse": {
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/ModelReleaseTask"
+          },
+          "execution_mode": {
+            "$ref": "#/components/schemas/AnalysisExecutionMode"
+          },
+          "active": {
+            "$ref": "#/components/schemas/ActiveLLMRelease"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task",
+          "execution_mode",
+          "active"
+        ],
+        "title": "ActiveModelReleaseResponse"
+      },
+      "ActiveModelRouteResponse": {
+        "properties": {
+          "route_plan": {
+            "$ref": "#/components/schemas/ModelRoutePlan"
+          },
+          "active_release": {
+            "$ref": "#/components/schemas/ActiveLLMRelease"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "route_plan",
+          "active_release"
+        ],
+        "title": "ActiveModelRouteResponse"
+      },
+      "ActiveVersionResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/OperationsVersionKind"
+          },
+          "component": {
+            "type": "string",
+            "title": "Component"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "numeric_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numeric Value"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OperationsVersionSource"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "component",
+          "name",
+          "version",
+          "revision",
+          "numeric_value",
+          "source",
+          "observed_at"
+        ],
+        "title": "ActiveVersionResponse"
+      },
       "AdditionalEvidenceReason": {
         "type": "string",
         "enum": [
@@ -3361,6 +4912,15 @@
           "OTHER"
         ],
         "title": "AdditionalEvidenceReason"
+      },
+      "AnalysisExecutionMode": {
+        "type": "string",
+        "enum": [
+          "PRIMARY",
+          "SHADOW"
+        ],
+        "title": "AnalysisExecutionMode",
+        "description": "Immutable boundary between production workflow and observation-only runs."
       },
       "AnalysisFailureResponse": {
         "properties": {
@@ -3501,6 +5061,9 @@
             "type": "string",
             "title": "Pipeline Version"
           },
+          "execution_mode": {
+            "$ref": "#/components/schemas/AnalysisExecutionMode"
+          },
           "trigger": {
             "$ref": "#/components/schemas/AnalysisTrigger"
           },
@@ -3569,6 +5132,7 @@
           "case_id",
           "pipeline",
           "pipeline_version",
+          "execution_mode",
           "trigger",
           "status",
           "requested_by",
@@ -3800,6 +5364,81 @@
         ],
         "title": "AnalysisTrigger"
       },
+      "AssignCaseRequest": {
+        "properties": {
+          "assignee_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Assignee Id"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Expected Version"
+          },
+          "rationale": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Rationale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "assignee_id",
+          "expected_version",
+          "rationale"
+        ],
+        "title": "AssignCaseRequest"
+      },
+      "AssignRequest": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Expected Version"
+          },
+          "assignee_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Assignee Id"
+          },
+          "rationale": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Rationale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "assignee_id",
+          "rationale"
+        ],
+        "title": "AssignRequest"
+      },
+      "AuthCapabilitiesResponse": {
+        "properties": {
+          "oidc_enabled": {
+            "type": "boolean",
+            "title": "Oidc Enabled"
+          },
+          "legacy_password_enabled": {
+            "type": "boolean",
+            "title": "Legacy Password Enabled"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "oidc_enabled",
+          "legacy_password_enabled"
+        ],
+        "title": "AuthCapabilitiesResponse"
+      },
       "Body_add_image_evidence_api_v1_cases__case_id__evidence_post": {
         "properties": {
           "file": {
@@ -3869,6 +5508,94 @@
         ],
         "title": "BoundingBox",
         "description": "Normalized coordinates for a provider-independent detection geometry."
+      },
+      "CaseAssignmentResponse": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "current_assignee_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Assignee Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "assigned_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned By"
+          },
+          "assignment_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAssignmentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "assigned_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "case_id",
+          "current_assignee_id",
+          "version",
+          "assigned_by",
+          "assignment_type",
+          "rationale",
+          "assigned_at"
+        ],
+        "title": "CaseAssignmentResponse"
+      },
+      "CaseAssignmentType": {
+        "type": "string",
+        "enum": [
+          "ADMIN_ASSIGNMENT",
+          "ADMIN_REASSIGNMENT",
+          "REVIEW_TASK_BACKFILL"
+        ],
+        "title": "CaseAssignmentType"
       },
       "CaseDetailResponse": {
         "properties": {
@@ -4369,6 +6096,86 @@
         ],
         "title": "ClauseType"
       },
+      "ComponentFailureSummaryResponse": {
+        "properties": {
+          "component": {
+            "$ref": "#/components/schemas/OperationsComponent"
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count"
+          },
+          "partial_success_count": {
+            "type": "integer",
+            "title": "Partial Success Count"
+          },
+          "retry_count": {
+            "type": "integer",
+            "title": "Retry Count"
+          },
+          "stalled_count": {
+            "type": "integer",
+            "title": "Stalled Count"
+          },
+          "oldest_signal_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Signal At"
+          },
+          "latest_signal_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Signal At"
+          },
+          "last_healthy_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Healthy At"
+          },
+          "top_failure_codes": {
+            "items": {
+              "$ref": "#/components/schemas/FailureCodeCountResponse"
+            },
+            "type": "array",
+            "title": "Top Failure Codes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "component",
+          "failed_count",
+          "partial_success_count",
+          "retry_count",
+          "stalled_count",
+          "oldest_signal_at",
+          "latest_signal_at",
+          "last_healthy_at",
+          "top_failure_codes"
+        ],
+        "title": "ComponentFailureSummaryResponse"
+      },
       "CoordinateSystem": {
         "type": "string",
         "enum": [
@@ -4575,6 +6382,25 @@
             "type": "integer",
             "title": "Total Records"
           },
+          "eligible_records": {
+            "type": "integer",
+            "title": "Eligible Records"
+          },
+          "excluded_records": {
+            "type": "integer",
+            "title": "Excluded Records"
+          },
+          "eligible_source_scope": {
+            "type": "string",
+            "title": "Eligible Source Scope"
+          },
+          "source_scope_distribution": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Source Scope Distribution"
+          },
           "baseline_minimum": {
             "type": "integer",
             "title": "Baseline Minimum"
@@ -4640,6 +6466,10 @@
           "schema_version",
           "generated_at",
           "total_records",
+          "eligible_records",
+          "excluded_records",
+          "eligible_source_scope",
+          "source_scope_distribution",
           "baseline_minimum",
           "drift_review_minimum",
           "readiness_status",
@@ -5512,6 +7342,25 @@
         "title": "ExtractionIssueType",
         "description": "Exact Sprint 2 issue taxonomy for persisted text extraction."
       },
+      "FailureCodeCountResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "FailureCodeCountResponse"
+      },
       "GroundedExplanationRunDetailResponse": {
         "properties": {
           "run": {
@@ -6068,6 +7917,225 @@
         "title": "LLMExtractionResultV2Response",
         "description": "Explicit v2 projection with deterministic backend completeness fields."
       },
+      "LLMReleaseManifest": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "llm_release_manifest/1.0.0",
+            "title": "Schema Version",
+            "default": "llm_release_manifest/1.0.0"
+          },
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$",
+            "title": "Candidate Id"
+          },
+          "package_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Package Name"
+          },
+          "package_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Package Version"
+          },
+          "task": {
+            "$ref": "#/components/schemas/ModelReleaseTask"
+          },
+          "artifact": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+            "title": "Artifact"
+          },
+          "artifact_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Artifact Revision"
+          },
+          "artifact_content_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Artifact Content Digest"
+          },
+          "runtime_image": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Runtime Image"
+          },
+          "runtime_image_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Runtime Image Digest"
+          },
+          "dependency_lock_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Dependency Lock Digest"
+          },
+          "sbom_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Sbom Digest"
+          },
+          "served_model_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Served Model Name"
+          },
+          "model_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Model Version"
+          },
+          "prompt_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Prompt Name"
+          },
+          "prompt_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Prompt Version"
+          },
+          "prompt_content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Prompt Content Hash"
+          },
+          "input_schema_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Input Schema Version"
+          },
+          "output_schema_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Output Schema Version"
+          },
+          "device_profile": {
+            "type": "string",
+            "const": "onprem-cuda",
+            "title": "Device Profile",
+            "default": "onprem-cuda"
+          },
+          "precision": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Precision"
+          },
+          "max_context_tokens": {
+            "type": "integer",
+            "maximum": 1000000,
+            "minimum": 1,
+            "title": "Max Context Tokens"
+          },
+          "max_num_sequences": {
+            "type": "integer",
+            "maximum": 64,
+            "minimum": 1,
+            "title": "Max Num Sequences"
+          },
+          "gpu_memory_utilization": {
+            "type": "number",
+            "maximum": 1,
+            "exclusiveMinimum": 0,
+            "title": "Gpu Memory Utilization"
+          },
+          "kv_cache_dtype": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Kv Cache Dtype"
+          },
+          "language_model_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Language Model Only",
+            "default": true
+          },
+          "automatic_cross_model_fallback": {
+            "type": "boolean",
+            "const": false,
+            "title": "Automatic Cross Model Fallback",
+            "default": false
+          },
+          "qualification_dataset_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Qualification Dataset Digest"
+          },
+          "qualification_result_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Qualification Result Digest"
+          },
+          "candidate_matrix_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Candidate Matrix Digest"
+          },
+          "candidate_assessment_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Candidate Assessment Digest"
+          },
+          "release_status": {
+            "type": "string",
+            "const": "RELEASE_ELIGIBLE",
+            "title": "Release Status",
+            "default": "RELEASE_ELIGIBLE"
+          },
+          "qualified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Qualified At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "package_name",
+          "package_version",
+          "task",
+          "artifact",
+          "artifact_revision",
+          "artifact_content_digest",
+          "runtime_image",
+          "runtime_image_digest",
+          "dependency_lock_digest",
+          "sbom_digest",
+          "served_model_name",
+          "model_version",
+          "prompt_name",
+          "prompt_version",
+          "prompt_content_hash",
+          "input_schema_version",
+          "output_schema_version",
+          "precision",
+          "max_context_tokens",
+          "max_num_sequences",
+          "gpu_memory_utilization",
+          "kv_cache_dtype",
+          "qualification_dataset_digest",
+          "qualification_result_digest",
+          "candidate_matrix_digest",
+          "candidate_assessment_digest",
+          "qualified_at"
+        ],
+        "title": "LLMReleaseManifest"
+      },
       "LLMTextClaim": {
         "properties": {
           "type": {
@@ -6334,6 +8402,995 @@
         ],
         "title": "MissingInformation"
       },
+      "ModelActivationEvent": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Tenant Id"
+          },
+          "task": {
+            "$ref": "#/components/schemas/ModelReleaseTask"
+          },
+          "execution_mode": {
+            "$ref": "#/components/schemas/AnalysisExecutionMode"
+          },
+          "model_release_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Model Release Id"
+          },
+          "previous_activation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Activation Id"
+          },
+          "activated_by": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Activated By"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Idempotency Key"
+          },
+          "request_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Request Hash"
+          },
+          "activated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Activated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "task",
+          "execution_mode",
+          "model_release_id",
+          "activated_by",
+          "reason",
+          "idempotency_key",
+          "request_hash",
+          "activated_at"
+        ],
+        "title": "ModelActivationEvent"
+      },
+      "ModelActivationResponse": {
+        "properties": {
+          "activation": {
+            "$ref": "#/components/schemas/ModelActivationEvent"
+          },
+          "idempotent_replay": {
+            "type": "boolean",
+            "title": "Idempotent Replay"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "activation",
+          "idempotent_replay"
+        ],
+        "title": "ModelActivationResponse"
+      },
+      "ModelReleaseTask": {
+        "type": "string",
+        "enum": [
+          "PRODUCT_DEFECT_TEXT_EXTRACTION_V2",
+          "POLICY_QUERY_BUILDER_V1",
+          "GROUNDED_POLICY_EXPLANATION_V1"
+        ],
+        "title": "ModelReleaseTask"
+      },
+      "ModelRouteActivationResponse": {
+        "properties": {
+          "route_plan": {
+            "$ref": "#/components/schemas/ModelRoutePlan"
+          },
+          "idempotent_replay": {
+            "type": "boolean",
+            "title": "Idempotent Replay"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "route_plan",
+          "idempotent_replay"
+        ],
+        "title": "ModelRouteActivationResponse"
+      },
+      "ModelRoutePlan": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "model_route_plan/1.0.0",
+            "title": "Schema Version",
+            "default": "model_route_plan/1.0.0"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Tenant Id"
+          },
+          "task": {
+            "$ref": "#/components/schemas/ModelReleaseTask"
+          },
+          "execution_mode": {
+            "$ref": "#/components/schemas/AnalysisExecutionMode"
+          },
+          "model_activation_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Model Activation Id"
+          },
+          "deployment_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$",
+            "title": "Deployment Id"
+          },
+          "previous_route_plan_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Route Plan Id"
+          },
+          "automatic_cross_model_fallback": {
+            "type": "boolean",
+            "const": false,
+            "title": "Automatic Cross Model Fallback",
+            "default": false
+          },
+          "activated_by": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Activated By"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Idempotency Key"
+          },
+          "request_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Request Hash"
+          },
+          "activated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Activated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "task",
+          "execution_mode",
+          "model_activation_id",
+          "deployment_id",
+          "activated_by",
+          "reason",
+          "idempotency_key",
+          "request_hash",
+          "activated_at"
+        ],
+        "title": "ModelRoutePlan",
+        "description": "One immutable link from a tenant task to an approved release activation."
+      },
+      "OnboardingGateCode": {
+        "type": "string",
+        "enum": [
+          "ACTIVE_OPERATOR_STAFFING",
+          "SIGNED_INTAKE_SOURCE",
+          "RETENTION_AUTOMATION",
+          "OIDC_TENANT_MAPPING",
+          "ACTIVE_POLICY_RUNTIME",
+          "PRIMARY_MODEL_ROUTES"
+        ],
+        "title": "OnboardingGateCode"
+      },
+      "OnboardingGateStatus": {
+        "type": "string",
+        "enum": [
+          "PASS",
+          "FAIL"
+        ],
+        "title": "OnboardingGateStatus"
+      },
+      "OnboardingReadinessGateResponse": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/OnboardingGateCode"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OnboardingGateStatus"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "status",
+          "description"
+        ],
+        "title": "OnboardingReadinessGateResponse"
+      },
+      "OnboardingReadinessResponse": {
+        "properties": {
+          "pilot_ready": {
+            "type": "boolean",
+            "title": "Pilot Ready"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/OnboardingReadinessGateResponse"
+            },
+            "type": "array",
+            "title": "Gates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pilot_ready",
+          "gates"
+        ],
+        "title": "OnboardingReadinessResponse"
+      },
+      "OperationalFailureAction": {
+        "type": "string",
+        "enum": [
+          "REPLAYED",
+          "CANCELLED"
+        ],
+        "title": "OperationalFailureAction"
+      },
+      "OperationalFailureKind": {
+        "type": "string",
+        "enum": [
+          "DISPATCH",
+          "CONSUMER"
+        ],
+        "title": "OperationalFailureKind"
+      },
+      "OperationalFailurePipeline": {
+        "type": "string",
+        "enum": [
+          "analysis",
+          "policy_retrieval",
+          "grounded_explanation",
+          "policy_evaluation",
+          "human_review",
+          "case_resolution",
+          "action_simulation",
+          "failure_recovery"
+        ],
+        "title": "OperationalFailurePipeline"
+      },
+      "OperationalFailureResolutionResponse": {
+        "properties": {
+          "failure_id": {
+            "type": "string",
+            "title": "Failure Id"
+          },
+          "action": {
+            "$ref": "#/components/schemas/OperationalFailureAction"
+          },
+          "recovery_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Run Id"
+          },
+          "recovery_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Event Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "idempotent_replay": {
+            "type": "boolean",
+            "title": "Idempotent Replay"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "failure_id",
+          "action",
+          "recovery_run_id",
+          "recovery_event_id",
+          "created_at",
+          "idempotent_replay"
+        ],
+        "title": "OperationalFailureResolutionResponse"
+      },
+      "OperationalFailureResponse": {
+        "properties": {
+          "failure_id": {
+            "type": "string",
+            "title": "Failure Id"
+          },
+          "pipeline": {
+            "$ref": "#/components/schemas/OperationalFailurePipeline"
+          },
+          "failure_kind": {
+            "$ref": "#/components/schemas/OperationalFailureKind"
+          },
+          "failure_code": {
+            "type": "string",
+            "title": "Failure Code"
+          },
+          "source_event_id": {
+            "type": "string",
+            "title": "Source Event Id"
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          },
+          "source_stage_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Stage Id"
+          },
+          "correlation_id": {
+            "type": "string",
+            "title": "Correlation Id"
+          },
+          "replayable": {
+            "type": "boolean",
+            "title": "Replayable"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OperationalFailureStatus"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "recovery_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Run Id"
+          },
+          "recovery_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Event Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "failure_id",
+          "pipeline",
+          "failure_kind",
+          "failure_code",
+          "source_event_id",
+          "source_run_id",
+          "source_stage_id",
+          "correlation_id",
+          "replayable",
+          "status",
+          "occurred_at",
+          "resolved_at",
+          "recovery_run_id",
+          "recovery_event_id"
+        ],
+        "title": "OperationalFailureResponse"
+      },
+      "OperationalFailureStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "REPLAYED",
+          "CANCELLED"
+        ],
+        "title": "OperationalFailureStatus"
+      },
+      "OperationsComponent": {
+        "type": "string",
+        "enum": [
+          "analysis",
+          "policy_retrieval",
+          "grounded_explanation",
+          "policy_evaluation",
+          "human_review",
+          "case_resolution",
+          "action_simulation"
+        ],
+        "title": "OperationsComponent"
+      },
+      "OperationsFailuresResponse": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "lookback_seconds": {
+            "type": "integer",
+            "title": "Lookback Seconds"
+          },
+          "total_failed_count": {
+            "type": "integer",
+            "title": "Total Failed Count"
+          },
+          "total_partial_success_count": {
+            "type": "integer",
+            "title": "Total Partial Success Count"
+          },
+          "total_retry_count": {
+            "type": "integer",
+            "title": "Total Retry Count"
+          },
+          "total_stalled_count": {
+            "type": "integer",
+            "title": "Total Stalled Count"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentFailureSummaryResponse"
+            },
+            "type": "array",
+            "title": "Components"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalFailureResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "generated_at",
+          "lookback_seconds",
+          "total_failed_count",
+          "total_partial_success_count",
+          "total_retry_count",
+          "total_stalled_count",
+          "components",
+          "items",
+          "next_cursor"
+        ],
+        "title": "OperationsFailuresResponse"
+      },
+      "OperationsOverviewResponse": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "stalled_after_seconds": {
+            "type": "integer",
+            "title": "Stalled After Seconds"
+          },
+          "total_backlog_count": {
+            "type": "integer",
+            "title": "Total Backlog Count"
+          },
+          "total_stalled_count": {
+            "type": "integer",
+            "title": "Total Stalled Count"
+          },
+          "queues": {
+            "items": {
+              "$ref": "#/components/schemas/QueueOperationsResponse"
+            },
+            "type": "array",
+            "title": "Queues"
+          },
+          "processing": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessingOperationsResponse"
+            },
+            "type": "array",
+            "title": "Processing"
+          },
+          "active_versions": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveVersionResponse"
+            },
+            "type": "array",
+            "title": "Active Versions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "generated_at",
+          "stalled_after_seconds",
+          "total_backlog_count",
+          "total_stalled_count",
+          "queues",
+          "processing",
+          "active_versions"
+        ],
+        "title": "OperationsOverviewResponse"
+      },
+      "OperationsQueue": {
+        "type": "string",
+        "enum": [
+          "analysis_dispatch",
+          "policy_retrieval",
+          "grounded_explanation",
+          "policy_evaluation",
+          "human_review",
+          "case_resolution",
+          "action_simulation"
+        ],
+        "title": "OperationsQueue"
+      },
+      "OperationsVersionKind": {
+        "type": "string",
+        "enum": [
+          "model",
+          "prompt",
+          "policy",
+          "threshold",
+          "index"
+        ],
+        "title": "OperationsVersionKind"
+      },
+      "OperationsVersionSource": {
+        "type": "string",
+        "enum": [
+          "active_record",
+          "latest_run_snapshot",
+          "latest_succeeded_result"
+        ],
+        "title": "OperationsVersionSource"
+      },
+      "OperatorCaseItemResponse": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "case_status": {
+            "type": "string",
+            "title": "Case Status"
+          },
+          "order_ref": {
+            "type": "string",
+            "title": "Order Ref"
+          },
+          "product_ref": {
+            "type": "string",
+            "title": "Product Ref"
+          },
+          "requested_action": {
+            "type": "string",
+            "title": "Requested Action"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "review_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Task Id"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
+          },
+          "review_priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Priority"
+          },
+          "assignee_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Id"
+          },
+          "assignment_version": {
+            "type": "integer",
+            "title": "Assignment Version"
+          },
+          "resolution_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Status"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "report_generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Generated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "case_id",
+          "case_status",
+          "order_ref",
+          "product_ref",
+          "requested_action",
+          "created_at",
+          "updated_at",
+          "review_task_id",
+          "review_status",
+          "review_priority",
+          "assignee_id",
+          "assignment_version",
+          "resolution_status",
+          "report_id",
+          "report_generated_at"
+        ],
+        "title": "OperatorCaseItemResponse"
+      },
+      "OperatorCasePageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OperatorCaseItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/QueueCountsResponse"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "counts",
+          "next_cursor"
+        ],
+        "title": "OperatorCasePageResponse"
+      },
+      "OperatorReviewItemResponse": {
+        "properties": {
+          "review_task_id": {
+            "type": "string",
+            "title": "Review Task Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "case_status": {
+            "type": "string",
+            "title": "Case Status"
+          },
+          "order_ref": {
+            "type": "string",
+            "title": "Order Ref"
+          },
+          "product_ref": {
+            "type": "string",
+            "title": "Product Ref"
+          },
+          "requested_action": {
+            "type": "string",
+            "title": "Requested Action"
+          },
+          "task_type": {
+            "type": "string",
+            "title": "Task Type"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "assignee_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "resolution_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Status"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "report_generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Generated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "review_task_id",
+          "case_id",
+          "case_status",
+          "order_ref",
+          "product_ref",
+          "requested_action",
+          "task_type",
+          "priority",
+          "status",
+          "assignee_id",
+          "version",
+          "created_at",
+          "updated_at",
+          "resolution_status",
+          "report_id",
+          "report_generated_at"
+        ],
+        "title": "OperatorReviewItemResponse"
+      },
+      "OperatorReviewPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OperatorReviewItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/QueueCountsResponse"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "counts",
+          "next_cursor"
+        ],
+        "title": "OperatorReviewPageResponse"
+      },
       "OutcomeRelation": {
         "type": "string",
         "enum": [
@@ -6395,6 +9452,18 @@
             "format": "date-time",
             "title": "Generated At"
           },
+          "eligible_source_scope": {
+            "type": "string",
+            "title": "Eligible Source Scope"
+          },
+          "eligible_case_count": {
+            "type": "integer",
+            "title": "Eligible Case Count"
+          },
+          "excluded_case_count": {
+            "type": "integer",
+            "title": "Excluded Case Count"
+          },
           "review_time": {
             "$ref": "#/components/schemas/PocMetricResponse"
           },
@@ -6422,6 +9491,9 @@
         "required": [
           "schema_version",
           "generated_at",
+          "eligible_source_scope",
+          "eligible_case_count",
+          "excluded_case_count",
           "review_time",
           "recommendation_difference_rate",
           "additional_evidence_request_rate",
@@ -7139,6 +10211,74 @@
         ],
         "title": "ProbeStatus"
       },
+      "ProcessingOperationsResponse": {
+        "properties": {
+          "component": {
+            "$ref": "#/components/schemas/OperationsComponent"
+          },
+          "backlog_count": {
+            "type": "integer",
+            "title": "Backlog Count"
+          },
+          "running_count": {
+            "type": "integer",
+            "title": "Running Count"
+          },
+          "retry_count": {
+            "type": "integer",
+            "title": "Retry Count"
+          },
+          "partial_success_count": {
+            "type": "integer",
+            "title": "Partial Success Count"
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count"
+          },
+          "stalled_count": {
+            "type": "integer",
+            "title": "Stalled Count"
+          },
+          "oldest_backlog_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Backlog Age Seconds"
+          },
+          "last_healthy_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Healthy At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "component",
+          "backlog_count",
+          "running_count",
+          "retry_count",
+          "partial_success_count",
+          "failed_count",
+          "stalled_count",
+          "oldest_backlog_age_seconds",
+          "last_healthy_at"
+        ],
+        "title": "ProcessingOperationsResponse"
+      },
       "ProviderExecutionResponse": {
         "properties": {
           "provider_name": {
@@ -7214,6 +10354,138 @@
         ],
         "title": "QueryStrategy"
       },
+      "QueueCountsResponse": {
+        "properties": {
+          "all": {
+            "type": "integer",
+            "title": "All"
+          },
+          "my": {
+            "type": "integer",
+            "title": "My"
+          },
+          "unassigned": {
+            "type": "integer",
+            "title": "Unassigned"
+          },
+          "urgent": {
+            "type": "integer",
+            "title": "Urgent"
+          },
+          "waiting_evidence": {
+            "type": "integer",
+            "title": "Waiting Evidence"
+          },
+          "complete": {
+            "type": "integer",
+            "title": "Complete"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "all",
+          "my",
+          "unassigned",
+          "urgent",
+          "waiting_evidence",
+          "complete"
+        ],
+        "title": "QueueCountsResponse"
+      },
+      "QueueOperationsResponse": {
+        "properties": {
+          "queue": {
+            "$ref": "#/components/schemas/OperationsQueue"
+          },
+          "backlog_count": {
+            "type": "integer",
+            "title": "Backlog Count"
+          },
+          "pending_count": {
+            "type": "integer",
+            "title": "Pending Count"
+          },
+          "processing_count": {
+            "type": "integer",
+            "title": "Processing Count"
+          },
+          "published_unconsumed_count": {
+            "type": "integer",
+            "title": "Published Unconsumed Count"
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count"
+          },
+          "retry_count": {
+            "type": "integer",
+            "title": "Retry Count"
+          },
+          "stalled_count": {
+            "type": "integer",
+            "title": "Stalled Count"
+          },
+          "oldest_backlog_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Backlog Age Seconds"
+          },
+          "last_healthy_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Healthy At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "queue",
+          "backlog_count",
+          "pending_count",
+          "processing_count",
+          "published_unconsumed_count",
+          "failed_count",
+          "retry_count",
+          "stalled_count",
+          "oldest_backlog_age_seconds",
+          "last_healthy_at"
+        ],
+        "title": "QueueOperationsResponse"
+      },
+      "QueueSort": {
+        "type": "string",
+        "enum": [
+          "newest",
+          "oldest"
+        ],
+        "title": "QueueSort"
+      },
+      "QueueView": {
+        "type": "string",
+        "enum": [
+          "all",
+          "my",
+          "unassigned",
+          "urgent",
+          "waiting_evidence",
+          "complete"
+        ],
+        "title": "QueueView"
+      },
       "ReadyResponse": {
         "properties": {
           "status": {
@@ -7244,6 +10516,93 @@
           "dependencies"
         ],
         "title": "ReadyResponse"
+      },
+      "RegisterModelReleaseRequest": {
+        "properties": {
+          "manifest": {
+            "$ref": "#/components/schemas/LLMReleaseManifest"
+          },
+          "signing_key_id": {
+            "type": "string",
+            "title": "Signing Key Id"
+          },
+          "signature_algorithm": {
+            "type": "string",
+            "const": "ED25519",
+            "title": "Signature Algorithm",
+            "default": "ED25519"
+          },
+          "signature_base64": {
+            "type": "string",
+            "title": "Signature Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "manifest",
+          "signing_key_id",
+          "signature_base64"
+        ],
+        "title": "RegisterModelReleaseRequest"
+      },
+      "RegisteredLLMRelease": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Tenant Id"
+          },
+          "signed_manifest": {
+            "$ref": "#/components/schemas/SignedLLMReleaseManifest"
+          },
+          "registered_by": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Registered By"
+          },
+          "registered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registered At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "signed_manifest",
+          "registered_by",
+          "registered_at"
+        ],
+        "title": "RegisteredLLMRelease"
+      },
+      "RegisteredModelReleaseResponse": {
+        "properties": {
+          "release": {
+            "$ref": "#/components/schemas/RegisteredLLMRelease"
+          },
+          "idempotent_replay": {
+            "type": "boolean",
+            "title": "Idempotent Replay"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "release",
+          "idempotent_replay"
+        ],
+        "title": "RegisteredModelReleaseResponse"
       },
       "ReleaseRequest": {
         "properties": {
@@ -7592,6 +10951,8 @@
         "type": "string",
         "enum": [
           "CREATED",
+          "ASSIGNED",
+          "REASSIGNED",
           "CLAIMED",
           "RELEASED",
           "EVIDENCE_REQUESTED",
@@ -7600,6 +10961,55 @@
           "RESOLVED"
         ],
         "title": "ReviewActionType"
+      },
+      "ReviewAssigneeListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewAssigneeResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ReviewAssigneeListResponse"
+      },
+      "ReviewAssigneeResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "display_name",
+          "email",
+          "roles"
+        ],
+        "title": "ReviewAssigneeResponse"
       },
       "ReviewPacket": {
         "properties": {
@@ -7923,6 +11333,25 @@
               }
             ],
             "title": "Grounded Explanation"
+          },
+          "inquiry_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inquiry Summary"
+          },
+          "policy_similarity": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Policy Similarity"
           }
         },
         "additionalProperties": false,
@@ -7934,7 +11363,9 @@
           "decision",
           "rule_results",
           "citation_items",
-          "grounded_explanation"
+          "grounded_explanation",
+          "inquiry_summary",
+          "policy_similarity"
         ],
         "title": "ReviewTaskDetailResponse"
       },
@@ -8074,6 +11505,38 @@
         ],
         "title": "Role"
       },
+      "SignedLLMReleaseManifest": {
+        "properties": {
+          "manifest": {
+            "$ref": "#/components/schemas/LLMReleaseManifest"
+          },
+          "signing_key_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$",
+            "title": "Signing Key Id"
+          },
+          "signature_algorithm": {
+            "type": "string",
+            "const": "ED25519",
+            "title": "Signature Algorithm",
+            "default": "ED25519"
+          },
+          "signature_base64": {
+            "type": "string",
+            "maxLength": 88,
+            "minLength": 88,
+            "title": "Signature Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "manifest",
+          "signing_key_id",
+          "signature_base64"
+        ],
+        "title": "SignedLLMReleaseManifest"
+      },
       "SimulationAttemptStatus": {
         "type": "string",
         "enum": [
@@ -8134,7 +11597,8 @@
             "title": "Analysis Run Id"
           },
           "strategy": {
-            "$ref": "#/components/schemas/QueryStrategy"
+            "$ref": "#/components/schemas/QueryStrategy",
+            "default": "RAW"
           },
           "as_of_date": {
             "type": "string",
@@ -8146,14 +11610,13 @@
             "maximum": 20,
             "minimum": 1,
             "title": "Top K",
-            "default": 10
+            "default": 3
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "analysis_run_id",
-          "strategy",
           "as_of_date"
         ],
         "title": "StartPolicyRetrievalRunRequest"
@@ -8168,6 +11631,10 @@
             "maxLength": 32,
             "minLength": 1,
             "title": "Pipeline Version"
+          },
+          "execution_mode": {
+            "$ref": "#/components/schemas/AnalysisExecutionMode",
+            "default": "PRIMARY"
           }
         },
         "additionalProperties": false,
@@ -8659,6 +12126,268 @@
         ],
         "title": "VisionImageAssessmentOutcome",
         "description": "Decision-support outcomes that deliberately contain no NORMAL state."
+      },
+      "WorkflowComponentResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "started_at",
+          "completed_at",
+          "failure_code",
+          "correlation_id"
+        ],
+        "title": "WorkflowComponentResponse"
+      },
+      "WorkflowSnapshotResponse": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "case_status": {
+            "type": "string",
+            "title": "Case Status"
+          },
+          "terminal": {
+            "type": "boolean",
+            "title": "Terminal"
+          },
+          "degraded": {
+            "type": "boolean",
+            "title": "Degraded"
+          },
+          "retry_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry At"
+          },
+          "last_good": {
+            "type": "string",
+            "title": "Last Good"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowComponentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowStageResponse"
+            },
+            "type": "array",
+            "title": "Stages"
+          },
+          "policy_retrieval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowComponentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "grounded_explanation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowComponentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "policy_evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowComponentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowComponentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowComponentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowComponentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "case_id",
+          "case_status",
+          "terminal",
+          "degraded",
+          "retry_at",
+          "last_good",
+          "correlation_id",
+          "analysis",
+          "stages",
+          "policy_retrieval",
+          "grounded_explanation",
+          "policy_evaluation",
+          "review",
+          "resolution",
+          "report"
+        ],
+        "title": "WorkflowSnapshotResponse"
+      },
+      "WorkflowStageResponse": {
+        "properties": {
+          "stage_type": {
+            "type": "string",
+            "title": "Stage Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "title": "Attempt Count"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stage_type",
+          "status",
+          "attempt_count",
+          "next_attempt_at",
+          "failure_code"
+        ],
+        "title": "WorkflowStageResponse"
       }
     },
     "securitySchemes": {

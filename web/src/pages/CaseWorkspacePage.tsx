@@ -23,6 +23,7 @@ import { resetFailedTextCheckpoint, resetFailedVisionCheckpoint } from "../recov
 import { checkpointStore, newOpaqueKey } from "../recovery/workflowCheckpoint";
 import { describeVisionQualification, formatVisionProbability, readBinaryVisionAssessments } from "../vision/imageAssessment";
 import { policyAsOfDate } from "../workflow/policyDate";
+import { DEFAULT_WORKFLOW_MAX_WAIT_MS, workflowPollDelay, workflowWaitExpired } from "../workflow/snapshotPolling";
 
 const terminal = new Set(["SUCCEEDED", "COMPLETED", "PARTIAL_SUCCESS", "FAILED"]);
 
@@ -41,11 +42,16 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
   const [progress, setProgress] = useState<WorkflowProgress[]>([]);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [snapshotPaused, setSnapshotPaused] = useState(false);
+  const [snapshotTimedOut, setSnapshotTimedOut] = useState(false);
   const [textRetrying, setTextRetrying] = useState(false);
   const [visionRetrying, setVisionRetrying] = useState(false);
   const [visionError, setVisionError] = useState<string | null>(null);
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const snapshotPollStartedAt = useRef<number | null>(null);
+  const snapshotPollAttempt = useRef(0);
+  const observedSnapshotTransitions = useRef(new Set<string>());
   const needsRunRecovery = !checkpoint.analysisV2RunId || !checkpoint.visionRunId;
 
   const caseQuery = useQuery({ queryKey: ["case", caseId], queryFn: () => api.getCase(caseId), enabled: Boolean(caseId) });
@@ -105,52 +111,44 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
   const groundingRunId = checkpoint.groundingRunId ?? recoveredPolicyRuns.groundingRunId;
   const policyEvaluationRunId = checkpoint.policyEvaluationRunId
     ?? recoveredPolicyRuns.policyEvaluationRunId;
+  const workflowSnapshotQuery = useQuery({
+    queryKey: ["workflow-snapshot", caseId],
+    queryFn: () => api.getWorkflowSnapshot(caseId),
+    enabled: Boolean(caseId),
+    retry: 1,
+  });
+  const refetchWorkflowSnapshot = workflowSnapshotQuery.refetch;
   const analysisQuery = useQuery({
     queryKey: ["analysis", caseId, analysisV2RunId],
     queryFn: () => api.getAnalysis(caseId, analysisV2RunId!),
     enabled: Boolean(analysisV2RunId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.run.status;
-      return status && !terminal.has(status) ? 1600 : false;
-    },
+    refetchInterval: false,
   });
   const retrievalQuery = useQuery({
     queryKey: ["retrieval", caseId, retrievalRunId],
     queryFn: () => api.getRetrieval(caseId, retrievalRunId!),
     enabled: Boolean(retrievalRunId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.run.status;
-      return status && !terminal.has(status) ? 1600 : false;
-    },
+    refetchInterval: false,
   });
   const groundingQuery = useQuery({
     queryKey: ["grounding", caseId, groundingRunId],
     queryFn: () => api.getGrounding(caseId, groundingRunId!),
     enabled: Boolean(groundingRunId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.run.status;
-      return status && !terminal.has(status) ? 1600 : false;
-    },
+    refetchInterval: false,
   });
   const policyQuery = useQuery({
     queryKey: ["policy", caseId, policyEvaluationRunId],
     queryFn: () => api.getPolicy(caseId, policyEvaluationRunId!),
     enabled: Boolean(policyEvaluationRunId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.run.status;
-      return status && !terminal.has(status) ? 1600 : false;
-    },
+    refetchInterval: false,
   });
   const visionQuery = useQuery({
     queryKey: ["vision", caseId, visionRunId],
     queryFn: () => api.getAnalysis(caseId, visionRunId!),
     enabled: Boolean(visionRunId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.run.status;
-      return status && !terminal.has(status) ? 1600 : false;
-    },
+    refetchInterval: false,
   });
-  const reviewsQuery = useQuery({ queryKey: ["case-reviews", caseId], queryFn: () => api.listCaseReviewTasks(caseId), enabled: Boolean(caseId), refetchInterval: running ? 2000 : false });
+  const reviewsQuery = useQuery({ queryKey: ["case-reviews", caseId], queryFn: () => api.listCaseReviewTasks(caseId), enabled: Boolean(caseId), refetchInterval: false });
   const resolutionQuery = useQuery({ queryKey: ["resolution", caseId], queryFn: () => api.getResolution(caseId), enabled: Boolean(caseId), retry: false });
   const eventsQuery = useQuery({ queryKey: ["resolution-events", caseId], queryFn: () => api.listResolutionEvents(caseId), enabled: Boolean(caseId), retry: false });
   const intentsQuery = useQuery({ queryKey: ["intents", caseId], queryFn: () => api.listIntents(caseId), enabled: Boolean(caseId), retry: false });
@@ -180,10 +178,94 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
     checkpointStore.save(next);
   }, [analysisV2RunId, caseId, groundingRunId, policyEvaluationRunId, retrievalRunId, visionRunId]);
 
+  const activeSnapshotStatus = new Set(["QUEUED", "PENDING", "RUNNING", "RETRY_WAITING"]);
+  const snapshotHasActiveSystemWork = [
+    workflowSnapshotQuery.data?.analysis,
+    workflowSnapshotQuery.data?.policy_retrieval,
+    workflowSnapshotQuery.data?.grounded_explanation,
+    workflowSnapshotQuery.data?.policy_evaluation,
+    workflowSnapshotQuery.data?.resolution,
+    workflowSnapshotQuery.data?.report,
+  ].some((component) => component && activeSnapshotStatus.has(component.status));
+  const snapshotShouldPoll = Boolean(
+    running
+    || snapshotHasActiveSystemWork
+    || (!workflowSnapshotQuery.data && (
+      analysisV2RunId
+      || retrievalRunId
+      || groundingRunId
+      || policyEvaluationRunId
+      || ["ANALYSIS_PENDING", "ANALYSIS_IN_PROGRESS"].includes(caseQuery.data?.status ?? "")
+    )),
+  );
+
+  useEffect(() => {
+    const snapshot = workflowSnapshotQuery.data;
+    if (!snapshotShouldPoll || running || snapshotPaused || snapshot?.terminal) return;
+    if (snapshotPollStartedAt.current === null) snapshotPollStartedAt.current = Date.now();
+    const startedAt = snapshotPollStartedAt.current;
+    if (workflowWaitExpired(startedAt, Date.now())) {
+      setSnapshotTimedOut(true);
+      setSnapshotPaused(true);
+      return;
+    }
+    const delay = workflowPollDelay(snapshotPollAttempt.current);
+    const timeoutId = window.setTimeout(() => {
+      if (workflowWaitExpired(startedAt, Date.now(), DEFAULT_WORKFLOW_MAX_WAIT_MS)) {
+        setSnapshotTimedOut(true);
+        setSnapshotPaused(true);
+        return;
+      }
+      snapshotPollAttempt.current += 1;
+      void refetchWorkflowSnapshot();
+    }, delay);
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    running,
+    snapshotPaused,
+    snapshotShouldPoll,
+    workflowSnapshotQuery.data,
+    workflowSnapshotQuery.data?.terminal,
+    workflowSnapshotQuery.dataUpdatedAt,
+    workflowSnapshotQuery.errorUpdatedAt,
+    refetchWorkflowSnapshot,
+  ]);
+
+  useEffect(() => {
+    const snapshot = workflowSnapshotQuery.data;
+    if (!snapshot) return;
+    const transitions: Array<[string, { run_id: string; status: string } | null, readonly unknown[]]> = [
+      ["analysis", snapshot.analysis, ["analysis", caseId]],
+      ["retrieval", snapshot.policy_retrieval, ["retrieval", caseId]],
+      ["grounding", snapshot.grounded_explanation, ["grounding", caseId]],
+      ["policy", snapshot.policy_evaluation, ["policy", caseId]],
+      ["review", snapshot.review, ["case-reviews", caseId]],
+      ["resolution", snapshot.resolution, ["resolution", caseId]],
+      ["report", snapshot.report, ["report", caseId]],
+    ];
+    for (const [name, component, queryKey] of transitions) {
+      if (!component) continue;
+      const marker = `${name}:${component.run_id}:${component.status}`;
+      if (observedSnapshotTransitions.current.has(marker)) continue;
+      observedSnapshotTransitions.current.add(marker);
+      const statusChangedToReadable = terminal.has(component.status)
+        || name === "review" || name === "resolution" || name === "report";
+      if (statusChangedToReadable) void queryClient.invalidateQueries({ queryKey });
+    }
+  }, [caseId, queryClient, workflowSnapshotQuery.data]);
+
   const evidenceMutation = useMutation({
     mutationFn: (file: File) => api.uploadEvidence(caseId, file),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["case", caseId] }),
   });
+
+  function restartSnapshotPolling() {
+    snapshotPollStartedAt.current = Date.now();
+    snapshotPollAttempt.current = 0;
+    setSnapshotTimedOut(false);
+    setSnapshotPaused(false);
+    void refetchWorkflowSnapshot();
+  }
 
   async function startPolicyFlow() {
     if (!caseQuery.data) return;
@@ -194,6 +276,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
     if (groundingRunId) recoveredCheckpoint.groundingRunId = groundingRunId;
     if (policyEvaluationRunId) recoveredCheckpoint.policyEvaluationRunId = policyEvaluationRunId;
     checkpointStore.save(recoveredCheckpoint);
+    restartSnapshotPolling();
     setRunning(true);
     setWorkflowError(null);
     setProgress([]);
@@ -223,6 +306,7 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
       if (!(cause instanceof DOMException && cause.name === "AbortError")) setWorkflowError(friendlyError(cause));
     } finally {
       setRunning(false);
+      restartSnapshotPolling();
     }
   }
 
@@ -327,9 +411,9 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
   const recoveryBlocked = analysisRunsQuery.isError || policyRecoveryBlocked;
   const textRunFailed = analysisQuery.data?.run.status === "FAILED";
   const activePolicyRunStatus = [
-    retrievalQuery.data?.run.status,
-    groundingQuery.data?.run.status,
-    policyQuery.data?.run.status,
+    workflowSnapshotQuery.data?.policy_retrieval?.status ?? retrievalQuery.data?.run.status,
+    workflowSnapshotQuery.data?.grounded_explanation?.status ?? groundingQuery.data?.run.status,
+    workflowSnapshotQuery.data?.policy_evaluation?.status ?? policyQuery.data?.run.status,
   ].find((status) => status !== undefined && !terminal.has(status));
   const selectedEvidence = item.evidence.find(
     (evidence) => evidence.evidence_id === selectedEvidenceId,
@@ -403,6 +487,23 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
         if (groundingRunsQuery.isError) void groundingRunsQuery.refetch();
         if (policyRunsQuery.isError) void policyRunsQuery.refetch();
       }}><RefreshCw size={14} />다시 확인</button>
+    </div>}
+
+    {(snapshotPaused || snapshotTimedOut || workflowSnapshotQuery.data?.degraded || workflowSnapshotQuery.data?.retry_at) && <Notice
+      tone={workflowSnapshotQuery.data?.degraded || snapshotTimedOut ? "warning" : "info"}
+      title={snapshotTimedOut ? "자동 상태 확인 시간이 끝났습니다" : snapshotPaused ? "상태 확인을 잠시 멈췄습니다" : "워크플로 상태 안내"}
+    >
+      <span>
+        마지막 정상 단계 {workflowSnapshotQuery.data?.last_good ?? "확인 중"}
+        {workflowSnapshotQuery.data?.retry_at ? ` · 다음 재시도 ${formatDate(workflowSnapshotQuery.data.retry_at)}` : ""}
+        {workflowSnapshotQuery.data?.correlation_id ? ` · 추적 ID ${shortId(workflowSnapshotQuery.data.correlation_id)}` : ""}
+      </span>
+      <button className="button button-ghost button-small" type="button" onClick={restartSnapshotPolling}><RefreshCw size={14} />다시 확인</button>
+    </Notice>}
+
+    {snapshotShouldPoll && !snapshotPaused && <div className="workflow-poll-control">
+      <span>한 개의 통합 상태 조회로 처리 진행을 확인하고 있습니다.</span>
+      <button className="button button-ghost button-small" type="button" onClick={() => setSnapshotPaused(true)}>나중에 다시 열기</button>
     </div>}
 
     <section className="operator-focus" aria-labelledby="operator-focus-title" data-testid="operator-focus">
@@ -580,11 +681,11 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
           <Notice title="고정된 기본 경로"><span>Text v2 → RAW 질의 → HYBRID 검색 → Top-3 인용 → 근거 연결 → 정책 평가 순서입니다. Reranker와 LLM Query Builder는 사용하지 않습니다.</span></Notice>
           <Notice title="독립 실행 연결 경계"><span>Retrieval과 Grounding은 retrieval_run_id로 직접 연결됩니다. Policy 실행은 Text v2 analysis_run_id에만 독립 연결되고 Grounding FK가 없으므로, 여러 실행을 하나의 검증된 exact chain으로 단정하지 않습니다.</span></Notice>
           <div className="workflow-steps" data-testid="policy-workflow">
-            <StepRow label="1. 문의 내용 구조화 (Text v2)" detail="문의 원문에서 요청·결함·누락 정보를 분리합니다." status={analysisQuery.data?.run.status ?? progress.find((p) => p.stage === "TEXT_V2")?.status ?? "PENDING"} />
-            <StepRow label="2. RAW + HYBRID 정책 검색" detail="원문 기반으로 정책 조항 3개까지 찾습니다." status={retrievalQuery.data?.run.status ?? progress.find((p) => p.stage === "RAW_TOP3")?.status ?? "PENDING"} />
-            <StepRow label="3. 인용과 설명 연결" detail="정책 문구가 설명을 실제로 뒷받침하는지 확인합니다." status={groundingQuery.data?.run.status ?? progress.find((p) => p.stage === "GROUNDING")?.status ?? "PENDING"} />
-            <StepRow label="4. 정책 규칙 평가" detail="버전과 효력일이 고정된 규칙으로 검토 가이드를 만듭니다." status={policyQuery.data?.run.status ?? progress.find((p) => p.stage === "POLICY")?.status ?? "PENDING"} />
-            <StepRow label="5. 사람 검토" detail="최종 결정은 담당자 또는 권한 있는 관리자가 내립니다." status={review?.status ?? progress.find((p) => p.stage === "REVIEW")?.status ?? "PENDING"} />
+            <StepRow label="1. 문의 내용 구조화 (Text v2)" detail="문의 원문에서 요청·결함·누락 정보를 분리합니다." status={workflowSnapshotQuery.data?.analysis?.status ?? analysisQuery.data?.run.status ?? progress.find((p) => p.stage === "TEXT_V2")?.status ?? "PENDING"} />
+            <StepRow label="2. RAW + HYBRID 정책 검색" detail="원문 기반으로 정책 조항 3개까지 찾습니다." status={workflowSnapshotQuery.data?.policy_retrieval?.status ?? retrievalQuery.data?.run.status ?? progress.find((p) => p.stage === "RAW_TOP3")?.status ?? "PENDING"} />
+            <StepRow label="3. 인용과 설명 연결" detail="정책 문구가 설명을 실제로 뒷받침하는지 확인합니다." status={workflowSnapshotQuery.data?.grounded_explanation?.status ?? groundingQuery.data?.run.status ?? progress.find((p) => p.stage === "GROUNDING")?.status ?? "PENDING"} />
+            <StepRow label="4. 정책 규칙 평가" detail="버전과 효력일이 고정된 규칙으로 검토 가이드를 만듭니다." status={workflowSnapshotQuery.data?.policy_evaluation?.status ?? policyQuery.data?.run.status ?? progress.find((p) => p.stage === "POLICY")?.status ?? "PENDING"} />
+            <StepRow label="5. 사람 검토" detail="최종 결정은 담당자 또는 권한 있는 관리자가 내립니다." status={workflowSnapshotQuery.data?.review?.status ?? review?.status ?? progress.find((p) => p.stage === "REVIEW")?.status ?? "PENDING"} />
           </div>
           {analysisQuery.isLoading && <Loading label="기존 Text v2 실행을 불러오는 중" />}
           {analysisQuery.error && <div className="inline-alert inline-alert-danger" role="alert">{friendlyError(analysisQuery.error)}</div>}

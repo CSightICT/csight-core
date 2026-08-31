@@ -22,6 +22,8 @@ function detail(overrides: Partial<ReviewTaskDetail> = {}): ReviewTaskDetail {
     rule_results: [{ id: "rule-result-1", rule_id: "RULE-1", status: "MATCHED" }],
     citation_items: [{ citation_id: "citation-1", clause_id: "CLAUSE-1" }],
     grounded_explanation: null,
+    inquiry_summary: null,
+    policy_similarity: [],
     ...overrides,
   };
 }

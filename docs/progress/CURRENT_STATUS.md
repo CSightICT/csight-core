@@ -13,12 +13,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0036과 Query Build/Search의 독립 durable v2 event·worker 경계를 구현하고 실제 PostgreSQL 경로를 검증했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
-| 진행 중 작업 | Query Build v2는 모델 lane concurrency 1에서 query plan을 고정하고 같은 transaction에 Search v2 Outbox를 만들며, Search v2는 retrieval lane concurrency 2에서만 실행한다. v1은 drain 호환만 유지한다. 전체 회귀와 격리 DB 검증은 PASS했으며, 다음은 변경을 기능 브랜치에 push한 뒤 새 SHA의 clean RC image/candidate를 다시 검증하는 것이다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거는 계속 차단 항목이다. |
-| 마지막 갱신일 | 2026-08-31 16:23 KST, Asia/Seoul |
+| 진행 중 작업 | Query Build/Search v2 구현·push와 최신 `cd6471cd628e` clean RC image/candidate 검증을 완료했다. 다음은 파일럿 외부 입력 없이 수행 가능한 OIDC·ClamAV·OTel·복원·queue isolation qualification의 현재 재현성을 순서대로 점검하는 것이다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, off-host 저장소·경보 수신자·20-session 부하 증거는 계속 차단 항목이다. |
+| 마지막 갱신일 | 2026-08-31 16:27 KST, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private. migration 0036과 Query Build/Search v2 분리 구현 `55fe72b146c4`까지 `origin/codex/operator-console-product-direction`에 push; PR·`develop/main` 병합 없음 |
-| 로컬 Git | `codex/operator-console-product-direction`; 구현 commit `55fe72b146c4`와 원격 SHA 일치. 이 상태 원장 후속만 commit 예정이며 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md` 보존 |
-| 마지막 검증 관측 | 2026-08-31 16:23 KST, Ruff/format/Pyright PASS, 비통합 backend 1023 PASS/6 SKIPPED, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, 빈 DB 0001→0036·0036→0035→0036·drift PASS. 실제 clone DB에서 RAW Query Build v2→Search v2가 두 durable event CONSUMED·run SUCCEEDED·LLM 호출 0으로 PASS했다. 실행 중 데모 9개 서비스와 DB/image 0034는 재시작·재빌드 없이 정상이며 디스크는 40 GiB다. |
+| 원격 저장소 | `CSightICT/csight-core` — Private. migration 0036과 Query Build/Search v2 구현 `55fe72b146c4`, 검증 원장 `cd6471cd628e`까지 `origin/codex/operator-console-product-direction`에 push; PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; HEAD와 원격은 `cd6471cd628e`로 일치. clean worktree `/Users/ckdlsxor/Desktop/CSight_rc_cd6471c`와 새 RC image/volume을 보존했고 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md`는 제외했다. |
+| 마지막 검증 관측 | 2026-08-31 16:27 KST, Ruff/format/Pyright PASS, 비통합 backend 1023 PASS/6 SKIPPED, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, 빈 DB 0001→0036·0036→0035→0036·drift PASS. 최신 RC candidate의 DB는 0036, 9개 장기 서비스 healthy/restart 0, API dependency readiness와 Web 200, model/retrieval worker queue 분리까지 PASS했다. 실행 중 데모 9개 서비스와 DB/image 0034는 그대로 정상이며 디스크는 39 GiB다. |
 | 마지막 GitHub 관측 | 2026-08-28 23:02 KST, `origin/codex/operator-console-product-direction`의 `3daaa7bff56fa0e25f7ca69bf6bc31d68a2cdb79`에 대한 CI Run #33177793237 PASS. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
@@ -3865,3 +3865,22 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   pilot ready를 주장하지 않는다.
 - Git: 구현·ADR·계약·migration·테스트를 `55fe72b146c4`로 commit해 현재 기능 브랜치에 push했다.
   고신뢰 Secret과 대용량 staged blob은 0건이었고 PR·병합은 만들지 않았다.
+
+### 2026-08-31 16:27 KST — Migration 0036 Clean RC Candidate
+
+- 기준점: 원격과 일치하는 `cd6471cd628e`를 detached clean worktree
+  `/Users/ckdlsxor/Desktop/CSight_rc_cd6471c`에 만들고 `rc-cd6471cd628e` 태그로 Core/Web을 한 번
+  빌드했다. Core digest는 `sha256:6df6cddccd24b32c5776d3bcc0696545bd8374475120d7ca7f1103defcf295a7`,
+  Web digest는 `sha256:a4370d4380bbb115799ae8e58bbd8accaabede0d073396bf08868301b1589e07`이다.
+- candidate: `csight-rc-cd6471c` 전용 project/network/volume/port에서 빈 PostgreSQL을 0001→0036으로
+  migration했다. API/Web/Dispatcher/model·retrieval·decision Worker/PostgreSQL/RabbitMQ/MinIO의
+  9개 장기 service가 모두 healthy, restart 0이고 API dependency readiness와 Web 200이 PASS했다.
+- queue 확인: model Worker는 `analysis`, legacy drain `policy-retrieval`, `policy-query-build`,
+  `grounded-explanation`만 구독하고 retrieval Worker는 `policy-search`만 구독함을 실제 Celery
+  `active_queues`로 확인했다.
+- 종료/보존: candidate container와 network만 종료했고 `csight-rc-cd6471c_*` 4개 volume, 두 RC image,
+  clean worktree는 보존했다. 원래 demo API/Web readiness는 종료 직후에도 PASS했고 DB/image 0034를
+  migration하거나 재시작하지 않았다. 가용 공간은 39 GiB다.
+- 다음 행동: 외부 입력이 필요 없는 qualification runner부터 현재 RC에서 재실행 가능 여부를 확인한다.
+  실제 고객 IdP/public key/retention/policy/support, release-eligible 모델, immutable off-host 저장소와
+  경보 수신자가 필요한 gate는 입력 전까지 FAIL/BLOCKED로 유지한다.

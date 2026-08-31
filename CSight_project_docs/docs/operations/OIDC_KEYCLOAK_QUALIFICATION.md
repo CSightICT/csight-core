@@ -15,6 +15,9 @@ make qualify-oidc-keycloak
 
 모든 관문이 통과하면 exit 0과 `PASS`, 제품 차단 항목이 있으면 exit 2와 `BLOCKED`, 구성 또는 실행
 오류는 exit 1과 `ERROR`를 반환한다. 실패를 성공으로 바꾸거나 password fallback을 열지 않는다.
+PII와 Secret이 없는 결과는 mode `0600`의
+`local-data/oidc-qualification/latest/qualification-report.json`에 저장한다. 디렉터리는 mode
+`0700`이며 운영 증거 수집기는 파일 내용과 수정 시각을 함께 검증해야 한다.
 
 ## 2026-08-30 실측 결과
 

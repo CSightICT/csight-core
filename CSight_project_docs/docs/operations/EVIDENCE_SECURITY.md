@@ -32,6 +32,11 @@ make qualify-evidence-security
 실패를 우회하기 위해 sanitizer 또는 malware scanner를 끄거나, 원본을 먼저 저장하는 fallback을
 추가하지 않는다.
 
+PII와 Secret이 없는 두 결과는 mode `0600`의
+`local-data/evidence-security-qualification/latest/healthy-report.json`과
+`outage-report.json`에 저장한다. 상위 디렉터리는 mode `0700`이며 파일 수정 시각보다 오래된 결과를
+현재 자격으로 재사용하지 않는다.
+
 ## 2026-08-30 격리 실측 결과
 
 Apple Silicon 개발 Mac의 Docker에서 고정된 amd64 ClamAV 이미지를 사용한 결과 두 단계 모두

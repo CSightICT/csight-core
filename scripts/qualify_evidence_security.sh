@@ -6,6 +6,9 @@ PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 CORE_COMPOSE="$PROJECT_ROOT/infra/compose.core.yml"
 SECURITY_COMPOSE="$PROJECT_ROOT/infra/evidence/compose.evidence-security.yml"
 PROJECT_NAME="csight-evidence-qualification"
+OUTPUT_DIR="${EVIDENCE_QUALIFICATION_OUTPUT_DIR:-$PROJECT_ROOT/local-data/evidence-security-qualification/latest}"
+HEALTHY_REPORT="$OUTPUT_DIR/healthy-report.json"
+OUTAGE_REPORT="$OUTPUT_DIR/outage-report.json"
 
 export ENVIRONMENT="test"
 export CSIGHT_IMAGE_TAG="evidence-qualification"
@@ -55,6 +58,10 @@ wait_for_api() {
 
 trap cleanup EXIT INT TERM
 cd "$PROJECT_ROOT"
+umask 077
+mkdir -p "$OUTPUT_DIR"
+chmod 700 "$OUTPUT_DIR"
+rm -f "$HEALTHY_REPORT" "$OUTAGE_REPORT"
 
 compose up --detach postgres rabbitmq minio clamav
 compose build api migrator
@@ -73,9 +80,13 @@ fi
 
 uv run python scripts/qualify_evidence_security.py \
     --phase healthy \
-    --api-base "http://127.0.0.1:${API_PORT}"
+    --api-base "http://127.0.0.1:${API_PORT}" >"$HEALTHY_REPORT"
+chmod 600 "$HEALTHY_REPORT"
+cat "$HEALTHY_REPORT"
 
 compose stop clamav
 uv run python scripts/qualify_evidence_security.py \
     --phase outage \
-    --api-base "http://127.0.0.1:${API_PORT}"
+    --api-base "http://127.0.0.1:${API_PORT}" >"$OUTAGE_REPORT"
+chmod 600 "$OUTAGE_REPORT"
+cat "$OUTAGE_REPORT"

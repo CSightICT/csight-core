@@ -51,6 +51,10 @@ def test_evidence_qualification_runner_is_isolated_and_always_removes_volumes() 
     assert "compose stop clamav" in source
     assert "--phase healthy" in source
     assert "--phase outage" in source
+    assert "local-data/evidence-security-qualification/latest" in source
+    assert 'chmod 600 "$HEALTHY_REPORT"' in source
+    assert 'chmod 600 "$OUTAGE_REPORT"' in source
+    assert 'chmod 700 "$OUTPUT_DIR"' in source
 
 
 def test_live_qualifier_covers_required_security_gates_without_logging_secrets() -> None:

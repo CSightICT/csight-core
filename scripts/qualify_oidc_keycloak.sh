@@ -4,6 +4,8 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 COMPOSE_FILE="$PROJECT_ROOT/infra/oidc/compose.oidc-qualification.yml"
+OUTPUT_DIR="${OIDC_QUALIFICATION_OUTPUT_DIR:-$PROJECT_ROOT/local-data/oidc-qualification/latest}"
+REPORT_PATH="$OUTPUT_DIR/qualification-report.json"
 
 export OIDC_QUALIFICATION_DB_PASSWORD="$(openssl rand -hex 32)"
 export OIDC_QUALIFICATION_ADMIN_USER="csight-qualification-admin"
@@ -35,6 +37,10 @@ wait_for_url() {
 
 trap cleanup EXIT INT TERM
 cd "$PROJECT_ROOT"
+umask 077
+mkdir -p "$OUTPUT_DIR"
+chmod 700 "$OUTPUT_DIR"
+rm -f "$REPORT_PATH"
 
 compose up --detach --build postgres keycloak
 if ! wait_for_url \
@@ -54,7 +60,9 @@ if ! wait_for_url "http://127.0.0.1:18000/health/live" 30; then
 fi
 
 set +e
-uv run python scripts/qualify_oidc_keycloak.py
+uv run python scripts/qualify_oidc_keycloak.py >"$REPORT_PATH"
 qualification_status=$?
 set -e
+chmod 600 "$REPORT_PATH"
+cat "$REPORT_PATH"
 exit "$qualification_status"

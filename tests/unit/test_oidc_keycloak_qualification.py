@@ -62,3 +62,6 @@ def test_qualification_runner_rebuilds_current_core_and_always_cleans_up() -> No
     assert "compose run --rm migrator" in source
     assert "trap cleanup EXIT INT TERM" in source
     assert "compose down --volumes --remove-orphans" in source
+    assert "local-data/oidc-qualification/latest" in source
+    assert 'chmod 600 "$REPORT_PATH"' in source
+    assert 'chmod 700 "$OUTPUT_DIR"' in source

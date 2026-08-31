@@ -151,7 +151,13 @@ POLICY_INGESTION_STATUSES = ("PENDING", "RUNNING", "SUCCEEDED", "FAILED")
 POLICY_INDEX_STATUSES = ("BUILDING", "ACTIVE", "FAILED", "RETIRED")
 POLICY_EXECUTION_PROFILE_STATUSES = ("ACTIVE", "RETIRED")
 POLICY_QUERY_STRATEGIES = ("RAW", "DETERMINISTIC", "LLM")
-POLICY_RETRIEVAL_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
+POLICY_RETRIEVAL_RUN_STATUSES = (
+    "QUEUED",
+    "RUNNING",
+    "SEARCH_QUEUED",
+    "SUCCEEDED",
+    "FAILED",
+)
 GROUNDED_EXPLANATION_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 POLICY_EVALUATION_RUN_STATUSES = ("QUEUED", "RUNNING", "SUCCEEDED", "FAILED")
 HUMAN_REVIEW_TASK_TYPES = (
@@ -230,6 +236,8 @@ OPERATIONAL_FAILURE_REASON_CODES = ("OPERATOR_REPLAY", "OPERATOR_CANCELLED")
 OPERATIONAL_RECOVERY_TOPICS = (
     "analysis.requested.v1",
     "policy_retrieval.requested.v1",
+    "policy_query_build.requested.v2",
+    "policy_search.requested.v2",
     "grounded_explanation.requested.v1",
     "policy_evaluation.requested.v1",
     "human_review.requested.v1",
@@ -2284,7 +2292,8 @@ class PolicyRetrievalRunModel(CreatedAtMixin, Base):
         ),
         CheckConstraint(
             "(status = 'QUEUED' AND started_at IS NULL AND completed_at IS NULL) OR "
-            "(status = 'RUNNING' AND started_at IS NOT NULL AND completed_at IS NULL) OR "
+            "(status IN ('RUNNING','SEARCH_QUEUED') AND started_at IS NOT NULL "
+            "AND completed_at IS NULL) OR "
             "(status IN ('SUCCEEDED','FAILED') AND started_at IS NOT NULL "
             "AND completed_at IS NOT NULL)",
             name="status_timestamps_consistent",
@@ -2531,7 +2540,17 @@ class PolicyRetrievalOutboxEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, 
             RELIABLE_ASYNC_OUTBOX_STATE_CONSISTENCY,
             name="state_consistent",
         ),
-        UniqueConstraint("tenant_id", "retrieval_run_id", name="uq_policy_retrieval_outbox_run"),
+        CheckConstraint(
+            "event_type IN ('policy_retrieval.requested.v1', "
+            "'policy_query_build.requested.v2', 'policy_search.requested.v2')",
+            name="event_type_allowed",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "retrieval_run_id",
+            "event_type",
+            name="uq_policy_retrieval_outbox_run_event_type",
+        ),
         Index(
             "ix_policy_retrieval_outbox_pending_dispatch",
             "available_at",
@@ -2550,6 +2569,9 @@ class PolicyRetrievalOutboxEventModel(ReliableAsyncOutboxMixin, CreatedAtMixin, 
     tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     retrieval_run_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    event_type: Mapped[str] = mapped_column(
+        String(128), nullable=False, server_default=text("'policy_retrieval.requested.v1'")
+    )
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
 
 

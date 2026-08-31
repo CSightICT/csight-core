@@ -15,6 +15,7 @@ from app.adapters.persistence.model_registry import PERSISTENCE_MODELS
 pytestmark = pytest.mark.unit
 PREVIOUS = "20260831_0034_analysis_model_route_snapshot"
 REVISION = "20260831_0035_query_grounding_model_route_snapshot"
+HEAD = "20260831_0036_policy_query_search_events_v2"
 _LOADED_MODELS = PERSISTENCE_MODELS
 
 
@@ -28,11 +29,11 @@ def _config(output: StringIO) -> Config:
     return config
 
 
-def test_route_snapshot_migration_is_the_linear_head() -> None:
+def test_route_snapshot_migration_precedes_the_linear_head() -> None:
     scripts = ScriptDirectory.from_config(_config(StringIO()))
     migration = scripts.get_revision(REVISION)
 
-    assert scripts.get_heads() == [REVISION]
+    assert scripts.get_heads() == [HEAD]
     assert migration is not None
     assert migration.down_revision == PREVIOUS
 

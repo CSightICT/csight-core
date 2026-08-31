@@ -6,7 +6,7 @@ from typing import cast
 import pytest
 from celery import Celery
 
-from app.adapters.messaging import CeleryAnalysisMessageQueue
+from app.adapters.messaging import CeleryAnalysisMessageQueue, CeleryPolicyRetrievalMessageQueue
 
 pytestmark = pytest.mark.unit
 
@@ -103,3 +103,30 @@ def test_publish_rejects_mismatched_correlation_id() -> None:
             payload=_payload(),
             correlation_id="different",
         )
+
+
+@pytest.mark.parametrize(
+    ("topic", "expected_queue"),
+    (
+        ("policy_retrieval.requested.v1", "policy-retrieval"),
+        ("policy_query_build.requested.v2", "policy-query-build"),
+        ("policy_search.requested.v2", "policy-search"),
+    ),
+)
+def test_policy_runtime_topics_route_to_isolated_worker_lanes(
+    topic: str,
+    expected_queue: str,
+) -> None:
+    application = _FakeCelery()
+    queue = CeleryPolicyRetrievalMessageQueue(cast(Celery, application))
+    payload = {
+        "event_id": "event-1",
+        "tenant_id": "tenant-1",
+        "case_id": "case-1",
+        "retrieval_run_id": "run-1",
+        "correlation_id": "correlation-1",
+    }
+
+    queue.publish(topic=topic, payload=payload, correlation_id="correlation-1")
+
+    assert application.calls[0]["queue"] == expected_queue

@@ -56,7 +56,7 @@ from app.platform.errors import (
     ValidationError,
 )
 from app.platform.policy_retrieval import PolicySearchHit, stable_json_hash
-from app.platform.privacy_lifecycle import PURGED_CUSTOMER_MESSAGE
+from app.platform.privacy_lifecycle import PURGED_CUSTOMER_MESSAGE, is_purged_customer_message
 from app.platform.query_builder import (
     MultiQueryHit,
     PolicyQuery,
@@ -72,7 +72,12 @@ from app.platform.query_builder import (
     RetrievalRunStatus,
     TrustedCaseMetadata,
 )
-from app.ports.policy_query_runs import PolicyRetrievalExecutionSource, PolicyRetrievalRunDetail
+from app.ports.policy_query_runs import (
+    PolicyQueryBuildClaim,
+    PolicyRetrievalExecutionSource,
+    PolicyRetrievalRunDetail,
+    PolicySearchExecutionSource,
+)
 
 _NAMESPACE = UUID("ebd83a36-7c53-4d31-9ea0-c9517878be48")
 
@@ -278,6 +283,7 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                     tenant_id=tenant_uuid,
                     case_id=case_uuid,
                     retrieval_run_id=run_row.id,
+                    event_type="policy_query_build.requested.v2",
                     correlation_id=correlation_id,
                     status="PENDING",
                     attempt_count=0,
@@ -391,6 +397,8 @@ class SQLAlchemyPolicyRetrievalRunRepository:
         case_id: str,
         run_id: str,
         correlation_id: str,
+        expected_event_types: frozenset[str] = frozenset({"policy_retrieval.requested.v1"}),
+        claimable_statuses: frozenset[str] = frozenset({"QUEUED", "RUNNING"}),
     ) -> PolicyRetrievalExecutionSource | None:
         event_uuid, tenant_uuid, case_uuid, run_uuid = map(
             UUID, (event_id, tenant_id, case_id, run_id)
@@ -413,13 +421,20 @@ class SQLAlchemyPolicyRetrievalRunRepository:
             dispatch_failure = (
                 event.status == "FAILED" and event.failure_code == "POLICY_RETRIEVAL_OUTBOX_FAILED"
             )
-            integrity_error = validate_request_event(
-                event,
-                tenant_id=tenant_uuid,
-                case_id=case_uuid,
-                correlation_id=correlation_id,
-                run_id=run_uuid,
-                run_attribute="retrieval_run_id",
+            integrity_error = (
+                AsyncEventIntegrityError(
+                    code="POLICY_RETRIEVAL_EVENT_TYPE_MISMATCH",
+                    message="The policy retrieval event type does not match this worker.",
+                )
+                if event.event_type not in expected_event_types
+                else validate_request_event(
+                    event,
+                    tenant_id=tenant_uuid,
+                    case_id=case_uuid,
+                    correlation_id=correlation_id,
+                    run_id=run_uuid,
+                    run_attribute="retrieval_run_id",
+                )
             )
             if (
                 dispatch_failure
@@ -496,6 +511,8 @@ class SQLAlchemyPolicyRetrievalRunRepository:
                     deferred_error = error
                 elif row.status in {"SUCCEEDED", "FAILED"}:
                     mark_event_consumed(event, now=now)
+                elif row.status not in claimable_statuses:
+                    source = None
                 elif (
                     row.status == "RUNNING"
                     and row.lease_expires_at is not None
@@ -598,6 +615,218 @@ class SQLAlchemyPolicyRetrievalRunRepository:
             raise deferred_error
         return source
 
+    def claim_query_build(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicyQueryBuildClaim:
+        source = self.claim(
+            event_id=event_id,
+            tenant_id=tenant_id,
+            case_id=case_id,
+            run_id=run_id,
+            correlation_id=correlation_id,
+            expected_event_types=frozenset({"policy_query_build.requested.v2"}),
+            claimable_statuses=frozenset({"QUEUED", "RUNNING"}),
+        )
+        if source is not None:
+            return PolicyQueryBuildClaim(disposition="CLAIMED", source=source)
+        with self._factory() as session:
+            status = session.scalar(
+                select(PolicyRetrievalRunModel.status).where(
+                    PolicyRetrievalRunModel.tenant_id == UUID(tenant_id),
+                    PolicyRetrievalRunModel.id == UUID(run_id),
+                )
+            )
+        if status == "SEARCH_QUEUED":
+            return PolicyQueryBuildClaim(disposition="SEARCH_QUEUED")
+        return PolicyQueryBuildClaim(disposition="NOOP")
+
+    def complete_query_build(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        plan: PolicyQueryPlan,
+        raw_query_hash: str | None,
+    ) -> bool:
+        tenant_uuid, run_uuid = UUID(tenant_id), UUID(run_id)
+        now = datetime.now(UTC)
+        with self._factory.begin() as session:
+            event = session.scalar(
+                select(PolicyRetrievalOutboxEventModel)
+                .where(
+                    PolicyRetrievalOutboxEventModel.tenant_id == tenant_uuid,
+                    PolicyRetrievalOutboxEventModel.id == UUID(event_id),
+                    PolicyRetrievalOutboxEventModel.retrieval_run_id == run_uuid,
+                    PolicyRetrievalOutboxEventModel.event_type == "policy_query_build.requested.v2",
+                )
+                .with_for_update()
+            )
+            if event is None or not event_allows_completion(
+                event,
+                dispatch_failure_code="POLICY_RETRIEVAL_OUTBOX_FAILED",
+            ):
+                return False
+            run = session.scalar(
+                select(PolicyRetrievalRunModel)
+                .where(
+                    PolicyRetrievalRunModel.tenant_id == tenant_uuid,
+                    PolicyRetrievalRunModel.id == run_uuid,
+                    PolicyRetrievalRunModel.status == "RUNNING",
+                    PolicyRetrievalRunModel.claim_token == UUID(claim_token),
+                )
+                .with_for_update()
+            )
+            if run is None:
+                return False
+            _persist_query_plan(
+                session,
+                tenant_id=tenant_uuid,
+                run_id=run_uuid,
+                plan=plan,
+                raw_query_hash=raw_query_hash,
+                now=now,
+            )
+            run.status = "SEARCH_QUEUED"
+            run.claim_token = None
+            run.lease_expires_at = None
+            mark_event_consumed(event, now=now)
+            session.add(
+                PolicyRetrievalOutboxEventModel(
+                    id=uuid4(),
+                    tenant_id=tenant_uuid,
+                    case_id=run.case_id,
+                    retrieval_run_id=run_uuid,
+                    event_type="policy_search.requested.v2",
+                    correlation_id=run.correlation_id,
+                    status="PENDING",
+                    attempt_count=0,
+                    available_at=now,
+                    created_at=now,
+                )
+            )
+            return True
+
+    def claim_search(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicySearchExecutionSource | None:
+        source = self.claim(
+            event_id=event_id,
+            tenant_id=tenant_id,
+            case_id=case_id,
+            run_id=run_id,
+            correlation_id=correlation_id,
+            expected_event_types=frozenset({"policy_search.requested.v2"}),
+            claimable_statuses=frozenset({"SEARCH_QUEUED", "RUNNING"}),
+        )
+        if source is None:
+            return None
+        with self._factory() as session:
+            rows = session.scalars(
+                select(PolicyRetrievalRunQueryModel)
+                .where(
+                    PolicyRetrievalRunQueryModel.tenant_id == UUID(tenant_id),
+                    PolicyRetrievalRunQueryModel.retrieval_run_id == UUID(run_id),
+                )
+                .order_by(PolicyRetrievalRunQueryModel.position)
+            ).all()
+        if not rows:
+            self.fail(
+                tenant_id=source.run.tenant_id,
+                run_id=source.run.id,
+                event_id=event_id,
+                claim_token=source.claim_token,
+                code="POLICY_SEARCH_QUERY_PLAN_MISSING",
+                message="The policy search run has no durable query plan.",
+            )
+            return None
+        if any(row.query_text is None for row in rows) and is_purged_customer_message(
+            source.customer_message
+        ):
+            self.fail(
+                tenant_id=source.run.tenant_id,
+                run_id=source.run.id,
+                event_id=event_id,
+                claim_token=source.claim_token,
+                code="POLICY_SEARCH_SENSITIVE_PAYLOAD_UNAVAILABLE",
+                message="The raw policy query expired before search execution.",
+            )
+            return None
+        return PolicySearchExecutionSource(
+            run=source.run,
+            claim_token=source.claim_token,
+            plan=_to_plan(rows, source.customer_message),
+            builder_input=source.builder_input,
+        )
+
+    def complete_search(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        hits: tuple[MultiQueryHit, ...],
+        diagnostics: tuple[PolicySimilarityDiagnostic, ...] = (),
+    ) -> bool:
+        tenant_uuid, run_uuid = UUID(tenant_id), UUID(run_id)
+        now = datetime.now(UTC)
+        with self._factory.begin() as session:
+            event = session.scalar(
+                select(PolicyRetrievalOutboxEventModel)
+                .where(
+                    PolicyRetrievalOutboxEventModel.tenant_id == tenant_uuid,
+                    PolicyRetrievalOutboxEventModel.id == UUID(event_id),
+                    PolicyRetrievalOutboxEventModel.retrieval_run_id == run_uuid,
+                    PolicyRetrievalOutboxEventModel.event_type == "policy_search.requested.v2",
+                )
+                .with_for_update()
+            )
+            if event is None or not event_allows_completion(
+                event,
+                dispatch_failure_code="POLICY_RETRIEVAL_OUTBOX_FAILED",
+            ):
+                return False
+            run = session.scalar(
+                select(PolicyRetrievalRunModel)
+                .where(
+                    PolicyRetrievalRunModel.tenant_id == tenant_uuid,
+                    PolicyRetrievalRunModel.id == run_uuid,
+                    PolicyRetrievalRunModel.status == "RUNNING",
+                    PolicyRetrievalRunModel.claim_token == UUID(claim_token),
+                )
+                .with_for_update()
+            )
+            if run is None:
+                return False
+            _persist_search_results(
+                session,
+                tenant_id=tenant_uuid,
+                run_id=run_uuid,
+                hits=hits,
+                diagnostics=diagnostics,
+                now=now,
+            )
+            run.status = "SUCCEEDED"
+            run.completed_at = now
+            run.claim_token = None
+            run.lease_expires_at = None
+            mark_event_consumed(event, now=now)
+            return True
+
     def succeed(
         self,
         *,
@@ -639,59 +868,22 @@ class SQLAlchemyPolicyRetrievalRunRepository:
             )
             if run is None:
                 return False
-            for position, query in enumerate(plan.queries, start=1):
-                raw = raw_query_hash is not None and position == 1
-                session.add(
-                    PolicyRetrievalRunQueryModel(
-                        id=uuid4(),
-                        tenant_id=tenant_uuid,
-                        retrieval_run_id=run_uuid,
-                        query_id=query.query_id,
-                        purpose=query.purpose.value,
-                        query_text=None if raw else query.text,
-                        query_source="CASE_CUSTOMER_MESSAGE" if raw else "GENERATED",
-                        query_hash=raw_query_hash
-                        if raw
-                        else hashlib.sha256(query.text.encode()).hexdigest(),
-                        position=position,
-                        filter_hints=plan.filter_hints.model_dump(mode="json"),
-                        created_at=now,
-                    )
-                )
-            for hit in hits:
-                session.add(
-                    PolicyRetrievalRunHitModel(
-                        id=uuid4(),
-                        tenant_id=tenant_uuid,
-                        retrieval_run_id=run_uuid,
-                        rank=hit.rank,
-                        policy_clause_row_id=UUID(hit.hit.clause.row_id),
-                        fusion_score=hit.fusion_score,
-                        best_query_rank=hit.best_query_rank,
-                        matched_query_ids=list(hit.matched_query_ids),
-                        per_query_ranks=[
-                            value.model_dump(mode="json") for value in hit.per_query_ranks
-                        ],
-                        created_at=now,
-                    )
-                )
-            for diagnostic in diagnostics:
-                session.add(
-                    PolicyRetrievalSimilarityModel(
-                        id=uuid4(),
-                        tenant_id=tenant_uuid,
-                        retrieval_run_id=run_uuid,
-                        policy_clause_row_id=UUID(diagnostic.hit.clause.row_id),
-                        similarity_group=diagnostic.group.value,
-                        rank=diagnostic.rank,
-                        cosine_similarity=diagnostic.cosine_similarity,
-                        reference_threshold=diagnostic.reference_threshold,
-                        threshold_version=diagnostic.threshold_version,
-                        matched_query_ids=list(diagnostic.matched_query_ids),
-                        reason_codes=list(diagnostic.reason_codes),
-                        created_at=now,
-                    )
-                )
+            _persist_query_plan(
+                session,
+                tenant_id=tenant_uuid,
+                run_id=run_uuid,
+                plan=plan,
+                raw_query_hash=raw_query_hash,
+                now=now,
+            )
+            _persist_search_results(
+                session,
+                tenant_id=tenant_uuid,
+                run_id=run_uuid,
+                hits=hits,
+                diagnostics=diagnostics,
+                now=now,
+            )
             run.status = "SUCCEEDED"
             run.completed_at = now
             run.claim_token = None
@@ -835,6 +1027,79 @@ def _ensure_profile(session: Session, strategy: QueryStrategy) -> PolicyQueryBui
     session.add(row)
     session.flush()
     return row
+
+
+def _persist_query_plan(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    run_id: UUID,
+    plan: PolicyQueryPlan,
+    raw_query_hash: str | None,
+    now: datetime,
+) -> None:
+    for position, query in enumerate(plan.queries, start=1):
+        raw = raw_query_hash is not None and position == 1
+        session.add(
+            PolicyRetrievalRunQueryModel(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                retrieval_run_id=run_id,
+                query_id=query.query_id,
+                purpose=query.purpose.value,
+                query_text=None if raw else query.text,
+                query_source="CASE_CUSTOMER_MESSAGE" if raw else "GENERATED",
+                query_hash=(
+                    raw_query_hash if raw else hashlib.sha256(query.text.encode()).hexdigest()
+                ),
+                position=position,
+                filter_hints=plan.filter_hints.model_dump(mode="json"),
+                created_at=now,
+            )
+        )
+
+
+def _persist_search_results(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    run_id: UUID,
+    hits: tuple[MultiQueryHit, ...],
+    diagnostics: tuple[PolicySimilarityDiagnostic, ...],
+    now: datetime,
+) -> None:
+    for hit in hits:
+        session.add(
+            PolicyRetrievalRunHitModel(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                retrieval_run_id=run_id,
+                rank=hit.rank,
+                policy_clause_row_id=UUID(hit.hit.clause.row_id),
+                fusion_score=hit.fusion_score,
+                best_query_rank=hit.best_query_rank,
+                matched_query_ids=list(hit.matched_query_ids),
+                per_query_ranks=[value.model_dump(mode="json") for value in hit.per_query_ranks],
+                created_at=now,
+            )
+        )
+    for diagnostic in diagnostics:
+        session.add(
+            PolicyRetrievalSimilarityModel(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                retrieval_run_id=run_id,
+                policy_clause_row_id=UUID(diagnostic.hit.clause.row_id),
+                similarity_group=diagnostic.group.value,
+                rank=diagnostic.rank,
+                cosine_similarity=diagnostic.cosine_similarity,
+                reference_threshold=diagnostic.reference_threshold,
+                threshold_version=diagnostic.threshold_version,
+                matched_query_ids=list(diagnostic.matched_query_ids),
+                reason_codes=list(diagnostic.reason_codes),
+                created_at=now,
+            )
+        )
 
 
 def _to_run(row: PolicyRetrievalRunModel) -> PolicyRetrievalRun:

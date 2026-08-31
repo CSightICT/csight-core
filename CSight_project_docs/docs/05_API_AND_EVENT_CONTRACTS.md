@@ -567,8 +567,12 @@ Reranker 장애는 `503 RERANKER_PROVIDER_UNAVAILABLE`이며 silent fallback과 
 ## Case policy retrieval runs
 
 `POST /api/v1/cases/{case_id}/policy-retrieval-runs` requires Idempotency-Key and returns 202 or replay
-200. List and detail GET endpoints are tenant scoped. The broker message is
-`policy_retrieval.requested.v1` and contains exactly event, tenant, Case, run, and correlation IDs.
+200. List and detail GET endpoints are tenant scoped. New runs first publish
+`policy_query_build.requested.v2`; successful query-plan persistence creates a separate durable
+`policy_search.requested.v2` event in the same transaction. Both broker messages contain exactly
+event, tenant, Case, run, and correlation IDs. `policy_retrieval.requested.v1` remains accepted only
+to drain historical events and is no longer emitted for new runs. The persisted run may expose
+`SEARCH_QUEUED` between Query Build and Search; it is non-terminal and contains no provider output.
 
 ## Sprint 4C-3A Grounded Explanation Contract
 

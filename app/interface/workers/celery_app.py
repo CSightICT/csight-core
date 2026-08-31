@@ -9,6 +9,8 @@ from app.bootstrap.settings import Settings, get_settings
 
 ANALYSIS_REQUESTED_TASK_NAME = "analysis.requested.v1"
 POLICY_RETRIEVAL_REQUESTED_TASK_NAME = "policy_retrieval.requested.v1"
+POLICY_QUERY_BUILD_REQUESTED_TASK_NAME = "policy_query_build.requested.v2"
+POLICY_SEARCH_REQUESTED_TASK_NAME = "policy_search.requested.v2"
 GROUNDED_EXPLANATION_REQUESTED_TASK_NAME = "grounded_explanation.requested.v1"
 POLICY_EVALUATION_REQUESTED_TASK_NAME = "policy_evaluation.requested.v1"
 HUMAN_REVIEW_REQUESTED_TASK_NAME = "human_review.requested.v1"
@@ -37,6 +39,8 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
         task_routes={
             ANALYSIS_REQUESTED_TASK_NAME: {"queue": "analysis"},
             POLICY_RETRIEVAL_REQUESTED_TASK_NAME: {"queue": "policy-retrieval"},
+            POLICY_QUERY_BUILD_REQUESTED_TASK_NAME: {"queue": "policy-query-build"},
+            POLICY_SEARCH_REQUESTED_TASK_NAME: {"queue": "policy-search"},
             GROUNDED_EXPLANATION_REQUESTED_TASK_NAME: {"queue": "grounded-explanation"},
             POLICY_EVALUATION_REQUESTED_TASK_NAME: {"queue": "policy-evaluation"},
             HUMAN_REVIEW_REQUESTED_TASK_NAME: {"queue": "human-review"},

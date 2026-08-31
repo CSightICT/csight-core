@@ -39,6 +39,8 @@ from app.ports.model_routing import ActiveModelRouteResolver, PinnedModelRouteEx
 from app.ports.policy_query_runs import PolicyRetrievalRunDetail, PolicyRetrievalRunRepository
 
 CREATE_OPERATION = "policy_retrieval_run.create.v1"
+POLICY_QUERY_BUILD_REQUESTED_EVENT = "policy_query_build.requested.v2"
+POLICY_SEARCH_REQUESTED_EVENT = "policy_search.requested.v2"
 
 
 class _DTO(BaseModel):
@@ -330,9 +332,239 @@ class ExecutePolicyRetrievalRun:
         )
 
 
+class ExecutePolicyQueryBuild:
+    """Build and durably store the query plan before publishing search work."""
+
+    def __init__(
+        self,
+        *,
+        repository: PolicyRetrievalRunRepository,
+        llm: LLMProvider,
+        prompt: PromptManifest,
+        model_route_guard: PinnedModelRouteExecutionGuard | None = None,
+    ) -> None:
+        self._repository = repository
+        self._llm = llm
+        self._prompt = prompt
+        self._model_route_guard = model_route_guard
+
+    def execute(self, command: ExecutePolicyRetrievalRunCommand) -> str:
+        claim = self._repository.claim_query_build(
+            event_id=command.event_id,
+            tenant_id=command.tenant_id,
+            case_id=command.case_id,
+            run_id=command.retrieval_run_id,
+            correlation_id=command.correlation_id,
+        )
+        if claim.disposition == "NOOP":
+            return "NOOP"
+        if claim.disposition == "SEARCH_QUEUED":
+            return "SEARCH_QUEUED"
+        if claim.disposition == "CLAIMED":
+            assert claim.source is not None
+            source = claim.source
+            raw_hash: str | None = None
+            try:
+                if is_purged_customer_message(source.customer_message):
+                    raise ValueError("sensitive payload unavailable under retention policy")
+                if source.run.strategy is QueryStrategy.RAW:
+                    plan = PolicyQueryPlan(
+                        queries=(
+                            PolicyQuery(
+                                query_id="Q1",
+                                purpose=PolicyQueryPurpose.PRIMARY_POLICY,
+                                text=source.customer_message,
+                            ),
+                        ),
+                        filter_hints=QueryFilterHints(
+                            product_categories=(
+                                source.builder_input.trusted_metadata.product_category,
+                            )
+                        ),
+                    )
+                    raw_hash = hashlib.sha256(source.customer_message.encode()).hexdigest()
+                elif source.run.strategy is QueryStrategy.DETERMINISTIC:
+                    plan = build_deterministic_query_plan(source.builder_input)
+                else:
+                    route_plan_id = source.run.model_route_plan_id
+                    if route_plan_id is None or self._model_route_guard is None:
+                        raise PinnedModelRoutePlanRequiredError()
+                    self._model_route_guard.execute(
+                        tenant_id=source.run.tenant_id,
+                        route_plan_id=route_plan_id,
+                        task=ModelReleaseTask.POLICY_QUERY_BUILDER_V1,
+                        execution_mode=source.run.execution_mode,
+                    )
+                    plan = self._llm.build_policy_queries(source.builder_input, self._prompt).plan
+            except Exception as error:
+                code = _query_build_failure_code(error)
+                persisted = self._repository.fail(
+                    tenant_id=source.run.tenant_id,
+                    run_id=source.run.id,
+                    event_id=command.event_id,
+                    claim_token=source.claim_token,
+                    code=code,
+                    message="Policy query build execution failed.",
+                )
+                return "FAILED" if persisted else "FENCED"
+            persisted = self._repository.complete_query_build(
+                tenant_id=source.run.tenant_id,
+                run_id=source.run.id,
+                event_id=command.event_id,
+                claim_token=source.claim_token,
+                plan=plan,
+                raw_query_hash=raw_hash,
+            )
+            if not persisted:
+                return "FENCED"
+        return "SEARCH_QUEUED"
+
+    def record_failure(
+        self,
+        command: ExecutePolicyRetrievalRunCommand,
+        *,
+        code: str,
+        message: str,
+    ) -> None:
+        self._repository.record_consumer_failure(
+            event_id=command.event_id,
+            code=code,
+            message=message,
+        )
+
+    def record_poison_event(self, *, event_id: str) -> None:
+        self._repository.record_consumer_failure(
+            event_id=event_id,
+            code="POLICY_QUERY_BUILD_QUEUE_PAYLOAD_INVALID",
+            message="Policy query build queue payload failed UUID validation.",
+        )
+
+
+class ExecutePolicySearch:
+    """Execute fixed HYBRID retrieval from a durable query plan."""
+
+    def __init__(
+        self,
+        *,
+        repository: PolicyRetrievalRunRepository,
+        search: SearchPolicyClauses,
+    ) -> None:
+        self._repository = repository
+        self._search = search
+
+    def execute(self, command: ExecutePolicyRetrievalRunCommand) -> str:
+        source = self._repository.claim_search(
+            event_id=command.event_id,
+            tenant_id=command.tenant_id,
+            case_id=command.case_id,
+            run_id=command.retrieval_run_id,
+            correlation_id=command.correlation_id,
+        )
+        if source is None:
+            return "NOOP"
+        try:
+            principal = Principal(
+                user_id="policy-search-worker",
+                tenant_id=source.run.tenant_id,
+                email="policy-search-worker@local.invalid",
+                display_name="Policy Search Worker",
+                roles=frozenset({Role.ADMIN}),
+            )
+            per_query = []
+            per_query_nearest = []
+            per_query_least = []
+            for query in source.plan.queries:
+                result = self._search.execute(
+                    principal=principal,
+                    query=PolicySearchQuery(
+                        tenant_id=source.run.tenant_id,
+                        query=query.text,
+                        as_of_date=source.run.as_of_date,
+                        mode=RetrievalMode.HYBRID,
+                        top_k=20,
+                        least_similar_k=3,
+                        filters=PolicySearchFilters(
+                            product_categories=(
+                                source.builder_input.trusted_metadata.product_category,
+                            )
+                        ),
+                    ),
+                )
+                per_query.append((query.query_id, result.hits))
+                per_query_nearest.append(
+                    (query.query_id, getattr(result, "nearest_dense_hits", ()))
+                )
+                per_query_least.append((query.query_id, getattr(result, "least_similar_hits", ())))
+            hits = fuse_multi_query_hits(
+                results=tuple(per_query),
+                profile=MultiQueryFusionProfile(),
+                top_k=source.run.top_k,
+            )
+            diagnostics = build_policy_similarity_diagnostics(
+                nearest_results=tuple(per_query_nearest),
+                least_results=tuple(per_query_least),
+            )
+        except Exception as error:
+            persisted = self._repository.fail(
+                tenant_id=source.run.tenant_id,
+                run_id=source.run.id,
+                event_id=command.event_id,
+                claim_token=source.claim_token,
+                code=str(getattr(error, "code", "POLICY_SEARCH_FAILED")),
+                message="Policy search execution failed.",
+            )
+            return "FAILED" if persisted else "FENCED"
+        persisted = self._repository.complete_search(
+            tenant_id=source.run.tenant_id,
+            run_id=source.run.id,
+            event_id=command.event_id,
+            claim_token=source.claim_token,
+            hits=hits,
+            diagnostics=diagnostics,
+        )
+        return "SUCCEEDED" if persisted else "FENCED"
+
+    def record_failure(
+        self,
+        command: ExecutePolicyRetrievalRunCommand,
+        *,
+        code: str,
+        message: str,
+    ) -> None:
+        self._repository.record_consumer_failure(
+            event_id=command.event_id,
+            code=code,
+            message=message,
+        )
+
+    def record_poison_event(self, *, event_id: str) -> None:
+        self._repository.record_consumer_failure(
+            event_id=event_id,
+            code="POLICY_SEARCH_QUEUE_PAYLOAD_INVALID",
+            message="Policy search queue payload failed UUID validation.",
+        )
+
+
+def _query_build_failure_code(error: Exception) -> str:
+    code = str(getattr(error, "code", "POLICY_QUERY_BUILD_FAILED"))
+    if code.startswith("LLM_"):
+        return {
+            "LLM_PROVIDER_UNAVAILABLE": "POLICY_QUERY_BUILDER_PROVIDER_UNAVAILABLE",
+            "LLM_PROVIDER_TIMEOUT": "POLICY_QUERY_BUILDER_TIMEOUT",
+            "LLM_INVALID_STRUCTURED_OUTPUT": "POLICY_QUERY_BUILDER_INVALID_OUTPUT",
+        }.get(code, code)
+    if isinstance(error, PolicyQueryBuilderInvalidOutputError):
+        return error.code
+    return code
+
+
 __all__ = [
+    "POLICY_QUERY_BUILD_REQUESTED_EVENT",
+    "POLICY_SEARCH_REQUESTED_EVENT",
+    "ExecutePolicyQueryBuild",
     "ExecutePolicyRetrievalRun",
     "ExecutePolicyRetrievalRunCommand",
+    "ExecutePolicySearch",
     "GetPolicyRetrievalRun",
     "ListPolicyRetrievalRuns",
     "StartPolicyRetrievalRun",

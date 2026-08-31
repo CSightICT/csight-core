@@ -22,7 +22,7 @@ def test_analysis_execution_mode_migration_is_linear_and_fail_closed() -> None:
 
     assert revision is not None
     assert revision.down_revision == PREVIOUS
-    assert scripts.get_heads() == ["20260831_0035_query_grounding_model_route_snapshot"]
+    assert scripts.get_heads() == ["20260831_0036_policy_query_search_events_v2"]
 
     source = MIGRATION.read_text(encoding="utf-8")
     assert "execution_mode IN ('PRIMARY','SHADOW')" in source

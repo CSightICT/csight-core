@@ -20,7 +20,7 @@ def test_schema_drift_repair_revision_is_linear_and_fail_closed() -> None:
 
     assert migration is not None
     assert migration.down_revision == PREVIOUS
-    assert scripts.get_heads() == ["20260831_0035_query_grounding_model_route_snapshot"]
+    assert scripts.get_heads() == ["20260831_0036_policy_query_search_events_v2"]
 
     source = Path(migration.path).read_text()
     assert "_CHECK_CONSTRAINT_RENAMES" in source

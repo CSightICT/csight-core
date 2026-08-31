@@ -111,7 +111,7 @@ class CeleryAnalysisMessageQueue:
 class CeleryPolicyRetrievalMessageQueue:
     """Publish only five opaque policy-retrieval identifiers."""
 
-    def __init__(self, application: Celery, *, queue: str = "policy-retrieval") -> None:
+    def __init__(self, application: Celery, *, queue: str | None = None) -> None:
         self._application = application
         self._queue = queue
 
@@ -123,12 +123,19 @@ class CeleryPolicyRetrievalMessageQueue:
             raise ValueError("policy retrieval queue values must be non-empty strings")
         if normalized["correlation_id"] != correlation_id:
             raise ValueError("correlation_id must match the queue payload")
+        queue = self._queue or {
+            "policy_retrieval.requested.v1": "policy-retrieval",
+            "policy_query_build.requested.v2": "policy-query-build",
+            "policy_search.requested.v2": "policy-search",
+        }.get(topic)
+        if queue is None:
+            raise ValueError("unsupported policy retrieval topic")
         event_id = str(normalized["event_id"])
         self._application.send_task(
             topic,
             args=[normalized],
             task_id=event_id,
-            queue=self._queue,
+            queue=queue,
             headers={"correlation_id": correlation_id},
         )
         return event_id
@@ -319,6 +326,8 @@ class CeleryOperationalRecoveryMessageQueue:
         self._queues = {
             "analysis.requested.v1": CeleryAnalysisMessageQueue(application),
             "policy_retrieval.requested.v1": CeleryPolicyRetrievalMessageQueue(application),
+            "policy_query_build.requested.v2": CeleryPolicyRetrievalMessageQueue(application),
+            "policy_search.requested.v2": CeleryPolicyRetrievalMessageQueue(application),
             "grounded_explanation.requested.v1": CeleryGroundedExplanationMessageQueue(application),
             "policy_evaluation.requested.v1": CeleryPolicyEvaluationMessageQueue(application),
             "human_review.requested.v1": CeleryHumanReviewMessageQueue(application),

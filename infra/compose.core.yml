@@ -200,7 +200,7 @@ services:
       - worker
       - --loglevel=${LOG_LEVEL:-INFO}
       - --hostname=worker-model@%h
-      - --queues=analysis,policy-retrieval,grounded-explanation
+      - --queues=analysis,policy-retrieval,policy-query-build,grounded-explanation
       - --concurrency=1
     healthcheck:
       test:

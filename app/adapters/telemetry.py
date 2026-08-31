@@ -50,6 +50,8 @@ _KNOWN_TASK_NAMES = frozenset(
     {
         "analysis.requested.v1",
         "policy_retrieval.requested.v1",
+        "policy_query_build.requested.v2",
+        "policy_search.requested.v2",
         "grounded_explanation.requested.v1",
         "policy_evaluation.requested.v1",
         "human_review.requested.v1",

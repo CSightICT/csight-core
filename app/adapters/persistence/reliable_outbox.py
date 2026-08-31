@@ -31,6 +31,7 @@ class ClaimedOutboxEvent:
     correlation_id: str
     attempt_count: int
     claim_token: UUID
+    topic: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +50,7 @@ class ReliableOutboxSpec:
     topic: str
     dispatch_failure_code: str
     terminal_run_failure: TerminalRunFailure | None = None
+    topic_attribute: str | None = None
 
 
 def utc_now() -> datetime:
@@ -123,7 +125,7 @@ class ReliableSQLAlchemyOutboxDispatcher:
         for event in events:
             try:
                 self._queue.publish(
-                    topic=self._spec.topic,
+                    topic=event.topic or self._spec.topic,
                     payload=self._queue_payload(event),
                     correlation_id=event.correlation_id,
                 )
@@ -188,6 +190,11 @@ class ReliableSQLAlchemyOutboxDispatcher:
                         correlation_id=cast(str, record.correlation_id),
                         attempt_count=cast(int, record.attempt_count),
                         claim_token=claim_token,
+                        topic=(
+                            cast(str, getattr(record, self._spec.topic_attribute))
+                            if self._spec.topic_attribute is not None
+                            else None
+                        ),
                     )
                 )
         return tuple(claimed)

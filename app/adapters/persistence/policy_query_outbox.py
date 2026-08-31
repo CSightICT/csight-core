@@ -21,6 +21,7 @@ from app.application.outbox import DispatchOutboxResult
 from app.ports.message_queue import MessageQueue
 
 POLICY_RETRIEVAL_REQUESTED_TASK = "policy_retrieval.requested.v1"
+POLICY_QUERY_BUILD_REQUESTED_TASK = "policy_query_build.requested.v2"
 
 
 class DispatchPolicyRetrievalOutbox:
@@ -45,6 +46,7 @@ class DispatchPolicyRetrievalOutbox:
                 aggregate_id_attribute="retrieval_run_id",
                 queue_payload_key="retrieval_run_id",
                 topic=POLICY_RETRIEVAL_REQUESTED_TASK,
+                topic_attribute="event_type",
                 dispatch_failure_code="POLICY_RETRIEVAL_OUTBOX_FAILED",
                 terminal_run_failure=TerminalRunFailure(
                     model=PolicyRetrievalRunModel,
@@ -66,4 +68,8 @@ class DispatchPolicyRetrievalOutbox:
         return self._dispatcher.execute()
 
 
-__all__ = ["POLICY_RETRIEVAL_REQUESTED_TASK", "DispatchPolicyRetrievalOutbox"]
+__all__ = [
+    "POLICY_QUERY_BUILD_REQUESTED_TASK",
+    "POLICY_RETRIEVAL_REQUESTED_TASK",
+    "DispatchPolicyRetrievalOutbox",
+]

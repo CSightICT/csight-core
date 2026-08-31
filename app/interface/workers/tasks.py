@@ -25,7 +25,11 @@ from app.application.policy_query_runs import ExecutePolicyRetrievalRunCommand
 from app.bootstrap.logging import bind_log_context, get_logger
 from app.bootstrap.settings import get_settings
 from app.bootstrap.sprint2 import build_execute_analysis_stage
-from app.bootstrap.sprint4c2 import build_execute_policy_retrieval_run
+from app.bootstrap.sprint4c2 import (
+    build_execute_policy_query_build,
+    build_execute_policy_retrieval_run,
+    build_execute_policy_search,
+)
 from app.bootstrap.sprint4c3a import build_execute_grounded_explanation
 from app.bootstrap.sprint5a import build_execute_policy_evaluation
 from app.bootstrap.sprint5b import build_create_review_task
@@ -40,7 +44,9 @@ from app.interface.workers.celery_app import (
     GROUNDED_EXPLANATION_REQUESTED_TASK_NAME,
     HUMAN_REVIEW_REQUESTED_TASK_NAME,
     POLICY_EVALUATION_REQUESTED_TASK_NAME,
+    POLICY_QUERY_BUILD_REQUESTED_TASK_NAME,
     POLICY_RETRIEVAL_REQUESTED_TASK_NAME,
+    POLICY_SEARCH_REQUESTED_TASK_NAME,
     celery_app,
 )
 from app.platform.async_reliability import (
@@ -196,6 +202,120 @@ def execute_policy_retrieval_task(
                 **command.model_dump(),
                 "disposition": "FAILED",
                 "failure_code": "POLICY_RETRIEVAL_WORKER_RETRIES_EXHAUSTED",
+            }
+        raise task.retry(
+            exc=error,
+            countdown=min(2**retries, settings.celery_retry_backoff_max_seconds),
+            max_retries=settings.celery_task_max_retries,
+        ) from None
+
+
+@celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]
+    bind=True,
+    name=POLICY_QUERY_BUILD_REQUESTED_TASK_NAME,
+)
+@_with_persistence_context
+def execute_policy_query_build_task(
+    task: Task,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    """Build a durable query plan, then enqueue identifier-only search work."""
+
+    settings = get_settings()
+    service = build_execute_policy_query_build(settings)
+    try:
+        command = ExecutePolicyRetrievalRunCommand.model_validate(payload)
+    except PydanticValidationError:
+        event_id = _valid_event_id(payload)
+        if event_id is not None:
+            try:
+                service.record_poison_event(event_id=event_id)
+            except Exception:
+                raise Reject(
+                    "invalid policy query build payload could not be durably failed",
+                    requeue=True,
+                ) from None
+        raise Reject("policy query build queue payload is invalid", requeue=False) from None
+    try:
+        disposition = service.execute(command)
+        return {**command.model_dump(), "disposition": disposition}
+    except ExecutionLeaseActiveError as error:
+        raise task.retry(
+            exc=error,
+            countdown=_lease_retry_countdown(error),
+            max_retries=settings.celery_task_max_retries + 2,
+        ) from None
+    except (AsyncEventIntegrityError, ExecutionAttemptsExhaustedError) as error:
+        return {**command.model_dump(), "disposition": "FAILED", "failure_code": error.code}
+    except Exception as error:
+        retries = int(getattr(task.request, "retries", 0))
+        if retries >= settings.celery_task_max_retries:
+            service.record_failure(
+                command,
+                code="POLICY_QUERY_BUILD_WORKER_RETRIES_EXHAUSTED",
+                message="Policy query build worker exhausted bounded infrastructure retries.",
+            )
+            return {
+                **command.model_dump(),
+                "disposition": "FAILED",
+                "failure_code": "POLICY_QUERY_BUILD_WORKER_RETRIES_EXHAUSTED",
+            }
+        raise task.retry(
+            exc=error,
+            countdown=min(2**retries, settings.celery_retry_backoff_max_seconds),
+            max_retries=settings.celery_task_max_retries,
+        ) from None
+
+
+@celery_app.task(  # pyright: ignore[reportUntypedFunctionDecorator]
+    bind=True,
+    name=POLICY_SEARCH_REQUESTED_TASK_NAME,
+)
+@_with_persistence_context
+def execute_policy_search_task(
+    task: Task,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    """Search from the durable query plan without invoking a model provider."""
+
+    settings = get_settings()
+    service = build_execute_policy_search(settings)
+    try:
+        command = ExecutePolicyRetrievalRunCommand.model_validate(payload)
+    except PydanticValidationError:
+        event_id = _valid_event_id(payload)
+        if event_id is not None:
+            try:
+                service.record_poison_event(event_id=event_id)
+            except Exception:
+                raise Reject(
+                    "invalid policy search payload could not be durably failed",
+                    requeue=True,
+                ) from None
+        raise Reject("policy search queue payload is invalid", requeue=False) from None
+    try:
+        disposition = service.execute(command)
+        return {**command.model_dump(), "disposition": disposition}
+    except ExecutionLeaseActiveError as error:
+        raise task.retry(
+            exc=error,
+            countdown=_lease_retry_countdown(error),
+            max_retries=settings.celery_task_max_retries + 2,
+        ) from None
+    except (AsyncEventIntegrityError, ExecutionAttemptsExhaustedError) as error:
+        return {**command.model_dump(), "disposition": "FAILED", "failure_code": error.code}
+    except Exception as error:
+        retries = int(getattr(task.request, "retries", 0))
+        if retries >= settings.celery_task_max_retries:
+            service.record_failure(
+                command,
+                code="POLICY_SEARCH_WORKER_RETRIES_EXHAUSTED",
+                message="Policy search worker exhausted bounded infrastructure retries.",
+            )
+            return {
+                **command.model_dump(),
+                "disposition": "FAILED",
+                "failure_code": "POLICY_SEARCH_WORKER_RETRIES_EXHAUSTED",
             }
         raise task.retry(
             exc=error,

@@ -56,6 +56,7 @@ class PolicyQueryPurpose(StrEnum):
 class RetrievalRunStatus(StrEnum):
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
+    SEARCH_QUEUED = "SEARCH_QUEUED"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
 

@@ -66,7 +66,7 @@ def consumer_failure_may_terminalize_run(
 ) -> bool:
     """Fence stale terminal recorders from a newer active execution lease."""
 
-    return status == "QUEUED" or (
+    return status in {"QUEUED", "SEARCH_QUEUED"} or (
         status == "RUNNING" and (lease_expires_at is None or lease_expires_at <= now)
     )
 

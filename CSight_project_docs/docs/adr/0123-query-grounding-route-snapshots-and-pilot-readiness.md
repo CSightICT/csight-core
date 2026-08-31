@@ -38,3 +38,6 @@ route check. Onboarding readiness also described configuration only; it could no
 - Query generation and search have distinct queue names, but the current retrieval use case still
   executes both phases in one task. A v2 internal event boundary is still required before claiming
   independent model/search concurrency qualification.
+
+The final consequence above was superseded by ADR-0124, which introduced durable Query Build and
+Search v2 events while retaining v1 drain compatibility.

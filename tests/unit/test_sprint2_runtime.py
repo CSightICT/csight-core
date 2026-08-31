@@ -20,6 +20,8 @@ from app.interface.http.services import Sprint2ServiceContainer
 from app.interface.workers.celery_app import (
     ANALYSIS_REQUESTED_TASK_NAME,
     GROUNDED_EXPLANATION_REQUESTED_TASK_NAME,
+    POLICY_QUERY_BUILD_REQUESTED_TASK_NAME,
+    POLICY_SEARCH_REQUESTED_TASK_NAME,
     create_celery_app,
 )
 
@@ -76,6 +78,12 @@ def test_celery_configuration_uses_durable_db_retries_and_safe_worker_limits() -
     assert application.conf.task_routes["policy_retrieval.requested.v1"] == {
         "queue": "policy-retrieval"
     }
+    assert application.conf.task_routes[POLICY_QUERY_BUILD_REQUESTED_TASK_NAME] == {
+        "queue": "policy-query-build"
+    }
+    assert application.conf.task_routes[POLICY_SEARCH_REQUESTED_TASK_NAME] == {
+        "queue": "policy-search"
+    }
     assert application.conf.task_routes[GROUNDED_EXPLANATION_REQUESTED_TASK_NAME] == {
         "queue": "grounded-explanation"
     }
@@ -98,7 +106,7 @@ def test_core_compose_splits_model_retrieval_and_decision_worker_lanes() -> None
 
     assert "  worker-model:" in compose
     assert "--hostname=worker-model@%h" in compose
-    assert "--queues=analysis,policy-retrieval,grounded-explanation" in compose
+    assert "--queues=analysis,policy-retrieval,policy-query-build,grounded-explanation" in compose
     assert "--concurrency=1" in compose
     assert "  worker-retrieval:" in compose
     assert "--hostname=worker-retrieval@%h" in compose

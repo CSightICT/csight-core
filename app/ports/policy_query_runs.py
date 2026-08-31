@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.query_builder import (
@@ -22,6 +22,28 @@ class PolicyRetrievalExecutionSource(BaseModel):
     run: PolicyRetrievalRun
     claim_token: str = Field(min_length=1)
     customer_message: str = Field(min_length=1, repr=False)
+    builder_input: PolicyQueryBuilderInput
+
+
+class PolicyQueryBuildClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+
+    disposition: Literal["CLAIMED", "SEARCH_QUEUED", "NOOP"]
+    source: PolicyRetrievalExecutionSource | None = None
+
+    @model_validator(mode="after")
+    def validate_source_matches_disposition(self) -> PolicyQueryBuildClaim:
+        if (self.disposition == "CLAIMED") != (self.source is not None):
+            raise ValueError("Only a claimed query-build disposition may include a source.")
+        return self
+
+
+class PolicySearchExecutionSource(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+
+    run: PolicyRetrievalRun
+    claim_token: str = Field(min_length=1)
+    plan: PolicyQueryPlan
     builder_input: PolicyQueryBuilderInput
 
 
@@ -88,6 +110,48 @@ class PolicyRetrievalRunRepository(Protocol):
         correlation_id: str,
     ) -> PolicyRetrievalExecutionSource | None: ...
 
+    def claim_query_build(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicyQueryBuildClaim: ...
+
+    def complete_query_build(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        plan: PolicyQueryPlan,
+        raw_query_hash: str | None,
+    ) -> bool: ...
+
+    def claim_search(
+        self,
+        *,
+        event_id: str,
+        tenant_id: str,
+        case_id: str,
+        run_id: str,
+        correlation_id: str,
+    ) -> PolicySearchExecutionSource | None: ...
+
+    def complete_search(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        event_id: str,
+        claim_token: str,
+        hits: tuple[MultiQueryHit, ...],
+        diagnostics: tuple[PolicySimilarityDiagnostic, ...] = (),
+    ) -> bool: ...
+
     def succeed(
         self,
         *,
@@ -122,7 +186,9 @@ class PolicyRetrievalRunRepository(Protocol):
 
 
 __all__ = [
+    "PolicyQueryBuildClaim",
     "PolicyRetrievalExecutionSource",
     "PolicyRetrievalRunDetail",
     "PolicyRetrievalRunRepository",
+    "PolicySearchExecutionSource",
 ]

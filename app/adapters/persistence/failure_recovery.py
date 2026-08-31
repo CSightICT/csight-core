@@ -63,12 +63,14 @@ class _SourceSpec:
         run_attribute: str,
         queue_key: str,
         dispatch_code: str,
+        topic_attribute: str | None = None,
     ) -> None:
         self.model = model
         self.topic = topic
         self.run_attribute = run_attribute
         self.queue_key = queue_key
         self.dispatch_code = dispatch_code
+        self.topic_attribute = topic_attribute
 
 
 _SOURCE_SPECS: dict[str, _SourceSpec] = {
@@ -78,6 +80,7 @@ _SOURCE_SPECS: dict[str, _SourceSpec] = {
         run_attribute="retrieval_run_id",
         queue_key="retrieval_run_id",
         dispatch_code="POLICY_RETRIEVAL_OUTBOX_FAILED",
+        topic_attribute="event_type",
     ),
     "grounded_explanation_outbox_events": _SourceSpec(
         model=GroundedExplanationOutboxEventModel,
@@ -471,7 +474,12 @@ def _recovery_envelope(
         "correlation_id": source.correlation_id,
     }
     _validate_identifier_payload(payload)
-    return spec.topic, payload
+    topic = (
+        str(getattr(source, spec.topic_attribute))
+        if spec.topic_attribute is not None
+        else spec.topic
+    )
+    return topic, payload
 
 
 def _cancel_awaiting_source(

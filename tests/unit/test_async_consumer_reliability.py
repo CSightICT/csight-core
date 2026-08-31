@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -36,11 +36,20 @@ from app.application.grounding import (
 from app.application.human_review import HumanReviewRequestedCommand
 from app.application.policy_engine import ExecutePolicyEvaluation, ExecutePolicyEvaluationCommand
 from app.application.policy_query_runs import (
+    ExecutePolicyQueryBuild,
     ExecutePolicyRetrievalRun,
     ExecutePolicyRetrievalRunCommand,
+    ExecutePolicySearch,
 )
 from app.platform.async_reliability import ExecutionLeaseActiveError
-from app.platform.query_builder import QueryStrategy
+from app.platform.query_builder import (
+    PolicyQuery,
+    PolicyQueryPlan,
+    PolicyQueryPurpose,
+    QueryFilterHints,
+    QueryStrategy,
+)
+from app.ports.policy_query_runs import PolicyQueryBuildClaim
 
 pytestmark = pytest.mark.unit
 
@@ -235,6 +244,13 @@ def test_worker_commands_reject_malformed_uuid_at_boundary(
         command_type.model_validate(payload)
 
 
+def test_query_build_claim_requires_source_only_for_claimed_disposition() -> None:
+    with pytest.raises(PydanticValidationError):
+        PolicyQueryBuildClaim(disposition="CLAIMED")
+    with pytest.raises(PydanticValidationError):
+        PolicyQueryBuildClaim(disposition="NOOP", source=cast(Any, object()))
+
+
 def test_policy_evaluation_succeed_persistence_error_is_retried_not_domain_failed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -349,6 +365,112 @@ def test_retrieval_succeed_persistence_error_is_retried_not_domain_failed() -> N
         ).execute(command)
 
     repository.fail.assert_not_called()
+
+
+def test_raw_query_build_persists_durable_search_event_without_llm_call() -> None:
+    repository = MagicMock()
+    llm = MagicMock()
+    run = SimpleNamespace(
+        tenant_id=str(uuid4()),
+        id=str(uuid4()),
+        strategy=QueryStrategy.RAW,
+    )
+    source = SimpleNamespace(
+        run=run,
+        claim_token=str(uuid4()),
+        customer_message="damaged product",
+        builder_input=SimpleNamespace(trusted_metadata=SimpleNamespace(product_category="GENERAL")),
+    )
+    repository.claim_query_build.return_value = SimpleNamespace(
+        disposition="CLAIMED",
+        source=source,
+    )
+    repository.complete_query_build.return_value = True
+    command = ExecutePolicyRetrievalRunCommand(
+        event_id=str(uuid4()),
+        tenant_id=run.tenant_id,
+        case_id=str(uuid4()),
+        retrieval_run_id=run.id,
+        correlation_id="correlation-1",
+    )
+
+    disposition = ExecutePolicyQueryBuild(
+        repository=repository,
+        llm=llm,
+        prompt=MagicMock(),
+    ).execute(command)
+
+    assert disposition == "SEARCH_QUEUED"
+    llm.build_policy_queries.assert_not_called()
+    repository.complete_query_build.assert_called_once()
+
+
+def test_query_build_duplicate_is_noop_after_durable_search_event_creation() -> None:
+    repository = MagicMock()
+    repository.claim_query_build.return_value = SimpleNamespace(
+        disposition="SEARCH_QUEUED",
+        source=None,
+    )
+    command = ExecutePolicyRetrievalRunCommand(
+        event_id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        case_id=str(uuid4()),
+        retrieval_run_id=str(uuid4()),
+        correlation_id="correlation-1",
+    )
+
+    disposition = ExecutePolicyQueryBuild(
+        repository=repository,
+        llm=MagicMock(),
+        prompt=MagicMock(),
+    ).execute(command)
+
+    assert disposition == "SEARCH_QUEUED"
+    repository.complete_query_build.assert_not_called()
+
+
+def test_policy_search_uses_durable_plan_and_never_has_an_llm_dependency() -> None:
+    repository = MagicMock()
+    search = MagicMock()
+    run = SimpleNamespace(
+        tenant_id=str(uuid4()),
+        id=str(uuid4()),
+        as_of_date=datetime.now(UTC).date(),
+        top_k=3,
+    )
+    plan = PolicyQueryPlan(
+        queries=(
+            PolicyQuery(
+                query_id="Q1",
+                purpose=PolicyQueryPurpose.PRIMARY_POLICY,
+                text="damaged product",
+            ),
+        ),
+        filter_hints=QueryFilterHints(product_categories=("GENERAL",)),
+    )
+    repository.claim_search.return_value = SimpleNamespace(
+        run=run,
+        claim_token=str(uuid4()),
+        plan=plan,
+        builder_input=SimpleNamespace(trusted_metadata=SimpleNamespace(product_category="GENERAL")),
+    )
+    repository.complete_search.return_value = True
+    search.execute.return_value = SimpleNamespace(
+        hits=(), nearest_dense_hits=(), least_similar_hits=()
+    )
+    command = ExecutePolicyRetrievalRunCommand(
+        event_id=str(uuid4()),
+        tenant_id=run.tenant_id,
+        case_id=str(uuid4()),
+        retrieval_run_id=run.id,
+        correlation_id="correlation-1",
+    )
+
+    disposition = ExecutePolicySearch(repository=repository, search=search).execute(command)
+
+    assert disposition == "SUCCEEDED"
+    search.execute.assert_called_once()
+    repository.complete_search.assert_called_once()
 
 
 @pytest.mark.parametrize(

@@ -12,13 +12,13 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0035, 세 LLM task의 pinned route guard, PII 없는 31개 pilot readiness gate, 운영자용 온보딩 명령과 pilot 전용 OpenAPI를 구현했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
-| 진행 중 작업 | push된 `bc2d7be`의 clean worktree에서 `rc-bc2d7be495b0` Core/Web image를 한 번 빌드해 digest를 고정하고, 별도 candidate stack의 빈 DB 0035 migration·9개 장기 서비스 health·전체 회귀를 통과했다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거가 다음 차단 항목이다. Query Build와 Search의 v2 event 분리도 남아 있다. |
-| 마지막 갱신일 | 2026-08-31 15:47 KST, Asia/Seoul |
+| 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0036과 Query Build/Search의 독립 durable v2 event·worker 경계를 구현하고 실제 PostgreSQL 경로를 검증했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
+| 진행 중 작업 | Query Build v2는 모델 lane concurrency 1에서 query plan을 고정하고 같은 transaction에 Search v2 Outbox를 만들며, Search v2는 retrieval lane concurrency 2에서만 실행한다. v1은 drain 호환만 유지한다. 전체 회귀와 격리 DB 검증은 PASS했으며, 다음은 변경을 기능 브랜치에 push한 뒤 새 SHA의 clean RC image/candidate를 다시 검증하는 것이다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거는 계속 차단 항목이다. |
+| 마지막 갱신일 | 2026-08-31 16:23 KST, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private. 시연 기준선과 migration 0035·pilot readiness·최종 인계를 `origin/codex/operator-console-product-direction`의 `bc2d7be`까지 push; PR·`develop/main` 병합 없음 |
-| 로컬 Git | `codex/operator-console-product-direction`; 구현과 검증 결과는 push 완료. 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md` 보존 |
-| 마지막 검증 관측 | 2026-08-31 15:47 KST, clean `bc2d7be`에서 backend 1014 PASS, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, Web 90 PASS와 lint/type/OpenAPI/build, Ruff/format/Pyright PASS. 별도 candidate는 DB 0035, 장기 서비스 9개 healthy/restart 0이었다. 실행 중 데모 DB/image는 의도적으로 0034를 유지하며 정상이다. 디스크는 41 GiB지만 실제 pilot env·운영 증거가 없어 start는 BLOCKED이고 release eligible 모델은 0개다. |
+| 원격 저장소 | `CSightICT/csight-core` — Private. migration 0036과 Query Build/Search v2 분리 구현 `55fe72b146c4`까지 `origin/codex/operator-console-product-direction`에 push; PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; 구현 commit `55fe72b146c4`와 원격 SHA 일치. 이 상태 원장 후속만 commit 예정이며 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md` 보존 |
+| 마지막 검증 관측 | 2026-08-31 16:23 KST, Ruff/format/Pyright PASS, 비통합 backend 1023 PASS/6 SKIPPED, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, 빈 DB 0001→0036·0036→0035→0036·drift PASS. 실제 clone DB에서 RAW Query Build v2→Search v2가 두 durable event CONSUMED·run SUCCEEDED·LLM 호출 0으로 PASS했다. 실행 중 데모 9개 서비스와 DB/image 0034는 재시작·재빌드 없이 정상이며 디스크는 40 GiB다. |
 | 마지막 GitHub 관측 | 2026-08-28 23:02 KST, `origin/codex/operator-console-product-direction`의 `3daaa7bff56fa0e25f7ca69bf6bc31d68a2cdb79`에 대한 CI Run #33177793237 PASS. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
@@ -131,7 +131,7 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Limited Pilot Service Foundation | DEMO_READY_WITH_BLOCKERS | 상담원 단일 조회·명시 확인·워크플로 snapshot, OIDC+PKCE/session/CSRF, tenant RLS, 민감 payload 수명주기, 3개 queue lane, 운영 조회, PRIMARY/SHADOW·회로 차단·admission, 선택적 OpenTelemetry를 additive migration으로 구현. 사람만 최종 결정하고 실제 사업 동작은 계속 0 |
 | Operator Queue Server Search + Onboarding View | PASS | Case·Review 목록의 문의/주문/상품 번호 검색을 pagination 전 단일 SQL에 적용하고 검색어 고정 cursor를 사용한다. 관리자 운영 화면은 개인정보 없는 6개 온보딩 gate만 표시하며 현재 실제 조회는 인력 1개 PASS·나머지 5개 FAIL, `pilot_ready=false`다. |
 | Generic Signed Case Intake 0032 | PASS | 단일 tenant/source/no-role actor에 고정된 Ed25519 raw-body 서명, ±300초, 128 KiB, exact replay 200·conflict 409를 구현했다. 실제 PostgreSQL HTTP에서 최초 201·replay 200·conflict 409와 Case/history/sensitive/idempotency 각 1건을 확인했으며 실제 고객 key는 생성하지 않았다. |
-| Task Model Route Plan 0033~0035 | PASS_WITH_SCOPE | 서명된 activation을 task별 append-only route plan으로 연결한다. Analysis, LLM Query Builder, Grounded Explanation run이 새 요청에서 역사적 plan을 같은 transaction에 고정하고 Worker가 task/mode/signature/deployment/runtime identity를 provider 호출 전에 검증한다. RAW·DETERMINISTIC query는 route와 모델 호출이 없다. Query Build와 Search의 독립 v2 event 분리는 아직 미완료다. |
+| Task Model Route Plan 0033~0036 | PASS_WITH_SCOPE | 서명된 activation을 task별 append-only route plan으로 연결한다. Analysis, LLM Query Builder, Grounded Explanation run이 새 요청에서 역사적 plan을 같은 transaction에 고정하고 Worker가 task/mode/signature/deployment/runtime identity를 provider 호출 전에 검증한다. Query Build v2와 Search v2는 별도 durable event와 worker lane으로 분리됐고 RAW·DETERMINISTIC query는 route와 모델 호출이 없다. 실제 20-workflow 부하 자격은 미완료다. |
 | Separate Limited-Pilot Runtime | BLOCKED | OIDC-only, strict RLS role, ClamAV, retention, OTel, signed intake/model과 복원 증거를 강제하는 별도 Compose/controller/preflight를 구현했다. clean SHA의 RC image 빌드와 local candidate stack 검증은 완료했지만 실제 `.env.pilot`과 fresh 운영 증거가 없어 pilot start는 실행하지 않았다. controller는 build/migrate/prune/down/volume 삭제를 하지 않는다. |
 | Operator Queue Intake UI | PASS_WITH_SCOPE | 프론트의 새 케이스 메뉴·버튼·화면을 제거하고 이전 `/cases/new`는 목록으로 전환. 상담 케이스·검토 대기함 모두 주문/상품/문의 번호 검색과 정렬을 제공하며 5개 viewport에서 두 컨트롤 48px, 가로 overflow 0, Axe serious/critical 0을 확인 |
 | Demo Embedding Runtime Availability | PASS_WITH_SCOPE | macOS 제어 앱이 Qwen Embedding을 분리 세션으로 시작해 `/health`와 `/v1/models` 준비 후 Core 9개와 Cloudflare 공개 주소를 시작하고, 상태 표시와 안전 종료까지 함께 수행. 실제 stop→start 뒤 `doongdoong.org` health와 새 HYBRID Retrieval SUCCEEDED를 확인. 현재 Mac 내부 시연 전용이며 HA 자격은 아님 |
@@ -3839,3 +3839,29 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - 남은 관문: owner-only `.env.pilot`, 고객 IdP/public key/retention/policy/support 입력, 31개 fresh
   readiness 증거, ClamAV/OIDC/OTel/restore/load 실연과 release-eligible 모델이 필요하다. 이 입력과
   증거 전에는 preflight exit 0이나 pilot start를 주장하지 않는다.
+
+### 2026-08-31 16:23 KST — Durable Query Build/Search v2 Split
+
+- 목표/결과: 신규 Policy Retrieval을 `policy_query_build.requested.v2`와
+  `policy_search.requested.v2`의 두 append-only Outbox event로 분리했다. Query Build는 모델 lane
+  concurrency 1, Search는 retrieval lane concurrency 2에서 실행하며 기존 v1 task는 이미 발행된
+  event drain에만 남겼다.
+- 원자성/복구: query plan 저장, run의 `SEARCH_QUEUED` 전환, Query Build event consume, Search event
+  생성은 하나의 transaction이다. 두 Worker는 event type·tenant·Case·run·correlation과 claim lease를
+  검증한다. Search는 저장된 plan만 읽고 HYBRID retrieval을 실행하며 모델 provider dependency가 없다.
+- 모델 경계: RAW·DETERMINISTIC은 LLM route 조회와 provider 호출이 0이다. LLM Query Build만 pinned
+  historical route guard를 통과한 뒤 provider를 호출한다. silent model fallback과 정책·사람 결정·
+  실제 외부 사업 동작은 추가하지 않았다.
+- 검증: Ruff/format/Pyright PASS, 비통합 backend `1023 passed, 6 skipped`, disposable PostgreSQL
+  integration `83 passed, 5 external-GPU skipped`, Alembic 빈 DB 0001→0036·0036→0035→0036과 drift
+  PASS다. demo DB의 read-only clone에서 실제 Repository→Dispatcher→RAW Query Build→Dispatcher→
+  Search 경로가 run SUCCEEDED, 두 v2 event CONSUMED, raw query 원문 비복제, LLM 호출 0으로 PASS했다.
+- 런타임/보존: 16:23 KST 현재 기존 demo 9개 service는 healthy이고 DB/image는 의도적으로 0034다.
+  재빌드·재시작·migration·외부 GPU 호출은 0회이며 사용자 소유 미추적 문서, 원본 이미지,
+  checkpoint, Docker volume과 `kaputt_best_vision_architecture.md`를 보존했다. 가용 공간은 40 GiB다.
+- 미해결/다음 행동: 변경을 검토 가능한 commit으로 기능 브랜치에 push한 뒤 그 SHA의 clean
+  worktree에서 non-dev RC image를 새로 한 번 빌드하고 별도 candidate stack을 0036으로 검증한다.
+  실제 pilot env·고객 입력·release model·off-host 복원·경보 전달·20-session/20-workflow 증거 전에는
+  pilot ready를 주장하지 않는다.
+- Git: 구현·ADR·계약·migration·테스트를 `55fe72b146c4`로 commit해 현재 기능 브랜치에 push했다.
+  고신뢰 Secret과 대용량 staged blob은 0건이었고 PR·병합은 만들지 않았다.

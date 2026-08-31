@@ -13,11 +13,11 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 항목 | 값 |
 |---|---|
 | 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0035, 세 LLM task의 pinned route guard, PII 없는 31개 pilot readiness gate, 운영자용 온보딩 명령과 pilot 전용 OpenAPI를 구현했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
-| 진행 중 작업 | 검토 가능한 기준선 3개 commit을 현재 기능 브랜치에 push했고 후속 pilot-readiness 구현·전체 회귀도 완료했다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거와 build 전 최소 35 GiB 디스크를 확보해야 clean worktree release 후보를 만들 수 있다. Query Build와 Search의 v2 event 분리는 다음 구현 항목이다. |
+| 진행 중 작업 | 검토 가능한 기준선 3개 commit과 후속 pilot-readiness 구현 `0b7f179`를 현재 기능 브랜치에 push했다. 실제 pilot env·고객 public key·IdP/retention/policy 설정, release-eligible 모델, 보안 이미지 업로드 실증, off-host 복원·경보·20-session 부하 증거와 build 전 최소 35 GiB 디스크를 확보해야 clean worktree release 후보를 만들 수 있다. Query Build와 Search의 v2 event 분리는 다음 구현 항목이다. |
 | 마지막 갱신일 | 2026-08-31 15:10 KST, Asia/Seoul |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private. 시연 기준선 3개 commit을 `origin/codex/operator-console-product-direction`의 `ba39aea`까지 push; PR·`develop/main` 병합 없음 |
-| 로컬 Git | `codex/operator-console-product-direction`; 기준선은 push 완료, migration 0035와 pilot readiness 후속 변경은 최종 검증 후 같은 기능 브랜치에 별도 commit 예정. 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md` 보존 |
+| 원격 저장소 | `CSightICT/csight-core` — Private. 시연 기준선과 migration 0035·pilot readiness 구현을 `origin/codex/operator-console-product-direction`의 `0b7f179`까지 push; PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; 구현과 검증 결과는 push 완료. 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md` 보존 |
 | 마지막 검증 관측 | 2026-08-31 15:10 KST, 기본 backend 1014 PASS, disposable PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, Web 90 PASS와 lint/type/OpenAPI/build, Ruff/format/Pyright PASS. 코드 migration head는 0035지만 실행 중 데모 DB와 image는 의도적으로 0034를 유지하며 Core 9개는 정상이다. 실제 pilot start는 env 부재와 디스크 9.0 GiB로 BLOCKED이며 release eligible 모델은 0개다. |
 | 마지막 GitHub 관측 | 2026-08-28 23:02 KST, `origin/codex/operator-console-product-direction`의 `3daaa7bff56fa0e25f7ca69bf6bc31d68a2cdb79`에 대한 CI Run #33177793237 PASS. PR·`develop/main` 병합 없음 |
 
@@ -3803,3 +3803,5 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   정리한다. 35 GiB 이상을 확인하면 push된 SHA의 clean worktree에서 non-dev image를 한 번 빌드하고
   digest를 고정한다. 이후 외부 고객 입력을 받은 owner-only `.env.pilot`에서 onboarding verify,
   31개 readiness gate와 preflight를 통과한 경우에만 별도 pilot profile을 시작한다.
+- 최종 Git: 위 후속 구현과 검증 원장은 `0b7f179 feat: complete routed pilot readiness contracts`로
+  같은 기능 브랜치에 push했다. 원격과 로컬 SHA가 일치하며 PR·병합은 만들지 않았다.

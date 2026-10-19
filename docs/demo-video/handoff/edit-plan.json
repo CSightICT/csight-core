@@ -1,0 +1,63 @@
+{
+  "status": "TEMPLATE_NOT_RECORDED",
+  "source_file": null,
+  "output": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "target_seconds": 60,
+    "codec": "h264",
+    "audio": "none",
+    "disclosure": "시연 데이터 · 외부 조치는 모의 실행"
+  },
+  "scenes": [
+    {
+      "id": "queue",
+      "source_in": null,
+      "source_out": null,
+      "target_start": 0,
+      "duration": 8,
+      "caption": "접수된 문의를 확인하고\n검토를 시작합니다."
+    },
+    {
+      "id": "evidence",
+      "source_in": null,
+      "source_out": null,
+      "target_start": 8,
+      "duration": 15,
+      "caption": "고객 사진과 문의 요약을\n한 화면에서 확인합니다."
+    },
+    {
+      "id": "policy",
+      "source_in": null,
+      "source_out": null,
+      "target_start": 23,
+      "duration": 10,
+      "caption": "필요한 정책 근거도\n바로 확인할 수 있습니다."
+    },
+    {
+      "id": "decision",
+      "source_in": null,
+      "source_out": null,
+      "target_start": 33,
+      "duration": 12,
+      "caption": "AI 분석을 참고하고\n최종 판단은 담당자가 확정합니다."
+    },
+    {
+      "id": "report",
+      "source_in": null,
+      "source_out": null,
+      "target_start": 45,
+      "duration": 7,
+      "caption": "처리 결과와 판단 근거가\n기록으로 남습니다."
+    },
+    {
+      "id": "assets",
+      "source_in": null,
+      "source_out": null,
+      "target_start": 52,
+      "duration": 8,
+      "caption": "쌓인 처리 경험은\n우리 팀의 데이터 자산이 됩니다."
+    }
+  ]
+}

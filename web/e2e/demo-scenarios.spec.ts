@@ -8,6 +8,22 @@ test("0. 관리자는 문의 접수 단계에서 담당자를 배정하고 목�
 
   const assignment = page.getByRole("combobox", { name: /문의 담당자/ });
   await expect(assignment).toBeVisible();
+  // Status labels must not shift the assignment or neighboring columns.
+  const row = page.locator(".inquiry-inline-row").first();
+  const positions = async () => Promise.all([assignment, row.locator(".queue-updated"), row.locator(".row-arrow")].map(async (element) => {
+    const box = await element.boundingBox();
+    return { x: box?.x, width: box?.width };
+  }));
+  const before = await positions();
+  for (const label of ["결정 완료", "검토 중", "대기", "추가 자료 대기"]) {
+    await row.locator(".status-badge").evaluate((element, text) => { element.textContent = text; }, label);
+    expect(await positions()).toEqual(before);
+  }
+
+  await page.screenshot({ path: "../output/ui-mentoring-20260911/assignment-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeVisible();
+  await page.screenshot({ path: "../output/ui-mentoring-20260911/assignment-mobile.png", fullPage: true, animations: "disabled" });
   await assignment.selectOption("user-1");
 
   await expect(assignment).toHaveValue("user-1");
@@ -25,11 +41,13 @@ test("0-1. 담당자는 배정 대기와 본인 완료 문의를 분리하고 �
 
   await page.getByRole("link", { name: "내 문의 처리 현황" }).click();
   await expect(page.getByRole("heading", { name: "내 문의 처리 현황" })).toBeVisible();
-  await page.getByRole("link", { name: /일반 정책 검토 · 문의 번호/ }).click();
+  await page.locator('a[href="/reviews/task-needs-input"]').click();
 
   await expect(page.getByRole("heading", { name: "문의 검토 요약" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "고객 첨부 사진" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "문의 내용 요약" })).toBeVisible();
+  await page.getByText("정책 근거·분석 상세 보기", { exact: true }).click();
+  await page.getByText("정책 유사도 비교 보기", { exact: true }).click();
   await expect(page.getByRole("heading", { name: "적절하다고 본 정책 근거" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "임계값에 가장 가까운 정책 3개" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "가장 부적합한 정책 3개" })).toBeVisible();
@@ -53,7 +71,7 @@ test("1. 완전한 Repair 결정은 부작용 없는 DRY-RUN 검증 결과로 �
   await expect(page.getByRole("heading", { name: "최종 검토 보고서" })).toBeVisible();
   await expect(page.getByText("수리 승인")).toBeVisible();
   await expect(page.getByText("외부 시스템 반영 여부").locator("..")).toContainText("아니요");
-  await navigateInSession(page, "/cases/case-validated");
+  await navigateInSession(page, "/cases/case-validated?details=1");
   await expect(page.getByTestId("review-workbench")).toBeVisible();
   await expect(page.getByRole("heading", { name: "문의 내용" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "이미지 근거" })).toBeVisible();
@@ -62,6 +80,7 @@ test("1. 완전한 Repair 결정은 부작용 없는 DRY-RUN 검증 결과로 �
   await expect(page.getByText(/지난주 CSight Commerce에서 주문한 무선 청소기/)).toBeVisible();
   await expect(page.getByTestId("image-observation-boundary")).toContainText("본체 아래 브러시 하우징과 장착부 외관");
   await expect(page.getByTestId("image-observation-boundary")).toContainText("비가시 정보는 고객 진술이며 Vision 근거가 아닙니다");
+  await page.getByText("고정된 정책 근거 보기", { exact: true }).click();
   await expect(page.getByText("CSight Commerce 상품 하자 반품·교환 운영정책")).toBeVisible();
   await expect(page.getByText("사내 정책 참고 자료").first()).toBeVisible();
   await expect(page.getByTestId("policy-guidance")).toContainText("담당자 검토 필요");
@@ -75,7 +94,7 @@ test("1. 완전한 Repair 결정은 부작용 없는 DRY-RUN 검증 결과로 �
 test("2. 환불 금액·통화 누락은 입력 보류이며 Attempt와 Result가 0이다", async ({ page }) => {
   await installApi(page, "needs-input");
   await login(page);
-  await navigateInSession(page, "/cases/case-needs-input");
+  await navigateInSession(page, "/cases/case-needs-input?details=1");
   await page.getByText("결정 이후 · 처리 결과 확인").click();
   await expect(page.getByTestId("resolution-status")).toContainText("처리 정보 보완 필요");
   await expect(page.getByText("Command·Attempt·Result를 만들지 않고 안전하게 보류합니다.")).toBeVisible();
@@ -93,7 +112,7 @@ test("2. 환불 금액·통화 누락은 입력 보류이며 Attempt와 Result�
 test("3. 이미지 부족 건은 추가자료 요청 상태이며 결정과 조치가 생성되지 않는다", async ({ page }) => {
   await installApi(page, "evidence");
   await login(page);
-  await navigateInSession(page, "/cases/case-evidence");
+  await navigateInSession(page, "/cases/case-evidence?details=1");
   await expect(page.getByText("이미지가 없습니다")).toBeVisible();
   await page.getByText("결정 이후 · 처리 결과 확인").click();
   await expect(page.getByText("아직 처리 결과가 없습니다")).toBeVisible();
@@ -131,7 +150,7 @@ test("5. Vision timeout은 별도 부분 완료로 표시되고 자동 결정·�
   await page.evaluate(() => sessionStorage.setItem("csight.workflow.v1", JSON.stringify({
     caseId: "case-vision-timeout", visionRunId: "vision-vision-timeout", idempotencyKeys: { vision: "vision-key-1" },
   })));
-  await navigateInSession(page, "/cases/case-vision-timeout");
+  await navigateInSession(page, "/cases/case-vision-timeout?details=1");
   await expect(page.getByTestId("vision-result")).toContainText("부분 완료");
   await expect(page.getByText("결과 계약 확인 필요")).toBeVisible();
   await expect(page.getByTestId("binary-vision-assessment")).toHaveCount(0);

@@ -92,6 +92,7 @@ def main() -> int:
         test_environment = os.environ.copy()
         test_environment["DATABASE_URL"] = temporary_url.render_as_string(hide_password=False)
         test_environment["RUN_CORE_INTEGRATION"] = "1"
+        test_environment["CSIGHT_DISPOSABLE_TEST_DATABASE"] = database_name
         _run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             environment=test_environment,

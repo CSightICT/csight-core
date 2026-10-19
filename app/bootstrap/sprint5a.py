@@ -24,13 +24,16 @@ def _repository(settings: Settings) -> SQLAlchemyPolicyEngineRepository:
         create_session_factory(get_engine(settings)),
         lease_ttl=timedelta(seconds=settings.analysis_stage_lease_seconds),
         max_execution_attempts=settings.celery_task_max_retries + 1,
+        shadow_feedback_enabled=settings.shadow_human_feedback_enabled,
     )
 
 
 def build_sprint5a_services(settings: Settings) -> Sprint5AServiceContainer:
     repository = _repository(settings)
     return Sprint5AServiceContainer(
-        start_policy_evaluation=StartPolicyEvaluation(repository),
+        start_policy_evaluation=StartPolicyEvaluation(
+            repository, shadow_feedback_enabled=settings.shadow_human_feedback_enabled
+        ),
         list_policy_evaluations=ListPolicyEvaluations(repository),
         get_policy_evaluation=GetPolicyEvaluation(repository),
     )

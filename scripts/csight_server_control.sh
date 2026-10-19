@@ -26,6 +26,11 @@ readonly EMBEDDING_LOG_FILE="${PROJECT_ROOT}/.embedding-service.log"
 readonly EMBEDDING_UVICORN="${PROJECT_ROOT}/.venv-embedding/bin/uvicorn"
 readonly EMBEDDING_RUNNER="${PROJECT_ROOT}/scripts/csight_embedding_runtime.sh"
 readonly EMBEDDING_SCREEN_SESSION="csight-embedding"
+readonly GX10_RUNNER="${PROJECT_ROOT}/scripts/csight_gx10_desktop.sh"
+
+gx10_action() {
+  /bin/zsh "${GX10_RUNNER}" "$1"
+}
 
 fail() {
   print -u2 -- "$1"
@@ -70,6 +75,10 @@ ensure_docker() {
 compose_command() {
   local docker_bin="$1"
   shift
+  if [[ -f "${PROJECT_ROOT}/.csight-internal-feedback" ]]; then
+    /bin/zsh "${PROJECT_ROOT}/scripts/csight_internal_feedback.sh" compose "${docker_bin}" "$@"
+    return
+  fi
   "${docker_bin}" compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" "$@"
 }
 
@@ -238,6 +247,12 @@ health_summary() {
   print -- "상담원 화면: ${web_status}"
   print -- "정책 검색 엔진: ${embedding_status}"
   print -- "공개 시연 주소: ${public_status}"
+  if [[ -f "${PROJECT_ROOT}/.csight-internal-feedback" ]]; then
+    print -- "실모델 피드백: GX10 Q5 + E3 / SHADOW / 사람 최종 확인 / 모의 실행"
+  else
+    print -- "GX10 Q5 내부 검증 엔진 (Core 설정·운영 전환 없음)"
+  fi
+  gx10_action status || print -- "GX10 엔진: 응답 없음 또는 기동 조건 미충족 (Core 상태와 별개)"
   if [[ -n "${services}" ]]; then
     print -- ""
     print -- "실행 서비스"
@@ -248,8 +263,14 @@ health_summary() {
 start_quick() {
   local docker_bin="$1"
   start_embedding_if_needed
+  if [[ -f "${PROJECT_ROOT}/.csight-internal-feedback" ]]; then
+    /bin/zsh "${PROJECT_ROOT}/scripts/csight_internal_feedback.sh" prepare
+  fi
   compose_command "${docker_bin}" up --detach --wait --remove-orphans
   ensure_public_tunnel
+  if [[ ! -f "${PROJECT_ROOT}/.csight-internal-feedback" ]]; then
+    gx10_action start || fail "Core 서버는 켜졌지만 GX10 내부 엔진은 준비되지 않았습니다. 다른 GPU 작업은 종료하지 않았습니다."
+  fi
   print -- "CSight 전체 PoC 서버를 켰습니다."
   print -- ""
   health_summary "${docker_bin}"
@@ -258,11 +279,17 @@ start_quick() {
 start_rebuilt() {
   local docker_bin="$1"
   start_embedding_if_needed
+  if [[ -f "${PROJECT_ROOT}/.csight-internal-feedback" ]]; then
+    /bin/zsh "${PROJECT_ROOT}/scripts/csight_internal_feedback.sh" prepare
+  fi
   compose_command "${docker_bin}" build
   compose_command "${docker_bin}" up --detach postgres rabbitmq minio
   compose_command "${docker_bin}" run --rm migrator
   compose_command "${docker_bin}" up --detach --wait --remove-orphans
   ensure_public_tunnel
+  if [[ ! -f "${PROJECT_ROOT}/.csight-internal-feedback" ]]; then
+    gx10_action start || fail "Core 서버는 켜졌지만 GX10 내부 엔진은 준비되지 않았습니다. 다른 GPU 작업은 종료하지 않았습니다."
+  fi
   print -- "최신 코드와 DB 마이그레이션을 반영해 CSight 전체 PoC 서버를 켰습니다."
   print -- ""
   health_summary "${docker_bin}"
@@ -270,6 +297,7 @@ start_rebuilt() {
 
 stop_preserving_data() {
   local docker_bin="$1"
+  gx10_action stop || fail "GX10 전용 엔진 정지를 확인하지 못했습니다. 나머지 서버는 유지합니다."
   stop_public_tunnel
   if docker_is_ready "${docker_bin}"; then
     compose_command "${docker_bin}" stop
@@ -278,6 +306,9 @@ stop_preserving_data() {
     print -- "Docker Desktop이 꺼져 있어 Core 서비스는 이미 정지된 상태입니다."
   fi
   stop_managed_embedding
+  if [[ -f "${PROJECT_ROOT}/.csight-internal-feedback" ]]; then
+    /bin/zsh "${PROJECT_ROOT}/scripts/csight_internal_feedback.sh" stop
+  fi
   print -- "CSight 전체 PoC 서버를 껐습니다."
   print -- "DB와 업로드 파일이 들어 있는 Docker 볼륨은 그대로 보존했습니다."
 }
@@ -292,6 +323,7 @@ show_status() {
       print -- "정책 검색 엔진: 응답 없음"
     fi
     print -- "CSight Core 서버: 정지됨"
+    gx10_action status || print -- "GX10 엔진: 응답 없음 또는 정지됨"
     if public_route_is_ready; then
       print -- "공개 시연 주소: 정상"
     else

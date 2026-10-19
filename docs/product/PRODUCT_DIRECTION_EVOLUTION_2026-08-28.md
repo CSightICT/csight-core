@@ -168,3 +168,10 @@ checkpoint, 정책 검색·평가, Human Review, Resolution, 보고서와 데이
 - [`ADR-0098`](../../CSight_project_docs/docs/adr/0098-synthetic-commerce-context-separate-from-action-input.md)
 - [`ADR-0099`](../../CSight_project_docs/docs/adr/0099-offline-qwen-vlm-label-enrichment.md)
 - [`ADR-0100`](../../CSight_project_docs/docs/adr/0100-curated-closed-set-poc-admission.md)
+
+
+## 2026-09-11 멘토링 후속
+
+상품명 중심 목록과 모든 정책정보를 펼치는 초기 방향을 수정했다. 현재는 문의 내용 중심 목록,
+검토 직행, 사진·요약·숫자 기준·허용/비허용을 기본 화면으로 제공한다. 정책·분석 상세는 필요할 때
+펼친다. 상세 변경과 실제 시간절감 검증 계획은 [상담원 중심 UI 개선](CONSULTANT_FOCUSED_UI_2026-09-11.md)을 참조한다.

@@ -8,9 +8,9 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import ClassVar, Literal
+from typing import Annotated, ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.errors import CSightError
@@ -24,6 +24,28 @@ class ModelReleaseTask(StrEnum):
     PRODUCT_DEFECT_TEXT_EXTRACTION_V2 = "PRODUCT_DEFECT_TEXT_EXTRACTION_V2"
     POLICY_QUERY_BUILDER_V1 = "POLICY_QUERY_BUILDER_V1"
     GROUNDED_POLICY_EXPLANATION_V1 = "GROUNDED_POLICY_EXPLANATION_V1"
+
+
+class ModelArtifactFormat(StrEnum):
+    SAFETENSORS = "SAFETENSORS"
+    GGUF = "GGUF"
+
+
+class ModelRuntimeEngine(StrEnum):
+    VLLM = "VLLM"
+    LLAMA_CPP = "LLAMA_CPP"
+
+
+class ModelReleaseStatus(StrEnum):
+    SHADOW_CANDIDATE = "SHADOW_CANDIDATE"
+    RELEASE_ELIGIBLE = "RELEASE_ELIGIBLE"
+
+
+class ModelReleaseExecutionGateReason(StrEnum):
+    GGUF_SHADOW_CANDIDATE_ONLY = "GGUF_SHADOW_CANDIDATE_ONLY"
+    GGUF_EXTRACTION_PROVIDER_NEUTRAL_EVALUATOR_REQUIRED = (
+        "GGUF_EXTRACTION_PROVIDER_NEUTRAL_EVALUATOR_REQUIRED"
+    )
 
 
 class _Contract(BaseModel):
@@ -86,8 +108,153 @@ class LLMReleaseManifest(_Contract):
         return "sha256:" + hashlib.sha256(self.canonical_bytes()).hexdigest()
 
 
+class LLMReleaseManifestV1_1(_Contract):
+    """GGUF release identity without inheriting the vLLM-specific v1 contract."""
+
+    schema_version: Literal["llm_release_manifest/1.1.0"] = "llm_release_manifest/1.1.0"
+    candidate_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{2,127}$")
+    package_name: str = Field(min_length=1, max_length=128)
+    package_version: str = Field(min_length=1, max_length=128)
+    task: ModelReleaseTask
+
+    artifact_source: Literal["CSIGHT"] = "CSIGHT"
+    artifact_format: Literal[ModelArtifactFormat.GGUF] = ModelArtifactFormat.GGUF
+    artifact: str = Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+    artifact_revision: str = Field(pattern=_REVISION_PATTERN)
+    artifact_content_digest: str = Field(pattern=_DIGEST_PATTERN)
+    artifact_weight_bytes: int = Field(gt=0)
+    upstream_model_artifact: str = Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+    upstream_model_revision: str = Field(pattern=_REVISION_PATTERN)
+    base_artifact: str = Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+    base_revision: str = Field(pattern=_REVISION_PATTERN)
+    base_artifact_content_digest: str = Field(pattern=_DIGEST_PATTERN)
+    gguf_filename: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._+-]{1,254}\.gguf$")
+    quantization_type: Literal["Q4_K_M", "Q5_K_S"]
+    quantization_recipe_digest: str = Field(pattern=_DIGEST_PATTERN)
+    calibration_dataset_digest: str = Field(pattern=_DIGEST_PATTERN)
+    calibration_manifest_digest: str = Field(pattern=_DIGEST_PATTERN)
+    importance_matrix_digest: str = Field(pattern=_DIGEST_PATTERN)
+    tokenizer_digest: str = Field(pattern=_DIGEST_PATTERN)
+    chat_template_digest: str = Field(pattern=_DIGEST_PATTERN)
+    quantizer_binary_digest: str = Field(pattern=_DIGEST_PATTERN)
+
+    runtime_engine: Literal[ModelRuntimeEngine.LLAMA_CPP] = ModelRuntimeEngine.LLAMA_CPP
+    runtime_image: str = Field(min_length=2, max_length=255)
+    runtime_image_digest: str = Field(pattern=_DIGEST_PATTERN)
+    llama_cpp_revision: str = Field(pattern=_REVISION_PATTERN)
+    runtime_binary_digest: str = Field(pattern=_DIGEST_PATTERN)
+    runtime_build_manifest_digest: str = Field(pattern=_DIGEST_PATTERN)
+    sbom_digest: str = Field(pattern=_DIGEST_PATTERN)
+
+    served_model_name: str = Field(min_length=2, max_length=255)
+    model_version: str = Field(min_length=1, max_length=100)
+    device_profile: Literal["onprem-cuda"] = "onprem-cuda"
+    max_context_tokens: int = Field(ge=1, le=1_000_000)
+    max_num_sequences: int = Field(ge=1, le=4)
+    gpu_layers: Literal["all"] = "all"
+    batch_size: int = Field(ge=32, le=4096)
+    ubatch_size: int = Field(ge=32, le=4096)
+    flash_attention: Literal[True] = True
+    kv_cache_type_k: Literal["q8_0", "f16"] = "q8_0"
+    kv_cache_type_v: Literal["q8_0", "f16"] = "q8_0"
+    api_compatibility: Literal["OPENAI_V1"] = "OPENAI_V1"
+    language_model_only: Literal[True] = True
+    automatic_cross_model_fallback: Literal[False] = False
+
+    prompt_name: str = Field(min_length=1, max_length=128)
+    prompt_version: str = Field(min_length=1, max_length=128)
+    prompt_content_hash: str = Field(pattern=_HASH_PATTERN)
+    input_schema_version: str = Field(min_length=1, max_length=128)
+    output_schema_version: str = Field(min_length=1, max_length=128)
+    qualification_dataset_digest: str = Field(pattern=_DIGEST_PATTERN)
+    qualification_result_digest: str | None = Field(default=None, pattern=_DIGEST_PATTERN)
+    candidate_matrix_digest: str = Field(pattern=_DIGEST_PATTERN)
+    candidate_assessment_digest: str = Field(pattern=_DIGEST_PATTERN)
+    release_status: ModelReleaseStatus
+    qualified_at: datetime | None = None
+
+    @field_validator("qualified_at")
+    @classmethod
+    def require_qualified_at_utc(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("qualified_at must be timezone-aware")
+        return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def require_complete_gguf_release(self) -> LLMReleaseManifestV1_1:
+        if self.artifact == self.base_artifact:
+            raise ValueError("GGUF artifact must identify its distinct upstream BF16 base")
+        if self.ubatch_size > self.batch_size:
+            raise ValueError("llama.cpp ubatch size cannot exceed batch size")
+        if (
+            self.task is ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2
+            and self.release_status is ModelReleaseStatus.RELEASE_ELIGIBLE
+        ):
+            raise ValueError(
+                "GGUF extraction must remain SHADOW_CANDIDATE until a provider-neutral "
+                "extraction evaluator is qualified"
+            )
+        if self.release_status is ModelReleaseStatus.RELEASE_ELIGIBLE:
+            if self.artifact.split("/", 1)[0] != "CSightICT":
+                raise ValueError(
+                    "release-eligible GGUF manifests require the CSightICT organization mirror"
+                )
+            if self.qualification_result_digest is None or self.qualified_at is None:
+                raise ValueError(
+                    "release-eligible GGUF manifests require qualification result and time"
+                )
+        elif self.qualified_at is not None:
+            raise ValueError("shadow candidates cannot claim a qualification time")
+        return self
+
+    def canonical_bytes(self) -> bytes:
+        return json.dumps(
+            self.model_dump(mode="json"),
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+    @property
+    def manifest_digest(self) -> str:
+        return "sha256:" + hashlib.sha256(self.canonical_bytes()).hexdigest()
+
+
+type LLMReleaseManifestContract = Annotated[
+    LLMReleaseManifest | LLMReleaseManifestV1_1,
+    Field(discriminator="schema_version"),
+]
+
+
+def release_allows_execution_mode(
+    manifest: LLMReleaseManifestContract,
+    execution_mode: AnalysisExecutionMode,
+) -> bool:
+    return release_execution_mode_gate_reason(manifest, execution_mode) is None
+
+
+def release_execution_mode_gate_reason(
+    manifest: LLMReleaseManifestContract,
+    execution_mode: AnalysisExecutionMode,
+) -> ModelReleaseExecutionGateReason | None:
+    """Return the stable fail-closed gate blocking a requested execution mode."""
+
+    if not isinstance(manifest, LLMReleaseManifestV1_1):
+        return None
+    if execution_mode is AnalysisExecutionMode.SHADOW:
+        return None
+    if manifest.task is ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2:
+        return ModelReleaseExecutionGateReason.GGUF_EXTRACTION_PROVIDER_NEUTRAL_EVALUATOR_REQUIRED
+    if manifest.release_status is ModelReleaseStatus.SHADOW_CANDIDATE:
+        return ModelReleaseExecutionGateReason.GGUF_SHADOW_CANDIDATE_ONLY
+    return None
+
+
 class SignedLLMReleaseManifest(_Contract):
-    manifest: LLMReleaseManifest
+    manifest: LLMReleaseManifestContract
     signing_key_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$")
     signature_algorithm: Literal["ED25519"] = "ED25519"
     signature_base64: str = Field(min_length=88, max_length=88, repr=False)
@@ -174,6 +341,66 @@ class RuntimeLLMIdentity(_Contract):
     output_schema_version: str = Field(min_length=1, max_length=128)
 
 
+class RuntimeLLMIdentityV1_1(_Contract):
+    """Observed identity that must exactly match every GGUF runtime-bound field."""
+
+    artifact_source: Literal["CSIGHT"] = "CSIGHT"
+    artifact_format: Literal[ModelArtifactFormat.GGUF] = ModelArtifactFormat.GGUF
+    artifact: str = Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+    artifact_revision: str = Field(pattern=_REVISION_PATTERN)
+    artifact_content_digest: str = Field(pattern=_DIGEST_PATTERN)
+    artifact_weight_bytes: int = Field(gt=0)
+    upstream_model_artifact: str = Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+    upstream_model_revision: str = Field(pattern=_REVISION_PATTERN)
+    base_artifact: str = Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+    base_revision: str = Field(pattern=_REVISION_PATTERN)
+    base_artifact_content_digest: str = Field(pattern=_DIGEST_PATTERN)
+    gguf_filename: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._+-]{1,254}\.gguf$")
+    quantization_type: Literal["Q4_K_M", "Q5_K_S"]
+    quantization_recipe_digest: str = Field(pattern=_DIGEST_PATTERN)
+    calibration_dataset_digest: str = Field(pattern=_DIGEST_PATTERN)
+    calibration_manifest_digest: str = Field(pattern=_DIGEST_PATTERN)
+    importance_matrix_digest: str = Field(pattern=_DIGEST_PATTERN)
+    tokenizer_digest: str = Field(pattern=_DIGEST_PATTERN)
+    chat_template_digest: str = Field(pattern=_DIGEST_PATTERN)
+    quantizer_binary_digest: str = Field(pattern=_DIGEST_PATTERN)
+    runtime_engine: Literal[ModelRuntimeEngine.LLAMA_CPP] = ModelRuntimeEngine.LLAMA_CPP
+    runtime_image: str = Field(min_length=2, max_length=255)
+    runtime_image_digest: str = Field(pattern=_DIGEST_PATTERN)
+    llama_cpp_revision: str = Field(pattern=_REVISION_PATTERN)
+    runtime_binary_digest: str = Field(pattern=_DIGEST_PATTERN)
+    runtime_build_manifest_digest: str = Field(pattern=_DIGEST_PATTERN)
+    sbom_digest: str = Field(pattern=_DIGEST_PATTERN)
+    served_model_name: str = Field(min_length=2, max_length=255)
+    model_version: str = Field(min_length=1, max_length=100)
+    device_profile: Literal["onprem-cuda"] = "onprem-cuda"
+    max_context_tokens: int = Field(ge=1, le=1_000_000)
+    max_num_sequences: int = Field(ge=1, le=4)
+    gpu_layers: Literal["all"] = "all"
+    batch_size: int = Field(ge=32, le=4096)
+    ubatch_size: int = Field(ge=32, le=4096)
+    flash_attention: Literal[True] = True
+    kv_cache_type_k: Literal["q8_0", "f16"] = "q8_0"
+    kv_cache_type_v: Literal["q8_0", "f16"] = "q8_0"
+    api_compatibility: Literal["OPENAI_V1"] = "OPENAI_V1"
+    language_model_only: Literal[True] = True
+    automatic_cross_model_fallback: Literal[False] = False
+    prompt_name: str = Field(min_length=1, max_length=128)
+    prompt_version: str = Field(min_length=1, max_length=128)
+    prompt_content_hash: str = Field(pattern=_HASH_PATTERN)
+    input_schema_version: str = Field(min_length=1, max_length=128)
+    output_schema_version: str = Field(min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def require_valid_batches(self) -> RuntimeLLMIdentityV1_1:
+        if self.ubatch_size > self.batch_size:
+            raise ValueError("llama.cpp ubatch size cannot exceed batch size")
+        return self
+
+
+type RuntimeLLMIdentityContract = RuntimeLLMIdentity | RuntimeLLMIdentityV1_1
+
+
 class ModelReleaseSignatureInvalidError(CSightError):
     code = "MODEL_RELEASE_SIGNATURE_INVALID"
     default_message = "The model release signature is invalid."
@@ -201,6 +428,33 @@ class ModelReleaseIdentityMismatchError(CSightError):
     retryable: ClassVar[bool] = False
 
 
+class ModelReleaseModeNotAllowedError(CSightError):
+    code = "MODEL_RELEASE_MODE_NOT_ALLOWED"
+    default_message = "This model release is not qualified for the requested execution mode."
+    retryable: ClassVar[bool] = False
+
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        gate_reason: ModelReleaseExecutionGateReason | None = None,
+    ) -> None:
+        messages = {
+            ModelReleaseExecutionGateReason.GGUF_SHADOW_CANDIDATE_ONLY: (
+                "This GGUF model release remains SHADOW-only until release qualification passes."
+            ),
+            ModelReleaseExecutionGateReason.GGUF_EXTRACTION_PROVIDER_NEUTRAL_EVALUATOR_REQUIRED: (
+                "GGUF extraction remains SHADOW-only until a provider-neutral extraction "
+                "evaluator is qualified."
+            ),
+        }
+        gate_message = messages[gate_reason] if gate_reason is not None else None
+        super().__init__(
+            message or gate_message,
+            details={"gate_reason": gate_reason.value} if gate_reason is not None else None,
+        )
+
+
 class ActiveModelReleaseRequiredError(CSightError):
     code = "ACTIVE_MODEL_RELEASE_REQUIRED"
     default_message = "No active signed model release exists for this execution profile."
@@ -211,16 +465,27 @@ __all__ = [
     "ActiveLLMRelease",
     "ActiveModelReleaseRequiredError",
     "LLMReleaseManifest",
+    "LLMReleaseManifestContract",
+    "LLMReleaseManifestV1_1",
     "ModelActivationConflictError",
     "ModelActivationEvent",
     "ModelActivationResult",
+    "ModelArtifactFormat",
+    "ModelReleaseExecutionGateReason",
     "ModelReleaseIdentityMismatchError",
+    "ModelReleaseModeNotAllowedError",
     "ModelReleaseNotFoundError",
     "ModelReleaseRegistrationConflictError",
     "ModelReleaseRegistrationResult",
     "ModelReleaseSignatureInvalidError",
+    "ModelReleaseStatus",
     "ModelReleaseTask",
+    "ModelRuntimeEngine",
     "RegisteredLLMRelease",
     "RuntimeLLMIdentity",
+    "RuntimeLLMIdentityContract",
+    "RuntimeLLMIdentityV1_1",
     "SignedLLMReleaseManifest",
+    "release_allows_execution_mode",
+    "release_execution_mode_gate_reason",
 ]

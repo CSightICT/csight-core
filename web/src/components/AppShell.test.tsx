@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import * as AuthProvider from "../auth/AuthProvider";
 import { AppShell } from "./AppShell";
 
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -41,5 +42,6 @@ describe("AppShell reviewer navigation", () => {
     expect(screen.queryByRole("link", { name: "상담 케이스" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "검토함" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "운영 상태" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/실모델 피드백 모드/)).not.toBeInTheDocument();
   });
 });

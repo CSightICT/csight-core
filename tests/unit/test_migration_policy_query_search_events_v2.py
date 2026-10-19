@@ -28,7 +28,7 @@ def test_policy_query_search_event_migration_is_the_linear_head() -> None:
     scripts = ScriptDirectory.from_config(_config(StringIO()))
     migration = scripts.get_revision(REVISION)
 
-    assert scripts.get_heads() == [REVISION]
+    assert scripts.get_heads() == ["20260910_0038_fixture_evidence_repair"]
     assert migration is not None
     assert migration.down_revision == PREVIOUS
 

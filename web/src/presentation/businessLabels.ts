@@ -97,3 +97,10 @@ export function fieldLabel(value: string): string {
   };
   return fields[value] ?? value.replaceAll("_", " ");
 }
+
+export function inquiryTitle(action: unknown): string {
+  if (action === "OTHER") return "기타 문의";
+  if (action === "INFORMATION") return "안내 문의";
+  if (!["REFUND", "EXCHANGE", "RESHIPMENT", "RETURN", "REPAIR"].includes(String(action))) return "일반 문의";
+  return `${businessLabel(action)} 문의`;
+}

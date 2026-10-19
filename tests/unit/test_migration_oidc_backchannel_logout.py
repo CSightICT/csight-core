@@ -12,7 +12,7 @@ from alembic import command
 pytestmark = pytest.mark.unit
 PREVIOUS = "20260830_0030_case_source_scope"
 REVISION = "20260830_0031_oidc_backchannel_logout"
-CURRENT_HEAD = "20260831_0036_policy_query_search_events_v2"
+CURRENT_HEAD = "20260910_0038_fixture_evidence_repair"
 
 
 def _config(output: StringIO) -> Config:

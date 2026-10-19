@@ -127,6 +127,7 @@ export interface OperatorCaseItem {
   order_ref: string;
   product_ref: string;
   requested_action: string;
+  inquiry_preview?: string | null;
   created_at: string;
   updated_at: string;
   review_task_id: string | null;
@@ -146,6 +147,7 @@ export interface OperatorReviewItem {
   order_ref: string;
   product_ref: string;
   requested_action: string;
+  inquiry_preview?: string | null;
   task_type: string;
   priority: string;
   status: string;

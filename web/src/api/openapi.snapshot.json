@@ -4473,15 +4473,65 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "200": {
+            "description": "Idempotent replay of the same model release activation.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ModelActivationResponse"
                 }
               }
             }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -4754,6 +4804,76 @@
             "description": "Service Unavailable"
           }
         }
+      }
+    },
+    "/api/v1/operations/demo-reset": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Preview Demo Reset",
+        "operationId": "preview_demo_reset_api_v1_operations_demo_reset_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoResetPreviewResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Execute Demo Reset",
+        "operationId": "execute_demo_reset_api_v1_operations_demo_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoResetPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     }
   },
@@ -6620,6 +6740,56 @@
         "title": "DefectType",
         "description": "Normalized product-defect taxonomy used at the provider boundary."
       },
+      "DemoResetPreviewResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "fingerprint": {
+            "type": "string",
+            "title": "Fingerprint"
+          },
+          "reset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reset Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "count",
+          "fingerprint"
+        ],
+        "title": "DemoResetPreviewResponse"
+      },
+      "DemoResetRequest": {
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[a-f0-9]+$",
+            "title": "Fingerprint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fingerprint"
+        ],
+        "title": "DemoResetRequest"
+      },
       "DetectionFinding": {
         "properties": {
           "id": {
@@ -8192,6 +8362,405 @@
         ],
         "title": "LLMReleaseManifest"
       },
+      "LLMReleaseManifestContract": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LLMReleaseManifest"
+          },
+          {
+            "$ref": "#/components/schemas/LLMReleaseManifestV1_1"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "schema_version",
+          "mapping": {
+            "llm_release_manifest/1.0.0": "#/components/schemas/LLMReleaseManifest",
+            "llm_release_manifest/1.1.0": "#/components/schemas/LLMReleaseManifestV1_1"
+          }
+        }
+      },
+      "LLMReleaseManifestV1_1": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "llm_release_manifest/1.1.0",
+            "title": "Schema Version",
+            "default": "llm_release_manifest/1.1.0"
+          },
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$",
+            "title": "Candidate Id"
+          },
+          "package_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Package Name"
+          },
+          "package_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Package Version"
+          },
+          "task": {
+            "$ref": "#/components/schemas/ModelReleaseTask"
+          },
+          "artifact_source": {
+            "type": "string",
+            "const": "CSIGHT",
+            "title": "Artifact Source",
+            "default": "CSIGHT"
+          },
+          "artifact_format": {
+            "type": "string",
+            "const": "GGUF",
+            "title": "Artifact Format",
+            "default": "GGUF"
+          },
+          "artifact": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+            "title": "Artifact"
+          },
+          "artifact_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Artifact Revision"
+          },
+          "artifact_content_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Artifact Content Digest"
+          },
+          "artifact_weight_bytes": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Artifact Weight Bytes"
+          },
+          "upstream_model_artifact": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+            "title": "Upstream Model Artifact"
+          },
+          "upstream_model_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Upstream Model Revision"
+          },
+          "base_artifact": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+            "title": "Base Artifact"
+          },
+          "base_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Revision"
+          },
+          "base_artifact_content_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Base Artifact Content Digest"
+          },
+          "gguf_filename": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{1,254}\\.gguf$",
+            "title": "Gguf Filename"
+          },
+          "quantization_type": {
+            "type": "string",
+            "enum": [
+              "Q4_K_M",
+              "Q5_K_S"
+            ],
+            "title": "Quantization Type"
+          },
+          "quantization_recipe_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Quantization Recipe Digest"
+          },
+          "calibration_dataset_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Calibration Dataset Digest"
+          },
+          "calibration_manifest_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Calibration Manifest Digest"
+          },
+          "importance_matrix_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Importance Matrix Digest"
+          },
+          "tokenizer_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Tokenizer Digest"
+          },
+          "chat_template_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Chat Template Digest"
+          },
+          "quantizer_binary_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Quantizer Binary Digest"
+          },
+          "runtime_engine": {
+            "type": "string",
+            "const": "LLAMA_CPP",
+            "title": "Runtime Engine",
+            "default": "LLAMA_CPP"
+          },
+          "runtime_image": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Runtime Image"
+          },
+          "runtime_image_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Runtime Image Digest"
+          },
+          "llama_cpp_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Llama Cpp Revision"
+          },
+          "runtime_binary_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Runtime Binary Digest"
+          },
+          "runtime_build_manifest_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Runtime Build Manifest Digest"
+          },
+          "sbom_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Sbom Digest"
+          },
+          "served_model_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Served Model Name"
+          },
+          "model_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Model Version"
+          },
+          "device_profile": {
+            "type": "string",
+            "const": "onprem-cuda",
+            "title": "Device Profile",
+            "default": "onprem-cuda"
+          },
+          "max_context_tokens": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Max Context Tokens"
+          },
+          "max_num_sequences": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Max Num Sequences"
+          },
+          "gpu_layers": {
+            "type": "string",
+            "const": "all",
+            "title": "Gpu Layers",
+            "default": "all"
+          },
+          "batch_size": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "minimum": 32.0,
+            "title": "Batch Size"
+          },
+          "ubatch_size": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "minimum": 32.0,
+            "title": "Ubatch Size"
+          },
+          "flash_attention": {
+            "type": "boolean",
+            "const": true,
+            "title": "Flash Attention",
+            "default": true
+          },
+          "kv_cache_type_k": {
+            "type": "string",
+            "enum": [
+              "q8_0",
+              "f16"
+            ],
+            "title": "Kv Cache Type K",
+            "default": "q8_0"
+          },
+          "kv_cache_type_v": {
+            "type": "string",
+            "enum": [
+              "q8_0",
+              "f16"
+            ],
+            "title": "Kv Cache Type V",
+            "default": "q8_0"
+          },
+          "api_compatibility": {
+            "type": "string",
+            "const": "OPENAI_V1",
+            "title": "Api Compatibility",
+            "default": "OPENAI_V1"
+          },
+          "language_model_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Language Model Only",
+            "default": true
+          },
+          "automatic_cross_model_fallback": {
+            "type": "boolean",
+            "const": false,
+            "title": "Automatic Cross Model Fallback",
+            "default": false
+          },
+          "prompt_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Prompt Name"
+          },
+          "prompt_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Prompt Version"
+          },
+          "prompt_content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Prompt Content Hash"
+          },
+          "input_schema_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Input Schema Version"
+          },
+          "output_schema_version": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Output Schema Version"
+          },
+          "qualification_dataset_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Qualification Dataset Digest"
+          },
+          "qualification_result_digest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualification Result Digest"
+          },
+          "candidate_matrix_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Candidate Matrix Digest"
+          },
+          "candidate_assessment_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Candidate Assessment Digest"
+          },
+          "release_status": {
+            "$ref": "#/components/schemas/ModelReleaseStatus"
+          },
+          "qualified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualified At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "package_name",
+          "package_version",
+          "task",
+          "artifact",
+          "artifact_revision",
+          "artifact_content_digest",
+          "artifact_weight_bytes",
+          "upstream_model_artifact",
+          "upstream_model_revision",
+          "base_artifact",
+          "base_revision",
+          "base_artifact_content_digest",
+          "gguf_filename",
+          "quantization_type",
+          "quantization_recipe_digest",
+          "calibration_dataset_digest",
+          "calibration_manifest_digest",
+          "importance_matrix_digest",
+          "tokenizer_digest",
+          "chat_template_digest",
+          "quantizer_binary_digest",
+          "runtime_image",
+          "runtime_image_digest",
+          "llama_cpp_revision",
+          "runtime_binary_digest",
+          "runtime_build_manifest_digest",
+          "sbom_digest",
+          "served_model_name",
+          "model_version",
+          "max_context_tokens",
+          "max_num_sequences",
+          "batch_size",
+          "ubatch_size",
+          "prompt_name",
+          "prompt_version",
+          "prompt_content_hash",
+          "input_schema_version",
+          "output_schema_version",
+          "qualification_dataset_digest",
+          "candidate_matrix_digest",
+          "candidate_assessment_digest",
+          "release_status"
+        ],
+        "title": "LLMReleaseManifestV1_1",
+        "description": "GGUF release identity without inheriting the vLLM-specific v1 contract."
+      },
       "LLMTextClaim": {
         "properties": {
           "type": {
@@ -8558,6 +9127,14 @@
           "idempotent_replay"
         ],
         "title": "ModelActivationResponse"
+      },
+      "ModelReleaseStatus": {
+        "type": "string",
+        "enum": [
+          "SHADOW_CANDIDATE",
+          "RELEASE_ELIGIBLE"
+        ],
+        "title": "ModelReleaseStatus"
       },
       "ModelReleaseTask": {
         "type": "string",
@@ -9147,6 +9724,18 @@
             "type": "string",
             "title": "Requested Action"
           },
+          "inquiry_preview": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inquiry Preview"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -9319,6 +9908,18 @@
           "requested_action": {
             "type": "string",
             "title": "Requested Action"
+          },
+          "inquiry_preview": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inquiry Preview"
           },
           "task_type": {
             "type": "string",
@@ -10689,7 +11290,7 @@
       "RegisterModelReleaseRequest": {
         "properties": {
           "manifest": {
-            "$ref": "#/components/schemas/LLMReleaseManifest"
+            "$ref": "#/components/schemas/LLMReleaseManifestContract"
           },
           "signing_key_id": {
             "type": "string",
@@ -11677,7 +12278,7 @@
       "SignedLLMReleaseManifest": {
         "properties": {
           "manifest": {
-            "$ref": "#/components/schemas/LLMReleaseManifest"
+            "$ref": "#/components/schemas/LLMReleaseManifestContract"
           },
           "signing_key_id": {
             "type": "string",

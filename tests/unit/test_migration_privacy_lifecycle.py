@@ -28,7 +28,7 @@ def test_privacy_lifecycle_revision_is_linear_head() -> None:
     scripts = ScriptDirectory.from_config(_config(StringIO()))
     revision = scripts.get_revision(REVISION)
 
-    assert scripts.get_heads() == ["20260831_0036_policy_query_search_events_v2"]
+    assert scripts.get_heads() == ["20260910_0038_fixture_evidence_repair"]
     assert revision is not None
     assert revision.down_revision == PREVIOUS
 

@@ -9,12 +9,15 @@ from sqlalchemy.orm import Session
 
 from app.adapters.persistence.analysis_repositories import SQLAlchemyAnalysisRunRepository
 from app.application.policy_engine import StartPolicyEvaluation, StartPolicyEvaluationCommand
+from app.bootstrap.settings import Settings
 from app.platform.analysis import (
     AnalysisExecutionMode,
     ShadowAnalysisDownstreamForbiddenError,
 )
+from app.platform.errors import ForbiddenError
 from app.platform.tenant import Principal, Role
 from app.ports.policy_engine import PolicyEngineRepository
+from tests.unit.test_policy_evaluation_http import _run  # pyright: ignore[reportPrivateUsage]
 
 pytestmark = pytest.mark.unit
 
@@ -73,3 +76,47 @@ def test_admission_repository_takes_global_lock_then_runs_one_count_query() -> N
     assert count_sql.count("count(") == 2
     assert "analysis_runs.status IN" in count_sql
     assert "FILTER (WHERE analysis_runs.tenant_id" in count_sql
+
+
+@pytest.mark.parametrize("replayed", [False, True])
+def test_explicit_shadow_feedback_can_start_policy_workflow(replayed: bool) -> None:
+    repository = MagicMock()
+    repository.get_analysis_execution_mode.return_value = AnalysisExecutionMode.SHADOW
+    repository.create.return_value = (_run(), replayed)
+    service = StartPolicyEvaluation(repository, shadow_feedback_enabled=True)
+    result = service.execute(
+        principal=_principal(),
+        case_id="case-1",
+        command=StartPolicyEvaluationCommand(
+            analysis_run_id="analysis-1",
+            as_of_date=date(2026, 9, 10),
+            idempotency_key="feedback",
+            correlation_id="feedback-test",
+        ),
+    )
+    assert result.replayed is replayed
+    assert repository.create.call_args.kwargs["tenant_id"] == "tenant-1"
+
+
+def test_shadow_feedback_still_requires_analysis_permission() -> None:
+    repository = MagicMock()
+    service = StartPolicyEvaluation(repository, shadow_feedback_enabled=True)
+    principal = _principal().model_copy(update={"roles": frozenset({Role.QUALITY_VIEWER})})
+    with pytest.raises(ForbiddenError):
+        service.execute(
+            principal=principal,
+            case_id="case-1",
+            command=StartPolicyEvaluationCommand(
+                analysis_run_id="analysis-1",
+                as_of_date=date(2026, 9, 10),
+                idempotency_key="feedback",
+                correlation_id="feedback-test",
+            ),
+        )
+    repository.create.assert_not_called()
+
+
+@pytest.mark.parametrize("environment", ["production", "pilot"])
+def test_shadow_feedback_cannot_be_enabled_outside_local(environment: str) -> None:
+    with pytest.raises(ValueError, match="SHADOW human feedback"):
+        Settings(environment=environment, shadow_human_feedback_enabled=True)

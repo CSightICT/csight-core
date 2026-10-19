@@ -12,6 +12,8 @@ from app.interface.http.operations_schemas import (
     ActivateModelRouteRequest,
     ActiveModelReleaseResponse,
     ActiveModelRouteResponse,
+    DemoResetPreviewResponse,
+    DemoResetRequest,
     ModelActivationResponse,
     ModelRouteActivationResponse,
     OnboardingReadinessResponse,
@@ -28,7 +30,7 @@ from app.interface.http.operations_services import (
 )
 from app.interface.http.schemas import ErrorDetail, ErrorResponse
 from app.platform.analysis.enums import AnalysisExecutionMode
-from app.platform.model_activation import ModelReleaseTask
+from app.platform.model_activation import ModelReleaseModeNotAllowedError, ModelReleaseTask
 from app.platform.model_routing import (
     ActiveModelRoutePlanRequiredError,
     ModelRouteActivationConflictError,
@@ -429,6 +431,17 @@ def register_model_release(
     "/model-releases/{release_id}/activate",
     response_model=ModelActivationResponse,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_200_OK: {
+            "model": ModelActivationResponse,
+            "description": "Idempotent replay of the same model release activation.",
+        },
+        status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ErrorResponse},
+    },
 )
 def activate_model_release(
     release_id: Annotated[str, Path(min_length=1, max_length=64)],
@@ -446,14 +459,22 @@ def activate_model_release(
     if unavailable is not None:
         return unavailable
     assert services is not None and services.activate_model_release is not None
-    result = services.activate_model_release.execute(
-        principal=principal,
-        release_id=release_id,
-        execution_mode=body.execution_mode,
-        expected_current_activation_id=body.expected_current_activation_id,
-        reason=body.reason,
-        idempotency_key=idempotency_key,
-    )
+    try:
+        result = services.activate_model_release.execute(
+            principal=principal,
+            release_id=release_id,
+            execution_mode=body.execution_mode,
+            expected_current_activation_id=body.expected_current_activation_id,
+            reason=body.reason,
+            idempotency_key=idempotency_key,
+        )
+    except ModelReleaseModeNotAllowedError as error:
+        return _boundary_error(
+            request,
+            status_code=status.HTTP_409_CONFLICT,
+            code=error.code,
+            message=error.message,
+        )
     if result.idempotent_replay:
         response.status_code = status.HTTP_200_OK
     _no_store(response)
@@ -556,7 +577,11 @@ def activate_model_route(
             reason=body.reason,
             idempotency_key=idempotency_key,
         )
-    except (ModelRoutePlanConflictError, ModelRouteActivationConflictError) as error:
+    except (
+        ModelRoutePlanConflictError,
+        ModelRouteActivationConflictError,
+        ModelReleaseModeNotAllowedError,
+    ) as error:
         return _boundary_error(
             request,
             status_code=status.HTTP_409_CONFLICT,
@@ -676,3 +701,53 @@ def _model_route_boundary(
 
 
 __all__ = ["router"]
+
+
+@router.get("/demo-reset", response_model=DemoResetPreviewResponse)
+def preview_demo_reset(
+    request: Request,
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[OperationsServiceContainer | None, Depends(provide_operations_services)],
+) -> DemoResetPreviewResponse | Response:
+    return _demo_reset(request, response, principal, services, None)
+
+
+@router.post("/demo-reset", response_model=DemoResetPreviewResponse)
+def execute_demo_reset(
+    body: DemoResetRequest,
+    request: Request,
+    response: Response,
+    principal: Annotated[Principal, Depends(provide_current_principal)],
+    services: Annotated[OperationsServiceContainer | None, Depends(provide_operations_services)],
+) -> DemoResetPreviewResponse | Response:
+    return _demo_reset(request, response, principal, services, body.fingerprint)
+
+
+def _demo_reset(
+    request: Request,
+    response: Response,
+    principal: Principal,
+    services: OperationsServiceContainer | None,
+    fingerprint: str | None,
+) -> DemoResetPreviewResponse | Response:
+    from app.ports.demo_reset import DemoResetConflict
+
+    if Role.ADMIN not in principal.roles:
+        return _boundary_error(
+            request, status_code=403, code="FORBIDDEN", message="관리자만 사용할 수 있습니다."
+        )
+    if services is None or services.demo_reset is None:
+        return _boundary_error(
+            request,
+            status_code=503,
+            code="UNAVAILABLE",
+            message="초기화 기능이 연결되지 않았습니다.",
+        )
+    _no_store(response)
+    try:
+        return DemoResetPreviewResponse(**services.demo_reset.execute(principal, fingerprint))
+    except DemoResetConflict as exc:
+        return _boundary_error(
+            request, status_code=409, code="DEMO_RESET_CONFLICT", message=str(exc)
+        )

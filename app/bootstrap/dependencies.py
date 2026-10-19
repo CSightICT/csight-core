@@ -4,7 +4,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from os import getpid
 
-from app.adapters.llm import MLXLLMProvider, MockLLMProvider, VLLMLLMProvider
+from app.adapters.llm import (
+    LlamaCppLLMProvider,
+    MLXLLMProvider,
+    MockLLMProvider,
+    VLLMLLMProvider,
+)
 from app.adapters.messaging import RabbitMQReadinessProbe
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.readiness import PostgresReadinessProbe
@@ -184,6 +189,35 @@ def build_llm_provider(
                 settings=settings,
                 factory=lambda: CircuitBreakingLLMProvider(
                     VLLMLLMProvider(
+                        base_url=base_url,
+                        api_key=settings.llm_api_key_value,
+                        model_id=model_id,
+                        model_version=model_version,
+                        model_revision=model_revision,
+                        connect_timeout_seconds=connect_timeout,
+                        read_timeout_seconds=read_timeout,
+                        max_output_tokens=settings.llm_max_output_tokens,
+                        max_output_chars=settings.llm_max_output_chars,
+                        max_input_chars=settings.llm_max_input_chars,
+                        temperature=settings.llm_temperature,
+                        tls_verify=settings.llm_tls_verify,
+                    ),
+                    breaker=CircuitBreaker(
+                        failure_threshold=circuit_threshold,
+                        open_seconds=circuit_open_seconds,
+                    ),
+                ),
+            )
+        )
+    if settings.llm_provider == "llama_cpp":
+        if base_url is None:
+            raise ProviderConfigurationError("LLM_BASE_URL is required for the llama.cpp adapter")
+        return _as_llm_provider(
+            _cached_process_provider(
+                kind=f"llm:{task.value}",
+                settings=settings,
+                factory=lambda: CircuitBreakingLLMProvider(
+                    LlamaCppLLMProvider(
                         base_url=base_url,
                         api_key=settings.llm_api_key_value,
                         model_id=model_id,

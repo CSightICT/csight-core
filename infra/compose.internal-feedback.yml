@@ -1,0 +1,41 @@
+# Explicit local human-feedback overlay. Not used by the separated pilot profile.
+x-feedback-environment: &feedback-environment
+  SHADOW_HUMAN_FEEDBACK_ENABLED: "true"
+  LLM_PROVIDER: llama_cpp
+  LLM_BASE_URL: http://host.docker.internal:18004
+  LLM_API_KEY: ${CSIGHT_FEEDBACK_LLM_API_KEY:?Use the internal feedback controller}
+  LLM_MODEL_ID: csight-qwen3.8-27b-q5-k-s
+  LLM_MODEL_VERSION: q5-internal-1.0.1
+  LLM_MODEL_REVISION: d709a46e48db256ac0bb3eee7fb2cdcfd087820eb4701b1af5dda84db41a2219
+  LLM_TASK_RUNTIMES: '{}'
+  LLM_READ_TIMEOUT_SECONDS: "120"
+  LLM_MAX_OUTPUT_TOKENS: "1536"
+  LLM_TLS_VERIFY: "false"
+  VISION_PROVIDER: remote
+  VISION_BASE_URL: http://host.docker.internal:8093
+  VISION_API_KEY: ""
+  VISION_TASK: ANY_DEFECT_CLASSIFICATION
+  VISION_MODEL_ID: csight-dinov2-vits14-kaputt-binary
+  VISION_MODEL_VERSION: e3-epoch10-20260827
+  VISION_MODEL_REVISION: 49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e
+  VISION_ASSESSMENT_EXPECTED_THRESHOLD: "0.8984375"
+  VISION_READ_TIMEOUT_SECONDS: "120"
+  VISION_TLS_VERIFY: "false"
+
+services:
+  api:
+    environment: *feedback-environment
+  worker-model:
+    environment: *feedback-environment
+  worker-retrieval:
+    environment: *feedback-environment
+  worker-decision:
+    environment: *feedback-environment
+  dispatcher:
+    environment: *feedback-environment
+  migrator:
+    environment: *feedback-environment
+  web:
+    build:
+      args:
+        VITE_INTERNAL_MODEL_FEEDBACK: "true"

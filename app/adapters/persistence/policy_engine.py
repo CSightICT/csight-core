@@ -109,8 +109,10 @@ class SQLAlchemyPolicyEngineRepository:
         *,
         lease_ttl: timedelta = timedelta(minutes=5),
         max_execution_attempts: int = 4,
+        shadow_feedback_enabled: bool = False,
     ) -> None:
         self._factory = session_factory
+        self._shadow_feedback_enabled = shadow_feedback_enabled
         if lease_ttl.total_seconds() <= 0:
             raise ValueError("lease_ttl must be positive")
         self._lease_ttl = lease_ttl
@@ -289,6 +291,7 @@ class SQLAlchemyPolicyEngineRepository:
             if (
                 analysis is not None
                 and analysis.execution_mode == AnalysisExecutionMode.SHADOW.value
+                and not self._shadow_feedback_enabled
             ):
                 raise ShadowAnalysisDownstreamForbiddenError()
             extraction = session.scalar(
@@ -324,6 +327,7 @@ class SQLAlchemyPolicyEngineRepository:
             llm_scope = (
                 {
                     "mlx": "LOCAL_POC",
+                    "llama_cpp": "LOCAL_POC",
                     "vllm": "PRODUCTION_QUALIFIED",
                     "mock": "MOCK_QUALIFIED",
                 }.get(provider, "NOT_AVAILABLE")
@@ -360,12 +364,20 @@ class SQLAlchemyPolicyEngineRepository:
                 "vision": "MOCK_QUALIFIED",
                 "alignment": "NOT_AVAILABLE",
             }
+            if analysis.execution_mode == AnalysisExecutionMode.SHADOW.value:
+                qualifications["llm"] = "LOCAL_POC" if provider != "mock" else "MOCK_QUALIFIED"
+                qualifications["analysis_execution_mode"] = "SHADOW"
+                qualifications["usage_scope"] = "INTERNAL_HUMAN_FEEDBACK"
             snapshot_hash = canonical_hash({"values": values, "qualifications": qualifications})
             run = PolicyEvaluationRunModel(
                 id=uuid4(),
                 tenant_id=tenant_uuid,
                 case_id=case_uuid,
                 analysis_run_id=analysis_uuid,
+                shadow_feedback_allowed=(
+                    analysis.execution_mode == AnalysisExecutionMode.SHADOW.value
+                    and self._shadow_feedback_enabled
+                ),
                 rule_set_id=rule_set_row.id,
                 rule_set_version=rule_set_row.rule_set_version,
                 rule_set_hash=rule_set_row.content_hash,

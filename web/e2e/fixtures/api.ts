@@ -222,7 +222,7 @@ export async function installApi(page: Page, scenario: DemoScenario) {
       return json(route, {
         items: visible ? [{
           case_id: item.case_id, case_status: item.status, order_ref: item.order_ref, product_ref: item.product_ref,
-          requested_action: item.requested_action, created_at: item.created_at, updated_at: activeTask.updated_at,
+          requested_action: item.requested_action, inquiry_preview: item.customer_message.slice(0, 160), created_at: item.created_at, updated_at: activeTask.updated_at,
           review_task_id: activeTask.id, review_status: activeTask.status, review_priority: activeTask.priority,
           assignee_id: activeTask.current_assignee_id, assignment_version: activeTask.current_assignee_id ? 1 : 0, resolution_status: complete ? "ACTION_DRY_RUN_VALIDATED" : null,
           report_id: complete ? "report-1" : null, report_generated_at: complete ? now : null,
@@ -261,7 +261,7 @@ export async function installApi(page: Page, scenario: DemoScenario) {
       return json(route, {
         items: visible ? [{
           review_task_id: activeTask.id, case_id: activeTask.case_id, case_status: item.status,
-          order_ref: item.order_ref, product_ref: item.product_ref, requested_action: item.requested_action,
+          order_ref: item.order_ref, product_ref: item.product_ref, requested_action: item.requested_action, inquiry_preview: item.customer_message.slice(0, 160),
           task_type: activeTask.task_type, priority: activeTask.priority, status: activeTask.status,
           assignee_id: activeTask.current_assignee_id, version: activeTask.version, created_at: activeTask.created_at,
           updated_at: activeTask.updated_at, resolution_status: null, report_id: null, report_generated_at: null,

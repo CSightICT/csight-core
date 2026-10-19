@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, api } from "../api/client";
 import type { PocSummary, RatioMetric } from "../api/contracts";
-import { Card, EmptyState, Loading, Notice, PageHeader, friendlyError, textValue } from "../components/Ui";
+import { Card, EmptyState, Loading, PageHeader, friendlyError, textValue } from "../components/Ui";
 
 type MetricKey = Exclude<keyof PocSummary, "schema_version" | "generated_at" | "eligible_source_scope" | "eligible_case_count" | "excluded_case_count">;
 const metricDefinitions: Array<{ key: MetricKey; title: string; description: string; icon: typeof Clock3; format?: "duration" | "rate" }> = [
-  { key: "review_time", title: "실제 검토시간", description: "Claim 구간 합계", icon: Clock3, format: "duration" },
+  { key: "review_time", title: "실제 검토시간", description: "담당자가 검토한 시간", icon: Clock3, format: "duration" },
   { key: "recommendation_difference_rate", title: "권고와 다른 결정", description: "비교 가능한 결정 기준", icon: Gauge, format: "rate" },
   { key: "additional_evidence_request_rate", title: "추가자료 요청", description: "전체 검토 작업 기준", icon: FileWarning, format: "rate" },
   { key: "action_input_missing_rate", title: "처리 정보 누락", description: "조치 대상 결정 기준", icon: AlertTriangle, format: "rate" },
@@ -23,11 +23,11 @@ function findMetric(data: PocSummary | undefined, key: MetricKey): RatioMetric |
 export function MetricsPage() {
   const metrics = useQuery({ queryKey: ["poc-metrics"], queryFn: () => api.getMetrics(), retry: false });
   return <div className="page">
-    <PageHeader eyebrow="운영 현황" title="상담 운영 지표" description="실제 관측값과 표본 크기를 함께 표시합니다. 사전 목표 절감률은 주장하지 않습니다." />
-    <Notice tone="warning" title="파일럿 실운영 데이터만 집계"><span>`PILOT_LIVE`로 출처가 확인된 문의만 아래 지표에 포함합니다. 합성·Shadow·반입·미확인 데이터는 성과와 SLA에서 제외됩니다.</span></Notice>
+    <PageHeader eyebrow="운영 현황" title="상담 운영 지표" description="검토 시간과 처리 결과를 바탕으로 상담 업무를 돌아봅니다." />
+    <p className="muted-copy">실운영으로 확인된 문의 기준입니다. 시연 기록은 포함하지 않으며, 기록이 없으면 —로 표시합니다.</p>
     {metrics.isLoading ? <Loading label="운영 지표를 집계하는 중" /> : metrics.error instanceof ApiError && metrics.error.status === 404 ? <EmptyState title="지표 집계가 아직 준비되지 않았습니다"><span>첫 최종 처리와 분석 기록이 쌓이면 분자·분모·표본 수가 표시됩니다.</span></EmptyState> : metrics.error ? <div className="error-panel" role="alert">{friendlyError(metrics.error)}</div> : <>
       <div className="metric-grid">{metricDefinitions.map((definition) => <MetricCard key={definition.title} definition={definition} metric={findMetric(metrics.data, definition.key)} />)}</div>
-      <Card title="집계 메타데이터" className="spaced-card"><div className="metadata-line"><BarChart3 size={19} /><span>파일럿 포함 / 제외</span><strong>{metrics.data?.eligible_case_count ?? 0}건 / {metrics.data?.excluded_case_count ?? 0}건</strong></div><div className="metadata-line"><BarChart3 size={19} /><span>생성 시각</span><strong>{textValue(metrics.data?.generated_at)}</strong></div></Card>
+      <details className="supporting-details spaced-card"><summary>집계 기준 자세히 보기</summary><Card title="집계 정보" className="spaced-card"><div className="metadata-line"><BarChart3 size={19} /><span>파일럿 포함 / 제외</span><strong>{metrics.data?.eligible_case_count ?? 0}건 / {metrics.data?.excluded_case_count ?? 0}건</strong></div><div className="metadata-line"><BarChart3 size={19} /><span>생성 시각</span><strong>{textValue(metrics.data?.generated_at)}</strong></div></Card></details>
     </>}
   </div>;
 }

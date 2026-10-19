@@ -36,11 +36,8 @@ class PolicyRetrievalRunResponse(_Schema):
 
     @classmethod
     def from_run(cls, run: PolicyRetrievalRun) -> "PolicyRetrievalRunResponse":
-        return cls(
-            **run.model_dump(
-                exclude={"tenant_id", "text_result_id", "idempotency_key", "request_hash"}
-            )
-        )
+        # Domain-only rollout metadata is not part of the published HTTP contract.
+        return cls(**run.model_dump(include=set(cls.model_fields)))
 
 
 class PolicyRetrievalRunListResponse(_Schema):

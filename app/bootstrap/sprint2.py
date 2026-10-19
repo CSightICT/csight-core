@@ -29,6 +29,7 @@ from app.domains.product_defect_cs import (
 )
 from app.domains.product_defect_cs.prompts import (
     PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2_LOCAL_2,
+    PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2_LOCAL_8,
 )
 from app.interface.http.services import Sprint2ServiceContainer
 from app.platform.analysis.prompts import PromptManifest
@@ -41,6 +42,8 @@ class Sprint2ConfigurationError(RuntimeError):
 
 
 def _v2_prompt(settings: Settings) -> PromptManifest:
+    if settings.shadow_human_feedback_enabled and settings.llm_provider == "llama_cpp":
+        return PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2_LOCAL_8
     return (
         PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2_LOCAL_2
         if settings.llm_provider == "mlx"
@@ -71,6 +74,7 @@ def build_sprint2_services(settings: Settings) -> Sprint2ServiceContainer:
             clock=clock,
             id_generator=id_generator,
             model_route_resolver=build_active_model_route_resolver(settings),
+            shadow_only=settings.shadow_human_feedback_enabled,
         ),
         list_analysis_runs=ListAnalysisRuns(uow_factory=uow_factory),
         get_analysis_run=GetAnalysisRun(uow_factory=uow_factory),

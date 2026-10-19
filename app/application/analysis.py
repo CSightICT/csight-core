@@ -58,6 +58,9 @@ from app.platform.errors import (
     InconsistentPersistenceStateError,
     SensitivePayloadUnavailableError,
 )
+from app.platform.errors import (
+    ValidationError as DomainValidationError,
+)
 from app.platform.evidence import EvidenceType, EvidenceUploadStatus
 from app.platform.model_activation import (
     ActiveModelReleaseRequiredError,
@@ -259,8 +262,10 @@ class StartTextAnalysis:
         clock: Clock,
         id_generator: IdGenerator,
         model_route_resolver: ActiveModelRouteResolver | None = None,
+        shadow_only: bool = False,
     ) -> None:
         self._uow_factory = uow_factory
+        self._shadow_only = shadow_only
         self._provider = provider
         self._vision_provider = vision_provider
         self._prompt = prompt
@@ -276,6 +281,8 @@ class StartTextAnalysis:
         case_id: str,
         command: StartTextAnalysisCommand,
     ) -> StartTextAnalysisResult:
+        if self._shadow_only and command.execution_mode is not AnalysisExecutionMode.SHADOW:
+            raise DomainValidationError("Internal feedback analyses must use SHADOW mode.")
         is_text_v1 = (
             command.pipeline is AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION
             and command.pipeline_version == TEXT_EXTRACTION_PIPELINE_VERSION

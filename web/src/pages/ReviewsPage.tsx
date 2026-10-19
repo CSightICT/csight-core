@@ -9,9 +9,8 @@ import type { OperatorQueueSort, OperatorQueueView } from "../api/contracts";
 import { OperatorQueueTabs } from "../components/OperatorQueueTabs";
 import { Card, EmptyState, Loading, PageHeader, formatDate, friendlyError, shortId } from "../components/Ui";
 import { StatusBadge } from "../components/StatusBadge";
-import { demoProductDisplayName } from "../demo/productScenarioCatalog";
 import { formatQueueWait } from "../operator/queuePresentation";
-import { businessLabel, operationalReference } from "../presentation/businessLabels";
+import { businessLabel, inquiryTitle } from "../presentation/businessLabels";
 
 const emptyCounts = { all: 0, my: 0, unassigned: 0, urgent: 0, waiting_evidence: 0, complete: 0 };
 
@@ -34,8 +33,8 @@ export function ReviewsPage() {
   const assigneeNames = new Map(assignees.data?.map((item) => [item.user_id, item.display_name]));
   const counts = tasks.data?.pages[0]?.counts ?? emptyCounts;
 
-  return <div className="page">
-    <PageHeader eyebrow="담당자 검토" title={reviewerWorkspace ? "내 문의 처리 현황" : "검토 대기함"} description={reviewerWorkspace ? "내가 최종 처리한 문의와 결정 기록을 확인합니다." : "긴급도·담당자·대기시간을 확인하고 사람이 최종 결정할 작업을 선택합니다."} />
+  return <div className={isAdmin ? "page inquiry-queue-admin" : "page inquiry-queue-personal"}>
+    <PageHeader eyebrow="담당자 검토" title={reviewerWorkspace ? "내 문의 처리 현황" : "검토 대기함"} description={reviewerWorkspace ? "내가 최종 처리한 문의와 결정 기록을 확인합니다." : "문의 유형을 확인하고 바로 검토하세요."} />
     <Card className="table-card operator-queue-card">
       <OperatorQueueTabs counts={counts} idPrefix="review-view" panelId="review-queue-panel" value={view} onChange={setView} {...(reviewerWorkspace ? { allowedViews: ["complete"] as OperatorQueueView[] } : {})} />
       <div className="table-toolbar operator-queue-toolbar">
@@ -46,13 +45,11 @@ export function ReviewsPage() {
       <div id="review-queue-panel" role="tabpanel" aria-labelledby={`review-view-${view}`} tabIndex={0}>
         {tasks.isPending ? <Loading label="검토 업무 목록을 불러오는 중" /> : tasks.isError && !items.length ? <div className="error-panel" role="alert">{friendlyError(tasks.error)}</div> : items.length === 0 ? <EmptyState title={searchValue ? "검색 결과가 없습니다" : "해당 검토 작업이 없습니다"}><span>{searchValue ? "검색어를 바꾸거나 다른 업무 보기를 선택해 주세요." : "다른 업무 보기를 선택하거나 새로운 정책 평가 결과를 기다려 주세요."}</span></EmptyState> :
           <div className="case-list" role="list">{items.map((task) => {
-            const productName = demoProductDisplayName(task.product_ref) ?? `${operationalReference(task.product_ref)} 상품`;
-            return <div className="review-row-shell" key={task.review_task_id} role="listitem"><Link className="case-row operator-case-row review-row" to={`/reviews/${task.review_task_id}`}>
+            return <div className="review-row-shell" key={task.review_task_id} role="listitem"><Link className="case-row operator-case-row review-row inquiry-queue-row" to={`/reviews/${task.review_task_id}`}>
               <span className="case-icon"><ClipboardCheck size={20} /></span>
-              <div className="case-primary"><strong>{productName}</strong><span>{businessLabel(task.task_type)} · 문의 번호 {shortId(task.case_id)}</span><small>주문 번호 {task.order_ref} · 요청 {businessLabel(task.requested_action)}</small><small className="operator-mobile-meta">담당자 {task.assignee_id ? shortId(task.assignee_id) : "미배정"} · 최근 변경 {formatDate(task.updated_at)} · 대기 {formatQueueWait(task.updated_at)}</small></div>
-              <div className="case-action"><small>우선순위</small><span>{businessLabel(task.priority)}</span><small>문의 {businessLabel(task.case_status)}</small></div>
-              <div className="queue-assignee"><small>담당자</small><span title={task.assignee_id ?? undefined}>{task.assignee_id ? assigneeNames.get(task.assignee_id) ?? shortId(task.assignee_id) : "미배정"}</span><small>검토 자료 v{task.version}</small></div>
-              <div className="queue-updated"><small>최근 변경</small><span>{formatDate(task.updated_at)}</span><small>대기 {formatQueueWait(task.updated_at)}</small></div>
+              <div className="case-primary"><strong>{task.inquiry_preview?.trim() || inquiryTitle(task.requested_action)}</strong><span>{businessLabel(task.requested_action)} · 문의 {shortId(task.case_id)} · 대기 {formatQueueWait(task.updated_at)}</span>{["HIGH", "CRITICAL"].includes(task.priority) && <small>우선 검토 · {businessLabel(task.priority)}</small>}</div>
+              {isAdmin && <div className="queue-assignee"><small>담당자</small><span>{task.assignee_id ? assigneeNames.get(task.assignee_id) ?? shortId(task.assignee_id) : "미배정"}</span></div>}
+              <div className="queue-updated"><span>{formatDate(task.updated_at)}</span></div>
               <StatusBadge status={task.status} /><ArrowRight className="row-arrow" size={18} />
             </Link></div>;
           })}</div>}

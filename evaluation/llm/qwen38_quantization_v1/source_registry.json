@@ -1,0 +1,90 @@
+{
+  "schema_version": "quantization_source_registry/1.0.0",
+  "model_artifact": "Qwen/Qwen3.8-27B",
+  "model_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "source_bf16_artifact": "ggml-org/Qwen3.8-27B-GGUF",
+  "source_bf16_revision": "0669b98607d47046c7c2b3f801011d54a08cfccf",
+  "source_bf16_filename": "Qwen3.8-27B-BF16.gguf",
+  "source_bf16_content_digest": "sha256:5a3eedc837bcbd1365cdbf5b71e698df3122e76586ba872f07ce3ed4a9bfa97e",
+  "source_bf16_bytes": 53808281952,
+  "tokenizer_config_digest": "sha256:b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+  "chat_template_digest": "sha256:c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+  "render_contract": {
+    "add_generation_prompt": false,
+    "enable_thinking": false,
+    "preserve_thinking": false,
+    "renderer": "qwen3.8-text-only-nonthinking/1.0.0",
+    "tools_enabled": false
+  },
+  "token_targets": {
+    "calibration": 750000,
+    "logits_holdout": 16000,
+    "ppl_holdout": 100000
+  },
+  "mix": [
+    {
+      "category": "CSIGHT_EXTRACTION",
+      "license_identifier": "CSIGHT-SYNTHETIC",
+      "percent": 35,
+      "pii_usage": "SYNTHETIC_PII_FREE",
+      "source_id": "csight://evaluation/llm_extraction_v2",
+      "visibility": "LOCAL_SYNTHETIC",
+      "revision": "sha256:d522ea609b274810f75d186064635d16f7b4f2097dad02a2beddd3ba929543a4"
+    },
+    {
+      "category": "CSIGHT_POLICY_GROUNDING",
+      "license_identifier": "CSIGHT-SYNTHETIC",
+      "percent": 20,
+      "pii_usage": "SYNTHETIC_PII_FREE",
+      "source_id": "csight://evaluation/rag_grounding_v1",
+      "visibility": "LOCAL_SYNTHETIC",
+      "revision": "sha256:cf6846ec1d387d3cdd36ab4cdc7ed398832351c0ae27233a11cb23bf112e8e5b"
+    },
+    {
+      "category": "CSIGHT_QUERY_BUILDER",
+      "license_identifier": "CSIGHT-SYNTHETIC",
+      "percent": 10,
+      "pii_usage": "SYNTHETIC_PII_FREE",
+      "source_id": "csight://evaluation/policy_query_builder_v1",
+      "visibility": "LOCAL_SYNTHETIC",
+      "revision": "sha256:5040f219aff5546a88073f132889215df2574c3196bdcad9f4f9e28141fd72c4"
+    },
+    {
+      "category": "CSIGHT_SAFETY_JSON_INJECTION",
+      "license_identifier": "CSIGHT-SYNTHETIC",
+      "percent": 10,
+      "pii_usage": "SYNTHETIC_PII_FREE",
+      "source_id": "csight://evaluation/prompt_injection_v1",
+      "visibility": "LOCAL_SYNTHETIC",
+      "revision": "sha256:1584e12c21cf3a4b802ec54a085a5ba027d4cb91ba6fa7af19f73ae824ce7a67"
+    },
+    {
+      "category": "PUBLIC_KO_WIKIPEDIA",
+      "config": "20231101.ko",
+      "license_identifier": "CC-BY-SA-3.0_OR_GFDL",
+      "percent": 20,
+      "pii_usage": "PUBLIC_LICENSED_PII_SCREENED",
+      "source_id": "wikimedia/wikipedia",
+      "split": "train",
+      "revision": "b04c8d1ceb2f5cd4588862100d08de323dccfbaa",
+      "visibility": "PUBLIC"
+    },
+    {
+      "category": "PUBLIC_EN_WIKITEXT",
+      "config": "wikitext-2-raw-v1",
+      "license_identifier": "CC-BY-SA-3.0_OR_GFDL",
+      "percent": 5,
+      "pii_usage": "PUBLIC_LICENSED_PII_SCREENED",
+      "source_id": "Salesforce/wikitext",
+      "split": "train",
+      "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+      "visibility": "PUBLIC"
+    }
+  ],
+  "runtime_bound_fields": [
+    "gguf_tokenizer_metadata_digest",
+    "llama_cpp_revision",
+    "tokenizer_implementation",
+    "tokenizer_runtime_identity_digest"
+  ]
+}

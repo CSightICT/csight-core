@@ -41,6 +41,7 @@ class OperatorCaseItem(_Projection):
     order_ref: str
     product_ref: str
     requested_action: str
+    inquiry_preview: str | None = Field(default=None, max_length=160)
     created_at: datetime
     updated_at: datetime
     review_task_id: str | None = None
@@ -60,6 +61,7 @@ class OperatorReviewItem(_Projection):
     order_ref: str
     product_ref: str
     requested_action: str
+    inquiry_preview: str | None = Field(default=None, max_length=160)
     task_type: str
     priority: str
     status: str

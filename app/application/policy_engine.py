@@ -64,8 +64,11 @@ def canonical_request_hash(case_id: str, command: StartPolicyEvaluationCommand) 
 
 
 class StartPolicyEvaluation:
-    def __init__(self, repository: PolicyEngineRepository) -> None:
+    def __init__(
+        self, repository: PolicyEngineRepository, *, shadow_feedback_enabled: bool = False
+    ) -> None:
         self._repository = repository
+        self._shadow_feedback_enabled = shadow_feedback_enabled
 
     def execute(
         self,
@@ -80,7 +83,7 @@ class StartPolicyEvaluation:
             case_id=case_id,
             analysis_run_id=command.analysis_run_id,
         )
-        if execution_mode is AnalysisExecutionMode.SHADOW:
+        if execution_mode is AnalysisExecutionMode.SHADOW and not self._shadow_feedback_enabled:
             raise ShadowAnalysisDownstreamForbiddenError()
         run, replayed = self._repository.create(
             tenant_id=principal.tenant_id,

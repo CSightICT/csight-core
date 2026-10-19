@@ -2,6 +2,8 @@ import { Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCw, XCircle } fro
 import { useQuery } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
 
+import { DemoResetPanel } from "../components/DemoResetPanel";
+import { internalFeedbackEnabled } from "../internalFeedback";
 import { api } from "../api/client";
 import type { OperationsFailureSummary, OperationsProcessingSnapshot, OperationsQueueSnapshot } from "../api/contracts";
 import { useAuth } from "../auth/AuthProvider";
@@ -55,8 +57,25 @@ export function OperationsPage() {
   if (!hasRole("ADMIN")) return <Navigate to="/cases" replace />;
   const refresh = () => { void overview.refetch(); void failures.refetch(); void readiness.refetch(); };
   return <div className="page">
-    <PageHeader eyebrow="관리자 전용" title="운영 상태" description="영속 작업 상태와 활성 버전을 한 화면에서 확인합니다."
+    <PageHeader eyebrow="관리자 전용" title="운영 상태" description="문의 처리 흐름과 조치가 필요한 작업을 확인합니다."
       actions={<button className="button button-secondary" type="button" onClick={refresh}><RefreshCw size={17} />새로고침</button>} />
+    {overview.isLoading ? <Loading label="운영 상태를 집계하는 중" /> : overview.error ? <div className="error-panel" role="alert">{friendlyError(overview.error)}</div> : overview.data && <>
+      <div className="operations-summary-grid">
+        <Card className="operations-summary"><Activity /><span>전체 대기</span><strong>{overview.data.total_backlog_count}</strong></Card>
+        <Card className="operations-summary"><AlertTriangle /><span>정체</span><strong>{overview.data.total_stalled_count}</strong></Card>
+        <Card className="operations-summary"><Clock3 /><span>집계 시각</span><strong>{formatDate(overview.data.generated_at)}</strong></Card>
+      </div>
+      <section className="operations-section" aria-labelledby="queue-health-title"><h2 id="queue-health-title">처리선 대기 상태</h2><div className="operations-card-grid">{overview.data.queues.map((queue) => <QueueCard key={queue.queue} queue={queue} />)}</div></section>
+      <section className="operations-section" aria-labelledby="component-health-title"><h2 id="component-health-title">단계별 처리 상태</h2><div className="operations-card-grid">{overview.data.processing.map((component) => <ComponentCard key={component.component} component={component} />)}</div></section>
+      <details className="supporting-details"><summary>연결된 버전 정보 보기</summary><Card title="활성·최근 관측 버전" description="최근 실행 스냅샷은 활성 배포 확정이 아니라 관측값입니다." className="spaced-card">
+        <div className="operations-version-list">{overview.data.active_versions.map((version) => <div key={`${version.kind}:${version.component}:${version.name}:${version.version}`}><span>{label(version.component)} · {version.kind}</span><strong>{version.name} / {version.version}</strong><small>{version.source} · {formatDate(version.observed_at)}</small></div>)}</div>
+      </Card></details>
+    </>}
+    {failures.error && <p role="alert">실패 현황을 불러오지 못했습니다. 새로고침해 주세요.</p>}
+    {failures.data && (failures.data.total_failed_count + failures.data.total_partial_success_count + failures.data.total_stalled_count > 0) && <Card title="최근 24시간 실패 신호" description={`실패 ${failures.data.total_failed_count} · 부분 성공 ${failures.data.total_partial_success_count} · 재시도 ${failures.data.total_retry_count} · 정체 ${failures.data.total_stalled_count}`} className="spaced-card">
+      <div className="operations-card-grid">{failures.data.components.map((component) => <FailureCard key={component.component} component={component} />)}</div>
+    </Card>}
+    <details className="supporting-details spaced-card"><summary>실운영 전환 설정 보기</summary>
     {readiness.isLoading ? <Loading label="파일럿 시작 조건을 확인하는 중" /> : readiness.error ? <Notice tone="danger" title="파일럿 시작 조건을 확인할 수 없습니다"><span>{friendlyError(readiness.error)}</span></Notice> : readiness.data && <Card title="고객사 온보딩 준비도" description="여섯 조건이 모두 충족돼야 제한 운영 파일럿을 시작할 수 있습니다." className="spaced-card">
       <Notice tone={readiness.data.pilot_ready ? "success" : "warning"} title={readiness.data.pilot_ready ? "파일럿 시작 조건을 모두 충족했습니다" : "아직 파일럿을 시작할 수 없습니다"}>
         <span>{readiness.data.pilot_ready ? "실제 복원 훈련과 운영자 수동 점검을 포함한 최종 시작 절차를 진행하세요." : "실패한 항목을 먼저 완료하세요. 이 표시는 안전 관문을 우회하지 않습니다."}</span>
@@ -72,22 +91,9 @@ export function OperationsPage() {
         })}
       </div>
     </Card>}
-    <Notice tone="warning" title="현재 관측 범위"><span>이 화면은 데이터베이스에 기록된 상태를 보여줍니다. RabbitMQ·MinIO·모델 노드의 직접 상태, 분산 추적, 알림 전달은 아직 파일럿 자격 증거가 아닙니다.</span></Notice>
-    {overview.isLoading ? <Loading label="운영 상태를 집계하는 중" /> : overview.error ? <div className="error-panel" role="alert">{friendlyError(overview.error)}</div> : overview.data && <>
-      <div className="operations-summary-grid">
-        <Card className="operations-summary"><Activity /><span>전체 대기</span><strong>{overview.data.total_backlog_count}</strong></Card>
-        <Card className="operations-summary"><AlertTriangle /><span>정체</span><strong>{overview.data.total_stalled_count}</strong></Card>
-        <Card className="operations-summary"><Clock3 /><span>집계 시각</span><strong>{formatDate(overview.data.generated_at)}</strong></Card>
-      </div>
-      <section className="operations-section" aria-labelledby="queue-health-title"><h2 id="queue-health-title">처리선 대기 상태</h2><div className="operations-card-grid">{overview.data.queues.map((queue) => <QueueCard key={queue.queue} queue={queue} />)}</div></section>
-      <section className="operations-section" aria-labelledby="component-health-title"><h2 id="component-health-title">단계별 처리 상태</h2><div className="operations-card-grid">{overview.data.processing.map((component) => <ComponentCard key={component.component} component={component} />)}</div></section>
-      <Card title="활성·최근 관측 버전" description="최근 실행 스냅샷은 활성 배포 확정이 아니라 관측값입니다." className="spaced-card">
-        <div className="operations-version-list">{overview.data.active_versions.map((version) => <div key={`${version.kind}:${version.component}:${version.name}:${version.version}`}><span>{label(version.component)} · {version.kind}</span><strong>{version.name} / {version.version}</strong><small>{version.source} · {formatDate(version.observed_at)}</small></div>)}</div>
-      </Card>
-    </>}
-    {failures.data && <Card title="최근 24시간 실패 신호" description={`실패 ${failures.data.total_failed_count} · 부분 성공 ${failures.data.total_partial_success_count} · 재시도 ${failures.data.total_retry_count} · 정체 ${failures.data.total_stalled_count}`} className="spaced-card">
-      <div className="operations-card-grid">{failures.data.components.map((component) => <FailureCard key={component.component} component={component} />)}</div>
-    </Card>}
+    </details>
+    <p className="muted-copy">집계된 작업 기록 기준입니다. 서버·모델의 실시간 연결 상태를 보장하지 않습니다.</p>
+    {internalFeedbackEnabled && <DemoResetPanel />}
   </div>;
 }
 

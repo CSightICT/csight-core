@@ -21,6 +21,7 @@ function item(taskId: string, overrides: Record<string, unknown> = {}) {
     order_ref: `ORD-${taskId}`,
     product_ref: "DEMO-COMPACT-CASE-10",
     requested_action: "REFUND",
+    inquiry_preview: `문의 내용 ${taskId}`,
     task_type: "STANDARD_REVIEW",
     priority: "NORMAL",
     status: "PENDING",
@@ -65,11 +66,11 @@ describe("ReviewsPage operator queue", () => {
 
     renderPage();
 
-    expect(await screen.findByText("플랫케이스 오거나이저 2P")).toBeVisible();
-    expect(screen.getByText("SKU-UNKNOWN 상품")).toBeVisible();
+    expect(await screen.findByText("문의 내용 task-1")).toBeVisible();
+    expect(screen.getByText("문의 내용 task-2")).toBeVisible();
     expect(screen.getByText("FUTURE_REVIEW_STATE")).toBeVisible();
-    expect(screen.getByText("reviewer-1")).toBeVisible();
-    expect(screen.getAllByText("미배정").length).toBeGreaterThan(0);
+
+
     expect(screen.getByRole("tab", { name: /증거 대기/ })).toHaveTextContent("1");
     expect(screen.getAllByText(/대기/).length).toBeGreaterThan(0);
     await waitFor(() => expect(queueRequests).toBe(1));
@@ -89,12 +90,12 @@ describe("ReviewsPage operator queue", () => {
     renderPage();
     const user = userEvent.setup();
 
-    expect(await screen.findByText(/문의 번호 case-task-1/)).toBeVisible();
+    expect(await screen.findByText(/문의 내용 task-1/)).toBeVisible();
     expect(requests).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "검토 작업 더 보기" }));
 
-    expect(await screen.findByText("SKU-SECOND-REVIEW 상품")).toBeVisible();
-    expect(screen.getByText(/문의 번호 case-task-1/)).toBeVisible();
+    expect(await screen.findByText("문의 내용 task-2")).toBeVisible();
+    expect(screen.getByText(/문의 내용 task-1/)).toBeVisible();
     expect(requests).toHaveLength(2);
     expect(requests[1]).toContain("cursor=review-cursor-2");
   });
@@ -120,12 +121,12 @@ describe("ReviewsPage operator queue", () => {
     renderPage();
     const user = userEvent.setup();
 
-    expect(await screen.findByText("SKU-BETA 상품")).toBeVisible();
+    expect(await screen.findByText("문의 내용 task-beta")).toBeVisible();
     await user.type(screen.getByPlaceholderText("주문·상품·문의 번호 검색"), "case-task-alpha");
 
     await waitFor(() => expect(requests.some((request) => request.searchParams.get("q") === "case-task-alpha")).toBe(true));
-    expect(screen.getByText("플랫케이스 오거나이저 2P")).toBeVisible();
-    expect(screen.queryByText("SKU-BETA 상품")).not.toBeInTheDocument();
+    expect(screen.getByText("문의 내용 task-alpha")).toBeVisible();
+    expect(screen.queryByText("문의 내용 task-beta")).not.toBeInTheDocument();
     expect(screen.getByText("검색 결과 1건")).toBeVisible();
   });
 

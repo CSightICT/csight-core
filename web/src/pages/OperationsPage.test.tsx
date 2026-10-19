@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router-dom";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -68,7 +68,9 @@ describe("OperationsPage onboarding readiness", () => {
 
     renderPage();
 
-    expect(await screen.findByText("아직 파일럿을 시작할 수 없습니다")).toBeVisible();
+    expect(await screen.findByText("아직 파일럿을 시작할 수 없습니다")).not.toBeVisible();
+    fireEvent.click(screen.getByText("실운영 전환 설정 보기"));
+    expect(screen.getByText("아직 파일럿을 시작할 수 없습니다")).toBeVisible();
     expect(screen.getByText("안전한 문의 접수")).toBeVisible();
     expect(screen.getByText("승인된 모델 경로")).toBeVisible();
     expect(screen.getByText("세 모델 작업의 승인 경로와 실행 보호를 모두 자격 검증해 주세요.")).toBeVisible();

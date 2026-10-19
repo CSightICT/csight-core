@@ -31,6 +31,8 @@ REALISTIC_DEMO_V3_MANIFEST ?= evaluation/realistic_internal_demo_v3/manifest.jso
 QWEN4090_CANDIDATE_ID ?=
 QWEN4090_ENV_FILE ?= .env
 QWEN4090_RUNTIME_ENV_FILE ?= infra/llm/.env.llm
+EVALUATION_OUTPUT_DIR ?=
+EVALUATION_OUTPUT_ARGS = $(if $(strip $(EVALUATION_OUTPUT_DIR)),--output-dir "$(EVALUATION_OUTPUT_DIR)",$(error Set EVALUATION_OUTPUT_DIR to a new run directory))
 
 .DEFAULT_GOAL := help
 
@@ -325,19 +327,19 @@ test-local-llm:
 
 evaluate-local-extraction:
 	./infra/local_llm/run_backend_with_local_llm.sh \
-		$(UV) run python scripts/evaluate_local_mlx.py --task extraction --split dev
+		$(UV) run python scripts/evaluate_local_mlx.py --task extraction --split dev $(EVALUATION_OUTPUT_ARGS)
 
 evaluate-local-query-builder:
 	./infra/local_llm/run_backend_with_local_llm.sh \
-		$(UV) run python scripts/evaluate_local_mlx.py --task query-builder --split dev
+		$(UV) run python scripts/evaluate_local_mlx.py --task query-builder --split dev $(EVALUATION_OUTPUT_ARGS)
 
 evaluate-local-grounding:
 	./infra/local_llm/run_backend_with_local_llm.sh \
-		$(UV) run python scripts/evaluate_local_mlx.py --task grounding --split dev
+		$(UV) run python scripts/evaluate_local_mlx.py --task grounding --split dev $(EVALUATION_OUTPUT_ARGS)
 
 evaluate-local-llm-all:
 	./infra/local_llm/run_backend_with_local_llm.sh \
-		$(UV) run python scripts/evaluate_local_mlx.py --task all --split dev
+		$(UV) run python scripts/evaluate_local_mlx.py --task all --split dev $(EVALUATION_OUTPUT_ARGS)
 
 smoke-local-llm-e2e:
 	./infra/local_llm/run_backend_with_local_llm.sh \
@@ -474,16 +476,16 @@ validate-query-builder-dataset:
 	$(UV) run python scripts/validate_query_builder_dataset.py
 
 evaluate-query-builder-raw:
-	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy raw
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy raw $(EVALUATION_OUTPUT_ARGS)
 
 evaluate-query-builder-deterministic:
-	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy deterministic
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy deterministic $(EVALUATION_OUTPUT_ARGS)
 
 evaluate-query-builder-llm:
-	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy llm
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy llm $(EVALUATION_OUTPUT_ARGS)
 
 evaluate-query-builder:
-	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy all
+	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/evaluate_policy_query_builder.py --strategy all $(EVALUATION_OUTPUT_ARGS)
 
 smoke-policy-retrieval-run:
 	EMBEDDING_BASE_URL=$(EMBEDDING_BASE_URL) $(UV) run python scripts/smoke_policy_retrieval_run.py

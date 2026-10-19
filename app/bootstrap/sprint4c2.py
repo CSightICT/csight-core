@@ -42,6 +42,7 @@ def build_sprint4c2_services(settings: Settings) -> Sprint4C2ServiceContainer:
         start_policy_retrieval_run=StartPolicyRetrievalRun(
             repository,
             model_route_resolver=build_active_model_route_resolver(settings),
+            shadow_only=settings.shadow_human_feedback_enabled,
         ),
         list_policy_retrieval_runs=ListPolicyRetrievalRuns(repository),
         get_policy_retrieval_run=GetPolicyRetrievalRun(repository),

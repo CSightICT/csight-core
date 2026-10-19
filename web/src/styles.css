@@ -426,8 +426,14 @@ input::placeholder, textarea::placeholder { color: #98a5a1; }
 .review-row-shell { display: grid; border-bottom: 1px solid var(--line); }
 .review-row-shell .review-row { border-bottom: 0; }
 .review-assignment-control { display: flex; justify-content: flex-end; padding: 0 18px 14px; background: #fff; }
-.review-assignment-control label { display: flex; align-items: center; gap: 10px; color: var(--ink-soft); font-size: .78rem; font-weight: 700; }
-.review-assignment-control select { min-width: 180px; min-height: 40px; padding: 0 34px 0 12px; border: 1px solid #cfdcd6; border-radius: 9px; background: #f8faf8; color: var(--ink); }
+.review-assignment-control label { display: flex; flex-direction: row; align-items: center; gap: 14px; padding: 6px 6px 6px 14px; border: 1px solid var(--line); border-radius: 14px; background: #f8faf8; color: var(--ink-soft); font-size: .78rem; font-weight: 500; }
+.assignment-label { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.assignment-select { position: relative; display: flex; flex: 1; min-width: 0; }
+.assignment-select > svg { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.review-assignment-control select { appearance: none; width: 100%; min-width: 180px; min-height: 44px; padding: 0 36px 0 12px; border: 1px solid #dce5df; border-radius: 9px; background: #fff; color: var(--ink); font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.review-assignment-control select:hover { border-color: #8da99b; }
+.review-assignment-control select:focus-visible { outline: 2px solid #317657; outline-offset: 2px; }
+.review-assignment-control select:disabled { opacity: .55; cursor: wait; }
 .review-summary-section { display: grid; gap: 12px; margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
 .review-summary-section h3, .review-summary-section h4 { margin: 0; }
 .review-summary-section > p { margin: 0; line-height: 1.75; }
@@ -686,6 +692,7 @@ input::placeholder, textarea::placeholder { color: #98a5a1; }
   .similarity-columns { grid-template-columns: 1fr; }
   .review-assignment-control { justify-content: stretch; }
   .review-assignment-control label, .review-assignment-control select { width: 100%; }
+  .review-assignment-control select { min-width: 0; }
   .dialog-backdrop { align-items: end; padding: 0; }
   .decision-dialog { width: 100%; max-height: 94vh; border-radius: 20px 20px 0 0; }
   .decision-dialog-header, .decision-confirm-section { padding-right: 18px; padding-left: 18px; }
@@ -848,3 +855,97 @@ input::placeholder, textarea::placeholder { color: #98a5a1; }
   .refund-document-footer { padding-bottom: 8px; }
   @page { size: A4; margin: 14mm; }
 }
+
+/* Inquiry-first queues and focused human review. */
+.inquiry-queue-row { grid-template-columns: 42px minmax(0, 1fr) 150px auto 24px; gap: 18px; min-height: 100px; }
+.inquiry-queue-admin .inquiry-queue-row { grid-template-columns: 42px minmax(0, 1fr) 120px 150px auto 24px; }
+.inquiry-queue-row .case-primary strong { font-size: 1.06rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.review-product-caption { margin: 12px 0 0; color: var(--ink-soft); font-size: .78rem; line-height: 1.8; overflow-wrap: anywhere; }
+.review-advisory { margin: 18px 0 0; color: var(--ink-soft); font-size: .78rem; }
+.inquiry-original { white-space: pre-wrap; line-height: 1.8; overflow-wrap: anywhere; }
+.review-summary-section.inquiry-focus > h3 { margin-bottom: 10px; color: var(--ink-soft); font-size: .82rem; font-weight: 600; }
+.inquiry-focus > p { margin: 0; font-size: 1.06rem; font-weight: 400; line-height: 1.8; overflow-wrap: anywhere; }
+.review-body > .card > .review-summary-section:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.review-body .evidence-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.review-body .evidence-preview-image { height: 280px; }
+.review-body .evidence-preview-image img { object-fit: contain; }
+.review-threshold { display: grid; gap: 8px; padding: 14px 0 20px; }
+.review-threshold > span { font-size: .82rem; color: #c8dfd8; }
+.review-threshold > strong { font-size: 4.5rem; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.review-threshold strong small { margin-left: 5px; font-size: 1.6rem; }
+@media (min-width: 1000px) {
+  .review-detail-page .review-layout { grid-template-columns: minmax(0, 1fr) minmax(340px, .7fr); gap: 24px; }
+  .review-detail-page .decision-panel { position: sticky; top: 20px; }
+}
+@media (max-width: 999px) {
+  .review-detail-page .review-layout { display: flex; flex-direction: column; }
+  .review-body, .review-detail-page .decision-panel { width: 100%; }
+}
+@media (max-width: 760px) {
+  .inquiry-queue-row, .inquiry-queue-admin .inquiry-queue-row { grid-template-columns: 32px minmax(0, 1fr) auto 18px; gap: 10px; }
+  .inquiry-queue-row .queue-assignee, .inquiry-queue-row .queue-updated { display: none; }
+  .review-body .evidence-preview-image { height: 240px; }
+  .review-threshold > strong { font-size: 3.5rem; }
+}
+
+.review-bottom-details { margin-top: 24px; padding: 6px 24px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface, #fffdf8); }
+.review-bottom-details > .review-technical-details { margin-top: 12px; }
+.review-bottom-details > .review-advisory { margin: 12px 0; }
+.workspace-context-details > .commerce-context-card, .workspace-context-details > .fictional-product-card { margin-top: 18px; }
+.review-detail-page .quick-review-panel { gap: 14px; padding: 20px; }
+.review-detail-page .review-threshold { padding: 8px 0 14px; }
+.review-detail-page .quick-verdict-actions .button small { line-height: 1.4; word-break: keep-all; }
+@media (max-width: 760px) {
+  .review-bottom-details { padding: 4px 18px 16px; }
+}
+
+.evidence-column > .inquiry-column { margin-top: 20px; padding: 20px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; background: transparent; }
+.policy-column > .operator-focus { margin: 0 0 22px; padding: 18px; display: grid; gap: 14px; }
+.policy-column > .operator-focus h2 { font-size: 1.15rem; }
+.policy-column > .operator-focus .operator-focus-action { align-items: stretch; }
+.policy-column > .operator-focus { grid-template-columns: minmax(0, 1fr); }
+.policy-column > .operator-focus .operator-focus-copy, .policy-column > .operator-focus .operator-focus-action { min-width: 0; width: 100%; }
+.evidence-column .evidence-preview-image { height: 260px; aspect-ratio: auto; }
+
+/* Keep assignment within the inquiry row, outside its navigation link. */
+.case-inline-shell .inquiry-inline-row { grid-template-columns: minmax(0, 1fr) 150px 112px 24px; gap: 18px; min-height: 100px; border-bottom: 0; }
+.inquiry-queue-admin .case-inline-shell .inquiry-inline-row { grid-template-columns: minmax(0, 1fr) 170px 150px 112px 24px; }
+.case-inquiry-link { display: flex; align-items: center; gap: 18px; min-width: 0; align-self: stretch; }
+.case-inquiry-link .case-icon { flex-shrink: 0; }
+.case-inquiry-link .case-primary { min-width: 0; }
+.case-inquiry-link .case-primary strong { font-size: 1.06rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.case-inline-shell .review-assignment-control { min-width: 0; width: 100%; padding: 0; background: transparent; }
+.case-inline-shell .review-assignment-control label { width: 100%; flex-direction: column; align-items: stretch; gap: 5px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.case-inline-shell .assignment-label { font-size: .7rem; }
+.case-inline-shell .review-assignment-control select { min-width: 0; min-height: 40px; background: transparent; }
+@media (max-width: 900px) {
+  .case-inline-shell .inquiry-inline-row, .inquiry-queue-admin .case-inline-shell .inquiry-inline-row { grid-template-columns: minmax(0, 1fr) 100px 18px; gap: 12px; }
+  .case-inline-shell .queue-updated, .case-inline-shell .queue-assignee { display: none; }
+  .case-inline-shell .review-assignment-control { grid-column: 1 / -1; grid-row: 2; }
+  .case-inline-shell .review-assignment-control label { flex-direction: row; align-items: center; gap: 12px; }
+  .case-inline-shell .assignment-select { flex: 0 1 180px; }
+  .case-inquiry-link { gap: 10px; }
+}
+.case-inline-shell { position: relative; }
+.case-inquiry-link::after { content: ""; position: absolute; inset: 0; }
+.case-inquiry-link:focus-visible::after { outline: 2px solid #317657; outline-offset: -3px; border-radius: 8px; }
+.case-inline-shell .review-assignment-control { position: relative; z-index: 1; }
+.case-inline-shell .status-badge { display: inline-flex; justify-self: center; max-width: 100%; }
+
+/* Fit evidence frames to the image instead of reserving a fixed-height canvas. */
+.review-body .evidence-grid, .evidence-column .evidence-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); align-items: start; justify-items: center; gap: 12px; }
+.review-body .evidence-preview, .evidence-column .evidence-preview { width: fit-content; max-width: 100%; min-width: 0; justify-self: center; }
+.review-body .evidence-preview-image, .evidence-column .evidence-preview-image { width: fit-content; max-width: 100%; height: auto; margin-inline: auto; aspect-ratio: auto; background: transparent; }
+.review-body .evidence-preview-image img, .evidence-column .evidence-preview-image img { width: auto; height: auto; max-width: 100%; max-height: clamp(240px, 43vh, 440px); object-fit: contain; }
+@media (max-width: 600px) {
+  .review-body .evidence-preview-image img, .evidence-column .evidence-preview-image img { max-height: min(48vh, 320px); }
+}
+
+.asset-label { display: block; margin-bottom: 16px; color: var(--ink-soft); font-size: .85rem; font-weight: 600; }
+.asset-value { margin-bottom: 20px; }
+.asset-value-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.asset-value-steps strong { font-size: .95rem; }
+.asset-value-steps p { color: var(--ink-soft); font-size: .85rem; line-height: 1.7; }
+.asset-details { margin-top: 24px; }
+.asset-details > .asset-distributions { margin-top: 20px; }
+@media (max-width: 760px) { .asset-value-steps { grid-template-columns: 1fr; gap: 8px; } }

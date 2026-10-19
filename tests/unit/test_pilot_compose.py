@@ -26,7 +26,8 @@ def _service(environment: dict[str, str], *, image: str | None = None) -> dict[s
     return service
 
 
-def test_merged_pilot_contract_requires_every_security_boundary() -> None:
+@pytest.mark.parametrize("llm_provider", ["vllm", "llama_cpp"])
+def test_merged_pilot_contract_requires_every_security_boundary(llm_provider: str) -> None:
     common = {
         "ENVIRONMENT": "pilot",
         "OTEL_ENABLED": "true",
@@ -35,7 +36,7 @@ def test_merged_pilot_contract_requires_every_security_boundary() -> None:
     }
     api = {
         **common,
-        "LLM_PROVIDER": "vllm",
+        "LLM_PROVIDER": llm_provider,
         "VISION_PROVIDER": "remote",
         "MODEL_RELEASE_ENFORCEMENT": "true",
         "MODEL_ROUTE_ENFORCEMENT": "true",
@@ -67,22 +68,13 @@ def test_merged_pilot_contract_requires_every_security_boundary() -> None:
     }
     model_worker = {
         **common,
-        "LLM_PROVIDER": "vllm",
+        "LLM_PROVIDER": llm_provider,
         "VISION_PROVIDER": "remote",
         "MODEL_RELEASE_ENFORCEMENT": "true",
         "MODEL_ROUTE_ENFORCEMENT": "true",
         "MODEL_ROUTE_DEPLOYMENT_ID": "onprem-4090-primary",
         "LLM_API_KEY": "model-llm-secret",
         "VISION_API_KEY": "model-vision-secret",
-    }
-    retrieval_worker = {
-        **common,
-        "LLM_PROVIDER": "vllm",
-        "VISION_PROVIDER": "mock",
-        "MODEL_RELEASE_ENFORCEMENT": "true",
-        "MODEL_ROUTE_ENFORCEMENT": "false",
-        "LLM_API_KEY": "retrieval-llm-secret",
-        "VISION_API_KEY": "",
     }
     non_provider = {
         **common,
@@ -92,6 +84,9 @@ def test_merged_pilot_contract_requires_every_security_boundary() -> None:
         "MODEL_ROUTE_ENFORCEMENT": "false",
         "LLM_API_KEY": "",
         "VISION_API_KEY": "",
+    }
+    retrieval_worker = {
+        **non_provider,
     }
     services = {
         "api": _service(api, image="csight-core:pilot-release"),
@@ -115,8 +110,21 @@ def test_merged_pilot_contract_requires_every_security_boundary() -> None:
     api_service = cast(dict[str, object], services["api"])
     api_service["configs"] = [
         {
+            "source": "model-release-public-key",
+            "target": "/run/config/model_release_public_key.pem",
+            "mode": 0o444,
+        },
+        {
             "source": "signed-intake-public-key",
             "target": "/run/config/signed_intake_public_key.pem",
+            "mode": 0o444,
+        },
+    ]
+    model_service = cast(dict[str, object], services["worker-model"])
+    model_service["configs"] = [
+        {
+            "source": "model-release-public-key",
+            "target": "/run/config/model_release_public_key.pem",
             "mode": 0o444,
         }
     ]
@@ -124,6 +132,40 @@ def test_merged_pilot_contract_requires_every_security_boundary() -> None:
     validate_compose_config(
         {"name": "csight-pilot", "services": services}, image_tag="pilot-release"
     )
+
+    model = cast(dict[str, object], services["worker-model"])
+    model_environment = cast(dict[str, str], model["environment"])
+    model_environment["LLM_PROVIDER"] = "llama_cpp" if llm_provider == "vllm" else "vllm"
+    with pytest.raises(Exception, match="share one admitted signed LLM runtime"):
+        validate_compose_config(
+            {"name": "csight-pilot", "services": services}, image_tag="pilot-release"
+        )
+    model_environment["LLM_PROVIDER"] = llm_provider
+
+    retrieval = cast(dict[str, object], services["worker-retrieval"])
+    retrieval_environment = cast(dict[str, str], retrieval["environment"])
+    retrieval_environment["LLM_API_KEY"] = "credential-leak"
+    with pytest.raises(
+        Exception, match="worker-retrieval must not receive model provider credentials"
+    ):
+        validate_compose_config(
+            {"name": "csight-pilot", "services": services}, image_tag="pilot-release"
+        )
+    retrieval_environment["LLM_API_KEY"] = ""
+    retrieval["configs"] = [
+        {
+            "source": "model-release-public-key",
+            "target": "/run/config/model_release_public_key.pem",
+            "mode": 0o444,
+        }
+    ]
+    with pytest.raises(
+        Exception, match="worker-retrieval must not mount the model release public key"
+    ):
+        validate_compose_config(
+            {"name": "csight-pilot", "services": services}, image_tag="pilot-release"
+        )
+    retrieval.pop("configs")
 
     api["LEGACY_PASSWORD_AUTH_ENABLED"] = "true"
     with pytest.raises(Exception, match="LEGACY_PASSWORD_AUTH_ENABLED=false"):
@@ -172,7 +214,7 @@ def test_pilot_overlay_is_additive_and_reuses_rls_and_evidence_overlays() -> Non
     common_source = source.split("x-qualified-llm-identity:", maxsplit=1)[0]
     assert "LLM_API_KEY" not in common_source
     assert "VISION_API_KEY" not in common_source
-    assert source.count('LLM_API_KEY: ""') == 4
+    assert source.count('LLM_API_KEY: ""') == 5
     assert source.count('VISION_API_KEY: ""') == 5
     assert "csight_api_login" not in source
     assert "clamav/clamav" not in source
@@ -180,7 +222,7 @@ def test_pilot_overlay_is_additive_and_reuses_rls_and_evidence_overlays() -> Non
     assert "clamav/clamav:1.5.4@sha256:" in evidence_source
 
 
-def test_real_compose_merge_scopes_provider_credentials_to_two_workers() -> None:
+def test_real_compose_merge_scopes_provider_credentials_to_model_worker_only() -> None:
     docker = shutil.which("docker")
     if docker is None:
         pytest.skip("Docker Compose CLI is not installed")
@@ -303,8 +345,10 @@ def test_real_compose_merge_scopes_provider_credentials_to_two_workers() -> None
         services["worker-model"]["environment"]["MODEL_ROUTE_DEPLOYMENT_ID"]
         == "onprem-4090-primary"
     )
-    assert services["worker-retrieval"]["environment"]["LLM_API_KEY"] == ("llm-scope-fixture")
+    assert services["worker-retrieval"]["environment"]["LLM_API_KEY"] == ""
     assert services["worker-retrieval"]["environment"]["VISION_API_KEY"] == ""
+    assert services["worker-retrieval"]["environment"]["LLM_PROVIDER"] == "mock"
+    assert services["worker-retrieval"]["environment"]["MODEL_RELEASE_ENFORCEMENT"] == "false"
     for service_name in ("worker-decision", "dispatcher", "privacy-lifecycle"):
         assert services[service_name]["environment"]["LLM_API_KEY"] == ""
         assert services[service_name]["environment"]["VISION_API_KEY"] == ""

@@ -333,6 +333,34 @@ def test_start_creates_run_stage_idempotency_and_reference_only_outbox_atomicall
     uow.commit.assert_called_once()
 
 
+def test_internal_feedback_rejects_primary_before_writing_or_calling_provider() -> None:
+    from app.platform.errors import ValidationError
+
+    uow = _uow()
+    provider = MockLLMProvider()
+    factory = _factory(uow)
+    service = StartTextAnalysis(
+        uow_factory=factory,
+        provider=provider,
+        prompt=PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT,
+        clock=StaticClock(),
+        id_generator=SequenceIds(()),
+        shadow_only=True,
+    )
+    with pytest.raises(ValidationError, match="must use SHADOW"):
+        service.execute(
+            principal=_principal(),
+            case_id="case-1",
+            command=StartTextAnalysisCommand(
+                pipeline=AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION,
+                pipeline_version=TEXT_EXTRACTION_PIPELINE_VERSION,
+                idempotency_key="feedback-primary",
+                correlation_id="feedback-primary",
+            ),
+        )
+    uow.commit.assert_not_called()
+
+
 def test_canonical_hash_ignores_retry_correlation_but_includes_case() -> None:
     first = StartTextAnalysisCommand(
         pipeline=AnalysisPipeline.PRODUCT_DEFECT_TEXT_EXTRACTION,

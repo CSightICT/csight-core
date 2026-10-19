@@ -24,7 +24,7 @@ from pydantic import (
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
-from app.platform.model_activation import ModelReleaseTask
+from app.platform.model_activation import ModelReleaseTask, RuntimeLLMIdentityV1_1
 from app.platform.tenant import Role
 
 _SUPPORTED_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
@@ -412,7 +412,11 @@ class Settings(BaseSettings):
         validation_alias="PRIVACY_LIFECYCLE_MAX_BATCHES_PER_SWEEP",
     )
 
-    llm_provider: Literal["mock", "vllm", "mlx"] = Field(
+    shadow_human_feedback_enabled: bool = Field(
+        default=False, validation_alias="SHADOW_HUMAN_FEEDBACK_ENABLED"
+    )
+
+    llm_provider: Literal["mock", "vllm", "llama_cpp", "mlx"] = Field(
         default="mock",
         validation_alias="LLM_PROVIDER",
     )
@@ -520,6 +524,22 @@ class Settings(BaseSettings):
     llm_sbom_digest: str | None = Field(
         default=None,
         validation_alias="LLM_SBOM_DIGEST",
+    )
+    llm_gguf_runtime_identity: RuntimeLLMIdentityV1_1 | None = Field(
+        default=None,
+        validation_alias="LLM_GGUF_RUNTIME_IDENTITY",
+        description=(
+            "Non-secret JSON identity for an exact GGUF, quantizer, llama.cpp build, "
+            "serving profile, prompt, and schemas."
+        ),
+    )
+    llm_gguf_runtime_identities: dict[ModelReleaseTask, RuntimeLLMIdentityV1_1] = Field(
+        default_factory=dict,
+        validation_alias="LLM_GGUF_RUNTIME_IDENTITIES",
+        description=(
+            "Non-secret task-keyed GGUF identities. Required for three-task route enforcement "
+            "because prompt and schema identities differ by task."
+        ),
     )
     llm_connect_timeout_seconds: float = Field(
         default=5.0,
@@ -888,6 +908,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_related_settings(self) -> Self:
+        if self.shadow_human_feedback_enabled and self.environment not in {"local", "test"}:
+            raise ValueError("SHADOW human feedback is restricted to local/test environments")
         if self.otel_exporter_otlp_headers is not None:
             _parse_otel_headers(self.otel_exporter_otlp_headers.get_secret_value())
         if self.database_rls_required and self.database_runtime_role not in {
@@ -1028,7 +1050,7 @@ class Settings(BaseSettings):
         if self.evidence_malware_scanner == "clamav" and self.clamav_host is None:
             raise ValueError("CLAMAV_HOST is required when EVIDENCE_MALWARE_SCANNER=clamav")
 
-        if self.llm_provider in {"vllm", "mlx"} and self.llm_base_url is None:
+        if self.llm_provider in {"vllm", "llama_cpp", "mlx"} and self.llm_base_url is None:
             raise ValueError("LLM_BASE_URL is required for a remote HTTP LLM provider")
         release_key_values = (
             self.model_release_signing_public_key_file,
@@ -1042,39 +1064,65 @@ class Settings(BaseSettings):
                 "must be configured together"
             )
         if (
-            self.llm_provider == "vllm"
+            self.llm_provider != "mock"
             and self.environment not in {"local", "test"}
             and not self.model_release_enforcement
         ):
-            raise ValueError("Non-local vLLM requires MODEL_RELEASE_ENFORCEMENT=true")
+            raise ValueError("Non-local LLM requires MODEL_RELEASE_ENFORCEMENT=true")
         if self.model_release_enforcement:
-            required_release_identity = (
+            required_release_configuration = (
                 self.database_url_value,
                 self.model_release_signing_public_key_file,
                 self.model_release_signing_key_id,
-                self.llm_model_revision,
-                self.llm_artifact_content_digest,
-                self.llm_runtime_image_digest,
-                self.llm_dependency_lock_digest,
-                self.llm_sbom_digest,
             )
-            if self.llm_provider != "vllm" or not all(required_release_identity):
+            if self.llm_provider == "mock" or not all(required_release_configuration):
                 raise ValueError(
-                    "MODEL_RELEASE_ENFORCEMENT requires vLLM, PostgreSQL, a signing key, "
-                    "an exact model revision, and all runtime content digests"
+                    "MODEL_RELEASE_ENFORCEMENT requires a non-mock LLM, PostgreSQL, a signing key, "
+                    "and an exact signed runtime identity"
                 )
             if not str(self.database_url_value).startswith("postgresql"):
                 raise ValueError("MODEL_RELEASE_ENFORCEMENT requires PostgreSQL")
-            if self.llm_model_revision is None or not _is_lower_hex(self.llm_model_revision, 40):
-                raise ValueError("LLM_MODEL_REVISION must be an exact 40-character commit hash")
-            for digest in (
-                self.llm_artifact_content_digest,
-                self.llm_runtime_image_digest,
-                self.llm_dependency_lock_digest,
-                self.llm_sbom_digest,
-            ):
-                if digest is None or not _is_sha256_digest(digest):
-                    raise ValueError("Model release digests must use sha256:<64 lowercase hex>")
+            gguf_identity_configured = self.llm_gguf_runtime_identity is not None or bool(
+                self.llm_gguf_runtime_identities
+            )
+            if self.llm_gguf_runtime_identity is not None and self.llm_gguf_runtime_identities:
+                raise ValueError(
+                    "Configure either LLM_GGUF_RUNTIME_IDENTITY or "
+                    "LLM_GGUF_RUNTIME_IDENTITIES, not both"
+                )
+            if gguf_identity_configured:
+                if self.llm_provider != "llama_cpp":
+                    raise ValueError("GGUF runtime identities require LLM_PROVIDER=llama_cpp")
+            else:
+                if self.llm_provider == "llama_cpp":
+                    raise ValueError(
+                        "MODEL_RELEASE_ENFORCEMENT for llama_cpp requires an exact GGUF "
+                        "runtime identity"
+                    )
+                required_v1_identity = (
+                    self.llm_model_revision,
+                    self.llm_artifact_content_digest,
+                    self.llm_runtime_image_digest,
+                    self.llm_dependency_lock_digest,
+                    self.llm_sbom_digest,
+                )
+                if not all(required_v1_identity):
+                    raise ValueError(
+                        "MODEL_RELEASE_ENFORCEMENT requires an exact model revision and all "
+                        "v1 runtime content digests"
+                    )
+                if self.llm_model_revision is None or not _is_lower_hex(
+                    self.llm_model_revision, 40
+                ):
+                    raise ValueError("LLM_MODEL_REVISION must be an exact 40-character commit hash")
+                for digest in (
+                    self.llm_artifact_content_digest,
+                    self.llm_runtime_image_digest,
+                    self.llm_dependency_lock_digest,
+                    self.llm_sbom_digest,
+                ):
+                    if digest is None or not _is_sha256_digest(digest):
+                        raise ValueError("Model release digests must use sha256:<64 lowercase hex>")
         if self.model_route_deployment_id is not None and not self.model_route_enforcement:
             raise ValueError(
                 "MODEL_ROUTE_DEPLOYMENT_ID may only be set when MODEL_ROUTE_ENFORCEMENT=true"
@@ -1094,6 +1142,13 @@ class Settings(BaseSettings):
                 )
             if self.database_runtime_role == "api" and self.model_route_deployment_id is not None:
                 raise ValueError("The API process must not receive MODEL_ROUTE_DEPLOYMENT_ID")
+            if self.llm_provider == "llama_cpp" and set(self.llm_gguf_runtime_identities) != set(
+                ModelReleaseTask
+            ):
+                raise ValueError(
+                    "llama_cpp route enforcement requires one GGUF runtime identity for each "
+                    "model task"
+                )
         if self.vision_provider != "mock" and self.vision_base_url is None:
             raise ValueError("VISION_BASE_URL is required for a non-mock Vision provider")
         binary_mock = self.vision_provider == "mock" and self.vision_mock_mode in {

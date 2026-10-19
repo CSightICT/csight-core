@@ -16,6 +16,7 @@ from app.platform.errors import ForbiddenError, IdempotencyKeyReusedError
 from app.platform.model_activation import (
     ActiveLLMRelease,
     LLMReleaseManifest,
+    LLMReleaseManifestContract,
     ModelActivationEvent,
     ModelReleaseIdentityMismatchError,
     ModelReleaseTask,
@@ -193,10 +194,12 @@ def _active(
 
 
 def _deployment_identity(
-    manifest: LLMReleaseManifest,
+    manifest: LLMReleaseManifestContract,
     *,
     deployment_id: str = "onprem-4090-primary",
 ) -> ModelRouteDeploymentIdentity:
+    if not isinstance(manifest, LLMReleaseManifest):
+        raise TypeError("legacy deployment fixture requires a v1 manifest")
     return ModelRouteDeploymentIdentity(
         deployment_id=deployment_id,
         runtime_identity=RuntimeLLMIdentity.model_validate(

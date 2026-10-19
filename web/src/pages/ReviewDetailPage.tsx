@@ -12,7 +12,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { formatCommerceMoney, readSyntheticCommerceContext } from "../commerce/syntheticCommerceContext";
 import { demoProductDisplayName } from "../demo/productScenarioCatalog";
 import { EvidencePreview, type EvidencePreviewStatus } from "../evidence/EvidencePreview";
-import { businessLabel, fieldLabel } from "../presentation/businessLabels";
+import { businessLabel, fieldLabel, inquiryTitle } from "../presentation/businessLabels";
 import { qualificationPresentation } from "../presentation/reviewPresentation";
 import { reportWaitDelay } from "../report/reportWait";
 import { assessQuickReview, quickResolveInput, reviewBasisOptions, type BasisOption, type QuickReviewVerdict } from "../review/quickReview";
@@ -209,7 +209,7 @@ export function ReviewDetailPage() {
   const commerce = readSyntheticCommerceContext(reviewCase.data?.attributes);
   const productName = commerce?.order.productDisplayName
     ?? (reviewCase.data ? demoProductDisplayName(reviewCase.data.product_ref) : undefined)
-    ?? "상품명 확인 중";
+    ?? (reviewCase.isLoading ? "상품명 확인 중" : "상품명 정보 없음");
   const adminOnlyTask = ["SAFETY_REVIEW", "MANAGER_REVIEW", "POLICY_EXCEPTION_REVIEW"].includes(task.task_type);
   const adminOnlyBlocked = adminOnlyTask && !hasRole("ADMIN");
   const reviewQueueLabel = hasRole("ADMIN") ? "검토 대기함" : "내 문의 처리 현황";
@@ -264,28 +264,18 @@ export function ReviewDetailPage() {
   }
 
   return <><div className="page review-detail-page">
-    <PageHeader eyebrow={`최종 결정 검토 · ${shortId(task.id)}`} title={productName} description={`문의 번호 ${shortId(task.case_id)} · ${businessLabel(task.task_type)} · 검토 자료 버전 ${task.version}`}
+    <PageHeader eyebrow={`최종 결정 검토 · ${shortId(task.id)}`} title={reviewCase.data ? `${inquiryTitle(reviewCase.data.requested_action)} 검토` : "문의 검토"} description="사진과 요약을 확인하고 처리 여부를 선택하세요."
       actions={<><Link className="button button-ghost" to="/reviews"><ArrowLeft size={18} />{reviewQueueLabel}</Link><StatusBadge status={task.status} /></>} />
     {actionError && <div className="inline-alert inline-alert-danger" role="alert">{actionError}</div>}
     {actionNotice && <Notice tone="success" title="최신 상태 확인 완료"><span>{actionNotice}</span></Notice>}
     {adminOnlyBlocked && <Notice tone="danger" title="관리자 전용 검토"><span>안전·관리자·정책 예외 검토의 최종 결정은 관리자만 기록할 수 있습니다. 담당자는 근거를 확인한 뒤 관리자에게 이관할 수 있습니다.</span></Notice>}
     <div className="review-layout">
       <div className="review-body">
-        <Card title="문의 검토 요약" actions={<span className="integrity-badge"><LockKeyhole size={14} />변경 방지 기록</span>}>
-          <DefinitionList items={[
-            { label: "작업 유형", value: businessLabel(task.task_type) }, { label: "우선순위", value: businessLabel(task.priority) },
-            { label: "생성", value: formatDate(task.created_at) },
-          ]} />
-          <PacketSummary packet={packet} />
-          <section className="review-summary-section"><h3>고객 첨부 사진</h3>{reviewCase.isLoading ? <Loading label="첨부 사진을 불러오는 중" /> : reviewCase.isError && !reviewCase.data ? <div className="inline-alert inline-alert-danger review-evidence-load-error" role="alert"><span>문의와 첨부 사진을 불러오지 못했습니다. 내용을 확인할 수 없어 최종 결정은 잠시 잠겼습니다.</span><button className="button button-secondary" type="button" disabled={reviewCase.isFetching} onClick={() => { void reviewCase.refetch(); }}>{reviewCase.isFetching ? "다시 불러오는 중…" : "문의와 사진 다시 불러오기"}</button></div> : reviewCase.data?.evidence.length ? <><div className="evidence-grid">{reviewCase.data.evidence.map((evidence) => <EvidencePreview caseId={task.case_id} evidence={evidence} key={evidence.evidence_id} onStatusChange={handleEvidenceStatus} />)}</div>{!evidenceReady && <Notice tone={evidenceFailed ? "danger" : "warning"} title={evidenceFailed ? "확인할 수 없는 사진이 있습니다" : "사진 확인 중"}><span>{decisionBlockReason}</span></Notice>}</> : <p className="muted-copy">첨부 사진이 없습니다.</p>}</section>
-          <section className="review-summary-section"><h3>문의 내용 요약</h3><p>{detail.data.inquiry_summary ?? "기존 실행에는 별도 문의 요약이 저장되지 않았습니다. 문의 원문과 정책 근거를 직접 확인해 주세요."}</p></section>
-          {detail.data.grounded_explanation && <div className="explanation-box"><MessageSquareWarning size={19} /><div><strong>정책 근거 확인 요약</strong><span>담당자 판단 참고</span><p>{textValue(detail.data.grounded_explanation.explanation ?? detail.data.grounded_explanation.summary ?? detail.data.grounded_explanation)}</p></div></div>}
-          <PolicyBasis citations={detail.data.citation_items} />
-          <PolicySimilarity evidence={detail.data.policy_similarity} />
-          <details className="review-technical-details"><summary>기술 정보 보기</summary><DefinitionList items={[
-            { label: "정책 평가 번호", value: shortId(task.policy_evaluation_run_id) },
-            { label: "검토 기준 버전", value: `${task.mapping_rule_name} · ${task.mapping_rule_version}` },
-          ]} /><p className="muted-copy">작업 기록 {detail.data.actions.length}건 · 정책 규칙 결과 {detail.data.rule_results.length}건</p></details>
+        <Card actions={<span className="integrity-badge"><LockKeyhole size={14} />변경 방지 기록</span>}>
+          <section className="review-summary-section"><h3>고객 첨부 사진</h3>{reviewCase.isLoading ? <Loading label="첨부 사진을 불러오는 중" /> : reviewCase.isError && !reviewCase.data ? <div className="inline-alert inline-alert-danger review-evidence-load-error" role="alert"><span>문의와 첨부 사진을 불러오지 못했습니다. 내용을 확인할 수 없어 최종 결정은 잠시 잠겼습니다.</span><button className="button button-secondary" type="button" disabled={reviewCase.isFetching} onClick={() => { void reviewCase.refetch(); }}>{reviewCase.isFetching ? "다시 불러오는 중…" : "문의와 사진 다시 불러오기"}</button></div> : reviewCase.data?.evidence.length ? <><div className="evidence-grid">{reviewCase.data.evidence.map((evidence) => <EvidencePreview compact caseId={task.case_id} evidence={evidence} key={evidence.evidence_id} onStatusChange={handleEvidenceStatus} />)}</div>{!evidenceReady && <Notice tone={evidenceFailed ? "danger" : "warning"} title={evidenceFailed ? "확인할 수 없는 사진이 있습니다" : "사진 확인 중"}><span>{decisionBlockReason}</span></Notice>}</> : <p className="muted-copy">첨부 사진이 없습니다.</p>}</section>
+
+          <section className="review-summary-section inquiry-focus"><h3>문의 내용 요약</h3><p>{detail.data.inquiry_summary?.trim() || "저장된 요약이 없습니다. 아래 원문을 확인해 주세요."}</p></section>
+
         </Card>
       </div>
       <aside className="decision-panel">
@@ -309,6 +299,39 @@ export function ReviewDetailPage() {
         </Card>
       </aside>
     </div>
+    <section className="review-bottom-details" aria-label="추가 정보">
+      <details className="review-technical-details"><summary>고객 정보</summary>
+        {commerce ? <DefinitionList items={[
+          { label: "고객", value: commerce.customer.displayName },
+          { label: "연락처", value: commerce.customer.phoneMasked },
+          { label: "수령인", value: commerce.delivery.recipient },
+          { label: "배송지", value: `${commerce.delivery.addressLine1} ${commerce.delivery.addressLine2}` },
+        ]} /> : <p className="muted-copy">고객 정보가 없습니다.</p>}
+        {commerce && <p className="muted-copy">가상 주문의 고객 정보입니다.</p>}
+      </details>
+      <details className="review-technical-details"><summary>상품·주문 정보</summary>
+          <p className="review-product-caption">{productName} · 상품코드 {reviewCase.data?.product_ref ?? "확인 중"}<br />{commerce ? `결제 금액 ${formatCommerceMoney(commerce.order.paidAmount, commerce.order.currency)} · 가상 주문` : "금액 정보 없음"}</p>
+        <DefinitionList items={[
+          { label: "주문 번호", value: reviewCase.data?.order_ref ?? "정보 없음" },
+          { label: "고객 요청", value: businessLabel(reviewCase.data?.requested_action) },
+        ]} />
+      </details>
+          <details className="review-technical-details" open={!detail.data.inquiry_summary?.trim()}><summary>문의 원문 보기</summary><p className="inquiry-original">{reviewCase.data?.customer_message ?? "문의를 불러오는 중입니다."}</p></details>
+          <details className="review-technical-details"><summary>정책 근거·분석 상세 보기</summary>
+          <Link className="button button-ghost" to={`/cases/${task.case_id}?details=1`}>문의 처리 단계 보기</Link>
+          <PacketSummary packet={packet} />
+          {detail.data.grounded_explanation && <div className="explanation-box"><MessageSquareWarning size={19} /><div><strong>정책 근거 확인 요약</strong><span>담당자 판단 참고</span><p>{textValue(detail.data.grounded_explanation.explanation ?? detail.data.grounded_explanation.summary ?? detail.data.grounded_explanation)}</p></div></div>}
+          <PolicyBasis citations={detail.data.citation_items} />
+          <details className="review-technical-details"><summary>정책 유사도 비교 보기</summary><PolicySimilarity evidence={detail.data.policy_similarity} /></details>
+          <details className="review-technical-details"><summary>기술 정보 보기</summary><DefinitionList items={[
+            { label: "정책 평가 번호", value: shortId(task.policy_evaluation_run_id) },
+            { label: "검토 기준 버전", value: `${task.mapping_rule_name} · ${task.mapping_rule_version}` },
+            { label: "작업 유형", value: businessLabel(task.task_type) },
+            { label: "우선순위", value: businessLabel(task.priority) },
+            { label: "생성", value: formatDate(task.created_at) },
+          ]} /><p className="muted-copy">작업 기록 {detail.data.actions.length}건 · 정책 규칙 결과 {detail.data.rule_results.length}건</p></details>
+          </details>
+    </section>
   </div>
     {pendingQuickVerdict && quickReview && quickConfirmationInput && <QuickDecisionConfirmation
       assessment={quickReview}
@@ -478,15 +501,14 @@ function QuickReviewPanel({ assessment, pending, onVerdict }: {
   const threshold = Math.round(assessment.threshold * 100);
   return <section className="quick-review-panel" aria-labelledby="quick-review-title" data-testid="quick-review-panel">
     <div className="quick-review-head"><div><p className="eyebrow">빠른 검토</p><h3 id="quick-review-title">허용 여부만 선택하세요</h3></div><span className="readiness-score">준비도 {percent}%</span></div>
-    <p>정책 근거와 문의 내용을 확인창에서 다시 검토한 뒤, 명시적으로 한 번 더 확정해야 최종 결정이 기록됩니다.</p>
-    <div className="quick-review-meter"><span style={{ width: `${percent}%` }} /><i style={{ left: `${threshold}%` }} /></div>
-    <small>빠른 검토 기준 {threshold}% · 모델 정확도가 아닌 정책·근거·입력 준비도입니다.</small>
+    <div className="review-threshold" aria-label={`빠른 검토 threshold ${threshold}%`}><span>Threshold · 빠른 검토 기준</span><strong>{threshold}<small>%</small></strong></div>
+    <small>모델 정확도가 아닌 정책·근거·입력 준비도입니다.</small>
     <div className="quick-verdict-actions">
       <button className="button quick-allow" type="button" disabled={pending || !assessment.allowDecision} onClick={() => onVerdict("ALLOW")}><ThumbsUp size={20} /><span><strong>{assessment.allowLabel}</strong><small>내용 확인 후 최종 확정</small></span></button>
       <button className="button quick-deny" type="button" disabled={pending} onClick={() => onVerdict("DENY")}><ThumbsDown size={20} /><span><strong>비허용</strong><small>내용 확인 후 최종 확정</small></span></button>
     </div>
-    {!assessment.allowDecision && <p className="quick-review-note">정책 효과에서 처리 유형이 하나로 정해지지 않아 허용은 상세 검토가 필요합니다. 비허용은 바로 기록할 수 있습니다.</p>}
-    <p className="quick-review-warning"><LockKeyhole size={14} />첫 선택은 확인창만 엽니다. 확인창의 최종 기록 버튼을 눌러야 변경 불가능한 담당자 결정이 생성됩니다.</p>
+    {!assessment.allowDecision && <p className="quick-review-note">정책 효과에서 처리 유형이 하나로 정해지지 않아 허용은 상세 검토가 필요합니다. 비허용은 확인창을 거쳐 기록합니다.</p>}
+    <p className="quick-review-warning"><LockKeyhole size={14} />선택 후 확인창에서 최종 확정합니다.</p>
   </section>;
 }
 

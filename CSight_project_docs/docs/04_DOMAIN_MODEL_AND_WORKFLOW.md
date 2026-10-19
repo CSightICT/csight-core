@@ -198,6 +198,11 @@ stateDiagram-v2
 
 ## 6. Alignment 모델
 
+2026-09-09 구현 보충: [ADR-0126](adr/0126-diagnostic-text-vision-evidence-alignment.md)에 따라
+오프라인 주장별 대조 엔진을 추가했다. 현재 구현은 `TYPE_CANDIDATE`/`UNRESOLVED`와 출처·
+추가 자료 코드를 반환하며 아래의 초기 weighted score 구상은 실행하지 않는다. E3 전체 점수에서
+종류/위치를 만들거나 낮은 점수를 반박으로 사용하지 않는다. 실제 policy/Review 연결은 미실행이다.
+
 Alignment는 Sprint 2에 구현되지 않았다. Sprint 4의 초기 구현은 규칙 기반으로 시작한다.
 
 ```text
@@ -330,3 +335,14 @@ Terminal Resolution versions own immutable Review Report snapshots. KPI reads ag
 released assignment intervals and explicit comparable/terminal populations, always returning
 numerator, denominator, and sample count. These aggregates are descriptive internal-demo evidence,
 not a performance or ROI claim.
+
+## 2026-09-10 internal SHADOW human feedback (ADR-0128)
+
+The owner-authorized local feedback profile permits explicitly marked SHADOW analysis to enter
+the existing policy evaluation, human review and DRY_RUN resolution workflow. Each new policy run
+stores an immutable `shadow_feedback_allowed` snapshot, and tenant-scoped database lineage guards
+continue to reject unmarked Shadow roots. Historical analysis modes and results are not rewritten.
+All new model analyses, retrieval and grounding in this profile require SHADOW; signed PRIMARY
+promotion remains forbidden for unqualified candidates. Human-only final confirmation and the ban
+on automatic external business effects are unchanged. Feedback use is not clean Shadow100 release
+evidence, model qualification, commercial E3 permission or customer-pilot approval.

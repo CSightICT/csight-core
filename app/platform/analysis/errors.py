@@ -71,6 +71,42 @@ class LLMInvalidStructuredOutputError(ProviderSchemaError):
     code = "LLM_INVALID_STRUCTURED_OUTPUT"
 
 
+class LLMStructuredJSONInvalidError(LLMInvalidStructuredOutputError):
+    """The assistant content was not a strict JSON object."""
+
+    code = "LLM_STRUCTURED_JSON_INVALID"
+
+
+class LLMStructuredOutputTruncatedError(LLMInvalidStructuredOutputError):
+    """The provider stopped before completing the structured response."""
+
+    code = "LLM_STRUCTURED_OUTPUT_TRUNCATED"
+
+
+class LLMMissingRequiredFieldError(LLMInvalidStructuredOutputError):
+    """A required schema field was absent from structured output."""
+
+    code = "LLM_STRUCTURED_MISSING_FIELD"
+
+
+class LLMInvalidEnumValueError(LLMInvalidStructuredOutputError):
+    """An enum or literal value did not satisfy the output contract."""
+
+    code = "LLM_STRUCTURED_ENUM_INVALID"
+
+
+class LLMExtraFieldError(LLMInvalidStructuredOutputError):
+    """Structured output contained a field forbidden by the schema."""
+
+    code = "LLM_STRUCTURED_EXTRA_FIELD"
+
+
+class LLMStructuredConstraintError(LLMInvalidStructuredOutputError):
+    """Structured output violated a non-enum schema invariant."""
+
+    code = "LLM_STRUCTURED_CONSTRAINT_FAILED"
+
+
 class LLMSourceQuoteMismatchError(ProviderSchemaError):
     code = "LLM_SOURCE_QUOTE_MISMATCH"
 

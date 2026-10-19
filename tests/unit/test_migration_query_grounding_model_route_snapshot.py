@@ -15,7 +15,7 @@ from app.adapters.persistence.model_registry import PERSISTENCE_MODELS
 pytestmark = pytest.mark.unit
 PREVIOUS = "20260831_0034_analysis_model_route_snapshot"
 REVISION = "20260831_0035_query_grounding_model_route_snapshot"
-HEAD = "20260831_0036_policy_query_search_events_v2"
+HEAD = "20260910_0038_fixture_evidence_repair"
 _LOADED_MODELS = PERSISTENCE_MODELS
 
 

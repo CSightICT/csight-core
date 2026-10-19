@@ -12,7 +12,7 @@ from alembic import command
 pytestmark = pytest.mark.unit
 PREVIOUS = "20260827_0014_review_report_poc_metrics"
 REVISION = "20260827_0015_vision_image_assessment"
-HEAD = "20260831_0036_policy_query_search_events_v2"
+HEAD = "20260910_0038_fixture_evidence_repair"
 
 
 def _config(output: StringIO) -> Config:

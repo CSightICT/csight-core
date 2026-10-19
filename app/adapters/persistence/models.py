@@ -3125,6 +3125,9 @@ class PolicyEvaluationRunModel(CreatedAtMixin, Base):
     rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
     rule_set_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
+    shadow_feedback_allowed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     summary_status: Mapped[str | None] = mapped_column(String(64), nullable=True)
     requested_by: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
@@ -4798,3 +4801,13 @@ PERSISTENCE_MODELS = (
     OperationalFailureRecoveryEventModel,
     OperationalFailureResolutionModel,
 )
+
+
+class DemoReviewResetModel(Base):
+    """Local synthetic-only reset archive, never exposed as a customer record."""
+    __tablename__ = "demo_review_resets"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    actor_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

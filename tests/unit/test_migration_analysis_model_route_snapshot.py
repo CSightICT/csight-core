@@ -32,7 +32,7 @@ def test_analysis_model_route_snapshot_precedes_query_and_grounding_snapshots() 
     scripts = ScriptDirectory.from_config(_config(StringIO()))
     migration = scripts.get_revision(REVISION)
 
-    assert scripts.get_heads() == ["20260831_0036_policy_query_search_events_v2"]
+    assert scripts.get_heads() == ["20260910_0038_fixture_evidence_repair"]
     assert migration is not None
     assert migration.down_revision == PREVIOUS
 

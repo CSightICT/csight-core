@@ -1,0 +1,66 @@
+services:
+  qwen38-llama-cpp:
+    image: ${LLAMA_CPP_IMAGE:?digest-pinned llama.cpp image required}
+    pull_policy: never
+    restart: "no"
+    read_only: true
+    init: true
+    user: "${LLAMA_CPP_RUN_UID:-1000}:${LLAMA_CPP_RUN_GID:-1000}"
+    environment:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      LLAMA_API_KEY: ${LLM_API_KEY:?private API key required}
+    ports:
+      - "${LLM_BIND_ADDRESS:?Tailscale bind required}:${LLAMA_CPP_PORT:?published port required}:8080"
+    volumes:
+      - "${LLAMA_CPP_GGUF_ROOT:?GGUF root required}:/models:ro"
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    command:
+      - --model
+      - /models/${LLAMA_CPP_GGUF_FILENAME:?exact GGUF filename required}
+      - --alias
+      - ${LLM_MODEL_ID:?served model name required}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ctx-size
+      - ${LLAMA_CPP_CONTEXT_SIZE:?context size required}
+      - --parallel
+      - ${LLAMA_CPP_PARALLEL:?parallel count required}
+      - --batch-size
+      - ${LLAMA_CPP_BATCH_SIZE:?batch size required}
+      - --ubatch-size
+      - ${LLAMA_CPP_UBATCH_SIZE:?ubatch size required}
+      - --n-gpu-layers
+      - ${LLAMA_CPP_GPU_LAYERS:?GPU layers required}
+      - --reasoning
+      - ${LLAMA_CPP_REASONING:?reasoning mode required}
+      - --no-reasoning-preserve
+      - --flash-attn
+      - ${LLAMA_CPP_FLASH_ATTN:?flash attention mode required}
+      - --cache-type-k
+      - ${LLAMA_CPP_KV_CACHE_TYPE_K:?K cache type required}
+      - --cache-type-v
+      - ${LLAMA_CPP_KV_CACHE_TYPE_V:?V cache type required}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "5", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    labels:
+      org.csight.execution-mode: SHADOW
+      org.csight.automatic-fallback: "false"

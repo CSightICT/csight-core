@@ -4,6 +4,8 @@ WORKDIR /workspace
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
+ARG VITE_INTERNAL_MODEL_FEEDBACK=false
+ENV VITE_INTERNAL_MODEL_FEEDBACK=${VITE_INTERNAL_MODEL_FEEDBACK}
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.29.5-alpine3.23

@@ -1,0 +1,36 @@
+{
+  "observed_at": "2026-09-10T20:04:00+09:00",
+  "status": "BLOCKED",
+  "scope": "Restart existing CSight services without rebuilding, resetting data or changing model admission",
+  "stages": {
+    "docker_core_9_healthy": "PASS",
+    "api_web_public_route": "PASS",
+    "embedding_health": "PASS",
+    "e3_health": "PASS",
+    "tailscale_reconnected_existing_accept_routes_setting": "PASS",
+    "gx10_full_start_admission": "BLOCKED",
+    "mac_to_q5_tunnel": "FAIL",
+    "full_workflow_retest": "NOT_RUN"
+  },
+  "blocker": {
+    "code": "SYSTEM_HEADROOM_LOW",
+    "gx10_available_memory_mib": 12652,
+    "running_q5_memory_mib": 17497,
+    "q5_running": true,
+    "q5_oom_killed": false,
+    "other_container": "kllm-recovery-recovery-20260910a-0",
+    "other_gpu_process_pid": 1522141,
+    "other_gpu_process_memory_mib": 74676,
+    "foreign_jobs_stopped": 0
+  },
+  "preserved": {
+    "cases": 10,
+    "data_reset": false,
+    "code_changes": false,
+    "migration_or_build": false,
+    "passwords_used": false,
+    "primary_promotion": false,
+    "existing_uncommitted_changes": true
+  },
+  "next_action": "Ask owner whether the identified kllm recovery container may be stopped, or wait for its owner to release memory; then rerun the existing controller and verify the Q5 tunnel."
+}

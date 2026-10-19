@@ -1,0 +1,23 @@
+{
+  "schema_version": "mentor_handout_review/1.0.0",
+  "date": "2026-09-09",
+  "scope": "documentation_only_after_implementation",
+  "document": "docs/mentoring/CSIGHT_MENTOR_HANDOUT_2026-09-09.md",
+  "document_sha256": "48a89157bbbb9734aa2f7b023d1fc4b3f0c21aa117cc6e206ed27b0c7cf04818",
+  "source_and_previous_evidence_digest_review": "PASS",
+  "question_structure_and_backlog_references": "PASS",
+  "question_count": 12,
+  "local_link_count": 6,
+  "table_count": 6,
+  "links_tables_and_whitespace": "PASS",
+  "high_confidence_secret_pattern_check": "PASS",
+  "diff_whitespace_check": "PASS",
+  "prior_offline_regression_cited_not_rerun": {"passed": 1444, "deselected": 94},
+  "backend_ui_or_model_test_rerun": "NOT_RUN",
+  "live_runtime_recheck": "NOT_RUN",
+  "new_code_or_runtime_changes": 0,
+  "model_promotion_or_primary_changes": 0,
+  "external_sharing_or_business_actions": 0,
+  "mentor_answers_or_approvals_recorded": 0,
+  "release_eligible": false
+}

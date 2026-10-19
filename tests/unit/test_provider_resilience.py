@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from app.adapters.resilience import CircuitBreaker, CircuitOpenError, CircuitState
+from app.adapters.resilience import (
+    CircuitBreaker,
+    CircuitBreakingLLMProvider,
+    CircuitOpenError,
+    CircuitState,
+)
 from app.bootstrap.dependencies import build_llm_provider
 from app.bootstrap.settings import Settings
+from app.platform.query_builder import PolicyQueryBuilderInvalidOutputError
 
 pytestmark = pytest.mark.unit
 
@@ -62,6 +68,29 @@ def test_failed_half_open_probe_restarts_cooldown() -> None:
     assert snapshot.retry_after_seconds == 15.0
 
 
+def test_terminal_domain_error_releases_half_open_llm_probe() -> None:
+    clock = _Clock()
+    breaker = CircuitBreaker(failure_threshold=1, open_seconds=30.0, clock=clock)
+    breaker.record_failure()
+    clock.now = 30.0
+    provider = CircuitBreakingLLMProvider(
+        object(),  # type: ignore[arg-type]
+        breaker=breaker,
+    )
+
+    def invalid_schema() -> None:
+        raise PolicyQueryBuilderInvalidOutputError()
+
+    with pytest.raises(PolicyQueryBuilderInvalidOutputError):
+        provider._call(invalid_schema)  # pyright: ignore[reportPrivateUsage]
+
+    assert breaker.snapshot().state is CircuitState.CLOSED
+    assert (
+        provider._call(lambda: "next-call-admitted")  # pyright: ignore[reportPrivateUsage]
+        == "next-call-admitted"
+    )
+
+
 def test_remote_provider_client_is_reused_only_for_same_process_settings() -> None:
     first_settings = Settings(
         _env_file=None,  # pyright: ignore[reportCallIssue]
@@ -80,3 +109,18 @@ def test_remote_provider_client_is_reused_only_for_same_process_settings() -> No
 
     assert build_llm_provider(first_settings) is first
     assert build_llm_provider(second_settings) is not first
+
+
+def test_llama_cpp_provider_is_composed_through_the_shared_llm_port() -> None:
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        environment="test",
+        llm_provider="llama_cpp",
+        llm_base_url="http://127.0.0.1:9998/v1",
+        llm_model_id="csight-qwen3.8-27b-gguf",
+    )
+
+    provider = build_llm_provider(settings)
+
+    assert provider.provider_metadata.provider == "llama_cpp"
+    assert provider.provider_metadata.name == "csight-qwen3.8-27b-gguf"

@@ -118,6 +118,7 @@ const operatorCaseItemSchema = z.object({
   order_ref: z.string(),
   product_ref: z.string(),
   requested_action: z.string(),
+  inquiry_preview: z.string().max(160).nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
   review_task_id: optionalQueueText,
@@ -136,6 +137,7 @@ const operatorReviewItemSchema = z.object({
   order_ref: z.string(),
   product_ref: z.string(),
   requested_action: z.string(),
+  inquiry_preview: z.string().max(160).nullable().optional(),
   task_type: z.string(),
   priority: z.string(),
   status: z.string().min(1),
@@ -439,3 +441,7 @@ export const decodeDataAssetSummary = (value: unknown): DataAssetSummary => z.ob
   policy_version_distribution: z.record(z.string(), z.number().int().nonnegative()),
   recent_records: z.array(learningAssetSchema),
 }).parse(value) as DataAssetSummary;
+
+export const decodeDemoReset = (value: unknown) => z.object({
+  enabled: z.boolean(), count: z.number().int().nonnegative(), fingerprint: z.string(), reset_id: z.string().nullable(),
+}).parse(value);

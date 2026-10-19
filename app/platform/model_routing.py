@@ -9,7 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.errors import CSightError
-from app.platform.model_activation import ActiveLLMRelease, ModelReleaseTask, RuntimeLLMIdentity
+from app.platform.model_activation import (
+    ActiveLLMRelease,
+    ModelReleaseTask,
+    RuntimeLLMIdentityContract,
+)
 
 _HASH_PATTERN = r"^[0-9a-f]{64}$"
 _DEPLOYMENT_PATTERN = r"^[a-z0-9][a-z0-9._-]{2,127}$"
@@ -55,7 +59,7 @@ class ModelRouteDeploymentIdentity(_Contract):
     """Identity of the model deployment reached by one Worker process."""
 
     deployment_id: str = Field(pattern=_DEPLOYMENT_PATTERN)
-    runtime_identity: RuntimeLLMIdentity
+    runtime_identity: RuntimeLLMIdentityContract
 
 
 class ResolvedPinnedModelRoutePlan(_Contract):

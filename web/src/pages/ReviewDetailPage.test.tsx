@@ -153,10 +153,16 @@ describe("ReviewDetailPage quick decision confirmation", () => {
 
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "문의 검토 요약" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "고객 첨부 사진" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "문의 검토 요약" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /내 문의 처리 현황/ })).toBeVisible();
     expect(screen.getByRole("heading", { name: "고객 첨부 사진" })).toBeVisible();
     expect(screen.getByText("포장을 개봉하지 않은 상품의 환불 요청입니다.")).toBeVisible();
+    expect(screen.getByText("정책 근거·분석 상세 보기").closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByLabelText("빠른 검토 threshold 70%")).toBeVisible();
+    expect(document.querySelector(".quick-review-meter")).toBeNull();
+    await userEvent.setup().click(screen.getByText("정책 근거·분석 상세 보기"));
+    await userEvent.setup().click(screen.getByText("정책 유사도 비교 보기"));
     expect(screen.getByText("미사용 상품 환불 조항과 접수 내용이 일치하는지 담당자가 확인해야 합니다.")).toBeVisible();
     expect(screen.getByText("배송 완료 후 정해진 기간 안에 미사용 상품의 반품을 검토할 수 있습니다.")).toBeVisible();
     expect(screen.getByRole("heading", { name: "임계값에 가장 가까운 정책 3개" })).toBeVisible();

@@ -19,7 +19,7 @@ def test_operator_assignment_similarity_revision_is_linear_and_fail_closed() -> 
 
     assert revision is not None
     assert revision.down_revision == "20260829_0022_privacy_lifecycle"
-    assert scripts.get_heads() == ["20260831_0036_policy_query_search_events_v2"]
+    assert scripts.get_heads() == ["20260910_0038_fixture_evidence_repair"]
 
     source = Path(revision.path).read_text()
     assert "'ASSIGNED','REASSIGNED'" in source

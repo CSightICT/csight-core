@@ -1251,6 +1251,15 @@ def build_case_attributes(manifest: DemoManifest, source: ResolvedDemoSource) ->
     return attributes
 
 
+def allow_partial_vision_seed(
+    *, execution_mode: str, allow_partial_multimodal: bool, status: object
+) -> bool:
+    """Keep a failed legacy text stage visible during opt-in SHADOW image loading."""
+    if allow_partial_multimodal and execution_mode != "SHADOW":
+        raise RealisticDemoSeedFailure("partial multimodal loading requires SHADOW mode")
+    return allow_partial_multimodal and status == "PARTIAL_SUCCESS"
+
+
 def seed_realistic_demo(
     *,
     manifest: DemoManifest,
@@ -1266,7 +1275,15 @@ def seed_realistic_demo(
     timeout_seconds: float,
     closed_set_registry: PocClosedSetRegistry | None = None,
     closed_set_registry_sha256: str | None = None,
+    execution_mode: Literal["PRIMARY", "SHADOW"] = "PRIMARY",
+    pipeline_version: Literal["1.0.0"] = "1.0.0",
+    allow_partial_multimodal: bool = False,
 ) -> dict[str, object]:
+    allow_partial_vision_seed(
+        execution_mode=execution_mode,
+        allow_partial_multimodal=allow_partial_multimodal,
+        status=None,
+    )
     seeded: list[Mapping[str, object]] = []
     created_cases = 0
     uploaded_evidence = 0
@@ -1341,7 +1358,8 @@ def seed_realistic_demo(
                 },
                 body={
                     "pipeline": "product_defect_multimodal_analysis",
-                    "pipeline_version": "1.0.0",
+                    "pipeline_version": pipeline_version,
+                    "execution_mode": execution_mode,
                 },
                 expected=frozenset({200, 202}),
             )
@@ -1357,7 +1375,15 @@ def seed_realistic_demo(
             )
             run = _mapping(detail.get("run"), label="Analysis run")
             status = run.get("status")
+            if execution_mode == "SHADOW" and run.get("execution_mode") != "SHADOW":
+                raise RealisticDemoSeedFailure("seeded analysis did not retain SHADOW mode")
             if status == "SUCCEEDED":
+                break
+            if allow_partial_vision_seed(
+                execution_mode=execution_mode,
+                allow_partial_multimodal=allow_partial_multimodal,
+                status=status,
+            ):
                 break
             if attempt_index == len(operations) - 1:
                 raise RealisticDemoSeedFailure(
@@ -1412,7 +1438,7 @@ def seed_realistic_demo(
                 "case_replayed": case_status == 200,
                 "evidence_replayed": evidence_replayed,
                 "analysis_replayed": analysis_status == 200,
-                "run_status": "SUCCEEDED",
+                "run_status": run.get("status"),
                 "score": score,
                 "threshold": EXPECTED_THRESHOLD,
                 "outcome": outcome,
@@ -1440,9 +1466,17 @@ def seed_realistic_demo(
     report: dict[str, object] = {
         "schema_version": manifest.schema_version,
         "report_kind": "REALISTIC_INTERNAL_DEMO_SEED",
+        "analysis_execution_mode": execution_mode,
+        "analysis_pipeline_version": pipeline_version,
+        "multimodal_analysis_status": (
+            "PASS" if all(item["run_status"] == "SUCCEEDED" for item in seeded) else "FAIL"
+        ),
+        "partial_multimodal_count": sum(item["run_status"] == "PARTIAL_SUCCESS" for item in seeded),
         "created_at": datetime.now(UTC).isoformat(),
         "verdict": (
-            "REALISTIC_INTERNAL_DEMO_20_CASES_TOTAL_READY"
+            "REALISTIC_INTERNAL_DEMO_LOADED_WITH_PARTIAL_ANALYSIS"
+            if any(item["run_status"] != "SUCCEEDED" for item in seeded)
+            else "REALISTIC_INTERNAL_DEMO_20_CASES_TOTAL_READY"
             if manifest.dataset_id == DATASET_ID_V3
             else "REALISTIC_INTERNAL_DEMO_10_CASES_READY"
         ),
@@ -1549,6 +1583,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--vision-base-url", default="http://127.0.0.1:8093")
     parser.add_argument("--actor-email", default="csight@csight.demo")
     parser.add_argument("--timeout-seconds", type=float, default=240.0)
+    parser.add_argument("--execution-mode", choices=("PRIMARY", "SHADOW"), default="PRIMARY")
+    parser.add_argument("--pipeline-version", choices=("1.0.0",), default="1.0.0")
+    parser.add_argument("--allow-partial-multimodal", action="store_true")
     arguments = parser.parse_args(list(argv) if argv is not None else None)
     try:
         if arguments.timeout_seconds <= 0:
@@ -1618,6 +1655,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             actor=actor,
             engine=engine,
             timeout_seconds=arguments.timeout_seconds,
+            execution_mode=arguments.execution_mode,
+            pipeline_version=arguments.pipeline_version,
+            allow_partial_multimodal=arguments.allow_partial_multimodal,
             closed_set_registry=closed_set_registry,
             closed_set_registry_sha256=(
                 _manifest_sha256(closed_set_registry_path)

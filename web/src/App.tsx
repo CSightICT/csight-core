@@ -22,7 +22,7 @@ function deferredRoute(element: ReactElement) {
 function ProtectedLayout() {
   const { user } = useAuth();
   const location = useLocation();
-  return user ? <AppShell /> : <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+  return user ? <AppShell /> : <Navigate to="/login2" replace state={{ from: `${location.pathname}${location.search}` }} />;
 }
 
 const routeTitles: ReadonlyArray<readonly [RegExp, string]> = [
@@ -34,6 +34,7 @@ const routeTitles: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/metrics$/, "운영 지표"],
   [/^\/data-assets$/, "데이터 자산"],
   [/^\/operations$/, "운영 상태"],
+  [/^\/login2$/, "로그인"],
   [/^\/login$/, "로그인"],
 ];
 
@@ -58,6 +59,7 @@ export function App() {
     <RouteAccessibility />
     <Routes>
     <Route path="/login" element={deferredRoute(<LoginPage />)} />
+    <Route path="/login2" element={deferredRoute(<LoginPage />)} />
     <Route element={<ProtectedLayout />}>
       <Route index element={<Navigate to="/cases" replace />} />
       <Route path="/cases" element={deferredRoute(<CasesPage />)} />

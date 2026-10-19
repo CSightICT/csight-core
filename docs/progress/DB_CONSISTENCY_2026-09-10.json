@@ -1,0 +1,78 @@
+{
+  "schema": "csight_db_consistency_audit/1.0.0",
+  "observed_at": "2026-09-10T14:33:00+09:00",
+  "repair_status": "PASS",
+  "overall_consistency_status": "FAIL",
+  "remaining_reason": "17 legacy fixture Cases lack genuine intake history; retained without fabricated events pending approved all-tenant reset.",
+  "verification": {
+    "foreign_key_and_check_constraints": {"checks": 542, "violations": 0},
+    "cross_run_and_case_lineage": {"checks": 29, "violations": 0},
+    "case_review_assignment_resolution_projections": "PASS",
+    "analysis_stage_rollup_results_attempt_counts": "PASS",
+    "sensitive_payload_parity_and_hashes": {"checked": 115, "violations": 0},
+    "private_evidence": {"scanned": 73, "missing_fixture_objects": 7, "byte_hash_verified": 66, "hash_or_metadata_mismatches": 0},
+    "immutable_hash_validation": {"review_packets": 41, "human_decisions": 32, "review_reports": 23, "learning_assets": 23, "action_intents": 11, "simulation_results": 11, "violations": 0},
+    "reference_policy_corpus_and_rule_validators": "PASS",
+    "all_policy_document_and_rule_snapshot_links": "PASS",
+    "all_304_embeddings_dimension_and_contract_norm_tolerance": "PASS",
+    "note": "Initial diagnostic 0.001 norm cutoff was stricter than the existing 0.005 contract; no stored vector violates the actual contract or was rewritten."
+  },
+  "repair": {
+    "migration": "20260910_0038_fixture_evidence_repair",
+    "affected_fixture_evidence": 7,
+    "transition": "AVAILABLE_TO_FAILED",
+    "null_human_actor_receipts": 7,
+    "changed_tables": ["alembic_version", "case_evidence", "data_lifecycle_events"],
+    "other_tables_content_digest_unchanged": 78,
+    "objects_deleted": 0,
+    "cases_or_analysis_or_decisions_deleted": 0,
+    "history_fabricated": false,
+    "schema_drift": 0
+  },
+  "backup": {
+    "path": "/private/tmp/csight-data-consistency-j58RpN/core-before-repair.dump",
+    "sha256": "db52e0395702839303827abd5ca45b39328859ba48d51cda82f3d3771078a114",
+    "owner_only": true,
+    "actual_isolated_restore": "PASS",
+    "restored_copy_migration": "PASS",
+    "temporary_restore_database_removed": true,
+    "scope": "POSTGRESQL_LOGICAL_BACKUP_NOT_FULL_OBJECT_STORE_OR_OFFHOST_RECOVERY_SET"
+  },
+  "prevention": {
+    "shared_database_integration_tests_rejected_before_fixtures": "PASS",
+    "official_runner_exact_disposable_database_binding": "PASS",
+    "direct_invocation_exit_code": 4
+  },
+  "tests": {
+    "offline": {"passed": 1478, "deselected": 97, "existing_warnings": 36},
+    "isolated_postgresql_repair_and_shadow_workflow": {"passed": 3},
+    "pyright": "PASS",
+    "changed_ruff_and_format": "PASS",
+    "diff_check": "PASS",
+    "initial_failures_fixed": ["Malformed-URL exception normalization", "Migration head expectations", "Private helper import in repair test"]
+  },
+  "runtime": {
+    "healthy_core_services": 9,
+    "api_and_web_health": "PASS",
+    "core_image_with_0038_built": true,
+    "existing_containers_restarted": false,
+    "gpu_services_changed": false,
+    "human_or_ssh_passwords_used": false
+  },
+  "post_reset_followup": {
+    "observed_at": "2026-09-10T15:04:00+09:00",
+    "consistency_status": "PASS",
+    "historical_status_above": "The FAIL and pending-reset reason above describe the pre-reset 14:33 snapshot, not the current DB.",
+    "owner_authorized_reset": "All115 legacy Cases and operational descendants archived then cleared; fresh10 Cases reloaded through normal APIs.",
+    "constraint_checks": 542,
+    "constraint_violations": 0,
+    "missing_intake_history": 0,
+    "photo_and_sensitive_hashes_verified": 10,
+    "immutable_review_packets_and_citation_packs_verified_each": 10,
+    "human_reviews_pending": 10,
+    "human_decisions_created": 0,
+    "legacy_text_failures_retained": "4 failed text-v1 stages across2 Cases; model contract failures, not DB inconsistency. Separate text-v2/RAG/policy succeeded for10 Cases.",
+    "details": "TEST_DATA_RESET_2026-09-10.json"
+  },
+  "next_action": "Authenticated human feedback on10 pending synthetic cases; address legacy text-v1 reliability separately and retain a durable offhost backup."
+}

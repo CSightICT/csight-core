@@ -62,7 +62,8 @@ function EvidenceBlobImage({ content, evidence, failed, onFailed, onReady, onRet
   </a>;
 }
 
-export function EvidencePreview({ caseId, evidence, onStatusChange }: {
+export function EvidencePreview({ caseId, evidence, onStatusChange, compact = false }: {
+  compact?: boolean;
   caseId: string;
   evidence: Evidence;
   onStatusChange?: (evidenceId: string, status: EvidencePreviewStatus) => void;
@@ -108,10 +109,10 @@ export function EvidencePreview({ caseId, evidence, onStatusChange }: {
       canRetry={availableImage && contentQuery.isError}
       onRetry={retry}
     />}
-    <div className="evidence-preview-meta">
+    {!compact && <div className="evidence-preview-meta">
       <strong>{evidence.original_filename}</strong>
       <small>{Math.ceil(evidence.size_bytes / 1024)} KB · {evidence.width}×{evidence.height}</small>
       <small>인증된 same-origin 원본 · 페이지를 벗어나면 임시 미리보기 폐기</small>
-    </div>
+    </div>}
   </article>;
 }

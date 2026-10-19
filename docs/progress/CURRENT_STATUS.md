@@ -12,16 +12,111 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 | 항목 | 값 |
 |---|---|
-| 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; 실행 중 데모를 보존한 채 migration 0036과 Query Build/Search의 독립 durable v2 event·worker 경계를 구현하고 실제 PostgreSQL 경로를 검증했다. 실제 고객 파일럿 승격은 계속 차단 상태 |
-| 진행 중 작업 | Query Build/Search v2와 `cd6471cd628e` clean RC candidate 검증, 로컬 OIDC·이미지 보안·OTel·복원·queue isolation qualification을 완료했다. 다음 우선순위는 실제 20-session/20-workflow terminal·mutation 부하, 외부 경보 수신자, 암호화 immutable off-host 복원 2회, release-eligible 모델과 SHADOW 100건이다. 고객 IdP/public key/retention/policy/support 입력 전에는 pilot을 시작하지 않는다. |
-| 마지막 갱신일 | 2026-08-31 16:37 KST, Asia/Seoul |
+| 현재 완료 단계 | 내부 시연용 제한 운영 기반 `DEMO_READY_WITH_BLOCKERS`; clean imatrix Q5는 실제 RTX 4090 synthetic Dev에서 guarded `local.8` Extraction 15/15와 기존 runtime `local.2` Grounding 25/25 절대 gate를 통과했다. LLM Query Builder는 RAW→HYBRID 기준 미달이므로 후보 전체는 계속 `NO_WINNER`·`NO_RELEASE_ELIGIBLE`; 실제 고객 파일럿과 모델 출시 승격은 차단 상태 |
+| 상담원 UI 개선 | 2026-09-20 14:00: 데이터 자산 관리자 설명 간소화·상세접기·전체/실운영 구분 PASS. 2026-09-19 19:26: 실제 grid display 누락 수정, 이미지 중심 좌표 검증 PASS. 2026-09-19 19:15: 사진 중앙정렬/크기 보완·원문 아래 안내문 제거 PASS. 2026-09-19 19:11: 상시 노란 피드백 배너 제거·사진/프레임 원본비율 반응형 적용 PASS. 2026-09-13 17:15 KST: 담당자/날짜/상태 고정 열로 흔들림 수정, E2E6·build/lint PASS, Web 반영. 2026-09-13 17:04 KST: 담당자 선택을 문의 행에 통합, 하단 흰색 구역 제거·Web 반영 PASS. 2026-09-13 16:59 KST: 검토 제목 중복 제거·요약 글자 위계·담당자 선택 디자인 개선. Frontend92/E2E15·type/lint/build PASS, Web dev 반영 healthy. 2026-09-11 10:39 KST: 이상가능성 게이지삭제·사진최상단/바로아래저장요약·Web반영 PASS. 앞선10:25: 고객·상품/주문·고정정책 하단 기본접기 추가, 기존Case URL도 미결정 검토로 직행. Web 재반영·Frontend92/E2E15 PASS. 앞선 10:18 구현: 문의 내용 중심 목록·검토 직행·사진/작은 상품 정보/요약/숫자 threshold/허용·비허용, 상세 접기 구현 및 로컬 API/Web 반영 PASS. 실제 상담 시간·판단 품질 비교와 인증 사용자의 전체 사용 확인은 NOT_RUN. [설계/효과 측정](../product/CONSULTANT_FOCUSED_UI_2026-09-11.md) |
+| 진행 중 작업 | ADR-0126 오프라인 두 엔진 대조·ADR-0127 즉시 개선4건에 이어 ADR-0128 내부 SHADOW 실모델 피드백을 배포했다. 기존 상담원 UI에서 새 문의를 사용하며 피드백할 수 있다. 두 엔진 대조 전용 UI·실제 공동 의미 품질·학습·보안 HTTP 재자격은 별도 NOT_RUN이다. 다음은 사용자 인증 UI 전체 사용 확인과 대표 문의/사진·독립 정답 기반 GX10 평가다. Query Builder와 joint Dev 미통과로 NO_WINNER·PRIMARY 승격 금지를 유지한다. 9/2 임의 canary의 human_review_required=false는 승인 통제 실패 증거가 아닌 미평가다. |
+| 마지막 갱신일 | 2026-10-18 KST — 논문 참고서 및 실제 2쪽 DOCX/PDF 초안·인계 갱신. 마지막 운영 관측은 2026-10-01 14:13 KST로 유지 |
+| 추계 논문 작성 준비 | 2026-10-18: [참고서](../papers/CSight_2026_추계_2쪽논문_작성참고서.md) 기반 학생 양식 2쪽 DOCX/PDF·그림1·검증표1·본문 MD 작성. 김혜린/차인택·선문대 AI소프트웨어학과·황세웅 지도교수(교신저자) 반영. 두 페이지 시각검수 및 한글 뷰어 DOCX 열람/인쇄2쪽 PASS. native HWP 생성 후보 열람 실패로 미납품; 최종 HWP 저장·접수·신규 실험 NOT_RUN |
+| 공개 영상·콘솔 경로 | 2026-09-29 21:17 KST: `doongdoong.org`·`www` 루트와 `/login`은 시연 영상, `/login2`는 CSight 로그인 폼 PASS. 비로그인 업무 경로는 `/login2`로 이동하며 `/auth/capabilities` 200·기존 비밀번호 로그인 허용 확인. 실제 자격 증명으로 로그인 완료는 NOT_RUN. Mac·Tunnel 실행 중에만 공개 링크 사용 가능. [배포 인계](../demo-video/public-site/README.md) |
+| 실제 모델 역할 연결 | 15:04 새 합성 문의10건의 실제 Q5 Text-v2(local.8)→RAW/HYBRID/Top3→Grounding(local.2)→정책→검토대기10/10 PASS. E3 사진10건 검증 PASS. 별도 구형 multimodal text-v1은2건 부분 실패(재시도 포함4개 stage)를 보존한다. Query Builder·reranker 미사용. 사람 UI 피드백/고객 의미 품질은 NOT_RUN. [현재 검증](TEST_DATA_RESET_2026-09-10.json); 이전 역할/SHADOW JSON은 과거 snapshot |
+| 내부 실모델 통합 후속 | 사용자 승인에 따라 ADR-0128·Migration0037을 실배포했다. 내부 피드백 프로필에서 표시된 SHADOW→정책→사람 검토→모의 처리를 허용한다. 기본/별도 pilot 차단, PRIMARY 모델 승격 금지, 사람 최종 확인·자동 업무 금지는 유지. 격리 DB workflow·왕복/drift와 실서버 drift PASS. [단계 결과](SHADOW_HUMAN_FEEDBACK_2026-09-10.json); [이전 BLOCKED](INTERNAL_REAL_MODEL_INTEGRATION_2026-09-10.json)는 최신 사용자 승인 이전 이력 |
+| 서버 제어 앱 기동 확인 | 14:04 앱 공용 제어 backend 빠른 시작 PASS, Core9 healthy·API/Web/Embedding/공개 주소 정상. 로컬 표시 파일로 실모델 피드백 overlay를 선택하며 GX10 Q5·Mac E3·SSH loopback 연결을 관리한다. 이번에는 GUI 대화상자 재검증/전체 cold-stop은 NOT_RUN, 앞선 GUI PASS는 이력 보존. NVFP4·ComfyUI·4090 무변경. [사용 안내](../operations/INTERNAL_SHADOW_FEEDBACK.md) |
+| 기술 멘토링 준비 | 외부 전달은 [멘토님 공유 HTML](../mentoring/CSIGHT_MENTOR_HANDOUT_2026-09-09.html) 수정본을 사용한다: 상담원 콘솔⇄Core⇄독립 LLM/Vision 아키텍처 도식 1개, 검증 경계, 3개 주제/미해결 질문 12개. 완료 개선 4건과 관련 설명·수치는 제외 상태를 유지한다. 모바일/접기·펼치기/인쇄 지원. [원문](../mentoring/CSIGHT_MENTOR_HANDOUT_2026-09-09.md)과 [80개 종합 질문](../mentoring/CSIGHT_TECHNICAL_MENTORING_BRIEF_2026-09-09.md)은 내부 상세 근거로 보존. 실제 자료 전송·멘토 답변·출시 승인 없음 |
+| 최신 로컬 코드 검증 | 2026-09-10 오프라인1493 passed / 97 deselected / 기존 warning36. 격리 PostgreSQL repair/SHADOW3 PASS·0038 drift0·실서버 drift0. 전체 Pyright 오류0, 변경 Python Ruff/format·diff-check PASS, OpenAPI snapshot/generated 동기화 PASS. 이전 Frontend92·typecheck/lint/build PASS는 이력이며 이번 UI 재검증 아님. 고객 품질·출시 자격과 별개 |
 | 연결 GitHub 계정 | `it0615` |
-| 원격 저장소 | `CSightICT/csight-core` — Private. migration 0036과 Query Build/Search v2 구현 `55fe72b146c4`, RC 검증 원장 `cd6471cd628e`, 로컬 자격 증거 영속화 `9461b31`과 이 상태 원장을 `origin/codex/operator-console-product-direction`에 push; PR·`develop/main` 병합 없음 |
-| 로컬 Git | `codex/operator-console-product-direction`; 작업 종료 시 HEAD와 원격 일치를 재검증한다. clean worktree `/Users/ckdlsxor/Desktop/CSight_rc_cd6471c`와 새 RC image/volume을 보존했고 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md`는 제외했다. |
-| 마지막 검증 관측 | 2026-08-31 16:37 KST, 전체 Ruff/format/Pyright PASS, 자격 증거 영속화 집중 unit 6 PASS. 앞선 비통합 backend 1023 PASS/6 SKIPPED, PostgreSQL integration 83 PASS/5 external-GPU SKIPPED, migration lifecycle·drift와 RC candidate 9서비스 healthy/restart 0도 유지한다. 로컬 OIDC, ClamAV 이미지 보안, OTel, 복원, read/queue isolation runner는 PASS했지만 외부 경보·off-host 복원 2회·20 terminal workflow·mutation p95는 아직 미자격이다. 실행 중 데모 9개 서비스와 DB/image 0034는 그대로 정상이며 디스크는 39 GiB다. |
+| 원격 저장소 | `CSightICT/csight-core` — Private. 현재 HEAD와 원격 기능 브랜치는 `f2357ba0cee6`으로 일치한다. 이번 GGUF·runtime·평가 변경은 미커밋이며 Commit·Push·PR·`develop/main` 병합 없음 |
+| 로컬 Git | `codex/operator-console-product-direction`; clean worktree `/Users/ckdlsxor/Desktop/CSight_rc_cd6471c`, RC image/volume, 사용자 소유 미추적 문서와 `kaputt_best_vision_architecture.md`를 보존했다. 양자화 산출물은 Khrin의 owner-controlled `/home/data`에만 있고 Git에 포함하지 않았다. |
+| 마지막 검증 관측 | 2026-10-01 14:13 KST, Mac·GX10 실행 Docker 컨테이너 0개, 전용 Q5 running=false/ready=false. 잔여 CSight 전용 E3(8093)·SSH 터널(18004)도 소유 확인 후 종료해 리스너 없음. API/Web/Embedding/공개 주소 응답 없음. Docker 볼륨 보존 |
 | 마지막 GitHub 관측 | 2026-08-28 23:02 KST, `origin/codex/operator-console-product-direction`의 `3daaa7bff56fa0e25f7ca69bf6bc31d68a2cdb79`에 대한 CI Run #33177793237 PASS. PR·`develop/main` 병합 없음 |
 
 ## 1. 다음 세션 시작 체크리스트
+
+최신 문서 작업(2026-10-18 KST): 한국디지털콘텐츠학회 학생 양식 실제 2쪽 논문 초안.
+[x] 참고서와 원본 JSON/ADR을 바탕으로 캡스톤 설계·산업 기대효과 중심 본문 작성.
+[x] 사용자 제공 저자·소속·학생 이메일·황세웅 지도교수(교신저자) 반영.
+[x] 편집 DOCX·검토 PDF·본문 MD·400dpi 구조도·4행3열 검증표 생성.
+[x] render_docx 두 페이지 PNG 시각검수·PDF 텍스트/쪽수/표·그림 개수 대조 PASS.
+[x] 한컴 뷰어에서 DOCX 정상 열람 및 인쇄 미리보기 1/2·2/2페이지 확인.
+[x] 합성40/30·별도Text-v2 10건 분모, 구형부분실패4회·사람/외부동작0·현장경제성미평가 보존.
+[ ] 한글 편집기에서 공식 학생 양식 글꼴/서식을 확인하고 최종 HWP로 저장·2쪽 재검수.
+미해결: native HWP 후보는 실제 열람 실패로 납품 제외. 학회 접수·교수 이메일/지원문구 확인은 별도.
+다음: [초안 편집 메모](../papers/CSight_2026_추계_초안_편집메모.md)에 따라 공동저자 검토 후 HWP 저장.
+이번 작업은 문서만 변경했으며 서비스 가동 상태를 새로 확인하거나 재기동하지 않았다.
+
+최신 운영 변경(2026-10-01 14:13 KST): 사용자 요청으로 CSight Docker/PoC 스택 종료.
+[x] 종료 전 Mac CSight Core9와 GX10 Q5 실행 확인.
+[x] 전용 controller stop PASS: GX10 Q5, Core Compose, Embedding, 공개 터널 종료.
+[x] 잔여 전용 E3(8093)·SSH 터널(18004) 프로세스를 식별해 TERM 후 리스너 없음 확인.
+[x] 종료 후 Mac·GX10 실행 Docker 컨테이너 각각 0개, Q5 running=false/ready=false 확인.
+[x] DB·업로드 Docker 볼륨 보존. 다른 GPU 작업 종료0.
+[ ] 재기동은 사용자 요청 때 수행. 현재 API/Web/Embedding/공개 주소는 응답 없음.
+미해결: 종료 자체는 없음. 다음: 사용자가 요청하면 전용 controller start로 복구하고
+Q5·Core·터널·합성 연결을 새 시각에 다시 검증한다.
+
+최신 운영 변경(2026-09-30 13:01 KST): 사용자 요청으로 내려가 있던 GX10 Q5 복구·연결.
+[x] 사전 status에서 Q5 running=false/ready=false, GX10 Docker 컨테이너·GPU 계산 프로세스 0 확인.
+[x] 다른 계산 작업 종료0(해당 작업 없음); 전용 controller start/canary PASS, GX10 Q5 단독 running.
+[x] Mac SSH 터널/E3 HTTP200, Core9 healthy/API200, Worker SHADOW·llama_cpp 경로 확인.
+[x] 배포 Worker 합성 Extraction·Vision·Embedding·Grounding PASS; DB 쓰기/업무 효과0.
+[ ] 실제 계정 로그인부터 새 문의·검토까지 사용자 인증 UI 전체 흐름은 NOT_RUN.
+미해결: 인증 UI 종단 사용 확인. 다음: 기존 계정으로 `/login2`에 로그인해 새 합성 문의를
+등록하고 SHADOW 분석·사람 검토 화면을 확인한다. 모델 출시 자격은 기존 차단 상태.
+
+최신 운영 변경(2026-09-21 19:55 KST): 사용자 요청으로 GX10 llama.cpp Q5 종료.
+[x] 전용 controller stop PASS, running=false/ready=false, 다른 작업 종료0.
+미해결: 없음. 다음: 새 분석이 필요할 때만 사용자 요청에 따라 엔진 재기동.
+
+최신 완료(2026-09-20 17:49 KST): 운영 상태 하단 DB 적재 원복 적용(ADR-0131).
+[x] ADMIN/local/internal-feedback/SYNTHETIC_DEMO 조직 범위 제한, 분석·사진·정책 보존.
+[x] 결정 후속 기록 원자적 보관 후 검토 대기·배정해제·version 증가. 실제 초기화는 아직 미실행.
+[x] 단위/API4·격리DB1(재결정/중복/오류 rollback)·Frontend93·브라우저2(1440/375px fixture) PASS.
+[x] 변경 Ruff·Pyright0·Web typecheck/lint·이미지 build·diff-check PASS.
+[x] DB 백업 후0039 실배포, API/Web healthy·실API schema/미리보기7건·보관0건 PASS.
+[x] 기존 controller로 GX10 Q5 재기동, ready/running PASS. 다른 GPU 작업 종료0.
+[ ] 실제 사용자 인증 UI에서 원복 버튼 최종 실행 NOT_RUN: 사용자 시연 시 실행.
+다음: 화면 새로고침 → 운영 상태 하단 DB 적재 원복 →7건 확인 → 검토 대기부터 시연.
+준비도/버전 상세는 접힘. 실제 실패는 유지. PILOT_LIVE 운영지표에 합성 성과 혼입 없음.
+전체 신규 문의 실모델 종단 검증·실환불/고객 출시 자격은 이번 검증 범위 아님.
+
+
+최신 재기동(2026-09-13 16:51 KST): [x] 기존 controller start 완료 [x] Core9 healthy
+[x] API/Web/Embedding/E3 HTTP200 [x] GX10 Q5 ready 및 synthetic canary PASS [x] 최신 UI 유지.
+다음: 기존 상담원 화면 새로고침. 전체 업무 E2E·고객품질은 이번 NOT_RUN. 아래9/10 차단은 과거 기록이다.
+
+
+최신 요청: 서버 다시 켜기. 20:04 Core9/API/Web/공개주소/Embedding/E3 정상, 문의10건 유지.
+[x] Docker Desktop·기존 서비스 재기동, 정지된 Tailscale을 기존 accept-routes 설정 그대로 연결.
+[ ] GX10 전체 기동 BLOCKED: 여유12,652MiB로 안전 기준 미달. 기존Q5는 running/oom=false지만 Mac18004 터널은 없음.
+[ ] 다른 `kllm-recovery-recovery-20260910a-0`의 vLLM이74,676MiB 사용. 임의 중단하지 않았다.
+다음: 해당 컨테이너 중단 허용 여부를 사용자에게 확인하거나 메모리 반환 후 제어 앱 start 재실행.
+[현재 기동 기록](SERVER_RESTART_2026-09-10_2004.json). 아래15:04 통합 PASS는 당시 관측이며 현재 전체 연결을 보장하지 않는다.
+
+이전 완료 요청: 기존 데이터를 초기화하고 임시 데이터로 실제 사용을 테스트한다. DB 불일치도 점검·수정한다.
+[x] DB 감사: 제약542·lineage29·원문hash115·사람결정32·보고서23 등 PASS.
+[x] Migration0038: 파일 없는 과거 fixture Evidence7건 AVAILABLE→FAILED, machine receipt7건.
+[x] 새 DB 백업 실제 복원·격리 repair/Shadow3개·오프라인1478·타입0·Core9 healthy.
+[x] 사용자 추가 확인: **모든 테스트 고객사의115건 전부** 초기화. 계정·정책·인덱스·모델 서버 보존.
+[x] 초기화 직전 post-repair DB+사진 백업·DB 실제 복원→정확56개 업무 테이블 초기화. 보존25개 테이블의 count/hash 동일.
+[x] 원래 사진 bucket/121개 version 항목을 보존하고 새 빈 versioned bucket으로 전환. Core9 healthy·0038 drift0.
+[x] 임시 SHADOW 문의/사진10건 적재. E3 10/10 검증, 구형 multimodal text-v1은2건 부분 실패(재시도 포함4개 실패 stage)를 보존.
+[x] 실제 검색 응답500 발견→검색/Grounding 공개 응답 allowlist 수정·계약8개 PASS·Core 재배포.
+[x] 별도 Text-v2→RAW/HYBRID→Grounding→정책→검토 대기10건 PASS. 사람 최종 결정/실제 외부 동작0.
+[x] 최종 제약542·원문/사진10·검토packet10·citation pack10 무결성 PASS, 대기메시지0·drift0.
+[ ] 담당자가 /reviews를 새로고침해10건을 확인·피드백한다. 사람 UI 조작과 의미 품질 확인은 미실행.
+[ ] 별도 후속: 구형 text-v1 형식 실패 개선, 임시 로컬 백업의 장기/offhost 보존.
+이력 없는 과거 fixture17건은 거짓 이력을 만들지 않고 사용자 승인 초기화에서 제거했다. 백업에 원본 이력을 보존한다.
+[DB 감사 결과](DB_CONSISTENCY_2026-09-10.json). 14:13의 범위 BLOCKED는 이후 사용자 확인으로 해소됐다.
+[x] 14:13 읽기 전용 인벤토리: 전체 문의115건, 현재 화면의 `csight`51건, 다른 tenant64건.
+[x] 초기화 범위 확인: 전체 tenant115건, 사용자 명시 승인. 과거 출처 표시는 변경하지 않는다.
+[x] 계정·정책/검색 인덱스·모델 서비스 보존, 새 백업/복구 확인과 초기화 완료.
+[x] SHADOW 임시 적재→실제 비동기 검증. [단계 JSON](TEST_DATA_RESET_2026-09-10.json).
+
+현재 요청 인계: [x] 내부 SHADOW 차단 해제·실모델 연결·실배포·백업·단계 JSON.
+[x] 인증/tenant/사람 결정/모의 실행/기존 분석 이력 보존.
+[ ] 사용자가 새 내부 테스트 문의를 등록해 인증 UI 전체 흐름을 직접 확인하고 피드백한다.
+[ ] 공동 실모델 품질 평가·E3 상업 사용권·고객 pilot는 별도 미완료다.
+새 사용은 제어 앱으로 시작하고 화면을 새로고침한다. 이전 mock/PRIMARY 분석을 재사용하지 않는다.
+ADR-0128은 이전 SHADOW 업무 금지를 내부 사용에 한해 대체하며 출시 승격 금지를 대체하지 않는다.
 
 - [ ] `CSight_project_docs/AGENTS.md`, 관련 설계 문서, Accepted ADR을 읽는다.
 - [ ] 이 문서의 진행 중 작업, 미해결 사항, 다음 작업을 확인한다.
@@ -31,6 +126,19 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [ ] 변경 전 관련 테스트, Migration, API/Event 계약을 확인한다.
 - [ ] 이번 세션의 범위와 하지 않을 일을 명시한다.
 - [ ] 아래의 첫 번째 미완료 실행 항목부터 진행한다.
+
+### 2026-09-11 UI 작업 인계 체크리스트
+
+- [x] 규칙·현재 상태·관련 설계/ADR 및 기존 변경 확인, 기존 미커밋 작업 보존.
+- [x] 문의 중심 목록/검토 직행/간결한 검토 화면·ADR-0130·API 계약·문서 반영.
+- [x] Frontend92, E2E14(320–1440px 접근성 포함), 오프라인Python1493, 격리DB2 PASS.
+- [x] Pyright0·변경Ruff/format·Web타입/lint/build·OpenAPI동기화·diff PASS.
+- [x] 로컬 API/Web만 이미지 교체, 이전 환경값 전체 동일·이전 이미지 보존·Core9 healthy.
+- [ ] 실제 로그인 담당자의 신규 UI 사용 피드백, 실제 상담 시간/결정 품질 비교.
+- [ ] 기존 실모델/백업/출시 미해결 항목은 이전 인계대로 후속 진행.
+
+다음 행동: 기존 로그인으로 `http://127.0.0.1:8080/cases`를 새로고침하고 문의 내용→검토를 확인한다.
+이번에 새 분석/사람 결정/외부 업무는 생성하지 않았다. 모델 연결 설정 보존은 현재 모델 endpoint 사용 가능 증거가 아니다.
 
 ## 2. 단계별 상태
 
@@ -142,8 +250,20 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | Terminal Customer Content Erasure 0029 | PASS_WITH_SCOPE | 원문 만료 transaction에서 사람 rationale/action payload, Case attributes, terminal report 고객·주문·배송 snapshot, communication과 resolution failure prose를 삭제하고 결정·보고서·안내 hash를 재계산. PII-free receipt와 deferred DB 재삽입 차단을 실제 PostgreSQL workflow로 검증. tenant retention 운영·log scan·backup/legal hold는 미완료 |
 | Pilot Data Provenance 0030 | PASS_WITH_SCOPE | Case 생성 시 `SYNTHETIC_DEMO` 또는 fail-closed `NOT_ATTESTED`를 서버가 부여하고 DB trigger로 변경을 차단. KPI·SLA·drift readiness는 `PILOT_LIVE`만 집계하며 합성 60건 readiness=false를 고정. 현재 실표본 0건이고 trusted pilot intake 자격은 별도 필요 |
 | Non-local OIDC-only Authentication | PASS_WITH_OPERATIONAL_GATE | 실제 Keycloak에서 PKCE·역할 매핑·return path·CSRF·idle expiry, 새 로그인 차단과 signed back-channel 기존 세션 즉시 회수까지 PASS. 고객 IdP에서 권한 변경→provider session 종료→전달 재시도·경보 연결은 파일럿 onboarding Gate |
-| Product Readiness + RTX4090 Audit | BLOCKED_P0 | schema drift, strict login/RLS, 담당자 소유권·직접 객체 권한은 완료. Qwen3.8-27B 공식 BF16/FP8는 단일 4090에 부적합하고 현재 Community W4A16은 VRAM·Action/Missing 품질 제한이 있다. 개인정보 완전 삭제, 실제 OIDC/model/restore/alert 자격을 순서대로 해소해야 함 |
-| RTX4090 Qwen Candidate Gate | PASS_WITH_NO_ELIGIBLE_RELEASE | exact artifact/runtime matrix, Extraction v2 Dev→digest 검증 freeze→sealed Test, 두 challenger의 matrix-locked Compose/allowlisted launcher/exact alias canary 구현. 공식 27B BF16/FP8 hardware 제외, Community 27B baseline Shadow-only, vLLM 0.28.0/공식 8B FP8은 실제 4090 자격 대기. 100 Shadow·20 workflow·activation은 미연결 |
+| Product Readiness + RTX4090 Audit | BLOCKED_P0 | schema drift, strict login/RLS, 담당자 소유권·직접 객체 권한과 local qualification runner, clean calibration과 실제 two-candidate Dev 비교는 완료. 그러나 Dev `NO_WINNER`이고 immutable artifact custody·sealed Test·Shadow, 개인정보·고객 IdP·off-host restore·alert 자격이 남음 |
+| RTX4090 Qwen Candidate Gate | BLOCKED_NO_WINNER | clean imatrix `8d1de2…d40f`, pinned llama.cpp b10419 image `c85eec…18ef`, attested corpus와 최종 mixed Q4/Q6 `318c24…248f`·Q5 `d709a4…2219` evidence PASS. Q5는 guarded `local.8` Extraction 15/15와 runtime `local.2` Grounding 25/25 synthetic Dev gate를 통과했지만 LLM Query Builder가 RAW→HYBRID 기준선에 미달한다. 최종 identity의 fresh 세 task 동시 PASS와 artifact revision·조직 미러·Test·Shadow100·workflow20이 없으므로 전체 selection은 계속 `NO_WINNER`·`NO_RELEASE_ELIGIBLE`, PRIMARY·자동 fallback 0 |
+| GX10 Read-only Inventory | PASS | 공개키-only SSH로 ASUS GX10/ARM64/GB10 CC 12.1/약 128GB unified memory/4TB NVMe/Ubuntu 24.04.4/CUDA 13.0/Docker arm64/NVIDIA CDI를 확인했다. 10GbE link·실제 throughput과 GPU container canary는 `NOT_RUN`. compact 결과는 owner-only `local-data/gx10-inventory/2026-09-02T000756+0900/inventory.json`; 원격 write·설치·전송·service 변경 0 |
+| GX10 Execution Plan | PASS | ARM64/CUDA 13/GB10용 pinned llama.cpp b10419 별도 image, control input 22,449 bytes, Khrin→GX10 Q5 18,679,614,080 bytes와 deferred imatrix 13,663,264 bytes의 exact source/destination/SHA-256/partial path/rollback을 owner-only `local-data/gx10-plan/2026-09-02T001239+0900/plan.json`에 고정했다. 원격 생성·전송·build·canary는 `NOT_RUN`; 해당 mutation은 사용자 확인 필요 |
+| GX10 Runner + Control Bundle | PASS | 기존 4090 `amd64/sm_89` 계약을 보존한 별도 `arm64/sm_121` Dockerfile·build·Compose·Mac/remote runner를 구현했다. bash/focused pytest 9/9/Ruff/format/diff와 live status PASS; reviewed control 5개/22,198 bytes를 owner-only staging SHA 검증 뒤 새 최종 경로로 이동. PRIMARY/core route/fallback false |
+| GX10 Q5 Direct Transfer | PASS | source-IP·일회성 token 제한 Tailnet HTTP로 Khrin→GX10 direct 전송, Mac data path 0. HTTP 200/18,679,614,080 bytes/597.393초/31.27 MB/s; source·partial·final SHA `d709a4…2219`, owner-only 0600 final PASS. one-shot server 자동 종료, image/container/PRIMARY·4090 service 변경 0 |
+| GX10 ARM64 Build + GPU Canary | PASS_WITH_SCOPE | pinned llama.cpp b10419 commit `aee56b3…ef28`, CUDA 13.0.1 arm64/GB10 image `b664e8…9ac4`(6,732,715,596 bytes)을 host package 설치 없이 build. 첫 SME compiler 실패는 정확한 build tree만 종료했고 `GGML_CPU_ALL_VARIANTS=OFF`로 재build PASS. CDI read-only/no-network canary가 NVIDIA GB10을 확인하고 residue 0 |
+| GX10 Q5 Isolated Serve + Canary | PASS_WITH_SCOPE | owner-only runtime env와 exact Q5/image hash gate로 private candidate `:18002` serve. pinned CLI의 reasoning 값 `none` 실패와 residue 0을 증거화한 뒤 `off`로 PASS. 합성 connectivity canary와 단일 performance smoke만 통과했고 Dev quality·4K/16K/32K·decode tok/s·peak memory는 `NOT_RUN`. report 뒤 exact project stop, container/network 0, PRIMARY/route 0 |
+| GX10 Q5 Context + Concurrency Benchmark | PASS | strict synthetic JSON, warmup/profile, streaming usage로 4K c1/c2/c4와 16K·32K c1의 24/24 성공·timeout/schema fail 0. 4K c1 decode 11.486934 tok/s, 32K input 32,173 tokens PASS. c2/c4 tail latency가 9.92/23.03초로 악화. unified memory는 GB10 `nvidia-smi memory.used=N/A`라 `/proc/meminfo` system-used 출처를 명시. 4090 동일 harness·GX10 세 task Dev는 NOT_RUN, 역할은 Model Lab/SHADOW 후보, PRIMARY 0 |
+| GX10 User-installed Qwen3.8 vLLM | PASS_WITH_POLICY_GAP | `RadixArk/Qwen3.8-27B-NVFP4`가 port 8000에서 health/models 200, text strict JSON과 synthetic image VLM exact match를 통과했다. vision/image/video config가 있으나 API context는 32K로 제한된다. 단일 정책 canary가 환불 불가 판단은 맞췄지만 `human_review_required=false`를 반환했으므로 사람 최종결정은 application/policy 계층에서 강제해야 한다. 세 task Dev·real evidence VLM·soak/capacity는 NOT_RUN, PRIMARY 0 |
+| GX10 Three-task Dev Preflight | BLOCKED | 기존 driver는 4090 전용 post-start evidence와 matrix의 amd64/CUDA12.8 runtime digest를 필수로 묶는다. GX10 ARM64/CUDA13 endpoint를 직접 주입하면 runtime identity를 오귀속하므로 우회를 거부했다. API key Mac 복사·service start·4090 변경 0. additive GX10 identity/driver 계약 전 live Dev 금지 |
+| GX10 Operational Latency Interpretation | PASS | 사용자 요구 문서당 300초 미만. 관측 최악 p95 23.028초는 한도의 7.68%, headroom 276.972초라 속도는 현재 운영 blocker가 아니다. benchmark는 short synthetic output이므로 documents/day·실제 workflow capacity는 NOT_RUN. 다음 Gate는 일일 문의량·reviewer capacity 대비 처리량/queue/failure와 three-task quality |
+| GX10 Quality-first Priority | PASS | LLM이 Extraction·Query Builder·Grounding의 큰 역할을 맡으므로 quality→safety/uncertainty→capacity/reliability→latency 순서로 고정. 세 task 모두 absolute PASS와 final identity joint Dev가 필요하고 평균 점수로 한 task FAIL을 상쇄하지 않는다. 모델은 advisory이며 정책·인증된 사람 검토가 최종 결정 소유 |
+| Text/Vision Diagnostic Alignment v1 | PASS | ADR-0126, canonical source/snapshot/SHA/tenant/run/stage 검증, 주장별 TYPE_CANDIDATE/UNRESOLVED와 추가 자료 코드, immutable offline report와 합성 계약 30/30. 기본 backend 1335 PASS·최종 집중 129 PASS·전체 Pyright/Ruff PASS. 실제 모델 정확도·정책/UI 연결은 NOT_RUN |
 | GitHub 협업 문서·템플릿 | PASS | 브랜치 규칙, PR·Issue 템플릿, CODEOWNERS 작성 |
 | GitHub PoC·MVP·Release Branch Audit | PASS | 현재 PoC=`feature/scenario-poc-hard-plastic`; MVP 통합 기준=`develop`; 최종 릴리스 기준=`main`. 별도 `poc/mvp/final` branch·tag 없음, PoC 최신화 후에도 역할 유지 |
 | PoC 안전 원격 백업 | PASS | Secret·5 MiB 초과·가중치·원본 이미지 0. E3/backend `0f4de4b`, Web `b3e09cf`, handoff `81b6e20`을 fast-forward Push했고 CI #108 PASS; 사용자 소유 문서 3개 미추적 보존 |
@@ -443,6 +563,23 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [ ] 팀·협업자 권한과 조직 단위 CODEOWNERS 갱신
 
 ## 7. 마지막 검증 원장
+
+2026-10-18 실제 논문 초안 검증 PASS: 공식 학생 HWP의 페이지/단/글자 설정을 추출해
+DOCX에 대응; render_docx의 최종 PNG2장 시각검수(한글 누락·표 잘림 없음), pypdf로 A4 2쪽,
+저자/소속/이메일/교수/40·30·10/10·참고문헌 추출, python-docx로 그림1·표1(4행3열) 대조.
+한글 뷰어의 DOCX 정상 열람과 인쇄 미리보기2쪽 확인. 독립 본문·그림 근거 검토 필수수정0.
+PDF 미리보기에서 지정 글꼴의 함초롬 대체와 영문 참고문헌 자간/정렬 차이는 편집 메모에 기록.
+native HWP 후보는 파서 성공 후 실제 한글 뷰어에서 손상 오류가 나와 FAILED/미납품으로 처리.
+최종 HWP 저장·학회 접수·새 실험·서비스 시험 NOT_RUN. 앱/DB 변경 없음으로 코드 검사 SKIPPED.
+검증 기록: `tmp/paper-20261018/final_verification.json`.
+
+2026-10-18 선행 참고서 작업 검증(위 실제 초안 이전): 공식 국내 추계 안내·제출 폼·HWP 본문/참고문헌 확인 PASS.
+Python JSON/JSONL 파싱으로 정책 Gold dev80/test40·검토 dev60/test30 및 Manifest/지표 hash
+일치, 고유 Case10의 Text-v2/검색/설명/정책 PASS 상태, 전체 분석22=성공18/부분성공4,
+사람결정0을 대조 PASS. 참고서 로컬 링크33개(고유23경로) 존재·코드 fence 균형 PASS.
+문서 독립 검토의 양식·Grounding/정책 별도 경로 표현 보완 반영. 기존 실험 재실행·GPU·서버
+기능 시험·실제 사용자 평가·HWP 렌더링·학회 제출 NOT_RUN. 앱 코드·DB 변경이 없어
+Migration·Ruff·Pyright·기본 pytest는 SKIPPED. 아래 이력은 해당 실행일의 검증으로 유지한다.
 
 | 날짜 | 명령·검사 | 상태 | 실제 결과 |
 |---|---|---|---|
@@ -751,26 +888,110 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 | 2026-08-28 | Qwen Product Taxonomy Gate | FAIL | Contact Sheet에서 supplement/cleaning-chemical/pet category 공백과 mismatch 확인. Human Gold 없이 25/30 specificity를 accuracy로 해석하거나 Catalog에 자동 반영하지 않음 |
 | 2026-08-28 | PoC Closed-set Registry v1 | PASS_WITH_SCOPE | 상품군 4·결함군 3, 사람 승인 SHA Allowlist 10건. 실제 source identity/label 10/10 PASS, E3 채택 margin defect>=0.95/reference<=0.10. 현재 상품군 2/4·결함군 3/3 표현, 성능평가 아님 |
 | 2026-08-28 | PoC Closed-set Registry v2 Expansion | PASS_WITH_SCOPE | 새 SHA Allowlist 10건을 실제 source와 대조하고 E3 채택 10/10. v1+v2 최신 팩은 20건(12:8), 상품군 4/4·결함군 3/3 표현. v3 seed/replay와 workflow boundary 0 통과, 클래스별 정확도 평가는 아님 |
+| 2026-09-01 | Qwen3.8-27B GGUF source·toolchain·corpus attestation | PASS | exact BF16 53,808,281,952 bytes·`5a3eed…fa97e`, llama.cpp `aee56b3…ef28`, tool image `d486bf…afb2`, quantizer `05290c…f818`, attested corpus canonical `b39414…e90d`; 공개 fixture sidecar와 offline replay 일치 |
+| 2026-09-01 | Protected final GGUF quantization and restoration | PASS | offline/no-GPU Docker 4 commands, control `REUSED_VERIFIED`와 세 후보 `EXECUTED`, 종료 후 후보·입력 재해시 PASS. evidence SHA `324772…1378`; 00:38 KST 기존 VLM healthy/restart 0/OOM false와 Counsel container identity 12/12 복구 |
+| 2026-09-01 | GGUF release qualification | BLOCKED | mixed Q4/Q6 `6fb2b9…a0d9`·19,294,014,080 bytes와 Q5 `817bae…c075`·18,679,614,080 bytes를 matrix에 고정했지만 artifact revision·조직 미러·clean imatrix·provider-neutral Extraction evaluator·Dev/Test/Shadow100/workflow20이 없음; `NO_RELEASE_ELIGIBLE` |
+| 2026-09-01 | GGUF implementation regression | PASS | 전체 Ruff, 제품 코드 format 605, Pyright 0, 기본 pytest 1171 PASS/94 SKIPPED, GGUF 집중 134 PASS, shell syntax와 diff check PASS. 사용자 소유 문서는 수정하지 않음 |
+| 2026-09-02 | GX10 read-only inventory | PASS | ASUS GX10·aarch64·GB10 CC 12.1·memory 130,663,038,976 bytes·NVMe 4,096,805,658,624 bytes·Ubuntu 24.04.4·driver/CUDA 580.173.02/13.0·Docker 29.2.1 arm64·NVIDIA CDI 확인. 10GbE link/throughput·GPU container canary는 NOT_RUN, 원격 write/install/transfer/service change 0 |
+| 2026-09-02 | GX10 execution plan | PASS | exact Q5/imatrix source·destination·bytes·SHA-256, owner-only partial→verify→atomic rename, control inputs, ARM64 build identity, scoped rollback과 mutation confirmation gate를 compact JSON으로 고정. install/transfer/build/canary/PRIMARY는 NOT_RUN |
+| 2026-09-02 | GX10 runner implementation | PASS | 별도 arm64/sm_121 build·Compose·7-phase compact runner, local/remote mutation gate, append-only evidence와 failed-serve scoped cleanup 구현. focused 9 PASS와 실제 status changes=0 PASS |
+| 2026-09-02 | GX10 prepare/control transfer | PASS | owner-only layout 생성 후 reviewed 5 files/22,198 bytes를 fresh staging에 전송, local/remote bytes·SHA 검증 뒤 빈 final path로 이동. 기존 overwrite, model/image/container/4090 change 0 |
+| 2026-09-02 | GX10 Q5 transfer | BLOCKED | direct SSH auth 2종 BLOCKED, Taildrop inbox isolation unavailable. source/destination preflight는 PASS지만 다른 대기 파일 보호를 위해 18.68GB 전송·partial 생성 0 |
+| 2026-09-02 | GX10 Q5 one-shot direct transfer | PASS | source-IP/token 제한 one-shot Tailnet server로 18,679,614,080 bytes를 Khrin→GX10 direct 전송. HTTP 200, source/partial/final SHA 일치, atomic final mode 0600; server 자동 종료와 4090 VLM/Counsel 보존 확인 |
+| 2026-09-02 | GX10 ARM64 image build and GB10 CDI canary | PASS_WITH_SCOPE | pinned b10419 clean source로 image `b664e8…9ac4` arm64/6,732,715,596 bytes build. 첫 ARM SME compiler 실패의 process tree와 실패 image residue 0을 확인한 뒤 GX10 전용 CPU variant를 수정해 PASS; no-network/read-only GPU canary가 GB10을 확인하고 container residue 0 |
+| 2026-09-02 | GX10 isolated Q5 serve, smoke, report, stop | PASS_WITH_SCOPE | exact Q5/image/owner gate와 owner-only runtime env로 private candidate serve. reasoning CLI contract 실패는 scoped cleanup 뒤 `off`로 수정. synthetic canary p95/TTFT 695.668/695.560ms, 단일 smoke 579.507/579.411ms, report `bc45d3…cef3`; stop 뒤 container/network 0. Dev·context·decode·peak memory NOT_RUN, PRIMARY 0 |
+| 2026-09-02 | GX10 Q5 context and concurrency benchmark | PASS | 4K c1/c2/c4, 16K c1, 32K c1에서 warmup 후 strict synthetic 24/24 성공, timeout/schema failure 0. 4K c1 TTFT/latency p95 193.291/3,159.736ms·decode 11.486934 tok/s; 32K input 32,173 tokens PASS. c2/c4 p95 9.92/23.03초. same-harness 4090·GX10 three-task Dev NOT_RUN, candidate stopped, PRIMARY 0 |
+| 2026-09-02 | GX10 three-task Dev identity preflight | BLOCKED | 4090 driver의 amd64/CUDA12.8 post-start identity를 GX10 ARM64/CUDA13에 재사용할 수 없다. 직접 evaluator 우회는 runtime evidence 오귀속이라 거부. service/key/route 변경 0, additive GX10 runtime identity 계약 필요 |
+| 2026-09-02 | GX10 operational latency reinterpretation | PASS | 사용자 요구는 문서당 300초 미만. 관측 최악 p95 23.028초는 7.68%라 latency blocker 아님. c2/c4 tail은 최적화 항목. 실제 documents/day·queue·representative workflow capacity는 NOT_RUN, quality/runtime identity blocker 유지 |
+| 2026-09-02 | GX10 quality-first priority | PASS | 세 task semantic quality와 safety/uncertainty를 capacity·latency보다 우선. weighted average 없이 Extraction/Query/Grounding all-pass와 final identity joint Dev 요구. Query Builder FAIL·GX10 identity BLOCKED라 NO_WINNER/PRIMARY 금지 유지 |
 
 ## 8. 미해결 사항과 사용자 결정
 
-- 2026-08-31 상품화 P0와 clean RC candidate는 전체 기본·PostgreSQL·Web·정적 회귀를 통과했지만
-  실제 pilot admission은 통과하지 않았다. 사용자가 승인한 Ollama와 불필요한 Hugging Face cache
-  정리 후 가용 공간은 41 GiB이고 clean build 관문은 닫혔다. `infra/pilot/.env.pilot`과 fresh 운영
-  증거가 없어 pilot start는 실행하지 않았다. 현재 데모 volume과 RC candidate volume은 보존했다.
+- 2026-10-18 논문 초안: 사용자 저자/소속/학생이메일/지도교수(교신저자) 확인 완료.
+  학생 양식의 DOCX/PDF 2쪽 및 최종 그림/표 완료. 현재 환경은 한글 뷰어만 있어 HWP 저장 불가,
+  직접생성 HWP 후보는 열람 실패. 한글 편집기에서 공식 서식 확인·HWP 저장 후 제출해야 한다.
+  공동저자 검토·교신 이메일·지원 문구 확인·접수는 별도. 상담원 시간/판단 품질·기업 ROI 미측정,
+  기존 모델 출시 판정과 고객 pilot 차단을 변경하지 않는다.
+
+- 신규 장비 `gx10-ade1`은 2026-09-02 00:07 KST 공개키-only SSH로 읽기 전용 inventory를 완료했다.
+  실제 제품은 ASUSTeK GX10/product version `5.36_GX10DGX`, ARM64·GB10 CC 12.1·20 logical CPU·
+  memory 130,663,038,976 bytes·4TB NVMe, Ubuntu 24.04.4/kernel 6.17 NVIDIA, driver/CUDA
+  580.173.02/13.0, Docker 29.2.1 arm64와 NVIDIA CDI다. 정확한 판매 SKU는 관측 불가다. 10GbE NIC는
+  10G를 지원하지만 link down이라 negotiated speed/throughput은 `NOT_RUN`; 실제 GPU container canary도
+  `NOT_RUN`이다. 4090의 x86_64/CUDA 12.8 llama.cpp 자격은 승계하지 않으며 install, upgrade, reboot,
+  prune, 모델 전송은 ARM64 계획과 rollback 검토 뒤다.
+- 00:12 KST 실행 계획은 Q5 원본 `18,679,614,080` bytes/`d709a4…2219`, clean imatrix
+  `13,663,264` bytes/`8d1de2…d40f`를 Khrin에서 다시 읽어 exact content-addressed GX10 경로와
+  owner-only partial→hash verify→atomic rename, 실패 시 해당 run 고유 partial만 제거하는 rollback으로
+  고정했다. control input은 현재 5개/22,449 bytes의 경로·SHA를 고정했지만 실제 runner 구현 뒤 다시
+  hash gate를 통과해야 한다. 원격 파일 생성·전송·image build·container canary는 사용자 확인 전
+  `NOT_RUN`이다.
+- 00:30 KST GX10 runner/control bundle은 PASS했지만 Q5 direct transport가 새 Gate다. Khrin에서 GX10으로
+  표준 공개키 SSH와 Tailscale SSH가 모두 거부됐고, 양쪽 Taildrop CLI는 지원되지만 GX10의 `file get`은
+  대기 inbox 전체를 이동하며 사전 목록/단일 파일 선택 기능이 없다. 다른 대기 파일을 건드리지 않기 위해
+  전송을 시작하지 않았다. 다음 결정은 (a) 전송 후 제거할 dedicated temporary Khrin→GX10 public key,
+  또는 (b) Khrin Tailscale 주소에만 bind하고 GX10 source IP·일회성 token으로 제한한 one-shot Q5 HTTP
+  server 중 하나다. 어느 경우도 기존 VLM/Counsel 중지나 PRIMARY를 포함하지 않는다.
+- 사용자가 one-shot 방식을 승인해 00:57 KST Q5 direct transfer를 완료했다. 첫 실행 명령은 destructive
+  cleanup 안전 정책으로 시작 전 거부돼 remote change 0이었다. 다음 기술 시도는 SSH가 공백 포함 curl
+  인자를 재분리해 binary stdout으로 잘못 전달되어 즉시 중단했으며 partial/final 0, server process 0을
+  확인했다. 전용 remote receiver로 수정한 fresh run은 HTTP 200, 18,679,614,080 bytes, 597.393초,
+  source/partial/final SHA `d709a4…2219` 일치로 PASS했다. 실패 시도의 빈 incoming directory 하나는
+  자동 삭제하지 않고 남겼다.
+- 01:27 KST pinned llama.cpp ARM64 build와 동일 Q5의 격리 lifecycle을 닫았다. 첫 build는 GCC의 ARM
+  SME 미지원으로 실패해 해당 build process tree만 종료했고, GX10 전용 `GGML_CPU_ALL_VARIANTS=OFF`로
+  image `b664e8…9ac4`를 만들었다. GB10 CDI canary와 Q5 serve/canary/단일 평가 smoke/report/stop은
+  PASS했고 후보 container/network는 0이다. 단, 현재 수치는 합성 요청 각 1건뿐이며 decode tok/s,
+  peak unified memory, 4K/16K/32K와 4090 동일 세 task Dev 비교는 `NOT_RUN`이다. 이 Gate 전 GX10
+  PRIMARY·route·freeze·sealed Test는 계속 금지한다.
+- 01:55 KST 합성 hardware benchmark를 4K concurrency 1/2/4와 16K·32K concurrency 1의 두 축으로
+  실행했다. full cross-product는 `NOT_RUN`이다. 전체 24/24 strict JSON 성공, timeout/schema failure 0,
+  32K actual input 32,173 tokens를 처리했다. 4K c1 decode는 11.486934 tok/s지만 c2/c4 tail latency가
+  9.92/23.03초로 증가했다. GB10의 `nvidia-smi memory.used`가 N/A여서 unified memory는 출처를
+  `PROC_MEMINFO_SYSTEM_USED`로 명시한 절대 host-used 표본이며 모델 전용 allocation으로 해석하지 않는다.
+  4090 동일 harness는 기존 VLM/Counsel을 중단하지 않기 위해 `NOT_RUN`, 역사적 task Dev와 workload가
+  달라 직접 수치 순위는 금지한다. GX10 역할은 Model Lab/SHADOW 후보이며 PRIMARY는 차단한다.
+- 01:58 KST 세 task Dev 실행 전 기존 driver를 검사했다. 이 driver는 candidate matrix의 4090
+  amd64/CUDA12.8 image·binary·SBOM과 4090 전용 post-start evidence를 강제한다. GX10 endpoint를 직접
+  주입하면 ARM64/CUDA13 실행을 4090 identity로 오귀속하므로 `GX10_DEV_RUNTIME_IDENTITY_CONTRACT_MISSING`
+  으로 `BLOCKED`했다. API key를 Mac으로 복사하거나 GX10/4090 서비스를 다시 시작하지 않았다. 다음
+  구현은 v2 matrix를 재해석하지 않는 additive GX10 runtime identity와 Dev driver 계약이다.
+- 02:07 KST 사용자가 문서당 5분 미만이면 충분하고 실제 병목은 일일 문의량과 사람 처리 한계라고
+  운영 요구를 명확히 했다. 관측 최악 p95 23.028초는 300초 한도의 7.68%, headroom 276.972초이므로
+  latency Gate는 PASS로 재해석한다. c2/c4 tail 증가는 운영 차단이 아니라 비용·효율 최적화 항목이다.
+  현재 합성 output이 짧아 documents/day나 실제 end-to-end 문서 처리량은 `NOT_RUN`; 일일 문의량,
+  peak-hour 도착률, reviewer 수·인당 처리량을 받은 뒤 queue headroom과 실패율을 평가한다.
+- 02:12 KST 사용자는 LLM engine의 역할이 크므로 품질이 최우선이라고 명확히 했다. 이에 Gate 순서를
+  three-task semantic quality, safety/uncertainty, capacity/reliability, latency 순으로 고정한다. Extraction,
+  Query Builder, Grounding 중 하나라도 실패하면 weighted average나 빠른 응답으로 상쇄하지 않는다.
+  기존 frozen 4090 matrix는 수정하지 않았고, GX10 final runtime identity로 fresh joint Dev를 통과하기
+  전 Test·freeze·PRIMARY는 계속 금지한다.
+- 20:01 KST 사용자 설치 `RadixArk/Qwen3.8-27B-NVFP4`가 별도 `vllm_node`에서 실제 실행 중임을
+  확인했다. text와 synthetic VLM data path는 통과했지만 모델의 단일 정책 답변은 사람 검토 필요를
+  false로 냈다. 따라서 이 endpoint는 현재 연결 가능한 multimodal SHADOW 후보일 뿐이며 CSight 안전
+  경계·세 task 품질·실제 이미지 품질을 통과한 PRIMARY가 아니다. runtime identity 계약에는 현재
+  vLLM/image/model/context 정보를 additive하게 고정하고 기존 4090 matrix를 재해석하지 않아야 한다.
+- 2026-09-01 현재 상품화 P0와 clean RC candidate는 전체 기본·PostgreSQL·Web·정적 회귀를 통과했지만
+  실제 pilot admission은 통과하지 않았다. 승인된 Ollama·불필요 cache 정리 후 Mac 가용 공간은
+  38 GiB이며 clean build 관문은 닫혔다. `infra/pilot/.env.pilot`과 fresh 고객 운영 증거가 없어
+  pilot start는 실행하지 않았고 현재 데모·RC volume은 보존했다.
 - 온보딩 준비도는 6개 구성 gate, 새 pilot readiness는 여기에 25개 운영 자격 gate를 합산한다.
   고객별 signed-intake service actor/public key, 명시적 retention과 자동화, 고객 IdP group mapping,
   활성 policy index/rule set, 세 task PRIMARY route와 fresh 운영 증거를 실제 환경에 provision해야 한다.
 - text extraction v2, LLM query builder, grounded explanation의 immutable plan snapshot과 historical
-  activation/runtime identity guard는 모두 구현됐다. 다만 Query Build와 Search를 독립 처리하는 v2
-  event는 아직 없으므로 현재 LLM query 경로 전체는 model lane 동시성 1로 보수적으로 실행된다.
-- 실제 4090 Dev에서 두 후보가 모두 품질 gate에 실패해 release eligible 모델은 0개다. 운영
-  PRIMARY 자동 전환·fallback은 하지 않으며 8B 별도 Dev prompt profile부터 다시 자격화한다.
-- 현재 Core DB는 head 0034이고 9개 서비스 readiness는 정상이나 코드의 migration head는 0035다.
+  activation/runtime identity guard, Query Build/Search의 독립 durable v2 event·worker 경계까지
+  구현됐다. RAW·DETERMINISTIC은 route/provider 호출 0, LLM Query Build만 model lane 동시성 1,
+  Search는 retrieval lane 동시성 2로 분리된다.
+- CSight-owned Qwen3.8-27B GGUF 4종의 exact bytes·digest는 확보했지만 release eligible 모델은
+  여전히 0개다. mixed Q4/Q6와 Q5의 `artifact_revision`·qualification은 null이며 개인 저장소는
+  조직 소유 mirror가 아니다. 수선 이력이 있는 imatrix의 clean rerun, 현재 Dockerfile의 새 image·
+  manifest parity, provider-neutral Extraction evaluator와 Dev/Test/Shadow/workflow evidence 전에는
+  로컬 R&D 후보로만 유지하고 PRIMARY 자동 전환·fallback을 하지 않는다.
+- 현재 Core DB는 head 0034이고 9개 서비스 readiness는 정상이나 코드의 migration head는 0036이다.
   실행 중 API/Web/Worker image와 DB는 시연본 보존을 위해 이번 작업트리로 재빌드·마이그레이션하지
   않았다. 구형 API image 내부의 Alembic package에는 DB가 가리키는 0034 revision 파일이 없어
   `alembic current`는 실패하지만 DB 원장 직접 조회는 0034이고 API dependency readiness는 정상이다.
-  이 image에서 migration/restore 명령을 실행하지 않는다. clean `bc2d7be`의 RC image와 별도 0035
+  이 image에서 migration/restore 명령을 실행하지 않는다. clean `cd6471cd628e` RC image와 별도 0036
   candidate 검증은 완료했다. 별도 pilot은 실제 고객 env, 암호화 immutable off-host 복원 2회와
   남은 load/IdP gate가 갖춰진 뒤 시작한다.
 - 운영 failure replay/cancel API 계약은 존재하지만 안전한 전체 pipeline cancellation/replay
@@ -961,6 +1182,23 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 
 ## 9. 다음 실행 항목
 
+- [ ] 논문 제출 준비: [편집 메모](../papers/CSight_2026_추계_초안_편집메모.md)와 DOCX/PDF를
+  공동저자가 검토한 후 한글 편집기에서 공식 학생 서식·글꼴을 확인하고 HWP로 저장한다.
+  저장 후 두 쪽/그림/표를 재확인하고 교신 이메일 및 제출 폼을 확인한다. 실제 접수는 별도 요청 때 수행.
+
+- [x] `docs/progress/SESSION_HANDOFF_2026-09-01_GX10_MODEL_ENGINE.md`의 시작 프롬프트와 안전 경계를
+  따라 Mac Git 상태와 `gx10-ade1` Tailscale online·active·ping 도달성을 읽기 전용으로 확인한다.
+- [x] 공개키-only SSH로 `gx10-ade1`의 hardware/OS/CUDA/Docker/storage/network를 읽기 전용으로
+  조사하고 원격 write·설치·전송·서비스 변경 0을 확인한다.
+- [x] GX10 정상 stdout은 compact JSON, 전체 로그는 owner-only 원격 파일, 실패 때만 bounded tail을
+  반환하는 `status/prepare/serve/canary/evaluate/report/stop` 실행 계약을 구현한다.
+- [x] 현재 미커밋 source bundle에서 Secret·대형 파일·사용자 소유 파일을 제외한 스크립트 전송 범위를
+  검토하고, GGUF/BF16/imatrix는 checksum과 byte size를 고정해 Khrin→GX10 직접 전송한다.
+- [x] ARM64/CUDA 13/Blackwell용 pinned llama.cpp build, Q5 canary, decode·unified-memory 출처,
+  4K/16K/32K와 4K concurrency 1/2/4 benchmark를 완료한다.
+- [ ] 사용자 설치 GX10 vLLM의 image/model/runtime/context identity를 additive 계약으로 고정한 뒤 기존
+  서비스를 중단하지 않고 동일 identity의 Extraction→Query Builder→Grounding frozen Dev를 실행한다.
+  4090 same-harness는 별도 승인된 maintenance 창에서만 실행하며, 그 전에는 GX10을 PRIMARY로 전환하지 않는다.
 - [x] Sprint 1 Diff를 독립 Closeout 감사하고 로컬 기준점 Commit을 생성한다.
 - [x] Sprint 2 Append-only Analysis·Outbox·LLM Vertical Slice와 최종 검증을 완료한다.
 - [x] Sprint 2 Diff를 독립 감사하고 승인된 로컬 Closeout Commit만 생성한다.
@@ -993,6 +1231,10 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   공식 Label/E3만 사용한다.
 - [ ] 다음 기능 Sprint에서는 먼저 Evidence Alignment 입력 계약과 Claim↔Detection matching,
   confidence calibration을 설계하고 Policy/Approval을 계속 분리한다.
+- [x] 2026-09-09: offline diagnostic Alignment 1.0의 계약·유형 후보 연결·판단 불가·출처 검증과
+  합성 평가 CLI를 완료한다. 위 항목의 calibration/실제 qualification/운영 stage 연결은 미완료로 남긴다.
+- [ ] `docs/engine/ENGINE_IMPROVEMENT_PLAN_2026-09-09.md`에 따라 대표 상품군별 독립 정답과
+  GX10 전용 runtime identity를 준비한 뒤 실제 text/vision/결합 품질을 각각 평가한다.
 - [ ] Evidence Reconciliation·Orphan Cleanup·업로드 Idempotency와 Retention 정책을
   우선순위에 따라 별도 작업으로 계획한다.
 - [x] Sprint 3 Closeout Commit을 확인하고 `feature/sprint-4a-llm-reference-data`에서 LLM
@@ -1101,17 +1343,43 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   snapshot과 text extraction v2 runtime identity guard를 migration 0032~0034로 구현한다.
 - [x] demo controller와 분리된 fail-closed pilot Compose/controller/preflight를 구현하고 build,
   migrate, prune, volume 삭제 없이 admission 실패 시 start를 차단한다.
-- [ ] 사용자 승인 하에 filesystem 가용 공간을 최소 30 GiB로 확보하고, clean immutable release
-  commit/image와 owner-only `infra/pilot/.env.pilot`을 준비한다. 현재 8.7 GiB이므로 임의 정리하지 않는다.
+- [x] 사용자 승인 하에 filesystem 가용 공간을 최소 30 GiB로 확보하고, push된 SHA의 clean RC
+  commit/image를 별도 worktree에서 검증한다. 2026-09-01 관측 가용 공간은 38 GiB다.
+- [ ] 실제 고객 입력을 받은 뒤 owner-only `infra/pilot/.env.pilot`을 준비하고 preflight를 실행한다.
 - [ ] 고객 tenant의 no-role signed-intake actor/public key, retention, OIDC group mapping, 활성
   policy index/rule set을 provision하고 온보딩 준비도에서 해당 gate를 각각 재검증한다.
-- [ ] Policy query builder와 grounded explanation에 immutable route snapshot·historical activation·
-  exact runtime identity guard를 연결한 뒤에만 `PRIMARY_MODEL_ROUTES` gate를 열 수 있게 한다.
+- [x] Policy query builder와 grounded explanation에 immutable route snapshot·historical activation·
+  exact runtime identity guard를 연결하고 Query Build/Search durable v2 event·worker를 분리한다.
+- [x] exact BF16·pinned llama.cpp·attested corpus에서 Q4 control, imatrix Q4, mixed Q4/Q6, Q5를
+  offline 생성하고 최종 후보·입력 재해시와 Khrin 서비스 원상복구를 완료한다.
+- [x] imatrix를 clean one-pass로 재생성하고 현재 llama.cpp Dockerfile을 고정 image로 빌드해
+  binary·build manifest·SBOM parity를 다시 고정했다.
+- [ ] mixed Q4/Q6와 Q5를 개인 private 저장소의 불변 revision으로 먼저 고정하고, 우승 후보는
+  조직 소유 private mirror와 새 signed manifest로 승격한다. 현재 파일을 자동 업로드하지 않는다.
+- [x] provider-neutral GGUF 세 task evaluator와 authenticated canary를 연결해 mixed Q4/Q6·Q5를
+  동일 source/lock/result 계약으로 실제 RTX 4090 Dev 비교하고 `NO_WINNER`를 불변 증거로 남겼다.
+- [ ] 상대 우세한 Q5를 Dev 개선 기준으로 Extraction prompt/schema, Query plan, Grounding 미해결
+  조건·주입 안전 profile을 조정하고 fresh Dev에서 세 절대 gate를 모두 다시 통과시킨다. Extraction과
+  Grounding의 개별 synthetic Dev gate는 통과했지만 Query Builder와 최종 joint rerun은 미완료다.
+- [x] Extraction 평가 보고서에 원문·예측 없이 ambiguity TP/FP/FN aggregate만 추가하고,
+  결정론적 ambiguity 검증 후보를 고정 20건 Dev에서 `local.5`와 비교한다.
+- [x] 동일 후보의 provider/adapter latency를 분리 측정하고 guarded `local.8` 전체 Dev에서 p95
+  `4,908.237 ms`를 재현한다. bounded correction이 두 gate를 닫았으므로 Extraction QLoRA는 보류한다.
+- [x] guarded `local.8` Q5 synthetic Dev 120건에서 canonical Extraction gate 15/15를 통과한다.
+- [x] Grounding 미해결 조건 recall과 injection safety를 runtime `local.2`로 bounded canary→전체
+  synthetic Dev 순서로 복구하고 canonical gate 25/25를 통과한다.
+- [ ] LLM Query Builder는 RAW→HYBRID 기준선보다 모든 검색 지표가 높을 때만 PRIMARY 후보로 검토한다.
+- [ ] Dev를 통과한 한 후보만 freeze→sealed Test 1회→signed SHADOW 100→20 terminal workflow로
+  검증한다. 현재 `NO_WINNER`이므로 이 단계는 시작하지 않는다.
 - [ ] release-eligible 모델, 실제 20-session/20-workflow, 고객 IdP lifecycle, 암호화 immutable
   off-host WAL·MinIO target-host 복원 2회와 경보 전달을 모두 증명한 뒤 pilot preflight/start를 실행한다.
 
 ## 10. 세션 종료 체크리스트
 
+- [x] 2026-10-18 실제 논문 초안: 저자 정보, 그림/표, 2쪽 DOCX/PDF 시각 검증, 한글 DOCX
+  정상 열람을 확인했다. native HWP 실패와 최종 저장/접수 미완료·후속 단계·검증 증거를 기록했다.
+- [x] 2026-10-18 논문 참고서: 공식 양식·기존 실험 원본·분모·주장 범위·로컬 링크를 대조하고,
+  HWP 조판·학회 접수·사용자 평가 미실행과 다음 작성 작업을 기록했다.
 - [x] 변경한 파일과 목적을 기록했다.
 - [x] 실제 실행한 검증 명령과 결과만 기록했다.
 - [x] 실패·미실행·Skip을 `PASS`로 표현하지 않았다.
@@ -1120,6 +1388,12 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
 - [x] 다음 작업을 한 개 이상의 실행 가능한 체크박스로 남겼다.
 - [x] Secret, 고객 원문, 전체 URL을 기록하지 않았다.
 - [x] 아래 세션 로그를 추가했다.
+- [x] 2026-09-28 영상 게시: 원본 해시, 공개 루트·www·영상 범위 응답, 브라우저 자동 재생을 확인했다.
+- [x] 2026-09-28 영상 게시: 미해결 가용성 조건과 다음 확인 항목을 아래 로그에 기록했다.
+- [x] 2026-09-29 `/login` 영상 추가: 공개 브라우저 재생, 로컬 로그인 화면, 우회 설정 백업을 확인했다.
+- [x] 2026-09-29 `/login2` 콘솔 복원: 공개 폼·비로그인 이동·영상 경로 유지, 검증 한계를 아래 로그에 기록했다.
+- [x] 2026-09-30 GX10 Q5 복구: 사전 작업 인벤토리·canary·Core Worker 합성 경로·미실행 UI 범위를 아래 로그에 기록했다.
+- [x] 2026-10-01 CSight Docker 종료: Mac/GX10 실행 컨테이너 0개·볼륨 보존·재기동 조건을 아래 로그에 기록했다.
 
 ## 11. 세션 로그
 
@@ -3916,3 +4190,1467 @@ append-only로 유지한다. 상세 구현 증거는 `SPRINT_0_FOUNDATION.md`와
   독립 key로 2회 수행한다. 이후 release-eligible 모델과 signed SHADOW 100건, rollback/DLQ 훈련을
   완료한다. 고객 IdP/public key/retention/policy/support 입력과 모든 fresh gate가 없으면 pilot start는
   계속 BLOCKED다.
+
+### 2026-09-01 00:43 KST — CSight-owned Qwen3.8-27B GGUF Quantization
+
+- 목표/결과: 단일 RTX 4090에서 사용할 Qwen3.8-27B를 CSight task에 맞춰 비교할 수 있도록 exact
+  BF16에서 no-imatrix Q4 control, imatrix Q4, 선택 tensor를 Q6_K로 보호한 mixed Q4/Q6, imatrix
+  Q5 quality ceiling을 만들었다. 이는 로컬 R&D 후보 생성 완료이며 모델 품질·출시 자격 통과가 아니다.
+- source/toolchain/corpus: BF16 53,808,281,952 bytes·`5a3eed…fa97e`, llama.cpp
+  `aee56b3…ef28`, tool image `d486bf…afb2`, quantizer `05290c…f818`, corpus canonical
+  `b39414…e90d`, calibration `f0f7f2…dc5f`, imatrix `8d1de2…d40f`를 고정했다. 공개 source
+  capture sidecar와 offline replay를 추가했고 원문 문의·직접 식별정보·sealed Test는 사용하지 않았다.
+- 최종 산출물: control 16,547,400,032 bytes·`078fc4…c5f0`는 `REUSED_VERIFIED`, imatrix Q4
+  16,547,400,320 bytes·`b044ea…e721`, mixed Q4/Q6 19,294,014,080 bytes·`6fb2b9…a0d9`,
+  Q5 18,679,614,080 bytes·`817bae…c075`는 `EXECUTED`다. 네 후보와 모든 host input을 종료 후
+  재해시한 evidence는 PASS, SHA `324772…1378`이며 최종 원본은 모두 BF16이다.
+- 보호 실행/복구: 첫 실행은 Python 3.10 dependency root가 user site를 숨겨 Docker 실행 전 실패했고
+  후보 생성 0건, Counsel 12/12 복구로 종료했다. dependency root를 명시해 재실행했고 00:38 KST
+  기존 VLM은 exact model ID·healthy·restart 0·OOM false, Counsel은 기존 container identity 12/12와
+  기존 health 기준으로 복귀했다. 양자화 container는 offline/no GPU/read-only/CPU 16/memory 56 GiB로
+  제한했고 실제 환불·메일·결제·CRM 동작은 0건이다.
+- 구현/검증: GGUF source attestation·corpus builder·recipe/run-plan compiler·bounded executor,
+  owner-only evidence, llama.cpp adapter/compose/preflight, task별 평가·Shadow100 collector, signed
+  activation/route와 pilot composition fail-closed guard를 추가했다. Ruff PASS, 제품 코드 format 605,
+  Pyright 0, 기본 pytest 1171 PASS/94 SKIPPED, GGUF 집중 134 PASS, shell syntax·diff check PASS다.
+- 출시 경계/다음 행동: matrix v2에 mixed Q4/Q6와 Q5 bytes·digest만 반영했고 두 후보의
+  `artifact_revision`과 qualification은 null이라 `PENDING_QUALIFICATION`, 전체는
+  `NO_RELEASE_ELIGIBLE`다. imatrix는 finalization 수선 이력 때문에 clean rerun이 필요하고 현재
+  Dockerfile도 새 image로 재빌드하지 않았다. 개인 private artifact revision·조직 mirror,
+  provider-neutral GGUF Extraction evaluator, canary/Dev/freeze/sealed Test/SHADOW100/workflow20 전에는
+  PRIMARY·자동 fallback을 금지한다.
+- Git/보존: HEAD와 원격 기능 브랜치는 `f2357ba0cee6`으로 일치하며 이번 변경은 미커밋이다.
+  Commit·Push·PR·병합·artifact upload는 실행하지 않았고 사용자 소유 문서, 원본 이미지,
+  checkpoint, Mac Docker volume과 `kaputt_best_vision_architecture.md`를 수정·삭제하지 않았다.
+
+### 2026-09-01 06:05 KST — Q4 Dev Grounding Technical Failure Diagnosis
+
+- 직접 원인: Q4 Dev의 첫 Grounding 응답이 `GROUNDED_EXPLANATION_INVALID_OUTPUT`으로 구조 검증에
+  실패했지만, 평가 생성 루프가 provider 오류와 `ValueError`만 처리해 이 예상 가능한 모델 출력
+  불합격을 프로세스 예외로 누출했다. 자식 실행기는 일반 Python 예외의 종료 코드 1을 평가 gate
+  실패와 구분하지 않아 이후 불완전 evidence를 기술 실패로만 보고했다.
+- 수정: Grounding의 invalid-output·citation-allowlist 예외와 동일 계열 Query Builder invalid-output
+  예외만 각 record의 typed `FAILED` 관측으로 좁게 변환했다. 자식 종료 코드 0/1은 candidate·task·split·
+  gate 결과가 일치하는 privacy-safe 완료 신호가 정확히 있을 때만 평가 완료로 인정한다.
+- 개인정보 경계: provider 원문 응답, 요청 ID, 고객 원문, PII는 새 evidence나 오류 출력에 보존하지
+  않는다. 실패 관측에는 hash, 지연시간, 안정된 오류 코드만 남긴다.
+- 검증: 관련 Ruff·format PASS, Pyright 0, 단위·Grounding/llama.cpp contract 집중 `60 passed`,
+  `git diff --check` PASS. 원격 4090·실행 중 container·GPU workload는 접속하거나 변경하지 않았다.
+- 미해결/다음 행동: 새 source bundle digest로 Mac evaluator와 보호된 maintenance 경로를 다시 배포한
+  뒤 fresh result root에서 Q4 Dev를 재실행한다. 이 정적 수정만으로 Grounding 품질 gate 통과나 Q4
+  우승을 주장하지 않으며, Q4 복구 확인 후에만 Q5 후보로 진행한다.
+
+### 2026-09-01 07:10 KST — Clean imatrix and Actual Q4/Q5 Dev Selection
+
+- clean 자산: owner-only 합성 calibration에서 clean one-pass imatrix를 재생성해
+  `sha256:8d1de263…7c4d40f`로 고정했다. pinned llama.cpp b10419 image는
+  `sha256:c85eec9b…618ef`, binary `ec759347…0aeb`, build manifest `3f02184c…9d8e`, SBOM
+  `137cc423…dfb6`이다. 최종 pair evidence `18f33eda…a31d`는 mixed Q4/Q6
+  19,294,014,080 bytes·`318c244e…248f`와 Q5 18,679,614,080 bytes·`d709a46e…2219`를 PASS로 묶는다.
+- 평가 복구: 첫 Q4 Grounding 기술 중단은 예상 가능한 구조 불합격을 프로세스 오류로 누출한 평가기
+  문제였다. task별 invalid-output을 hash·지연·안정 오류 코드만 가진 typed 실패로 기록하고, 정확한
+  privacy-safe child completion signal을 요구하도록 수정했다. 별도 Q4 Grounding 진단은 일반 37/40,
+  injection 16/20까지 완주해 수정 경로를 확인했고 qualification 입력에는 사용하지 않았다.
+- 동일 실행 계약: matrix `038617a1…ba64`, source bundle `cc9dddee…f39c`, lock
+  `0b6a6483…7456`, synthetic Dev only, llama.cpp concurrency 1로 Q4와 Q5를 fresh `results-run3`에서
+  각각 Extraction 120·Query 80·Grounding 40+Injection 20건 실제 RTX 4090 추론했다. sealed Test,
+  freeze, route activation, 고객 데이터와 실제 사업 동작은 사용하지 않았다.
+- Q4 결과: Extraction 13/120 구조 유효, p95 4,419.851 ms, 37.341 tok/s. Query는 Recall@10
+  0.8375·exact coverage 0.5625·MRR 0.602788·nDCG 0.573787, p95 4,721.933 ms. Grounding은
+  37/40, citation precision/recall 1.0, required fact 0.875, unresolved recall 0, deterministic replay
+  0.925, p95 9,110.941 ms; Injection은 16/20·violation 0.20이다. 세 task gate 모두 FAIL이며 실행
+  manifest는 `982bf190…b4f5`다.
+- Q5 결과: Extraction 16/120 구조 유효, p95 4,249.741 ms, 37.392 tok/s. Query는 Recall@10
+  0.85·exact coverage 0.725·MRR 0.6575·nDCG 0.652255, p95 4,816.867 ms. Grounding은 39/40,
+  citation precision/recall 1.0, required fact 0.95, unresolved recall 0, deterministic replay 0.975,
+  p95 9,290.092 ms; Injection은 20/20이지만 violation 0.25다. 세 task gate 모두 FAIL이며 실행
+  manifest는 `01bc23f5…ab93`다.
+- 선정: `absolute-gates-then-maximin/1.0.0`은 `NO_CANDIDATE_PASSED_ALL_THREE_DEV_GATES`로
+  `NO_WINNER`를 기록했다. selection manifest SHA는 `5f56b3f7…e521`이고 Q5는 다음 Dev 개선의
+  상대 우세 기준일 뿐 winner·release·PRIMARY가 아니다. Test evidence, artifact revision, 조직 mirror,
+  signed activation과 자동 fallback은 0이다.
+- 보호 실행/복구: Q4·Q5 각각 fresh completion state와 post-start evidence를 사용했다. 두 실행 뒤
+  candidate container/network/process/`:18002` 잔여 0, 기존 VLM exact container/image/config/model
+  identity·healthy·restart 0·OOM false, Counsel identity 12/12·running 12/12·OOM 0을 독립 확인했다.
+  baseline healthy 10개는 10/10 healthy, API healthcheck none과 STT starting도 기준선 그대로다.
+- 검증/Git: 기본 pytest `1230 passed, 94 skipped`, Ruff PASS, format 576 PASS, Pyright 0, shell
+  syntax·`git diff --check` PASS, 기계적 test format 이후 영향 테스트 24 PASS. HEAD와 원격 기능
+  브랜치는 `f2357ba0cee6`으로 유지했고 Commit·Push·PR·병합·artifact upload는 실행하지 않았다.
+  사용자 소유 문서·원본 이미지·checkpoint·Docker volume과 `kaputt_best_vision_architecture.md`를
+  수정·삭제하지 않았다.
+- 미해결/다음 행동: Q5 profile에서 Extraction JSON/source quote 준수, Query Builder RAW 기준선,
+  Grounding unresolved-condition recall과 injection safety를 Dev에서 먼저 개선한다. Q4는 고정 baseline으로
+  보존한다. fresh Dev 세 gate를 모두 통과한 후보가 생길 때만 freeze→sealed Test 1회로 진행한다.
+
+### 2026-09-01 12:23 KST — Q5 Extraction Inference-contract Recovery
+
+- 목표/판단: Q5 Extraction 16/120 실패를 바로 QLoRA 문제로 단정하지 않고 prompt·schema·llama.cpp
+  계약부터 진단했다. 기존 v2 실패가 모두 `LLM_INVALID_STRUCTURED_OUTPUT`로 합쳐져 있었고, 실제 Q5
+  평가는 MLX Dev에서 선택했던 `2.0.0-local.2`가 아니라 production `2.0.0`만 사용했음을 확인했다.
+- 구현: strict JSON decode 뒤 Pydantic error type만으로 invalid JSON, token truncation, missing field,
+  enum/literal, extra field, schema constraint를 분류한다. 원문·field path·validation message·provider
+  response는 보존하지 않는다. typed observation evidence에는 정렬된 안정 오류 코드별 count만 추가했다.
+  `screen_qwen4090_extraction_prompts.py`는 고정 synthetic Dev 20건 production/local.2 비교와, canary
+  통과 후 local.2 단독 전체 Dev 120건만 허용한다. Test·freeze·release·Core route 기능은 없다.
+- Q5 canary: 동일 candidate/runtime에서 production은 3/20, schema constraint 17건이었다. local.2는
+  20/20 구조 유효·exact quote 1.0, issue F1 0.947368, requested-action F1 0.933333, p95
+  4,456.622 ms·40.433559 tok/s, prompt-injection/reasoning/forbidden-field 0으로 선두였다. owner-only
+  report SHA는 `ff3d7bbf…45f1b`이며 raw input/prediction/request ID는 없다.
+- Q5 전체 Dev: local.2는 115/120 구조 유효·exact quote 0.958333으로 production 16/120 대비 크게
+  개선됐다. 남은 실패 5건은 모두 `LLM_SOURCE_QUOTE_MISMATCH`다. issue F1 0.947368,
+  requested-action F1 0.905028, p95 4,478.511 ms·40.648919 tok/s와 세 안전 지표 0은 PASS다.
+  그러나 system-missing 0.941667, action-consistency 0.85, text-ambiguity F1 0.224299 및 100% 구조·
+  인용 gate가 FAIL이라 Extraction 전체 gate는 아직 FAIL이다. report SHA는 `eadea5c0…b06fb`다.
+- 보호 실행/복구: 두 실행 모두 fresh completion state와 이중 watchdog을 사용했고 post-start SHA는
+  각각 `0cdddacf…751f`, `5eeaddea…3e70`이다. 각 종료 뒤 기존 VLM exact image/config/model identity,
+  healthy·restart 0·OOM false, Counsel 기존 container identity 12/12·running 12/12, 후보
+  container/network/process/`:18002` 잔여 0을 독립 확인했다.
+- 검증/보존: Ruff PASS, 제품 코드·scripts·tests format 578 PASS, Pyright 0, 기본 pytest
+  `1240 passed, 94 skipped`, `git diff --check` PASS다. 전체 repo format check의 유일한 지적은 사용자
+  소유 `kaputt_best_vision_architecture.md` 기존 코드블록이며 지침대로 수정하지 않았다. Commit·Push·
+  PR·Test·freeze·Shadow·route activation·실제 사업 동작은 0이다.
+- 미해결/다음 행동: local.2 스키마와 구조는 유지하고 exact substring 복사 규칙과 Dev의 ambiguity
+  taxonomy만 보강한 새 Dev-only prompt를 만든다. 고정 20건에서 local.2 대비 안전·구조 회귀 없이
+  개선될 때만 전체 Dev 120건으로 확장한다. 이 단계가 정체된 뒤에만 별도 합성 학습 데이터와 사람
+  검수 라벨을 사용한 Extraction QLoRA를 검토한다. Query Builder와 Grounding gate는 별도 미해결이다.
+
+### 2026-09-01 14:42 KST — Q5 Extraction Dev-only Prompt Recovery Closeout
+
+- 범위/안전: sealed Test를 열지 않고 고정 synthetic Dev만 사용해 Q5의 `local.2` 대비
+  `local.4`·`local.5`·`local.6`을 순서대로 진단했다. 세 후보는 runtime prompt registry와
+  `__all__`에서 제외했고 freeze·release·PRIMARY·Core route·실제 사업 동작을 만들지 않았다.
+- 20건 canary: `local.4`는 ambiguity F1 `0.869565`까지 개선했지만 action F1 `0.857143`, p95
+  `6,203.244 ms`로 회귀해 중단했다. `local.5`는 구조·정확 인용 20/20, issue/action F1 1.0,
+  ambiguity F1 `0.666667`, p95 `5,070.952 ms`, 안전 위반 0이었다. 압축 확인용 `local.6`은
+  ambiguity F1 `0.516129`, p95 `5,017.840 ms`라 중단했다. 각 보고서 SHA는 `874f77de…35fb`,
+  `980b8752…744`, `52ba228b…fe9e`다.
+- 전체 Dev 판정: 의미 품질이 더 안정적인 `local.5`를 한 번만 120건으로 확장했다. 구조·Pydantic·
+  정확 인용은 120/120, issue F1 1.0, requested-action F1 `0.976744`, action consistency
+  `0.966667`, system-missing 1.0, ambiguity F1 `0.697674`, p95 `5,084.207 ms`, throughput
+  `40.808092 tok/s`, injection/reasoning/forbidden-field 위반 0이다. 보고서 SHA는
+  `e574f9a5…196c1`이다.
+- Gate/판단: ambiguity `0.7`과 p95 `5,000 ms`를 근소하게 못 넘어 Extraction은 여전히 FAIL이다.
+  `local.5`는 Dev-only·unregistered로 보존하고 Test·freeze는 금지한다. 구조·인용 문제는 닫혔으므로
+  즉시 QLoRA로 가지 않고 PII 없는 ambiguity confusion aggregate와 결정론적 검증·latency correction을
+  먼저 한 번 검증한다.
+- 보호 복구: 완료 manifest를 정상 전달한 뒤 VLM은 기존 container ID, exact image/config/model,
+  healthy, restart 0, OOM false로 복구됐다. Counsel은 identity 12/12·running 12/12·OOM 0이며 후보
+  container/network/`:18002` 잔여는 0이다. post-start evidence SHA는 `a830f292…d705`다.
+- 검증/보존: 관련 52 tests, Ruff, Pyright 0 PASS. 전체 회귀 결과는 아래 최종 검증 후 메타데이터에
+  반영한다. Commit·Push·PR 없음; 사용자 문서·원본 이미지·checkpoint·Docker volume과
+  `kaputt_best_vision_architecture.md`를 변경·삭제하지 않았다.
+- 미해결/다음 행동: Extraction aggregate ambiguity TP/FP/FN을 추가해 실패 방향을 확인하고,
+  결정론적 ambiguity guard와 llama.cpp p95를 분리 조정한다. 두 gate가 닫히지 않을 때만 별도 합성
+  학습 데이터·사람 검수 라벨 기반 Extraction QLoRA를 설계한다. Query Builder와 Grounding은 계속
+  별도 FAIL이며 세 task fresh Dev PASS 전에는 Test를 열지 않는다.
+
+### 2026-09-01 14:44 KST — Q5 Prompt Recovery Final Regression
+
+- 전체 회귀: 기본 pytest `1243 passed, 94 skipped`, Ruff PASS, 제품 코드·scripts·tests format
+  `578 files already formatted`, Pyright 0, `git diff --check` PASS다.
+- 최종 경계: `local.5`는 여전히 Dev-only FAIL이며 runtime 선택·Test·freeze·route 변경 0이다.
+  Commit·Push·PR은 수행하지 않았다.
+
+### 2026-09-01 17:40 KST — Q5 Extraction Synthetic-Dev Gate Closure
+
+- 진단 계약: Extraction prompt screen evidence schema를 `1.3`으로 올리고 원문·예측·request ID 없이
+  ambiguity 전체/label별 TP·FP·FN, provider/end-to-end/adapter-overhead p50·p95를 남긴다. `local.5`
+  20건은 `TP=10/FP=8/FN=2`; provider p95 `5,111 ms`, adapter overhead p95 `5.184 ms`로 잔여
+  지연이 모델 제공 경로에 집중됨을 확인했다.
+- bounded 후보: `local.7`은 p95 `4,646.459 ms`였지만 issue/action/guarded ambiguity F1이
+  `0.75/0.888889/0.514286`로 회귀해 20건에서 중단했다. `local.5` 계약을 보존하고 summary만 한 문장
+  120자로 제한한 `local.8`과 version/hash 고정 Dev-only ambiguity guard는 canary 20/20, 세 F1 1.0,
+  p95 `4,801.166 ms`, 안전 위반 0을 달성해 전체 Dev로 확장했다.
+- 전체 Dev: guarded `local.8` Q5는 120/120 구조·Pydantic·정확 인용, issue F1 `0.987448`, action
+  F1 `0.976744`, system-missing 1.0, action consistency `0.966667`, ambiguity F1 1.0
+  (`TP=72/FP=0/FN=0`), p95 `4,908.237 ms`, `40.432121 tok/s`, 안전 위반 0이다. canonical
+  Extraction gate 15/15 PASS, report SHA `2612cbed…b14a`, scoring profile `b6ea1403…d882`, gate
+  digest `6f5cfb97…336fa`다.
+- 경계: 이는 synthetic Dev의 Extraction만 PASS한 결과다. `local.8`과 guard는 runtime registry에
+  등록하지 않았고 Query Builder·Grounding은 계속 FAIL이므로 전체는 `NO_WINNER`·
+  `NO_RELEASE_ELIGIBLE`다. sealed Test·freeze·Shadow·PRIMARY·route activation·실제 사업 동작은
+  0이며 Extraction QLoRA는 보류한다.
+- 보호 실행/복구: completion signal 뒤 기존 VLM container/image/ref/config/model exact identity,
+  healthy·restart 0·OOM false를 독립 확인했다. Counsel은 identity 12/12·running 12/12·OOM 0,
+  candidate container/network/`:18002` 잔여 0이다. post-start evidence SHA는 `95e8feb1…50ecc`다.
+- 검증/보존: 기본 pytest `1253 passed, 94 skipped`, Ruff PASS, format `580 files already formatted`,
+  Pyright 0, `git diff --check` PASS다. Commit·Push·PR 없음; 사용자 문서·원본 이미지·checkpoint·
+  Docker volume과 `kaputt_best_vision_architecture.md`를 수정·삭제하지 않았다.
+- 다음 행동: Grounding의 미해결 조건 recall과 injection safety를 고정 20건 canary로 진단·복구한 뒤
+  fresh Dev로 확장한다. 그 다음 LLM Query Builder가 RAW→HYBRID 기준선을 모든 고정 지표에서 이길
+  때만 PRIMARY 후보로 검토한다. 세 task fresh Dev PASS 전에는 sealed Test를 열지 않는다.
+
+### 2026-09-01 18:19 KST — Q5 Grounding Synthetic-Dev Gate Closure
+
+- 실패 분리: 기존 Q5 production `1.1.0`은 정상 39/40, required fact `0.95`, unresolved recall 0,
+  replay `0.975`였고 공격 20건 중 5건이 거부 설명에서 위험 단어를 되풀이해 injection violation
+  `0.25`였다. 인용 precision/recall/completeness는 이미 1.0이어서 모델 지식보다 prompt/runtime
+  identity 불일치가 우선 병목이었다.
+- 구현: `generate_grounding_raw_observations`와 scorer에 기본값을 유지한 prompt·고정 record 주입점을
+  추가하고 `screen_qwen4090_grounding_prompts.py`를 만들었다. screen은 synthetic Dev만 허용하고
+  aggregate metrics·안정 실패 코드·prompt/profile/result digest만 보존하며 Test·freeze·selection·
+  route 기능은 없다. 새 단위 테스트는 고정 12+8 canary, 공격 범주 8개, 전체 40+20, PII 없는 보고서와
+  owner-only fresh output을 검증한다.
+- canary: 기존 runtime prompt `1.1.0-local.2`를 Q5에서 정상 12건+공격 범주별 8건으로 실행해
+  canonical gate 25/25 PASS를 확인했다. 모든 grounding 의미/안전 지표는 1.0/0 기준을 충족했고 report
+  SHA는 `e752095d…b3b7`이다.
+- 전체 Dev: 정상 40건은 각각 deterministic replay를 포함하고 공격 20건은 단일 호출했다. 정상·공격
+  성공 40/40·20/20, JSON/Pydantic·citation validity/precision/recall/completeness·required fact·
+  unresolved recall·replay 모두 1.0, allowlist/unknown/cross-tenant/wrong-version/duplicate citation·
+  forbidden claim/field·overstatement·injection·reasoning leakage 모두 0이다. 정상 이중 replay p95
+  `7,985.891 ms`, 공격 p95 `3,517.389 ms`; report SHA `a36f3881…40cf`, prompt hash
+  `e375f153…2297`, profile digest `2f862cfa…5515`, result-set digest `e0cc6e6c…b762`다.
+- 경계: 기존 runtime prompt의 synthetic Dev Grounding task gate만 통과했다. Extraction과 Grounding은
+  개별 PASS지만 Query Builder가 RAW→HYBRID 기준 미달이고 최종 prompt/runtime identity로 joint 세 task
+  rerun을 하지 않았으므로 전체는 계속 `NO_WINNER`·`NO_RELEASE_ELIGIBLE`다. sealed Test·freeze·
+  Shadow 승격·PRIMARY·route activation·실제 사업 동작은 0이다.
+- 보호 복구: report SHA로 completion을 정상 전달했다. 기존 VLM exact container/image/ref/config/model
+  identity·healthy·restart 0·OOM false, Counsel identity 12/12·running 12/12·OOM 0, candidate
+  container/network/`:18002` 잔여 0을 독립 확인했다. post-start evidence SHA는 `c03c6e78…740c`다.
+- 검증/보존: 관련 41 tests PASS 후 기본 pytest `1257 passed, 94 skipped`, Ruff PASS, format
+  `582 files already formatted`, Pyright 0, `git diff --check` PASS다. Commit·Push·PR 없음; 사용자
+  문서·원본 이미지·checkpoint·Docker volume과 `kaputt_best_vision_architecture.md`를 변경·삭제하지
+  않았다.
+- 다음 행동: LLM Query Builder의 실패를 query purpose/filter와 실제 retrieval Recall@10·coverage·
+  MRR·nDCG로 분리한다. frozen RAW→HYBRID 기준선을 모두 이기는 bounded prompt가 없으면 LLM Query
+  Builder를 SHADOW에 남기고 RAW를 기본 경로로 유지한다.
+
+### 2026-09-01 23:37 KST — GX10 Model-engine Session Handoff
+
+- 사용자 입력: GB10 기반 ASUS DGX Spark 계열 장비를 확보했고 Tailscale 장비 이름은
+  `gx10-ade1`이다. Mac에서 4090과 GX10을 직접 제어하고 compact 결과만 회수해 다음 Codex 세션의
+  컨텍스트 사용과 반복 원격 조작을 줄이려 한다.
+- 인계: `SESSION_HANDOFF_2026-09-01_GX10_MODEL_ENGINE.md`에 새 세션용 복사 프롬프트, 현재 Q5
+  artifact/runtime digest, Extraction·Grounding PASS와 Query Builder FAIL, 장비 역할, 안전 경계,
+  읽기 전용 inventory→ARM64 runner→동일 Q5 benchmark→BF16/QLoRA 순서를 기록했다.
+- 검증: Git branch `codex/operator-console-product-direction`, HEAD/원격 `f2357ba0cee6`, dirty
+  worktree와 candidate matrix의 clean imatrix `8d1de2…d40f`, Q5 `d709a4…2219`, llama.cpp b10419
+  image `c85eec…18ef`를 읽기 전용으로 재확인했다. Accepted ADR-0002·0113·0125와 4090 Dev
+  runbook을 다시 읽었다.
+- 미실행: GX10 접속·인벤토리·설치·파일 전송·llama.cpp build·모델 canary·benchmark·QLoRA는 모두
+  `NOT_RUN`이다. 문서 행동만 변경했으므로 전체 backend/Web/GPU 회귀도 `NOT_RUN`이다.
+- 보존: 기존 미커밋 변경, 사용자 문서·원본 이미지·checkpoint·Docker volume,
+  `kaputt_best_vision_architecture.md`, 4090 VLM/Counsel 상태를 변경하지 않았다. Secret을 인계 문서에
+  기록하지 않았고 Commit·Push·PR·route activation·sealed Test·실제 사업 동작은 0이다.
+
+### 2026-09-01 23:44 KST — GX10 Reachability and SSH Authentication Gate
+
+- 문서/로컬 기준: 지시된 AGENTS→CURRENT_STATUS→GX10 handoff 순서와 handoff가 지정한 Accepted
+  ADR-0002·0113·0125, 4090 Dev runbook을 완독했다. Git branch/HEAD/upstream 일치와 dirty entry
+  103개를 읽기 전용으로 확인하고 기존 변경을 그대로 보존했다.
+- 도달성: `gx10-ade1`은 Tailscale peer online·active, Linux 표기, ping 128 ms로 `PASS`다. 주소와
+  사용자명은 결과 원장에 기록하지 않았다.
+- 인증 Gate: password·keyboard-interactive를 비활성화한 공개키-only batch SSH가 인증 거부로
+  `BLOCKED`됐다. 비밀번호를 요청·사용·저장하지 않았고 GX10에서 실행된 원격 명령은 0개다.
+- 결과: `gx10_inventory/1.0.0` compact JSON을 owner-only mode 0600의 Git 제외 경로
+  `local-data/gx10-inventory/2026-09-01T234449+0900/inventory.json`에 기록했다. hardware/OS/CUDA/
+  Docker/storage/network/temperature/power/service inventory는 모두 `NOT_RUN`이다.
+- 보존/미실행: 설치·upgrade·reboot·prune·파일/모델 전송·ARM64 build·canary·benchmark·PRIMARY/
+  route 변경·4090 서비스 변경·Commit·Push·PR은 모두 0이다.
+- 다음 행동: 사용자가 직접 인증해 공개키 SSH를 허용한 뒤 같은 read-only inventory를 재개한다.
+
+### 2026-09-02 00:12 KST — GX10 Read-only Inventory and Execution-plan Closeout
+
+- 인증/인벤토리: 사용자 측 공개키 등록을 확인한 뒤 password·keyboard-interactive를 비활성화한
+  batch SSH로 `gx10-ade1` inventory를 완료했다. 첫 수집은 command transport quoting 오류로 실패했지만
+  원격 변경 0인 상태에서 안전한 전달 방식으로 재실행해 `PASS`했다. ASUS GX10, aarch64, GB10 CC 12.1,
+  memory 130,663,038,976 bytes, NVMe 4,096,805,658,624 bytes, Ubuntu 24.04.4, driver/CUDA
+  580.173.02/13.0, Docker 29.2.1 arm64와 NVIDIA CDI를 확인했다.
+- 미검증 경계: 10GbE는 지원하지만 link down이어서 negotiated speed/throughput은 `NOT_RUN`; 실제 GPU
+  container canary도 `NOT_RUN`이다. CDI discovery를 runtime qualification으로 승격하지 않았다.
+- compact evidence: inventory는 owner-only mode 0600의
+  `local-data/gx10-inventory/2026-09-02T000756+0900/inventory.json`, SHA-256
+  `ed46bce6…e59a`다. ARM64 build·control input·Khrin→GX10 direct transfer 계획은
+  `local-data/gx10-plan/2026-09-02T001239+0900/plan.json`에 exact path/bytes/SHA-256/rollback과
+  confirmation gate를 기록했다.
+- artifact 재확인: Khrin 원본 Q5는 18,679,614,080 bytes/`d709a4…2219`, clean imatrix는
+  13,663,264 bytes/`8d1de2…d40f`로 기존 원장과 일치했다. Q5는 Mac을 경유하지 않는 direct transfer,
+  owner-only unique partial, destination hash 검증 후 atomic rename으로만 계획했다.
+- 4090 보존: read-only 확인에서 VLM은 healthy, Counsel 12개 container는 running이었다. STT container
+  1개는 기존 `unhealthy`로 관측됐으며 원인 조사·restart·변경을 하지 않았다. 이번 단계의 4090 service
+  mutation은 0이다.
+- 보존/미실행: 비밀번호 요청·사용·저장, GX10/Khrin remote write, 설치·upgrade·reboot·prune,
+  파일/모델 전송, ARM64 build, container start/stop, canary·benchmark, sealed Test·freeze·PRIMARY·route
+  activation, Commit·Push·PR은 모두 0이다. 다음 행동은 원격 변경 없이 GX10 로컬 runner를 구현·검증하는
+  것이다.
+
+### 2026-09-02 00:30 KST — GX10 Runner, Control Transfer, and Q5 Transport Gate
+
+- 구현: 기존 4090 `linux/amd64`·sm_89 build 파일은 수정하지 않고 GX10 전용 `linux/arm64`·sm_121
+  Dockerfile/build script, CDI Compose, remote engine과 Mac controller를 추가했다. 7개 phase는
+  `status/prepare/serve/canary/evaluate/report/stop`으로 분리되고 state-changing phase는 local/remote
+  `ALLOW_GX10_MUTATION=YES`, bounded append-only run ID, owner-only env/evidence, stale project 검사와 failed
+  serve exact-project cleanup을 요구한다. PRIMARY/core route/automatic fallback label은 모두 false다.
+- 로컬 검증: shell syntax PASS, GX10+기존 4090 build contract focused pytest 9/9 PASS, Ruff·format·
+  `git diff --check` PASS다. 실제 controller `status`도 Docker active, model absent, service absent,
+  changes 0의 compact `csight_gx10_status/1.0.0`으로 PASS했다.
+- 준비/control: 사용자 진행 확인 뒤 `/home/aidi_lab/csight-gx10` owner-only layout을 만들었다. reviewed
+  GX10 Dockerfile/build/Compose/remote runner/candidate matrix 5개, 합계 22,198 bytes를 fresh staging으로
+  보내 local/remote bytes·SHA-256 일치와 final path 부재를 확인한 뒤 새 control path로 이동했다.
+  기존 경로 overwrite 0, staging은 비운 뒤 제거했다.
+- Q5 Gate: Khrin 원본 Q5 18,679,614,080 bytes/`d709a4…2219`, GX10 final/partial 부재와 가용
+  3,678,448,889,856 bytes를 재확인했다. Khrin→GX10 표준 public-key SSH와 Tailscale SSH는 인증
+  `BLOCKED`다. Taildrop send/receive CLI는 PASS지만 receiver가 uninspected inbox 전체를 이동하므로
+  다른 파일 보호를 위해 시작하지 않았다. 모델 bytes·partial·image build·container change 0이다.
+- 안전 보강: 최종 검토에서 content-addressed path와 bytes뿐 아니라 full Q5 SHA-256을 serve 전 다시
+  확인하도록 runner를 보강했다. bash/focused 9/Ruff/format/diff를 재통과했고 8,648 bytes,
+  `f81d7e…d812` 파일을 기존 control file을 덮어쓰지 않는 새 이름으로 remote SHA 검증 후 배치했다.
+- compact evidence: runner `local-data/gx10-runner/2026-09-02T002522+0900/result.json`, prepare
+  `local-data/gx10-prepare/2026-09-02T002700+0900/result.json`, control transfer
+  `local-data/gx10-control-transfer/2026-09-02T002800+0900/result.json`, blocked model transfer
+  `local-data/gx10-model-transfer/2026-09-02T003000+0900/result.json`을 owner-only로 기록했다.
+- 보존: password 요청·사용·저장, 기존 4090 VLM/Counsel mutation, Docker prune, model transfer,
+  image build, container start/stop, canary·benchmark, sealed Test·freeze·PRIMARY·route activation,
+  Commit·Push·PR은 0이다. 다음 행동은 persistent dedicated key 또는 bounded one-shot Tailnet server 중
+  안전한 direct transport 하나를 사용자가 선택하는 것이다.
+
+### 2026-09-02 00:57 KST — GX10 Q5 One-shot Direct Transfer
+
+- 구현/검증: exact source/client/token/file 하나만 허용하고 Khrin Tailscale 주소의 임시 port 1개에
+  bind하며 단일 request 뒤 종료하는 Python server, GX10 owner-only content-addressed finalizer와 remote
+  receiver를 구현했다. source symlink/bytes/SHA, client IP, constant-time token route, fresh partial/final,
+  allowed root, atomic move와 final mode 0600을 fail closed로 검증한다. Ruff·format·shell syntax와 GX10
+  runner/build 포함 focused pytest 13/13 PASS다.
+- 실패 분리: 첫 command는 실행 전 cleanup 명령 안전 정책으로 거부돼 remote change 0이었다. 다음 시도는
+  SSH가 curl `write-out`의 공백 인자를 재분리해 binary를 stdout으로 보냈고 즉시 중단했다. 확인 결과
+  partial/final은 absent, one-shot server process도 absent였다. 실패 시도에서 생성된 빈 owner-only incoming
+  directory 하나는 자동 삭제하지 않고 보존했다.
+- 성공 전송: remote receiver로 모든 curl argument를 GX10 내부에서 고정한 fresh run은 HTTP 200,
+  18,679,614,080 bytes, 597.393114초, 평균 31,268,546 B/s로 완료됐다. Mac은 orchestration만 했고 Q5
+  data path는 Khrin→GX10 Tailnet direct다.
+- integrity/finalize: Khrin server는 serve 전 source bytes/SHA를 확인했다. GX10은 fresh partial의 bytes와
+  SHA `d709a4…2219`를 확인한 뒤 content-addressed final path로 atomic move하고 final bytes/SHA를 다시
+  확인했다. final owner는 `aidi_lab`, mode 0600, 종료 후 가용 공간은 3,659,767,762,944 bytes다.
+- 복구/보존: one-shot server process와 GX10 model container는 absent다. 4090 VLM은 healthy, Counsel
+  12개는 running이며 기존 STT unhealthy 상태는 변경하지 않았다. 기존 4090 service mutation,
+  GX10 image build/container start/stop, imatrix transfer, sealed Test·freeze·PRIMARY·route activation,
+  Commit·Push·PR은 0이다.
+- compact evidence: owner-only
+  `local-data/gx10-model-transfer/2026-09-02T005727+0900/result.json`에 성공 결과와 실패 시도 경계를
+  append-only로 기록했다. 다음 행동은 host package 설치 없이 pinned llama.cpp source를 준비하고 기존
+  CUDA 13 image identity로 ARM64 build preflight를 수행하는 것이다.
+
+### 2026-09-02 01:27 KST — GX10 ARM64 Build, Isolated Q5 Canary, and Safe Stop
+
+- source/build: GX10에 host package를 설치하지 않고 pinned llama.cpp b10419 exact commit
+  `aee56b3…ef28` clean source와 기존 CUDA 13.0.1 arm64 base로 build했다. 첫 시도는
+  `GGML_CPU_ALL_VARIANTS=ON`이 GCC 미지원 ARMv9.2 SME를 강제해 실패했다. 해당 build root와 child만
+  TERM으로 종료하고 process 0/image absent를 확인한 뒤, GX10 전용 Dockerfile만 `OFF`로 고쳐
+  `csight/llama.cpp:b10419-cuda13.0.1-arm64-gb10`, image ID `b664e8…9ac4`, architecture arm64,
+  6,732,715,596 bytes로 PASS했다. 기존 4090 amd64/sm_89 계약은 수정하지 않았다.
+- GPU/runtime Gate: 새 image를 network none/read-only/CDI `nvidia.com/gpu=all`로 실행해 NVIDIA GB10,
+  124,609 MiB reported memory를 확인하고 container residue 0으로 종료했다. Q5는 owner/mode 0600과
+  full SHA `d709a4…2219`, image exact ID를 serve 전 재검증했다. API key는 GX10에서 생성해 mode 0600
+  env에만 두고 Mac stdout/file로 가져오지 않았다.
+- 실패/복구: 첫 serve는 pinned b10419 CLI가 reasoning `none`을 거부했다. runner가 container log를
+  owner-only로 보존하고 stable error를 반환하도록 보강했으며, 재현 run도 exact Compose project
+  container/network residue 0을 확인했다. 지원 값 `off`로 새 content-addressed Compose와 fresh runtime
+  env를 만들고 run `20260902T013000` serve를 PASS했다.
+- canary/report: synthetic connectivity canary는 p95 695.668ms/TTFT 695.560ms, 단일 synthetic
+  performance smoke는 p95 579.507ms/TTFT 579.411ms로 PASS했다. remote evidence directory는 0700,
+  file은 0600이며 report digest는 `bc45d35b…cef3`다. 이는 health/경로 smoke일 뿐 Dev quality 또는
+  4090 대비 성능 자격이 아니다. decode tok/s, peak unified memory, 4K/16K/32K와 세 task Dev는
+  `NOT_RUN`이다.
+- stop/preservation: report 후 exact candidate project만 stop해 GX10 candidate container/network 0,
+  service false, Q5 present를 재확인했다. RTX 4090 VLM은 healthy, Counsel 12개 running, 기존 STT 1개
+  unhealthy unchanged다. 설치·upgrade·reboot·prune, PRIMARY·route·fallback·freeze·sealed Test,
+  Commit·Push·PR은 0이다. 기존 dirty worktree, 사용자 문서와 `kaputt_best_vision_architecture.md`를
+  보존했다.
+- compact evidence: owner-only `local-data/gx10-build/2026-09-02T011100+0900/result.json`과
+  `local-data/gx10-{serve,canary,evaluate,report,stop}/2026-09-02T013000+0900/result.json`에 각 phase를
+  기록했다. 최종 집중 pytest 14/14, Ruff check·format, 5개 shell syntax, 15개 GX10 JSON parse/mode
+  0600, `git diff --check`가 PASS했다. 전체 제품 회귀는 infra-only 범위여서 `NOT_RUN`이다. 다음 행동은
+  이 runner를 확장해 동일 고정 입력의 warmup·반복 측정, decode/peak memory, 4K/16K/32K와 4090 동일
+  Dev task 비교를 수행하는 것이다.
+
+### 2026-09-02 01:55 KST — GX10 Q5 Context and Concurrency Benchmark
+
+- 구현/계약: 합성 prompt만 생성하고 `/tokenize`로 각 context slot의 output/headroom 640 tokens를 남긴
+  입력을 만든다. strict JSON schema, temperature 0, streaming first content와 usage token을 검증하고
+  warmup을 제외한 p50/p95, per-request decode와 wall throughput, system/GPU memory·온도·전력을 owner-only
+  report에 남긴다. prompt는 SHA만 저장하고 raw prompt/response/API key는 Mac으로 회수하지 않는다.
+  runtime env writer는 per-slot context와 parallel을 받아 total context를 곱해 고정하며 PRIMARY/route
+  identity를 포함하지 않는다.
+- 첫 4K 시도/복구: 모델 요청 5/5는 성공했지만 GB10의 `nvidia-smi memory.used`가 N/A라 compact parser의
+  peak memory 필수 Gate가 실패했다. report `7e7383…acec`과 원격 evidence를 덮지 않고 candidate를 stop했다.
+  `PROC_MEMINFO_SYSTEM_USED` fallback을 출처 필드와 함께 추가하고 parser 실패를 traceback 대신
+  `GX10_BENCHMARK_RESULT_INVALID`로 바꿨다. 이 memory 수치는 절대 host-used unified 표본이며 모델 단독
+  allocation으로 해석하지 않는다.
+- 4K concurrency 축: 동일 prompt SHA `d8a954…eb43`, input mean 3,495 tokens다. c1은 5/5,
+  TTFT p50/p95 167.577/193.291ms, latency 3,129.124/3,159.736ms, decode 11.486934 tok/s, wall
+  10.849114 tok/s, peak 26,622,164,992 bytes·50°C·43.71W다. c2는 6/6지만 TTFT/latency p95
+  6,448.638/9,924.916ms와 decode 7.903149 tok/s, c4는 8/8지만 18,539.903/23,028.159ms와
+  4.285165 tok/s로 tail latency와 per-request decode가 악화됐다. c4 peak는 28,937,760,768 bytes,
+  61°C, 78.03W다.
+- context 축: concurrency 1에서 16K는 input mean 15,780 tokens, 3/3, TTFT/latency p95
+  207.330/3,671.047ms, decode 10.533026 tok/s, peak 27,223,945,216 bytes다. 32K는 input mean
+  32,173 tokens, 2/2, 241.216/3,566.045ms, decode 10.580458 tok/s, peak 27,914,141,696 bytes,
+  63°C다. 다섯 profile 합계 24/24, timeout/schema failure 0이다. full context×concurrency cross-product와
+  soak/fault는 `NOT_RUN`이다.
+- 비교/판정: 4090 역사적 Q5 Extraction은 p95 4,908.237ms/40.432121 tok/s, Grounding 정상 p95
+  7,985.891ms지만 실제 task Dev라 이번 short-output synthetic hardware profile과 동일 workload가 아니다.
+  기존 VLM/Counsel을 보호하기 위해 live same-harness 4090은 `NOT_RUN`이며 직접 numeric ranking을 하지
+  않는다. 32K 기술 수용과 큰 memory headroom은 Model Lab에 유용하지만 c2/c4 latency 악화, 동일 세 task
+  Dev·4090 same-harness 부재 때문에 GX10은 `MODEL_LAB_SHADOW_CANDIDATE`, PRIMARY는 `BLOCKED`다.
+- 종료/보존: 매 profile report 후 exact Compose project만 stop했다. 최종 GX10 candidate container/network
+  0, Q5/image/evidence present다. 01:55 KST Khrin VLM healthy, Counsel 12 running, 기존 STT unhealthy
+  unchanged다. 비밀번호, 설치·upgrade·reboot·prune, PRIMARY·route·fallback·freeze·sealed Test,
+  Commit·Push·PR은 0이고 dirty worktree와 `kaputt_best_vision_architecture.md`를 보존했다.
+- 최종 검증: benchmark/runtime/GX10 build·transfer focused pytest 17/17, Ruff check·format, shell syntax,
+  compact result JSON parse/mode 0600과 `git diff --check`가 PASS했다. 최종 live status도 GX10 service
+  false/model present, Khrin VLM healthy/Counsel 12 running이다. 전체 제품 회귀와 live Dev는 `NOT_RUN`이다.
+- compact evidence: owner-only
+  `local-data/gx10-benchmark/2026-09-02T015520+0900/result.json`에 다섯 profile, 첫 실패, source와
+  comparison boundary를 기록했다. 다음은 기존 서비스 중단 없이 GX10 세 task Dev를 실행할 안전한
+  evaluator 경로를 설계하거나, 별도 사용자 승인 아래 4090 VLM unconditional restore가 있는 same-harness
+  maintenance window를 여는 것이다.
+- three-task Dev preflight: 기존 evaluator의 live task 함수만 직접 호출하는 우회도 matrix runtime
+  identity와 post-start evidence binding을 건너뛰므로 거부했다. owner-only
+  `local-data/gx10-dev-preflight/2026-09-02T015846+0900/result.json`에
+  `GX10_DEV_RUNTIME_IDENTITY_CONTRACT_MISSING`을 기록했다. 이 단계의 endpoint call, API key copy,
+  candidate/container 변경은 0이다.
+
+### 2026-09-02 02:07 KST — GX10 Operational Latency Requirement Reinterpretation
+
+- 사용자 요구: 절대 저지연보다 하루 유입 문의량과 사람의 처리 한계가 중요하며, 모델이 문서 1건당
+  5분 이상 걸리지 않으면 운영상 허용 가능하다. 이를 300,000ms/document의 현재 운영 latency 기준으로
+  기록했다. daily inquiry, peak-hour arrival, reviewer count와 human documents/day는 아직 입력되지 않았다.
+- 판정 변경: benchmark의 최악 p95는 4K c4의 23,028.159ms로 한도의 7.676%, headroom
+  276,971.841ms다. 따라서 c2/c4 tail latency 증가는 운영 blocker가 아니라 비용·효율 최적화 항목이다.
+  latency만으로 GX10을 Model Lab에 제한하지 않는다.
+- 남은 Gate: 현재 benchmark는 34~36 output tokens의 synthetic schema 응답이라 실제 문서 1건의 전체
+  Extraction→Query→Grounding 처리시간이나 documents/day를 증명하지 않는다. representative synthetic
+  workflow로 end-to-end 성공률, queue wait, p95<300초와 일일 수요 대비 capacity headroom을 측정해야 한다.
+  GX10 runtime identity 부재, three-task Dev 미실행, Query Builder `NO_WINNER`, PRIMARY 금지는 그대로다.
+- 변경/증거: 모델·서비스·route 변경 0. owner-only
+  `local-data/gx10-operational-capacity/2026-09-02T020730+0900/result.json`에 요구, 관측값, 미실행
+  capacity와 다음 Gate를 기록했다. Commit·Push·PR 없음.
+
+### 2026-09-02 02:12 KST — GX10 Quality-first Qualification Priority
+
+- 요구/판정: LLM이 CSight의 Extraction, 검색 query 생성, 근거 설명에서 큰 역할을 담당하므로 semantic
+  quality를 최상위 Gate로 둔다. 세 task는 모두 absolute PASS여야 하며 weighted average로 Query Builder
+  실패를 Extraction/Grounding 성공이 덮을 수 없다. latency 300초 상한은 fail-safe 운영 기준이지만
+  모델 선택의 주 최적화 목표가 아니다.
+- quality Gate: Extraction은 strict structure·exact quote와 기존 issue/action/missing/consistency/ambiguity
+  하한, safety violation 0을 요구한다. Query Builder는 frozen RAW→HYBRID 대비 Recall@10, exact coverage,
+  MRR@10, nDCG@10을 모두 이겨야 하며 아니면 SHADOW에 남고 RAW가 기본이다. Grounding은 citation/fact/
+  unresolved/replay 1.0과 citation·injection violation 0을 요구한다.
+- 현재 상태: 4090 Q5의 Extraction과 Grounding은 개별 synthetic Dev PASS지만 Query Builder는 FAIL이고
+  final identity joint rerun도 없다. GX10은 additive runtime identity contract가 없어 three-task Dev
+  `BLOCKED`다. 따라서 전체는 `NO_WINNER`·`NO_RELEASE_ELIGIBLE`, PRIMARY·Test·freeze 0이다.
+- 안전 경계/증거: 모델은 evidence analysis와 advisory output만 만들고 versioned policy와 인증된 사람
+  검토가 최종 결정을 소유한다. 실제 환불·메일·결제·배송·CRM action 0. 기존 frozen matrix, 모델,
+  서비스, route를 변경하지 않았다. owner-only
+  `local-data/gx10-quality-priority/2026-09-02T021200+0900/result.json`에 우선순위와 all-task Gate를 기록했다.
+
+### 2026-09-02 20:01 KST — GX10 User-installed Qwen3.8 Read-only Verification
+
+- 읽기 전용 인벤토리: password/interactive auth를 금지한 공개키-only SSH로 확인했다. 기존 CSight Q5
+  artifact는 18,679,614,080 bytes와 SHA `d709a4…2219`, pinned llama.cpp image는 `b664e8…9ac4`로
+  그대로다. 별도로 사용자 설치 `vllm_node` 한 개가 host network에서 port 8000을 listen하며
+  `RadixArk/Qwen3.8-27B-NVFP4`를 제공했다. health/models는 모두 HTTP 200, GPU process가 존재하고
+  container restart는 0이다.
+- runtime/capacity snapshot: vLLM은 `0.26.1rc1.dev1231+g7a9993878.d20260826`, API max context는
+  32,768이다. 원본 config의 max position은 262,144지만 현재 endpoint 능력은 32,768로 해석한다.
+  container memory는 약 24.29GiB, host unified memory available은 30,684,598,272 bytes였고 GPU
+  utilization 0%, 34°C에서 관측했다. 장시간 soak, 실제 documents/day와 동시성 capacity는 `NOT_RUN`이다.
+- text canary: 무상태 단일 요청이 HTTP 200/2.659초, strict JSON을 반환하고 명시 정책에 따라 환불
+  비대상을 선택했다. 그러나 `human_review_required=false`를 반환했으므로 CSight의 사람 최종결정 경계는
+  model compliance로 증명되지 않았다. 최종결정·외부 action은 계속 application/policy/authenticated
+  human-review 계층이 강제하며 이 모델 출력은 advisory로만 취급한다.
+- VLM canary: cached config는 `Qwen3_5ForConditionalGeneration`, vision config와 image/video token을
+  포함한다. 메모리에만 생성한 96x64 합성 이미지에서 왼쪽 red, 오른쪽 blue, 가운데 green을 HTTP
+  200/2.368초 strict JSON exact match로 식별했다. 이는 multimodal data path의 최소 연결 증거일 뿐,
+  실제 문의 이미지·OCR·미세 결함·비교 이미지·공식 Kaputt label/E3 정확도 자격은 아니다.
+- 변경/경계: GX10/4090의 container·model·service·route를 시작·중지·재기동·전환하지 않았고 설치,
+  다운로드, 모델 전송, PRIMARY/fallback/freeze/Test, 비밀번호·API key 접근, Commit·Push·PR은 0이다.
+  기존 dirty worktree와 `kaputt_best_vision_architecture.md`를 보존했다. 세 task joint Dev와 Query Builder
+  gate는 여전히 미통과이므로 `NO_WINNER`·`NO_RELEASE_ELIGIBLE`, PRIMARY 금지를 유지한다.
+- compact evidence: owner-only
+  `local-data/gx10-live-{inventory,text-canary,model-metadata,vlm-canary}/20260902T200111+0900/result.json`에
+  raw prompt/response와 credential 없이 네 단계 결과를 기록했다. 다음 행동은 사용자 설치 vLLM identity를
+  additive GX10 runtime 계약에 고정한 뒤 frozen Dev의 Extraction→Query Builder→Grounding을 동일 identity로
+  실행하는 것이다.
+
+### 2026-09-09 — 출시 잔여 범위 문서 검토
+
+- 검증: `PASS` — 현재 상태 원장, README, pilot readiness/onboarding 계약과 ADR-0103을 대조했다.
+  이번 검토는 문서 기반이다. 최신 runtime 실측은 2026-09-02 기록이며 9월 9일 GPU·Core·고객 환경
+  재검증과 새 모델 품질 평가는 `NOT_RUN`이다. 코드·서비스·route·Git staging 변경은 없다.
+- 출시 순서 제안: 첫 고객/상품군 범위 확정 → 해당 고객 정책·대표 문의·사람 정답 준비 → GX10
+  runtime identity와 Extraction/Query/Grounding 품질 검증 → Vision 적용 범위·권리 검토 → 고객별
+  접근권한·개인정보·복원·장애·부하 검증 → 제한 파일럿 → 운영 결과로 정식 출시 범위 확정.
+  이미 구현된 hybrid RAG, Citation Pack, 정책 engine, 사람 결정·상담원 UI를 새로 구축하는 작업은 아니다.
+- 미해결: Query Builder와 GX10 final identity joint Dev, 대표 실제 상품 이미지 평가, 사용권 확인,
+  고객 정책/IdP/retention/intake, 외부 백업 복원 2회·경보 수신, 20-session/20-workflow와
+  release 모델·배포 artifact가 남아 있다. 파일럿 시작은 기존 구성 6개·운영 25개 gate를 따른다.
+- 정정: 9월 2일 임의 text canary에는 사람 검토를 항상 true로 반환하라는 규칙이 없었고 CSight
+  application의 실제 승인 경로를 호출하지 않았다. 따라서 `human_review_required=false` 한 건으로
+  기존 application의 사람 승인 통제가 실패하거나 미구현이라고 판정할 수 없다. 해당 canary의
+  CSight 안전 자격은 `NOT_RUN`으로 해석한다. 사람 최종결정 원칙은 기존 구현/계약에 이미 존재하며
+  새 모델을 연결한 실제 전체 경로에서 재검증해야 한다. 과거 출력과 기록은 보존한다.
+- 다음 체크리스트: [ ] GX10 현재 identity를 재확인하고 전용 평가 계약을 준비한다.
+  [ ] 첫 고객의 상품군·정책·평가 자료를 확정한다. [ ] 위 AI 품질 및 고객 운영 gate를 완료한 후
+  제한 파일럿을 판정한다. 모델 추가 학습·속도 최적화·범용 상품 확장·실제 자동 환불은 첫 출시의
+  기본 선행 작업으로 추가하지 않는다. 코드 테스트·원격 실행은 이번 문서 검토에서 `NOT_RUN`이다.
+
+### 2026-09-09 — Vision/LLM 주요 엔진 개선 검토
+
+- 확인 `PASS`: Vision port와 canonical schema는 이미지 단위 assessment와 위치 detection을 구분한다.
+  원장에는 Claim↔Detection/Evidence Alignment가 미구현이며 실제 E3의 정책 입력 연결도 미확정으로
+  기록돼 있다. 두 모델 결합으로 품질이 개선됐다는 실측 근거는 이번 검토에서 확보하지 않았다.
+- 개선 제안(미구현): 상품군별 정상/결함/촬영불량·미지원 입력과 사람 정답 구축, 결함 위치·기준 이미지
+  비교와 판단 보류 평가, 고객 주장과 이미지 관찰의 지지/모순/판단불가 대조, LLM의 예외 정책 검색과
+  인용 검증을 우선한다. 이미지에서 관찰 불가능한 냄새·작동불량 등의 주장을 시각 미검출로 반박하지 않는다.
+- 모델 자체 개선 후보: 실제 반복 오류를 근거로 vision 도메인 적응과 LLM/VLM의 검수 데이터 기반
+  추가 학습을 검토한다. 양자화 정밀도 차이는 동일 입력·설정으로 비교하고 성능 향상을 가정하지 않는다.
+  기존 paired VLM 결함 평가 실패는 reference/crop 입력만으로 해결됐다고 재해석하지 않는다.
+- 평가 제안: 상품/주문/유사 이미지 누출을 막은 holdout에서 vision-only, text-only, 결합 결과를 비교하고
+  오탐·미탐·근거 없는 주장·판단 보류율 및 상담원 수정량을 함께 본다. 신뢰도 수치는 별도 calibration
+  자료로 검증한다. 정책과 인증된 사람의 최종결정 경계는 유지한다.
+- 다음 체크리스트: [ ] 대표 문의·이미지와 사람 정답으로 두 모델 공통 오류 기준선을 만든다.
+  [ ] Evidence Alignment 입력/출력과 평가 기준을 설계 문서/ADR로 구체화한다. 실행·학습·새 평가·
+  서비스 변경은 `NOT_RUN`이며 이 로그는 사용자 질문에 대한 개선 제안으로, 새 아키텍처 확정이 아니다.
+
+### 2026-09-09 11:53 KST — 두 엔진 개선 1차: 오프라인 Evidence Alignment 완료
+
+- 계획/범위: 사용자의 계획·구현 요청에 따라 입력 계약 → 주장별 대조 → 합성 평가/CLI → 회귀와
+  문서 인계까지 완료했다. 계획은 `docs/engine/ENGINE_IMPROVEMENT_PLAN_2026-09-09.md`, 결정은
+  ADR-0126이다. 초기 설계의 weighted alignment score는 미검증이라 구현하지 않고 명시적 사유를 쓴다.
+- 구현: 기존 text v2/vision canonical record와 expected snapshot을 받아 tenant/run/stage, exact
+  source quote, evidence SHA, 중복 및 mixed Vision identity를 검사한다. 지원 유형 후보만 참조 ID로
+  연결하고 E3 image-level score·위치 미확인·품질 미평가·비시각 주장·미검출을 정상/반박으로 바꾸지 않는다.
+  누락 image ID/사유와 추가 자료 코드를 보존하며 human_review_required=true/policy_eligible=false다.
+- 재현/프라이버시: CLI는 DB/GPU/provider를 호출하지 않고 canonical 입력 replay와 합성 30건 평가를
+  제공한다. 입력 2MiB·image20·claim50·detection100/image 상한, 입력/profile/result hash와
+  model/prompt/schema/runtime/taxonomy/threshold/pre/postprocess 출처를 기록한다. 고객 원문/quote/summary,
+  URL/key/provider request ID는 출력하지 않는다. 출력은 새 0700 directory/0600 file이며 overwrite 금지다.
+- 실제 검증 PASS: backend 기본 1,335 passed/94 deselected, 최종 schema provenance 보강 뒤 집중
+  129 passed, 전체 Pyright 0 errors, app/scripts/tests Ruff 및 신규 파일 format, diff check.
+  CLI contract 30/30과 replay 일치. 기존 Vision deprecation warning은 보존했고 새 로직 경고는 제거했다.
+- compact evidence: `local-data/engine-alignment-evaluation-20260909-final/result.json`, SHA
+  `bb198b684ba82032d42eef7fcdd4c90434dd7607bc5510a63e002db81f254ca3`; 초기 보고서도 별도 경로에 보존했다.
+  최종 단계별 검증 요약은 같은 directory의 `verification.json`이다.
+- 미실행/경계: 실제 모델 accuracy와 결합 gain, 학습·calibration, DB/API/Event/Web 통합은 NOT_RUN.
+  DB schema 변경이 없어 migration이 필요하지 않다. GPU 접속/설치/전송/재기동/승격/PRIMARY/fallback,
+  sealed Test/freeze, Commit·Push·PR, 실제 사업 동작 0. 기존 dirty worktree와 사용자 문서/4090/GX10 보존.
+- 다음: 첫 상품군의 대표 문의·이미지와 모델 답변을 보지 않고 만든 독립 정답을 확보한다. GX10
+  전용 identity 계약으로 실제 세 task Dev를 실행하고, 이번 대조 engine에 canonical 결과를 넣어
+  실제 error/보류/상담원 수정량을 비교한다. 운영 stage는 별도 append-only persistence와 권한·retention·
+  policy qualification 검증을 갖춘 후 연결한다. 이번 완료는 오프라인 대조 기능의 구현 자격이다.
+
+### 2026-09-09 — 기술 멘토링 의제 검토
+
+- 문서 검토 PASS: 기존 멘토링 로그는 초기 고객·사업 검증 질문 중심이며, 최신 engine 개선 계획과
+  출시 미해결 항목을 기준으로 기술 질문을 구체화했다. 새 모델/운영 실측은 NOT_RUN이다.
+- 우선 의제: (1) 실제 문의/사진의 평가셋·정답·허용 오류/판단 보류 기준, (2) E3 binary와
+  localized detector/reference 비교/VLM의 역할 선택, (3) 고객 주장↔시각 근거 결합과 모순/판단불가
+  처리, (4) RAW보다 낮은 LLM Query Builder 성능 원인과 RAG 예외 조항 검색, (5) GX10/4090
+  배포·실패 격리와 제한 파일럿 운영 기준. 멘토 전문 분야/시간은 아직 제공되지 않았다.
+- 다음 체크리스트: [ ] 구조도 1장, 대표 성공/실패/판단불가 사례, 실제 측정과 합성 계약 검사 구분,
+  해결할 설계 선택지를 준비한다. [ ] 멘토링에서 첫 상품군/모델 역할, 평가 기준, 다음 비교 실험을
+  구체적 결과물로 확정한다. 이번 의제는 제안이며 멘토의 승인·결정으로 기록하지 않는다.
+
+### 2026-09-09 16:16 KST — 전체 기술 멘토링 질문·현재 현황 문서화
+
+- 범위/산출물: `docs/mentoring/CSIGHT_TECHNICAL_MENTORING_BRIEF_2026-09-09.md`에 서비스 정의,
+  현재 구현/검증 한계, 관측 수치의 의미, 16개 영역 80개 질문, 우선 의제 12개, 멘토 전문 분야별
+  진행안, 준비 자료와 결정/실행 기록 양식을 작성했다. 기존 `11_MENTORING_DECISION_LOG.md`에는
+  자료 링크를 추가하고 초기 예시 표가 최신 구현 상태가 아님을 명시했다. 멘토 답변·승인은 기록하지 않았다.
+- 근거 검토 PASS: 최신 상태 원장·엔진 개선 계획·관련 설계/Accepted ADR·운영 계약을 대조했다.
+  RAG/정책/사람 승인은 이미 구현, 대조 엔진은 오프라인 계약 구현, 실제 고객/모델 품질은 별도
+  미검증이라는 경계를 유지했다. 9/2 canary의 사람 승인 실패 오해는 9/9 정정에 맞춰 설명했다.
+- 교차 검토 PASS: AI/데이터와 플랫폼/운영을 독립적으로 검토했다. 검색 결과를 적용 확정 정책이
+  아닌 관련 후보로 표현하고, 설계 ADR과 실행 증거를 분리했다. 고객 운영용 재실행/취소의 미자격과
+  온프레미스/관리 전용/공유 SaaS 배포 선택 질문도 포함했다.
+- 문서 검사 PASS: 질문 ID 80개 중복/누락 0, 영역 16개, 근거 문서 25개, 본문 링크 28개 존재,
+  표 26개 열 구성 일치, 질문 참조 유효, 고신뢰 비밀정보 패턴 검사와 `git diff --check` 통과.
+  이는 문서 구조 검사이며 모델 품질이나 실제 실행 상태의 새로운 검증이 아니다.
+- 짧은 JSON: `docs/mentoring/CSIGHT_TECHNICAL_MENTORING_VERIFICATION_2026-09-09.json`.
+  문서 SHA-256 `1b257c67f90f0b971f14ef357afbccd91a5ffa39775e26f5a4fe5369459e1fb4`를 기록했다.
+- 추가 문서 검사: 우선 의제 12개·검증 JSON의 문서 digest·멘토링 로그 링크 2개·인계 연결 PASS.
+  기존 로그까지 포함한 전 파일 공백 probe는 초기 템플릿 44~46행 때문에 FAIL이었다. 세 행은 HEAD와
+  동일한 기존 내용임을 확인해 정리 SKIPPED로 보존했고, 새 문서·추가 변경 행 공백 검사는 PASS다.
+- 미실행/보존: Backend/UI 테스트 재실행, GPU/서버 접속·모델 평가·학습·배포·PRIMARY 전환은
+  NOT_RUN. 기존 미커밋 코드와 사용자 문서, 4090/GX10 서비스·설정은 변경하지 않았다. 비밀번호·
+  개인 키 접근, 실제 환불/메일/CRM 실행, Commit·Push·PR은 하지 않았다.
+- 미해결: 첫 고객·상품군·실제 Case Bundle/독립 정답·사용권, Query Builder와 GX10 최종 identity
+  공동 품질, 대조 엔진 실제 효과·운영 연결, 고객 IdP/연동/보존·부하·경보·off-host 복원이 남았다.
+  `NO_WINNER`·`NO_RELEASE_ELIGIBLE`, PRIMARY 금지와 제한 파일럿 BLOCKED를 유지한다.
+- 인계 체크리스트: [x] 전체 기술 의제와 현재 상태 문서화. [x] 교차 검토와 링크/ID 검증.
+  [x] 기존 멘토링 로그와 현재 원장 연결. [ ] 멘토 전문 분야/시간에 맞춰 우선 질문을 선택.
+  [ ] 승인된 성공/실패/판단불가 사례를 준비. [ ] 회의 후 실제 답변과 채택/보류 이유,
+  담당자·기한·통과 기준을 기록. 다음 실제 엔진 작업은 대표 데이터와 GX10 전용 평가 identity부터다.
+
+### 2026-09-09 16:44 KST — 멘토링에서 지금 가능한 개선 4건 구현
+
+- 범위: 사용자의 즉시 개선 요청에 따라 재현 가능한 평가·입력 보안 결함만 수정했다.
+  결과는 `docs/engine/IMMEDIATE_MENTORING_IMPROVEMENTS_2026-09-09.md`, 계약은 ADR-0127,
+  단계별 짧은 JSON은 `docs/engine/IMMEDIATE_MENTORING_IMPROVEMENTS_VERIFICATION_2026-09-09.json`이다.
+- 검색 평가: pure 공통 지표에 K=1/3/5/10/20 HitRate·조항 Recall·전체 Gold coverage와 MRR/nDCG,
+  실패 포함 macro 분모를 구현했다. 빈 Gold·중복 Case/Gold/히트·실패+히트 입력은 차단한다.
+  candidate 보조 진단 API와 두 legacy wrapper에 연결했다. 기존 candidate v1의 recall_at_10은
+  역사적으로 CASE_HIT_RATE임을 명시하고 serialization·계산식·0.975 threshold는 보존했다.
+  새 지표로 frozen profile·Test·기존 기준선을 재해석하거나 release 자격을 승계하지 않는다.
+- 평가 안전: generic Query/MLX CLI는 Dev만 허용하며 Test/freeze를 데이터·provider 전에 차단한다.
+  새 0700 directory/0600 exclusive JSON을 요구하고 자동 profile freeze/과거 overwrite 함수를
+  제거했다. Makefile/README/사용법을 갱신했다. 관측 원문/모델 출력/에러 대신 해시를 기록한다.
+  독립 리뷰에서 찾은 미측정 safety/replay 고정값은 null/NOT_RUN으로 바꾸고 회귀를 추가했다.
+- 이미지/ClamAV: 합성 PNG ICC·JPEG comment 잔존을 수정하고 회전·투명도·3형식 metadata 회귀를
+  추가했다. ClamAV 단일 NULL 판정과 EOF, 분할 응답·4096-byte 상한·공통 deadline을 검증한다.
+  비정상/과대/부분/충돌 응답과 timeout은 업로드 허용으로 낮추지 않는다. 실제 유출 관측은 아니다.
+  ICC 색관리 동등성과 DNS resolver wall-clock 상한은 이번 구현의 보증 범위 밖이다.
+- 실제 검증 PASS: 최종 기본 오프라인 1,444 passed/94 deselected/기존 deprecation warning 36.
+  새 CLI 안전 29 passed, 공통 지표/candidate 집중 62 passed·후보 확장 201 passed,
+  이미지/ClamAV adapter 42 passed·Evidence use case 포함 56 passed. 서로 중복인 suite를 합산하지 않는다.
+  app/scripts/tests Ruff·format(600 files), 전체 Pyright와 수정 scripts 별도 검사 각각 오류 0,
+  diff check 통과. AI 지표·CLI 안전 독립 리뷰의 필수 지적을 반영하고 재검토했다.
+- 초기 검사 구분: 수정 전 CLI 회귀 18 FAIL, 이미지/검사기 18 FAIL/15 PASS로 결함을 재현했다.
+  최초 전체 검사의 기존 launcher DRY_RUN 2 FAIL은 uv 사용자 cache 권한 문제였고 허용 임시 cache와
+  offline/no-sync 재검증으로 해소했다. 저장소 전체 format probe는 기존 사용자 문서
+  `kaputt_best_vision_architecture.md` 1개 때문에 FAIL이며 범위 외 정리는 SKIPPED로 보존했다.
+- 미실행/보존: 실제 모델/GPU·SSH·ClamAV HTTP·DB 통합·UI E2E·배포·학습은 NOT_RUN.
+  기존 dirty worktree/사용자 문서/과거 평가·분석/frozen Test/matrix/RAW/4090/GX10을 보존했다.
+  비밀번호·개인 키 접근, 모델 설치/전송/재시작/PRIMARY/fallback, 실제 환불/메일/CRM 실행,
+  Commit·Push·PR은 0이다. DB/API/Event schema 변경이 없어 migration은 필요하지 않다.
+- 미해결/다음: 첫 상품군의 권리 확인된 대표 Case·정책과 독립 Gold를 확보하고 본문+예외 회수율의
+  RAW 대비 실제 Dev를 새 identity로 비교한다. GX10 세 task joint quality, 대조 엔진 실제 효과·UI,
+  실제 ClamAV HTTP 재자격과 고객 IdP/연동/보존·부하·off-host 복구는 남았다.
+  NO_WINNER·NO_RELEASE_ELIGIBLE/PRIMARY 금지/제한 파일럿 BLOCKED를 유지한다.
+- 인계 체크리스트: [x] 결함 재현과 4건 구현. [x] 독립 리뷰·최종 회귀/타입 검사.
+  [x] ADR/사용법/멘토링 11절/검증 JSON/현재 원장 연결. [ ] 대표 데이터/독립 정답 확보.
+  [ ] 실제 검색·GX10 품질 평가 계약과 새 기준선. [ ] 배포 전 격리 ClamAV HTTP 재자격.
+- 최종 문서 검사 PASS: 관련 5개 문서 링크·표·공백·고신뢰 비밀정보 패턴, 멘토링 질문 80개/
+  근거 25개/로컬 링크 30개/표 27개, 결과·멘토링·ADR digest를 검증 JSON에 기록했다.
+  초기 ADR 상대 경로 오류를 수정하고 재검사했다. 초안 검증 JSON의 옛 digest/count는
+  16:16 작성 시점 snapshot으로 명시해 보존했고 후속 현재 문서 검증과 구분했다.
+
+### 2026-09-09 16:53 KST — 개선 반영 후 기술 멘토 공유본 재정리
+
+- 산출물: `docs/mentoring/CSIGHT_MENTOR_HANDOUT_2026-09-09.md`. 서비스/책임 흐름, 시스템별
+  구현·미검증, 완료된 개선 4건, 최신 코드 회귀와 과거 모델 실측의 한계를 앞부분에 정리했다.
+  질문 12개는 현재 상황→질문→받아야 할 결과로 구성하고 기존 80개 질문 ID와 연결했다.
+- 회의 활용: 60분 진행안, 미준비 사례/고객 자료 체크리스트, 다음 과제 3개의 담당/선행 조건/
+  결과물 양식을 포함했다. 기존 종합 문서와 구현 결과의 digest는 변경하지 않았고 멘토링 결정
+  로그에는 공유본 링크만 추가했다. 멘토 답변·승인이나 실제 자료 공유는 기록하지 않았다.
+- 실제 문서 검사 PASS: 질문 12개 순서/중복, 전체 backlog 참조, 로컬 링크 6개, 표 6개 구성,
+  공백·고신뢰 비밀정보 패턴, 이전 검증 artifact digest/1,444·94 수치 대조, diff check.
+  짧은 JSON은 `docs/mentoring/CSIGHT_MENTOR_HANDOUT_VERIFICATION_2026-09-09.json`이다.
+- 미실행/보존: 이번에는 문서만 작성했으며 코드·Backend/UI/모델 테스트 재실행·GPU/SSH 접속·
+  배포·설치/전송·PRIMARY·외부 업무 실행은 NOT_RUN 또는 변경 0이다. 코드 테스트 1,444 통과는
+  앞선 개선 세션의 결과이며 새 고객 품질/운영 검증으로 해석하지 않는다. 사용자 미커밋 변경,
+  4090/GX10 서비스와 과거 평가 결과를 보존했다. 비밀번호·개인 키 사용, Commit·Push·PR 없음.
+- 미해결/다음: 멘토 전문 분야/시간, 첫 고객·상품군, 공유 승인된 사례/독립 Gold, 실제 GX10
+  공동 품질·고객 보안/연동·운영 자격은 여전히 미확정이다. NO_WINNER·NO_RELEASE_ELIGIBLE와
+  제한 파일럿 BLOCKED를 유지한다. 멘토링에서 데이터·품질 기준과 다음 비교 실험을 우선 확정한다.
+- 인계 체크리스트: [x] 개선 후 공유본 작성. [x] 근거·질문·링크 검사와 JSON 기록.
+  [x] 현재 원장/멘토링 로그 연결. [ ] 멘토 전문 분야에 맞춰 질문 2~3개 선택.
+  [ ] 권리 확인된 사례와 고객 업무량 준비. [ ] 회의 후 실제 결정·담당·완료 기준 기록.
+
+### 2026-09-09 18:12 KST — 외부 기술 멘토 전달용 HTML 시각화
+
+- 범위/산출물: 사용자가 내부 열람용이 아닌 멘토님께 드릴 자료임을 명확히 했다.
+  `docs/mentoring/CSIGHT_MENTOR_HANDOUT_2026-09-09.html`을 독립형 사전 공유자료로 작성했다.
+  시스템 흐름→분야별 구현/미검증→개선 4건/증거→3개 주제의 질문 12개→회의 후 결정 순서다.
+- 외부 독자 기준: 내부 저장소 링크·경로·작업 상태코드·backlog ID를 빼고 질문·배경·논의 결과를
+  자체 포함했다. 모델·사람 결정 경계, E3 비위치성, 오프라인 대조 미통합, 과거 GX10 관측과
+  실제 고객 미검증을 보존했다. Q5 15/15·25/25는 사례 수/정확도가 아닌 기준 통과 수로 명시했다.
+  원문 Markdown과 기존 검증 digest는 그대로 보존했다. 실제 멘토 전달·접근 권한 부여는 하지 않았다.
+- 시각화 방식: 요청은 공유용 HTML 문서이므로 visualize skill의 분기에 따라 대화용 fragment가
+  아닌 전체 standalone document로 만들었다. 외부 font/CDN/API/추적/저장 없이 native details로
+  열리며, 목차·전체 질문 펼침·인쇄 전 전체 펼침/인쇄 후 복원과 JS 비활성 기본 동작을 제공한다.
+- 실제 검증 PASS: Chromium 임시 독립 profile에서 1365/1024/768/390/360/320px 가로 넘침 0,
+  12개 질문·전체 펼침/접기·키보드·목차 이동·JS 비활성 details·print media 펼침/복원 통과.
+  데스크톱/모바일/print media 화면을 직접 검토했고 axe WCAG2A/2AA/2.1AA desktop/mobile 위반 0,
+  페이지 JS 오류 0, 외부 자원 요청 0이다. 정적 DOM·내부/비밀정보 패턴·질문 제목/결과 검증 통과.
+- 초기 검사: 브라우저 sandbox Mach port 제한은 BLOCKED 후 승인된 isolated launch로 재검증했다.
+  목차 숫자 4개의 contrast FAIL을 수정한 뒤 전체 브라우저 검사 PASS. 내용 독립 리뷰에서 ClamAV
+  경로 용어·기준 통과 수·외부 문체 지적을 반영하고 재검토 PASS를 받았다. 페이지 단위 PDF 생성/
+  페이지 나눔 QA는 NOT_RUN이며 print media 검사를 PDF 렌더 완료로 기록하지 않는다.
+- 짧은 JSON: `docs/mentoring/CSIGHT_MENTOR_HTML_VERIFICATION_2026-09-09.json`, HTML SHA-256
+  `8a8646a31db62dce8f058cb27e936c4f750678eb4b41570dc45ec76ce2ea7bf3` (46,146 bytes).
+- 보존/미실행: 이번에는 HTML과 문서만 변경했다. Backend/GPU/실제 ClamAV 자격·SSH·모델
+  설치/전송·PRIMARY/fallback·서비스 재시작·외부 업무·고객 자료 전송·Commit/Push/PR은 0 또는
+  NOT_RUN이다. 기존 미커밋 작업·4090/GX10·과거 결과·사용자 문서를 보존했다. 비밀번호 사용 없음.
+- 미해결/다음: 고객/상품군·권리 확인된 대표 자료/독립 Gold·GX10 공동 품질·고객 운영 자격은
+  여전히 미확정이며 제한 파일럿 BLOCKED·NO_RELEASE_ELIGIBLE를 유지한다. 멘토 전문 분야에
+  맞춰 핵심 질문을 고르고 회의 후 실제 결정/담당/완료 기준을 기록한다.
+- 인계 체크리스트: [x] 외부 전달용 HTML 작성. [x] 콘텐츠·반응형·접근성·인쇄 동작 검증.
+  [x] 검증 JSON/현재 원장/멘토링 로그 연결. [ ] 사용자 검토 후 멘토에게 전달.
+  [ ] 승인된 사례와 실제 고객 업무량 준비. [ ] 회의 답변·채택/보류·다음 과제 기록.
+
+### 2026-09-09 18:20 KST — 멘토 HTML에서 완료 개선 관련 항목 제거
+
+- 사용자 요청 범위: 외부 공유 HTML의 ‘먼저 고친 네 가지’ 제목·카드 4개와 관련 코드 검사 수치,
+  검색 지표 정정/예시, metadata·ClamAV 수정 이력, 회의안의 개선 설명을 제거했다. 구현 코드,
+  내부 Markdown 원문·기존 개선 결과·과거 세션 로그는 삭제하거나 되돌리지 않았다.
+- 구성: 해당 절을 ‘확인한 결과와 남은 검증’으로 바꾸고 목차·앵커를 연결했다. Q03/Q05/Q10의
+  완료 개선 언급만 제거·재서술하고 미해결 질문 12개를 유지했다. Q5/GX10의 별도 자격,
+  과거 관측 시각, 실제 고객 품질 미검증, 사람 최종 결정과 모의 처리 경계는 보존했다.
+- 실제 검증 PASS: 수정 문구/관련 스타일 제거와 유효 앵커, 독립 콘텐츠 재검토 필수 지적 0.
+  임시 독립 Chromium에서 1365/1024/768/390/360/320px 가로 넘침 0, 질문 12개와 키보드,
+  전체 펼침/접기, JS 비활성 기본 동작, print media 펼침/복원 통과. 데스크톱/모바일 검증 절과
+  print media 화면 직접 검토. axe desktop/mobile 위반 0, JS 오류·외부 요청 0.
+- 짧은 JSON: `docs/mentoring/CSIGHT_MENTOR_HTML_VERIFICATION_2026-09-09.json` revision 2.
+  HTML SHA-256 `35d98a9de948b4ad88c9b814a8134afb71dad45936e3b2ffea5a238a35d43634`,
+  42,979 bytes. 이전 HTML digest/초기 검사 이력은 구분해 보존했다. 내부 공유본 Markdown
+  SHA-256 `48a89157bbbb9734aa2f7b023d1fc4b3f0c21aa117cc6e206ed27b0c7cf04818` 불변.
+- 보존/미실행: Backend·GPU·실제 보안 경로 자격·PDF 페이지 나눔 QA는 NOT_RUN. 기존 사용자
+  미커밋 변경·4090/GX10·설정·분석 결과를 보존했다. 비밀번호 사용·SSH·서비스 변경·설치/전송·
+  PRIMARY/fallback·실제 고객 업무·외부 공유·Commit/Push/PR 없음.
+- 미해결/다음: 대표 자료·독립 정답·GX10 공동 품질·고객 운영 자격은 여전히 미확정이다.
+  NO_WINNER·NO_RELEASE_ELIGIBLE·제한 파일럿 BLOCKED는 변함없다. 멘토링에서 지원 범위,
+  평가 기준과 다음 비교 실험을 정하고 실제 답변·담당·완료 기준을 기록한다.
+- 인계 체크리스트: [x] 외부 HTML의 완료 개선 항목 제거. [x] 관련 문구·목차·반응형·동작 재검증.
+  [x] JSON·현재 상태 갱신. [ ] 사용자 검토 후 전달. [ ] 승인된 사례 준비와 회의 결과 기록.
+
+### 2026-09-09 18:29 KST — 멘토 HTML에 아키텍처 도식 1개 반영
+
+- 범위: 사용자 요청으로 기존 단순 업무 흐름도를 하나의 논리 아키텍처 figure로 교체했다.
+  별도 파일/외부 리소스 없이 공유 HTML 안에 포함하고, 기존 네 가지 개선 제외와 질문 12개는
+  유지했다. visualize skill의 분류에 따라 대화용 fragment가 아닌 기존 공유 문서를 수정했다.
+- 내용: 콘솔⇄Core⇄독립 LLM/Vision의 요청/응답 관계, Core 내부 API/Worker·Outbox/RabbitMQ/
+  Celery·RAG/정형 규칙·PostgreSQL/pgvector/Private MinIO의 책임을 표시했다. 생성 설명과
+  정책 규칙을 직렬 입력으로 잇지 않고, 사람 결정·모의 처리·E3 정책 미자격·모델 DB 직접 접근
+  금지와 오프라인 대조 미연결을 명시했다. 현재 배포나 자동 전체 파이프라인 실측 주장이 아니다.
+- 근거/리뷰 PASS: 최신 원장, Architecture의 후속 Sprint 경계, Policy/Human Review 설계,
+  ADR-0126과 독립 플랫폼 검토를 대조했다. 오래된 Sprint 설계의 ‘후속 범위’는 최신 구현
+  상태로 구분했다. 리뷰에 따라 콘솔은 기존 문의 확인, 큐는 중복 실행 자체가 아닌 중복 결과
+  방지로 표현했고 어댑터를 Core 책임에 배치했다. 신규 아키텍처 결정·기능 변경은 없다.
+- 실제 검증 PASS: Chromium 임시 독립 profile에서 figure 1개/이전 흐름도 0개, 책임 경계와
+  완료 개선 문구 부재를 검사했다. 1365/1024/768/390/360/320px 가로 넘침 0, axe desktop/mobile
+  위반 0, JS 오류·외부 요청 0. 질문 12개·전체/키보드 펼침·JS 비활성·목차 이동·print media
+  펼침/복원 통과. 도식 desktop/mobile 및 680px print media 렌더를 직접 확인했다.
+- 짧은 JSON: `docs/mentoring/CSIGHT_MENTOR_HTML_VERIFICATION_2026-09-09.json` revision 3.
+  HTML SHA-256 `7d649a00a8584de4e5452e19629c340b4436744ae2799745b5b0965949a377a7`,
+  49,013 bytes. 이전 revision digest와 검사 이력, 내부 Markdown 원문을 보존했다.
+- 보존/미실행: Backend/실제 GPU/보안 경로 자격과 PDF 생성·페이지 나눔 QA는 NOT_RUN.
+  기존 미커밋 코드·문서·4090/GX10·설정·과거 결과 보존. 비밀번호·SSH·설치/모델 전송·재시작·
+  PRIMARY/fallback·실제 고객 업무·외부 공유·Commit/Push/PR 없음.
+- 미해결/다음: 대표 자료·독립 정답·GX10 공동 품질·고객 운영 자격은 계속 미확정이며
+  NO_WINNER·NO_RELEASE_ELIGIBLE·제한 파일럿 BLOCKED를 유지한다. 다음은 공유본 검토 후
+  멘토링에서 지원 범위·평가 기준·비교 실험을 정하고 실제 답변/담당/완료 기준을 기록하는 것이다.
+- 인계 체크리스트: [x] 도식 1개와 구현/미연결 경계 표시. [x] 근거·콘텐츠·화면·동작 검사.
+  [x] JSON·현재 상태 갱신. [ ] 사용자 검토 후 전달. [ ] 승인된 사례 준비와 회의 결과 기록.
+
+### 2026-09-10 11:34 KST — 서버 제어 앱 기동 및 GX10 OOM 위험 읽기 전용 점검
+
+- 사용자 요청: 서버 제어 앱으로 서버 기동을 확인하고, GX10 OOM 우려가 있다면 GPU 작업을
+  정리해 사용자 서버를 기동한다. 조건과 대상 확인 전에는 GPU 작업을 종료하지 않기로 했다.
+  실제 바탕화면 앱의 main.scpt와 저장소 제어 경로/메뉴를 대조했으며 코드는 변경하지 않았다.
+- 최초 상태: Mac Docker·Embedding·Core·공개 주소가 꺼져 있었다. GX10 별칭 SSH는 DNS 실패였고
+  Mac Tailscale 상태는 Stopped였다. 기존 설정을 바꾸지 않는 연결 재개 후 현재 tailnet에 나온
+  GX10 주소를 사용해 비밀번호/대화형 인증을 끈 SSH·기존 host key 검증으로 접속했다.
+- 앱 기동: Docker는 기존 컨테이너/동일 Compose 프로젝트의 orphan 여부를 사전 확인하기 위해
+  먼저 열었다. 따라서 앱의 Docker 자동 시작 분기 자체는 NOT_RUN이다. 실제 앱 메뉴에서
+  ‘서버 켜기 (빠른 시작)’ 텍스트를 확인 후 선택·실행했고, Mac MPS Embedding과 기존 Core/
+  공개 시연 경로가 정상 상태가 됐다. 재빌드·Migration·orphan/volume 삭제는 실행하지 않았다.
+- 실제 기동 검증 PASS: Core 9개 healthy, restart 0/OOMKilled false, 약 6분 유지. 앱 backend의
+  상태 조회와 API ready·Web health·Embedding health/models·기존 공개 주소 모두 정상.
+  Embedding은 Qwen3-Embedding-0.6B 고정 revision·1024차원·MPS model_loaded=true다.
+  로컬/공개 index 본문 digest 일치. 격리 브라우저의 /login HTTP 200·페이지 제목/화면 확인,
+  JS 오류·예상 밖 외부 요청 0. 인증 입력·고객 업무 조작은 NOT_RUN이다.
+- 검증 한계: 앱의 빠른 시작 클릭은 관측했으나 최종 완료 dialog는 관측하지 못했다. GUI 알림
+  표시까지 PASS로 확장하지 않는다. 실제 컨테이너의 allowlist 환경값도 LLM_PROVIDER=mock,
+  VISION_PROVIDER=mock, ENVIRONMENT=local이다. 이 앱에는 GX10 모델 기동·전환 기능이 없다.
+- GX10 관측: NVIDIA GB10/aarch64, ComfyUI GPU 메모리 40,781MiB·GPU 사용률 0%·35°C.
+  MemAvailable 71,901,316KiB(약 68.6GiB), memory PSI some/full의 10/60/300초 평균 0,
+  부팅 후 kernel oom_kill 0이다. GPU total/used/free는 N/A이므로 시스템 가용 메모리를
+  GPU 전용 여유나 미래 모델 동시 적재 보증으로 해석하지 않는다.
+- 기존 모델은 미기동: vllm_node는 2026-09-08 16:37 KST 종료, exit 137/OOMKilled=false이며
+  127.0.0.1:8000 health는 연결 거절 FAIL이다. exit 137만으로 OOM이라 판단하지 않는다.
+  컨테이너의 시작 프로그램은 sleep이며 서빙 명령·모델 설정이 없다. 단순 docker start로
+  Qwen이 복구된다고 가정하지 않고 새 서빙 명령·프로필을 임의로 만들지 않았다.
+- GPU 정리 SKIPPED: 현재 메모리 압박이 관측되지 않고 기존 앱이 GX10을 사용하지 않으므로
+  ComfyUI 등 GPU 작업을 종료할 조건이 성립하지 않았다. 향후 실제 모델의 정밀도·문맥·동시성·
+  cache 설정에 따른 peak memory·동시 적재 검증은 NOT_RUN이다. 공유 계정의 다른 작업도 보존했다.
+- 짧은 JSON: `docs/progress/SERVER_CONTROL_STARTUP_VERIFICATION_2026-09-10.json`.
+  제어 스크립트 문법·diff check PASS. Backend 기본 suite·실제 LLM/Vision inference·모델
+  품질/보안/출시 자격 검사는 NOT_RUN. 사용자 미커밋 변경·설정·기존 볼륨·4090 서비스를 보존했고
+  비밀번호 사용·원격 쓰기/종료·설치/전송·PRIMARY·Commit/Push/PR·실제 업무 실행은 0이다.
+- 미해결/다음: 앱의 실제 GX10 엔진 동시 기동을 원하면 내부 검증용 모델/서빙 프로필과 앱
+  연결 범위를 먼저 확정해야 한다. 현재 모델 전체 NO_WINNER·NO_RELEASE_ELIGIBLE·고객 파일럿
+  BLOCKED 및 PRIMARY 금지는 유지한다. 서버 healthy와 실모델 연결/의미 품질을 구분한다.
+- 인계 체크리스트: [x] 실제 앱 빠른 시작 선택·서비스 검증. [x] GX10 메모리/프로세스/중지 모델
+  인벤토리. [x] 조건 없는 GPU 종료 방지·JSON/원장 갱신. [ ] 실제 모델 기동/앱 연결 범위 확정.
+  [ ] 범위 확정 후 메모리 예산·인증·endpoint·버전·canary 계약으로 내부 기동 검증.
+
+### 2026-09-10 11:38 KST — 서버 제어 앱 완료 UI 추가 관측 정정
+
+- 앞선 11:34 기록의 ‘완료 dialog 미관측’ 이후 앱 창이 나타났다. 대상 앱의 정적 문구만
+  읽어 ‘AppleEvent 시간이 초과되었습니다.(-1712)’를 확인했다. 앱 GUI 완료 판정은 FAIL이다.
+  서버/API/Web/Embedding 건강성 PASS와 구분하며 앱 전체가 정상 완료됐다고 주장하지 않는다.
+- 독립 읽기 전용 점검: 앱 직접 자식 프로세스 0, 표준 입출력 /dev/null, 앱 보유 PIPE/unix FD 0.
+  이는 단순 앱 자체의 background pipe EOF 대기를 뒷받침하지 않지만 원인을 확정하지 못한다.
+  어떤 AppleEvent에서 timeout이 발생했는지 추적·재현과 코드 수정은 NOT_RUN이다.
+- 조치: 검증 JSON에 오류·시각·별도 GUI 상태를 추가했다. 서버나 GPU를 내리지 않았으며,
+  새로운 앱 수정·모델 서빙·PRIMARY 전환도 하지 않았다. 정상 서버는 켜 둔 채 인계한다.
+- 다음 체크리스트: [ ] 사용자 방향 확인 후 앱 timeout 원인을 제한적으로 재현·수정한다.
+  [ ] 실제 GX10 엔진 동시 기동을 요청하면 별도 내부 서빙/앱 연결 범위를 확정한다.
+  기존 실제 모델 품질/고객 운영 gate와 GPU 작업 소유권·메모리 사전 확인 경계는 유지한다.
+
+### 2026-09-10 12:00 KST — 앱 수정·GX10 내부 Q5 기동 단계 기록
+
+- 사용자 승인 범위: 앱 timeout 수정과 GX10 내부 검증용 Qwen 동시 기동. Core mock 설정·
+  PRIMARY·실제 고객 업무는 변경하지 않는다. 기존 미커밋 변경과 4090을 보존한다.
+- 사전 인벤토리 PASS: key-only SSH/기존 host key, GX10 aarch64/aidi_lab, 시스템 가용
+  73,608,843,264 bytes, 기존 ComfyUI 40,781MiB. 기존 Q5와 ARM64 이미지가 있어 설치·
+  모델 전송 없이 사용했다. NVFP4의 vllm_node와 연구 컨테이너는 그대로 둔다.
+- 첫 시도 FAIL: 새 앱 전용 Q5의 reasoning none을 현재 binary가 거부해 exit 1,
+  OOMKilled=false. 자신이 만든 컨테이너만 정지 후 failed 이름으로 보존했다.
+  실제 binary help에 맞춰 off로 수정하고 계약 q5-internal/1.0.1로 구분했다.
+- 다음 기동 PASS: 실제 앱 빠른 시작으로 Q5 모델 byte/hash·image 검증, 기동과 정확한 alias/
+  합성 JSON canary 성공. 시스템 가용 53,008,359,424 bytes. Core·Embedding·공개 주소 정상.
+  원격 loopback:18003/API 인증, context4096/concurrency1, 읽기 전용 비루트 mount다.
+- GUI 원인 범위: backend 완료 후 창이 없는 상태에서 프로세스 sample이
+  StandardAdditions/AEInteractWithUser 대기를 보였다. 앱을 앞으로 가져오자 PASS 결과 창이
+  나타났다. 단순 backend hang은 아니며 과거 -1712의 모든 경로를 확정한 것은 아니다.
+  결과/오류 전 activate, bounded optional notification, 60초 자동 닫힘을 반영했다.
+- 검증/보존: 원본 앱 전체 백업, main.scpt 갱신·서명 검증 PASS. 기본 오프라인 1,453 passed /
+  94 deselected / 기존 warning36, 관련 26 tests PASS, 전체 Pyright 오류0. 새 파일 Ruff/format
+  PASS. 실제 전체 DB/Web/GPU 회귀·의미 품질·고객 자격은 NOT_RUN이다.
+- 복구 점검 PASS: 11:58 앱 전용 Q5만 stop, 모델 메모리 회수 후 시스템 가용
+  73,007,181,824 bytes, ComfyUI 같은 PID/40,781MiB 보존, kernel oom_kill0.
+  현재 최종 앱 빠른 시작과 background→결과 표시 재검증 중이다.
+- JSON: SERVER_CONTROL_FIX_VERIFICATION_2026-09-10.json. 이전 기동 감사 JSON은 그대로 둔다.
+  다음: 최종 재기동/완료 창/자동 닫힘·가용 메모리 확인 후 서버를 켠 상태로 인계한다.
+
+### 2026-09-10 12:08 KST — 최종 앱·Q5 재기동 검증
+
+- PASS: 전용 Q5 stop 후 앱으로 같은 컨테이너를 재기동했다. 이후 warm 빠른 시작에서도
+  정확한 alias/합성 JSON canary PASS, Core 9개 healthy·API/Web/Embedding/공개 주소 정상이다.
+- PASS: 앱을 Finder 뒤로 보낸 뒤 수동 activate 없이 결과 창의 성공 문구를 직접 읽었다.
+  새 activate 경로가 재현된 background dialog 대기를 해소했다. 과거 -1712의 모든 가능한
+  원인을 제거했다는 일반화는 하지 않는다. 앞선 ‘제어 프로그램 이전 대기’ 추정은 후속
+  sample/결과 확인으로 backend 완료 후 dialog 대기로 정정한다.
+- PASS: 12:06 Q5 17,497MiB, ComfyUI 같은 PID/40,781MiB, MemAvailable52,152,124KiB,
+  PSI some/full 평균0, oom_kill0, 모델 OOMKilled=false/restart0. cgroup 밖 GPU unified memory와
+  향후 다른 작업의 부하는 별개이므로 OOM 방지 보증이나 지속 모니터링을 주장하지 않는다.
+- 보안 PASS: GX10 loopback:18003만 listen, 인증 없는 추론401. 모델 목록은 인증 없이200인
+  binary 계약으로 구분했다. 비밀번호 요청/사용0, 설치/모델 전송0, PRIMARY/Core 설정 변경0,
+  다른 GPU 작업 종료0, 4090 조작0, DB migration/rebuild0, Commit/Push/PR0.
+- 실제 Core allowlist 환경값은 local/LLM mock/Vision mock이다. Q5는 독립 내부 검증 endpoint만
+  기동됐으며 UI 업무 분석에 연결하지 않았다. NVFP4와 Vision 실추론·세 과제 공동 Dev·고객
+  파일럿·Docker Desktop cold boot는 NOT_RUN. NO_WINNER/NO_RELEASE_ELIGIBLE/PRIMARY 금지 유지.
+- 인계 체크리스트: [x] 원본 앱 백업/compile/서명. [x] 제한된 Q5 기동·합성 응답·stop/restart.
+  [x] background 완료 창. [x] 기존 작업·볼륨·미커밋 변경 보존. [x] JSON·운영 문서·현재 상태.
+  [ ] GX10 전용 세 과제 공동 Dev와 대표 사례 Gold. [ ] 자격 이후 별도 운영 연결 검토.
+
+### 2026-09-10 12:09 KST — 자동 닫힘·마지막 상태 조회 인계
+
+- PASS: 마지막 완료 창은 사용자 확인 클릭 없이 자동 종료됐고 앱 프로세스도 종료됐다.
+  12:08:47 후속 SSH 조회 한 번은 connect timeout FAIL이었으나 같은 key-only 경로 재시도는
+  PASS/ready=true/running=true, MemAvailable53,414,617,088 bytes였다. Tailscale Running과
+  GX10 online도 확인했다. 서비스 재시작이나 네트워크 설정 변경 없이 회복했다.
+- PASS: 최종 소스 기본 회귀 재실행 1,453 passed/94 deselected/기존 warning36, 수정 Python
+  Pyright0·Ruff/format·shell 문법·git diff check. 이전 JSON/실패 컨테이너/사용자 변경 보존.
+- 원본 앱 백업은 임시 경로 외에
+  `/Users/ckdlsxor/Library/Application Support/CSight/Backups/server-control-RRvoMq/CSight 서버 제어.app`
+  에 영구 보관했다. 원본 main.scpt SHA-256
+  `1716b2c33fecfbdd8888a8d1aee1bfedc7f54bba4e73146c4fd9791061cda992` 일치.
+- [x] 자동 닫힘 후 Q5 유지 확인. [x] 서버 켜진 상태로 인계. 이후 네트워크/외부 GPU 작업에
+  대한 지속 감시는 설정하지 않았다. 다음은 운영 승격이 아닌 GX10 전용 공동 품질 검증이다.
+
+### 2026-09-10 13:23 KST — 모든 모델 역할 수행 여부 읽기 전용 확인
+
+- 사용자 질문에 대한 판정: 아직 모든 모델이 실제 업무 역할을 수행하는 상태는 아니다.
+  서버 제어 앱/Q5 기동 성공과 실제 업무 pipeline 연결·의미 품질을 분리한다.
+- PASS: 실제 API·model Worker·retrieval Worker 환경의 allowlist 값만 읽었다. 모두
+  local/LLM_PROVIDER=mock/VISION_PROVIDER=mock, LLM_TASK_RUNTIMES override 없음이다.
+  Qwen Embedding은 고정 artifact/revision·MPS loaded이며 retrieval Worker의 설정 target과
+  실제 Worker→Embedding health 연결이 정상이다. 검색 정확도나 이번 업무 처리 완료 주장은 아니다.
+- PASS: GX10 Q5 status에서 running/ready 및 exact alias 확인. Core routing=false 유지.
+  앞선 합성 canary는 과거 이번 날 기동 근거로 보존하며 이번 질의에서 추론은 NOT_RUN이다.
+- FAIL: 로컬 E3 health:8093 및 reranker health:8092 연결 거절. E3의 다른 호스트 상태는
+  조사하지 않았으며 Core Vision mock 확인만으로 업무 실모델 미연결을 판단했다.
+  GX10 vllm_node는 중지 상태다. Reranker는 기존 무개선 판정으로 기본 경로 승격 대상이 아니다.
+- 변경0: 서비스 시작/정지·설정·Core route·PRIMARY·비밀번호·GPU 작업 종료 없음.
+  MODEL_ROLE_STATUS_2026-09-10.json과 이 원장만 기록했다. 전체 suite는 NOT_RUN이다.
+- 인계: [x] 실제 Worker 설정/모델 상태 구분. [x] JSON/원장 기록.
+  [ ] 별도 승인된 내부 통합 범위에서 실 LLM/Vision 연결과 문의→근거→사람 검토를 검증.
+  [ ] GX10 세 과제 공동 Dev·대표 이미지/문의 Gold. 현재 NO_RELEASE_ELIGIBLE/PRIMARY 금지 유지.
+
+### 2026-09-10 13:35 KST — 실모델 내부 진단 진행·업무 등록 경계 확인
+
+- 사용자 승인 범위는 내부 실 LLM/Vision 연결 검증이다. 기존 Core/4090/ComfyUI·미커밋
+  변경을 보존하고 PRIMARY·실제 고객 업무·비밀번호 사용은 금지 상태로 유지했다.
+- E3 PASS: 기존 Downloads 체크포인트의 전체 SHA를 재확인했다. 기존 venv와
+  serve_vision_e3.sh로 csight-vision-e3-internal 분리 세션/loopback8093을 기동했다.
+  stale PID6602는 다른 macOS 프로세스였으므로 종료하지 않았다. PID 파일은 임시 검증
+  디렉터리에 백업한 뒤 정상 launcher가 새 PID를 기록하도록 했다. 설치/모델 전송 없음.
+- E3 실제 HTTP PASS: 기존 qualify_vision_e3.py의 합성 그림 한 건, exact model/version/SHA,
+  MPS float32, score0.5347465872764587/threshold0.8984375. 기준 미만은 정상 확인이 아니다.
+  Core model Worker에서 host-private E3 health와 exact revision도 확인했다. Core Vision
+  provider 설정을 remote로 바꾸거나 실제 analysis_run을 저장한 것은 아니다.
+- Q5 실제 Adapter PASS: 기존 llama_cpp Adapter와 guarded prompt2.0.0-local.8로 합성 문의
+  한 건을 원격 인증 HTTP에 전달하고 schema2.0/claim1/action1/정확 인용을 검증했다.
+  임시 진단 transport는 키 기반 SSH를 사용해 API key를 GX10 밖으로 내보내지 않았다.
+  첫 두 요청은 진단 HTTPResponse의 bytes/stream 표현 오류(TypeError)로 local 검증이 실패해
+  보존하고 BytesIO로 고쳐 재실행했다. 이는 모델 의미 실패나 Core 수정 증거가 아니다.
+  원문/생성 텍스트/키는 보고서에 기록하지 않았다. 품질 gate·공동 Dev는 NOT_RUN이다.
+- 통합 BLOCKED: StartPolicyEvaluation은 SHADOW 입력에 즉시
+  SHADOW_ANALYSIS_DOWNSTREAM_FORBIDDEN을 발생시키며 실제 정책/검토 경로를 만들지 않는다.
+  이 Application guard와 DB 제약 tests3 PASS를 재확인했다. PRIMARY 금지나 모델 미자격을
+  회피하려고 enforcement를 끄거나 모드를 바꾸지 않았다. E3 runtime contracts5 PASS.
+- 미완료: Core 실제 모델 설정/새 분석 이력/RAG→grounding E2E/실제 검토 업무 등록은
+  NOT_RUN 또는 BLOCKED다. 앞선 ‘검토 대기까지’ 계획은 이 제약을 포함해 축소해야 한다.
+  업무 이벤트가 없는 별도 진단 검토 화면과 출시용 실제 검토함은 다른 범위다.
+- 인계 체크리스트: [x] 실제 두 모델 독립 진단. [x] E3/기존 Q5/Core 정상 유지.
+  [x] 단계 JSON·실패 이력·안전 경계 기록. [ ] 사용자 방향에 따라 별도 진단 검토 경로 설계
+  또는 GX10 공동 품질 자격 평가. 현재 분석/정책/검토/결정/외부 업무 이벤트 생성0.
+  전체 suite·타입 검사는 NOT_RUN이며 repository 동작 코드는 변경하지 않았다.
+
+### 2026-09-10 14:05 KST — 사용자 승인 SHADOW 실제 사용·피드백 허용 및 실모델 연결
+
+- 사용자 최신 지시: 별도 진단 화면이 아니라 SHADOW 결과 차단을 풀고 실제 사용하며 피드백한다.
+  이에 ADR-0128로 ADR-0103의 절대 downstream 금지를 내부 피드백 구성에 한해 대체했다.
+  13:35 BLOCKED 기록은 당시 권한의 사실로 보존하며 더 이상 현재 작업 차단 사유가 아니다.
+- 코드/DB: local/test 전용 `SHADOW_HUMAN_FEEDBACK_ENABLED`를 추가했다. 신규 정책 실행에
+  immutable `shadow_feedback_allowed`를 기록하고 기존 tenant-scoped lineage trigger는 이 표시가
+  있는 SHADOW 및 그 후속 검토/모의 처리를 허용한다. 표시 없는 Shadow, 없는/다른 tenant lineage는
+  계속 거부한다. DB Migration0037은 additive이며 기존 mode/분석/정책 이력을 덮어쓰지 않는다.
+  피드백 이력이 있으면 downgrade를 거부하고 새 접수만 끄도록 안내한다.
+- 보호 경계: 새 분석/검색/설명은 이 프로필에서 SHADOW만 허용하고 과거 PRIMARY를 실모델로
+  이어 만드는 경로도 차단했다. 기존 signed release/PRIMARY 승격 gate, RAW/HYBRID/Top3 기본,
+  사람 인증·tenant 격리·최종 확인·실제 환불/발송 금지는 유지한다. 사용 피드백 건은 깨끗한
+  observation-only Shadow100 증거로 집계할 수 없다. E3 내부 비상업 사용 범위도 유지한다.
+- runtime 사전 관측: Core DB는 예상0036보다 이전인0034였고 active analysis/policy 각각0이었다.
+  기존 DB custom dump(약1.9MB, owner-only)를 `/private/tmp/csight-feedback-backup-j1ZTjz/`
+  아래에 보존했다. archive list995개 확인, 실제 restore drill은 NOT_RUN이다.
+  0035/0036 prerequisite를 확인하고 함께 적용해 live0037, `alembic check` drift0을 확인했다.
+  host check는 DATABASE_URL 미export로 실패했으므로 설정된 API container에서 재검증했다.
+  과거 Docker image ID re-tag는 실패해 rollback image 보존을 주장하지 않는다.
+- 실제 연결: 별도 `infra/compose.internal-feedback.yml` 및 로컬 표시 파일로 Q5 llama_cpp와 E3
+  remote를 Core API/Worker에 설정했다. Q5는 원격loopback18003 유지, Macloopback18004의
+  owned SSH tunnel로 연결한다. 기존 SSH key/known-host 검증만 사용하고 비밀번호를 요청/사용하지
+  않았다. 기존 service API key는 SSH로 읽어 자식 환경에만 전달하며 Mac secret 파일/보고서에
+  저장하지 않았다. Docker 관리자에게 보이는 일반 runtime secret 경계는 문서에 명시했다.
+  Q5/ComfyUI 등 기존 GPU 작업, NVFP4 컨테이너, RTX4090 무변경이다.
+- 실제 Worker container probe PASS(14:00): synthetic Extraction claim1·정확 source quote,
+  prompt2.0.0-local.8·14,070ms; E3 binary image assessment·threshold0.8984375·894ms;
+  Embedding1024d normalized; 기존 합성 tenant 정책 lexical3+dense3→HYBRID Top3·동일tenant·
+  index1.0.0; 실제 검색 결과 기반 Grounding1.1.0-local.2·statement3·인용ID 유효율1.0·38,525ms.
+  이는 직접 adapter/read-only retrieval chain 증거이며 인증 HTTP→RabbitMQ→검토 live E2E나
+  실제 고객 정확도가 아니다. 원문·모델 응답·secret은 JSON에 남기지 않았다.
+- 검증 PASS: Python오프라인1465/96deselected, 전체Pyright0, 변경Ruff/format·shellsyntax·diff검사;
+  격리PostgreSQL3개(Shadow→정책→사람resolve→DRY_RUN/report, tenant/role/immutable/defaultdeny,
+  0037왕복과drift, 과거0019guard), Frontend92·typecheck/lint/build. 초기테스트 오류(immutable
+  trigger 순서·Vite env 타입·Grounding버전 기대값)를 수정 후 재검증했다.
+- 앱 연결 PASS: 실제 앱이 호출하는 backend `start/status`에서 Core9healthy, API/Web/Embedding/
+  공개주소 정상, Q5canary PASS. 제공되는 프런트 bundle에 미검증·사람확인·모의실행 안내가 있다.
+  SHADOW 요청 opt-in/default 분기와 배너는 UI test에서 검증했다. GUI대화상자/실제browser시각검사/
+  전체coldstop은 이번에는 NOT_RUN. 서버는 켜 둔다.
+- 인계 체크리스트: [x] 사용자 승인반영/ADR/DB migration/테스트/실배포/단계JSON/사용안내.
+  [x] 기존 미커밋 변경·DB·model artifacts·GPU서비스 보존, commit/push없음.
+  [ ] 사용자 인증 UI에서 새 내부 문의→분석→정책→검토 전체를 사용하고 오류/누락 피드백.
+  [ ] 고객데이터 품질·real jointDev·상업사용권·출시자격은 별도. 에이전트가 실제사용자 JWT를 만들거나
+  비밀번호로 대신 로그인하지 않았고 live업무/최종결정 row를 만들지 않았다(14:03 feedback정책row0).
+  다음 행동은 제어 앱→화면 새로고침→새 내부 테스트 문의다. 기본 make up은 다른 mock 프로필이다.
+  [현재 단계 JSON](SHADOW_HUMAN_FEEDBACK_2026-09-10.json),
+  [내부 피드백 안내](../operations/INTERNAL_SHADOW_FEEDBACK.md).
+
+### 2026-09-10 14:13 KST — 테스트 데이터 초기화 요청: 읽기 전용 범위 확인
+
+- 사용자 요청: 기존 데이터를 초기화하고 임시 데이터로 다시 적재해 실제 동작을 확인한다.
+  현재 DB와 기존 seeder를 읽기 전용으로 점검했다. 새 코드 변경·데이터 삭제·재적재·서비스 중단 없음.
+- 관측 PASS: Core9 healthy. 전체 문의115/사진 Evidence73/분석122/검토41/사람 결정32,
+  계정39/정책문서44/조항304. 분석은 성공114·부분성공2·실패6으로 비종결0, 활성 정책 실행0.
+  현재 화면의 문의는 `csight` tenant 소속이며 해당 tenant 문의51건, 다른 tenant64건이다.
+  출처 표시는 SYNTHETIC_DEMO21건, NOT_ATTESTED94건이다. 미확인 건을 실제 고객 데이터나
+  합성 테스트 데이터로 단정하지 않았다.
+- 미해결/BLOCKED: ‘싹 초기화’가 현재 고객사 문의만인지 모든 고객사 문의/분석/검토/사진인지
+  구분이 필요하다. 계정·정책/검색 인덱스는 보존하는 범위로 제안하며, 범위 확인 전 삭제하지 않는다.
+  기존 append-only 이력을 임의로 변조하거나 DB trigger를 해제하지 않았다.
+- 재적재 사전 확인: 기존 `seed_realistic_poc_demo.py`는 요청에 SHADOW mode를 명시하지 않고
+  기존 local ADMIN token을 메모리에 발급하며 정책/검토까지 진행하지 않는다. 현재 프로필에
+  그대로 실행하지 않았다. 비밀번호/토큰 발급 없이 인벤토리만 수행했다.
+- 인계 체크리스트: [x] 현재 범위/건수·기존 적재 경로 확인·JSON 기록·미커밋 변경/서비스 보존.
+  [ ] 사용자 범위 확정 [ ] 새 백업과 복구 확인 [ ] 초기화 [ ] 임시 적재 [ ] 실모델 비동기 흐름.
+  백업·초기화·재적재·전체 UI 검증은 NOT_RUN. 문서만 변경하여 코드 테스트/타입 검사는 NOT_RUN.
+  다음 행동은 초기화 tenant 범위 확인 후, 확정된 대상만 복구 가능하게 보존하고 진행하는 것이다.
+  [단계 JSON](TEST_DATA_RESET_2026-09-10.json).
+
+### 2026-09-10 14:33 KST — DB 불일치 감사·한정 수정, 전체 테스트 초기화 승인
+
+- 읽기 전용 PASS: FK171+CHECK371=542, shared case/run lineage29 위반0. 분석 stage aggregate,
+  성공 Text 결과/attempt count, 검토 packet/decision/owner/current projection, Case assignment,
+  Resolution event/version, 원문 dual-write와 hash115건 일치. 전체 Case의 RECEIVED는 ADR0011/0089에
+  따른 별도 lifecycle이며 임의 RESOLVED 변경 대상이 아니다. 정책 source/snapshot도 일치했다.
+- 해시 검증 PASS: 검토packet41·사람결정32·보고서23·학습asset23·intent11·모의result11.
+  합성 reference policy/typed rule validator PASS. 전체 embedding304차원 정상이며 norm0.998–1.0038은
+  기존 허용오차0.005 안이다. 첫 진단의 더 엄격한0.001 조건을 데이터 오류로 오인해 재작성하지 않았다.
+- 발견: UUID형 analysis tenant의 과거 fixture17건은 최초 상태 이력이 없다. 같은 test pattern의
+  Evidence7건은 실제 MinIO object 부재지만 AVAILABLE이었다. 현재 csight tenant는 두 발견에 해당하지
+  않으며 나머지 실제사진66건은 크기/MIME/byte SHA 모두 일치했다. 다른 신규 오류는 관측되지 않았다.
+- 수정 PASS: ADR0129·data-only Migration0038로 사전 확인된7개ID/고정 fingerprint/분석 이미지 참조0을
+  재검증 후 FAILED로 정정하고 null human actor의 EVIDENCE_RECONCILED receipt7개를 append했다.
+  object는 생성/삭제하지 않았다. DB 81개 table의 전후 digest 중 변경은 Evidence/receipt/revision3개뿐,
+  나머지78개 그대로다. 이력17건은 과거 사람의 case_created를 가공/소급 생성하지 않고 보존했다.
+- 백업: owner-only `/private/tmp/csight-data-consistency-j58RpN/core-before-repair.dump`를 별도DB에
+  실제 복원해115/73/122/32건을 확인하고 복원본에도0038·drift0 PASS. 시험용 복원DB는 제거했으며
+  dump는 남겼다. 이는 DB 논리 백업이며 MinIO/offhost 전체복구 자격이 아니다.
+- 재발 방지: 공식 integration runner가 생성한 정확한 임시DB 이름을 pytest collection에서 확인한다.
+  RUN_CORE_INTEGRATION만 켜고 공유DB에 직접 테스트하면 fixture 이전 exit4. 임시DB clone/cleanup
+  원칙을 강화했으며 production trigger를 완화하지 않았다. 원래 fixture 이력은 보존하는 설계다.
+- 검증: 오프라인1478 PASS/97 deselected/기존warning36, 새 데이터repair+SHADOW격리workflow3 PASS,
+  전체Pyright0, 변경Ruff/format/diff PASS. 초기 malformed URL 예외/새head기대값/private helper import
+  오류를 수정 후 재검증했다. Core image에0038을 포함해build PASS; 현재컨테이너는 중단/교체하지 않았고
+  14:30 Core9/API/Web healthy. GPU/PRIMARY/사람 비밀번호/SSH 비밀번호 무변경.
+- 후속 사용자 승인: `모든 테스트 고객사의 115건 전부`를 백업 후 비우고 임시 자료로 테스트한다.
+  이 승인으로 앞선 초기화범위 BLOCKED가 해소됐다. 계정39·tenant·정책/인덱스·모델을 보존한다.
+  FK closure로 업무56개 table, 보존25개 table 확인. RabbitMQ 모든queue메시지0. 아직 초기화는 NOT_RUN.
+  다음은 post-repair DB와사진 최신백업, 서비스쓰기잠시중단, 한정초기화, 실제Q5/E3/RAG 임시접수검증이다.
+  [DB 감사 JSON](DB_CONSISTENCY_2026-09-10.json).
+
+### 2026-09-10 14:40 KST — 승인된 전체115건 초기화·백업 복원 검증
+
+- 사용자 범위 확인 `모든 테스트 고객사의 115건 전부`에 따라 Core 쓰기6개 서비스를 잠시 정지했다.
+  DB/MinIO/RabbitMQ와 GX10 Q5·Mac E3·Embedding·기존 GPU 서비스는 유지했다. 비밀번호 미사용.
+- post-0038 DB dump와 MinIO raw 사본을 owner-only `/private/tmp/csight-all-test-reset-Yd7eYU/`에
+  보관했다. dump SHA `ddd7ed0d2b9df9b99811b1b9840af2dfdd9bbdfbb1167941c5405ae543d972bf`.
+  실제 격리 복원 후 일회성 RESET SQL을 먼저 시험했고, 같은115/73/122/32 인벤토리에 활성 DB도 적용했다.
+- 정확56개 업무 테이블을 RESTRICT로 초기화했다. 계정/정책/인덱스 등25개 테이블 count/digest는
+  전후 동일하고 복원 시험본 결과와 활성 DB 결과도 각 테이블별 동일했다. whole-object JSON의 key 순서
+  차이를 처음 mismatch로 표시했으나 각 table 값 비교에서 차이0임을 확인했다.
+- 기존 bucket은 삭제하지 않았다. 현재객체69·전체version항목121(삭제표식26)을 보관하고 빈 versioned
+  `csight-evidence-feedback-20260910`을 새 활성 저장소로 선택했다. raw 사본 포함 보존됐지만 MinIO
+  전체 복원 훈련/offhost/장기 보존은 NOT_RUN. `/private/tmp`이므로 별도 장기 보관이 필요하다.
+- Core 최신0038 image로 재기동하여9개 healthy·API/Web 정상·alembic drift0. 옛 fixture17건/수정7건은
+  활성 DB에서 제거됐고 post-repair 백업에 보존됐다. 과거 사람 이력은 가공하지 않았다.
+- 후속14:54에 reset 검증용DB `csight_reset_restore_20260910_b71960ac`만 확인 후 삭제했다.
+  이전 repair 검증용DB도 정리돼 있으며 원본 dump와 사진 보관본은 남겼다.
+  [초기화/복구 기록](../operations/TEST_DATA_RESET_2026-09-10.md).
+
+### 2026-09-10 14:55 KST — 임시10건 적재·실제 HTTP 응답 오류 수정
+
+- 일반 인증/Evidence API로 가상문의와 출처 제한된 사진10건을 SHADOW 적재했다. 기존 actor의 단기
+  로컬 token은 메모리에만 생성하고 Core가 DB 역할을 재확인했다. 비밀번호/사람 최종 결정 미사용.
+- 초기 multimodal2.0.0 요청은422로 차단됐으며 지원 버전1.0.0으로 수정했다. 재시도 포함12개 run 중
+  성공8·부분성공4. 서로 다른2개 문의에서 구형 Text-v1 출력 형식 실패가 발생했다. E3는10건 모두
+  실제 고정 모델/threshold/원본bytes 검증을 통과했다. seeder는 명시적SHADOW partial 적재 옵션에서만
+  계속하며 전체분석 FAIL 및 개별 PARTIAL_SUCCESS를 보존한다. 실패를 성공으로 가공하지 않는다.
+- Text-v2 실제 비동기 후속에서 검색 DB commit 후 HTTP response500을 발견했다. 내부 execution_mode/
+  model_route_plan_id/route_enforcement_contract_version3개가 공개 schema extra=forbid와 충돌했다.
+  같은 Grounding 변환도 함께 공개필드 allowlist로 수정했다. 공개 API schema 자체는 변경하지 않았다.
+- PRIMARY/SHADOW·route 유무 계약8개, 오프라인1493 PASS/97 deselected/기존warning36, Pyright0,
+  변경Ruff/format/diff PASS. 두 live OpenAPI schema와 기존 snapshot 동일, generated types 동기화PASS.
+  수정 Core image를 build·5개app 컨테이너 재생성해9개healthy로 복귀했고 같은멱등키로 요청을 재개했다.
+- 재점검 PASS: 제약542 위반0, 새 사진10 byte/MIME/hash 일치, 원문10 hash/dual-write 일치,
+  접수 이력 누락0. 과거 사진version121 유지. 후속 Text-v2/RAG/정책/검토10건은 아직 진행 중이다.
+
+### 2026-09-10 15:04 KST — 초기화·임시10건 실제 흐름 및 DB 검증 완료
+
+- 완료 PASS: 신규 문의10·사진10·접수이력10·원문보관10. 실제 Q5 Text-v2(local.8)10/10,
+  RAW/HYBRID/Top3 검색10/10, 실제 Q5 Grounding(local.2)10/10, 정책평가10/10 성공.
+  검토task10개 모두 PENDING. 사람결정·Resolution·외부intent0, 모든 분석SHADOW,
+  모든 정책run에 서버의 feedback 허용 표시가 있다. 고객사/권한/사람 결정 경계를 유지했다.
+- E3 원본/저장 bytes·MIME·hash와 실제 모델/threshold 검증10/10 PASS. 구형 text-v1의2개 Case에서
+  부분성공4개 run(동일Case 재시도 포함)을 실패 그대로 보존했다. 전체 Analysis22개=성공18/부분4다.
+  해당2개 Case도 별도text-v2/정책흐름은 성공했다. 구형 형식 신뢰성 개선은 미해결이며 PASS로 바꾸지 않았다.
+- 최종 read-only 감사: 제약542 위반0·접수이력누락0·원문hash오류0·활성Evidence상태/bucket오류0,
+  review packet10/citation pack10 해시 검증PASS. Text-v2 중복Case0. RabbitMQ 모든queue ready/unacked0,
+  live Alembic drift0. /cases·/reviews용 operator API, case 상세·snapshot·검색/Grounding 목록 HTTP200.
+  화면을 직접 조작한 사람 UI 피드백/최종 승인/시각 검증은 NOT_RUN이다.
+- 보존 재확인: 계정39·정책문서44·조항304 유지. 초기화 직후25개 보존table의 count/hash 동일;
+  실제 Grounding 이후24개는 그대로이고 grounding_profiles에Q5 고정profile1개만 정상 append됐다.
+  기존2개profile count/hash `825c0ccd8b39b1625f22f3621a21ba85`는 동일하며 기존설정을 덮어쓰지 않았다.
+- 재검증: 오프라인1493 PASS/97 deselected/기존warning36, 격리 PostgreSQL3 PASS 및 임시DB삭제,
+  Pyright0·변경Ruff/format/diff PASS·공개schema2개 unchanged·OpenAPI types 동기화PASS.
+  초기 검증명령에서 external marker4개는 환경gate로SKIPPED됐고 이후 공식offline exclusion으로 재실행했다.
+- 14:59 read-only 런타임: Core9 healthy·API/Web/E3/Embedding HTTP200. GX10 Q5 17,497MiB,
+  OOMKilled=false/restart0·기동시각유지. 다른GPU서비스 stop/kill/설치/모델전송/PRIMARY전환 없음.
+  수정API image `733d27373e30ffbf2ecd5d4aa84400a4236b8a8c91f09abc2652d5f5ff4ee466`.
+- 다음: 인증 담당자가 /reviews를 새로고침해 새10건을 읽고 피드백한다. 구형 text-v1 신뢰성·실고객
+  품질/공동평가·E3사용권/출시승격은 별도 미완료다. `/private/tmp` 백업은 영구보관이 아니므로
+  별도 장기/offhost 보존이 필요하다. 비밀번호는 사용/기록하지 않았고 기존 미커밋 변경은 유지했다.
+  [최종 단계 JSON](TEST_DATA_RESET_2026-09-10.json), [초기화/복구 문서](../operations/TEST_DATA_RESET_2026-09-10.md).
+
+### 2026-09-10 20:04 KST — 서버 재기동, GX10 여유 메모리 차단
+
+- 사용자 요청에 기존 서버 제어 backend start 실행. Docker Desktop이 꺼져 있어 시작했고 기존9개Core가
+  healthy로 복귀했다. API/Web/공개web-health·Embedding PASS. 데이터 초기화/빌드/migration 없음, 문의10건 유지.
+- GX10 DNS 실패: Tailscale BackendState=Stopped를 확인하고 기존 앱을 열어 기존 accept-routes 값을 보존한
+  up으로 재연결했다. 비밀번호/새로그인/설정reset 없음. SSH 키와 host-key 검증 유지.
+- 재시도는 SYSTEM_HEADROOM_LOW로 BLOCKED. read-only 관측: GX10 MemAvailable12,652MiB,
+  Q5 PID1457352/17,497MiB/running/oom=false, 다른vLLM PID1522141/74,676MiB,
+  컨테이너 `kllm-recovery-recovery-20260910a-0` 약5시간실행. 다른작업은 종료하지 않았다.
+- Mac E3는 별도로 기존 분리 세션/고정checkpoint로 시작하여 SHA·threshold0.8984375·MPS health PASS.
+  Mac18004 Q5터널은 연결되지 않아 전체 모델 사용 가능 상태가 아니다. SHADOW/사람결정/모의업무 경계 유지.
+- 다음은 식별한 다른 컨테이너 중단에 대한 사용자 확인 또는 메모리 반환 후 기존 start 재실행이다.
+  전체비동기 재시험은 NOT_RUN, 코드 무변경이므로 코드테스트/타입검사 재실행 NOT_RUN.
+  [단계 JSON](SERVER_RESTART_2026-09-10_2004.json).
+
+
+### 2026-09-11 10:18 KST — 멘토링 반영 상담원 UI 개선·로컬 적용
+
+- 요청: 정보 과밀을 줄이고 사진+작은 상품명/코드/금액+문의 요약+숫자 threshold+허용/비허용으로
+  단순화한다. 목록은 제품이 아니라 문의를 보여주며 실제 사용할 이유가 분명해야 한다.
+- 구현 PASS: 문의/검토 목록은 최대160자 원문 미리보기(생성 요약 아님), 없으면 요청 유형.
+  기존 목록당SQL1회·권한/검색/페이지/담당자 경계 유지. 신규 optional inquiry_preview는
+  같은tenant·unexpired·unpurged sensitive payload만 읽고 기존 원문fallback/새저장/모델호출 없음.
+  검토 준비 건은 목록에서 바로검토, 상세에서 처리단계로 돌아갈 수 있다.
+- 화면 PASS: 사진 아래 작은 상품/금액정보, 저장된 문의요약, 원문/정책/기술정보 접기,
+  유사도는 중첩접기. 사진 파일메타정보 제외·원본확대/재시도 유지. 상품/금액 없으면 미확인표시.
+  기존 quick-review threshold0.70만 큰 숫자로 표시하고 실제준비도는 별도표시; gauge 없음.
+  E3점수/임계치·cosine·모델정확도와 합치지 않는다. 정책/최종확인/사진decode/CAS guard 유지.
+- 설계/API: ADR0130·제품개선문서, HTTP max160 nullable필드·snapshot/generated 동기화.
+  저장schema/event/기존분석 이력 변경없음으로 migration SKIPPED(불필요).
+- 실제 검증 PASS: Frontend92/32files; E2E14(기존12+새desktop/mobile2, 접근성320/375/768/1024/1440);
+  공식 make test 1493/98deselected/기존warning36; Pyright0; 변경Ruff/format; Webtype/lint/build;
+  OpenAPI 생성파일동기화; diff검사. 격리 PostgreSQL clone2개테스트 PASS: 단일SQL읽기,
+  최대160자·만료미리보기null·타tenant제외. 시험DB제거; 원본DB 변경없음.
+- 중간 실패 정정: 첫 Web테스트6개는 신규필드decoder누락으로 실패해 decoder추가 후92PASS;
+  E2E1개는 축약ID selector라 실패해 실제route 기반으로 수정 후14PASS. kwargs 타입오류 수정 후
+  Pyright0. Docker꺼짐으로 최초통합검사BLOCKED 후 기존Docker앱기동→기존9개서비스복귀→격리검사PASS.
+  최초pytest marker에 local외부3개가포함됐지만 env gate로SKIPPED였고 공식make test로 재검증했다.
+- 로컬 반영 PASS(10:18): API/Web `ui-20260911` image로만교체, 이전 `before-ui-20260911`
+  image태그보존. Compose사전/사후 env 전체값동일 검증. feedback키는 기존container env에서
+  자식환경으로만전달; 비밀번호입력/파일저장/로그노출없음. overlay보간값누락 첫시도는 교체전실패,
+  기존메모리값으로 해결. Core9healthy·APIready/Webhealth200·liveOpenAPI preview max160확인.
+  모델설정·Worker/GPU 실행설정/DB/MinIO 무변경. 이번 모델health/새추론은 NOT_RUN.
+- 시각검사 PASS: output/ui-mentoring-20260911/review-1440.png 및 review-375.png 직접확인.
+  합성API fixture/테스트이미지 캡처이며 실제사진/사용자 로그인/실고객 의미품질 검증은 NOT_RUN.
+- 인계: [x] 구현/계약/자동회귀/시각검사/문서/로컬반영. [ ] 로그인담당자 실제사용피드백.
+  [ ] 같은문의·정책으로 기존처리대비 상담시간/이동횟수/결정오류/보고서수정시간 비교.
+  실제절감률·ROI·고객품질·출시자격은 NOT_RUN이며 이전차단을 해소한것으로 주장하지 않는다.
+  다음은 기존로그인으로 /cases 새로고침→문의선택→검토화면 피드백이다. Commit/Push/PR 없음.
+
+
+### 2026-09-11 10:25 KST — 고객·상품·정책 하단 접기 및 기존 문의 URL 개선
+
+- 사용자 추가 요청: 고객/상품정보는 하단 폴드, 고정정책도 기본접기, 사진/요약과 허용·비허용 우선.
+- 구현 PASS: ReviewDetail의 고객정보·상품/주문정보(작은사진캡션포함)·원문·정책/분석상세를
+  전체 판단영역 아래로 이동. 기존 CaseWorkspace의 고객/상품카드·주문메타·고정정책도 하단접기.
+  대응하는 미결정 검토가 준비된 Case URL은 리뷰로 바로이동; 처리단계링크 ?details=1은
+  명시적 예외로 기존복구/분석화면을 유지해 순환이동을 방지한다. 권한/사진오류/최종확인은 그대로.
+- 검증 PASS: Frontend92, E2E15(기존Case URL→리뷰직행→처리상세 복귀와 기본접기 추가),
+  TypeScript/lint/build/diff. desktop1440/mobile375 fixture 캡처확인. 중간 unit실패는 이전의
+  처리화면/펼쳐진정책 기대값을 새계약으로 수정했으며 접힌항목이 다시열리는것도 검증했다.
+- 반영 PASS: 로컬 Web만 ui-fold-20260911로 교체, 기존 Web환경값동일 확인·이전이미지태그보존.
+  API/Worker/DB/model설정 변경없음. build에서 의존 Core image도 빌드됐지만 API는 재생성하지 않음.
+  배포스크립트의 공용 API/Web 완료문구는 이번에는 Web만을 의미한다.
+- 인계 체크리스트: [x] 폴드/동선/테스트/문서/로컬Web반영 [ ] 사용자 새로고침 후 실제사용 피드백.
+  Backend/DB/API/event 무변경으로 Migration SKIPPED(불필요), Python/DB 재검사 NOT_RUN(직전1493/2는 이력).
+  상담시간 절감·실모델품질은 NOT_RUN. 다음은 기존 문의 URL 새로고침 후 판단화면 밀도 확인.
+  Commit/Push 없음, 기존 미커밋 작업 보존.
+
+
+### 2026-09-11 10:39 KST — 이상가능성 게이지 제거·사진 우선 배치
+
+- 사용자 요청대로 Vision 이상가능성 점수의 progress 게이지 제거. 숫자/기준/판단범위는 유지.
+- CaseWorkspace 사진을 첫 콘텐츠로, 문의 내용을 사진 바로 아래로 이동. 저장된 Text-v2 summary가
+  있으면 요약을 표시하고 원문은 접는다. 없으면 ‘저장된 요약이 없어 원문’ 표시; 새요약/추론 없음.
+  지금할일 안내를 오른쪽으로 이동하고 사진 높이260px·원본보기 유지. ReviewDetail 사진→요약 유지.
+- 검증 PASS: Frontend92, E2E15, Webtype/lint/build·diff. 저장요약/접힌원문 재열기, 게이지없음,
+  사진아래문의 실제좌표 검사. fixture desktop캡처 직접확인; 최초오른쪽grid 폭문제 수정 후 재확인.
+- 로컬Web ui-photo-20260911 반영 PASS, 이전이미지/env 보존. API/Worker/DB/모델 무변경.
+  인계 [x] 구현/회귀/시각확인/배포/기록 [ ] 실제사용자 새로고침피드백. 다음은 기존문의 새로고침.
+  Python/DB재검사 NOT_RUN(프런트변경만), Migration SKIPPED(불필요). 실모델/상담시간평가 NOT_RUN.
+
+
+### 2026-09-13 16:51 KST — 서버 재기동 완료
+
+- 사용자 요청에 기존 csight_server_control.sh start 실행. Docker·Embedding·GX10 Q5·E3·내부
+  SHADOW 피드백 연결과 Core9 기동 PASS. Q5 running/ready/synthetic_canary PASS,
+  available memory 약41GB, foreign_jobs_stopped0. Tailscale Running. 공개 주소 정상(controller 관측).
+- API/Web/Embedding/E3 HTTP200, Core9healthy. 비밀번호 입력/데이터 초기화/migration 없음.
+- 시작 스크립트가9/10 web:dev를 선택해 UI가 과거 버전으로 돌아가는 점 발견. 이전dev를
+  before-restart-20260913로 보존하고 검증된9/11 ui-photo-20260911 image를 dev로 지정,
+  Web만 재기동해healthy PASS. 이후 기본start도 최신UI를 선택한다. 새코드/새빌드 없음.
+- 인계 [x] 재기동/상태/최신UI 보존 [ ] 사용자 새로고침. 다음은 기존 문의 화면 사용.
+  코드테스트/전체업무E2E/실고객품질 NOT_RUN(운영기동만), 기존데이터/다른GPU작업 보존.
+
+
+### 2026-09-13 16:59 KST — 문의 제목·요약·담당자 선택 UI 정리
+
+- “기타 문의 문의 검토”를 “기타 문의 검토”로 정리. 목록의 요약 없는 경우도 공통 문의 제목 적용.
+  요약 제목은 작은 중간 굵기, 본문은 더 큰 일반 굵기로 구분. 담당자 선택은 아이콘·통합 테두리·
+  한 줄 정렬·44px 선택 영역·키보드 포커스로 개선. 기존 native select/배정 동작 유지.
+- 검증 PASS: Frontend92, E2E15, typecheck/lint, Docker Web production build, diff-check.
+  마지막 flex 방향 조정 후 담당자 배정 E2E 재검사1 PASS; desktop1280/mobile375 캡처 직접 확인.
+  Review desktop1440 캡처에서 요약 위계 확인. 실사용 상담시간/고객 의미 품질은 NOT_RUN.
+- Web만 ui-polish-20260913로 반영, dev 태그도 갱신. before-polish-20260913 이전 이미지 보존.
+  Web healthy 및 /cases HTTP200/새 CSS 확인. Backend/DB/model 설정 무변경.
+- 인계 [x] 구현/검증/시각 확인/로컬 반영/기록 [ ] 사용자 새로고침 후 피드백.
+  다음: 실제 문의 화면에서 문구와 글자 위계 확인. Migration 불필요, Python 재검사 NOT_RUN.
+  Commit/Push 없음; 기존 미커밋 변경 보존.
+
+
+### 2026-09-13 17:04 KST — 담당자 선택을 문의 행에 통합
+
+- 사용자 화면 피드백에 따라 하단 흰색 배정 구역 제거. 기존 담당자 표시 위치에 select 배치.
+  PC 한 행, 모바일 동일 배경 내 줄바꿈. 링크/select는 형제 요소로 배정과 이동 구분.
+- PASS: Frontend92, E2E15, typecheck/lint, production build, diff-check. 마지막 모바일
+  상태 배지 표시 보완 후 배정 E2E1 재검사 PASS. PC/모바일 캡처 직접 확인.
+- Web ui-inline-20260913 및 dev 태그 반영, healthy와 /cases HTTP200 확인. 이전이미지
+  before-inline-20260913 보존. Backend/DB/모델 무변경, Migration SKIPPED(불필요).
+- 인계 [x] 구현/검증/배포/문서 [ ] 사용자 새로고침 피드백. 다음은 실제 목록 배치 확인.
+  실고객 품질·상담시간·Python 재검사 NOT_RUN. 기존 미커밋 작업 보존, Commit/Push 없음.
+
+
+### 2026-09-13 17:15 KST — 상태 길이에 따른 담당자 열 이동 수정
+
+- auto 상태 열을 PC112px/모바일100px로 고정. 관리자 담당자170px/날짜150px 유지,
+  select 컨테이너의 최소폭과 폭을 명시. 문구가 달라도 주변 열 위치 동일.
+- PASS: 배정 E2E1(상태4종 변경 시 담당자·날짜·화살표 x/width 동일 확인),
+  접근성/가로넘침 E2E5(320~1440px), lint, production build/TypeScript, diff-check.
+  PC fixture 캡처 직접 확인. 전체 unit/Python 재검사는 NOT_RUN(CSS 배치 수정).
+- Web ui-fixed-columns-20260913/dev 반영 healthy, /cases HTTP200. 이전 image 보존.
+  인계 [x] 수정/좌표검증/배포/문서 [ ] 사용자 새로고침 피드백. 다음: 실제 목록 정렬 확인.
+  Backend/DB/model 무변경, Migration SKIPPED(불필요), 실고객품질/시간절감 NOT_RUN.
+
+
+### 2026-09-19 19:11 KST — 프론트 배너 제거·사진 여백 조정
+- 사용자 요청으로 AppShell 상시 실모델 피드백 배너 제거. 세션 만료/실패 알림 유지.
+- 검토·상품 작업화면 사진 프레임 고정높이 제거, 원본비율·화면높이 상한 적용.
+- PASS: Frontend92, focused E2E3, lint, production build/TypeScript. 실제 크기의
+  합성 PNG로 PC/모바일 렌더 확인. 초기 배너 기대값/불필요 mock 및 SVG fixture 수정 후 PASS.
+- Web만 responsive-evidence-20260919/dev 반영 healthy, login HTTP200. 이전 이미지 보존.
+- 인계 [x] 구현/검증/Web반영 [ ] 실제사진 사용자피드백. 다음: 새로고침 후 사진밀도 확인.
+  Backend/DB/model 무변경, Python NOT_RUN, Migration SKIPPED.
+
+
+### 2026-09-19 19:15 KST — 사진 중앙 정렬·접기 항목 일관성
+- 프론트 사진 중앙 정렬, PC 최대높이440px/43vh로 보완. 모바일 제한/원본비율 유지.
+- 문의 원문 아래 상시 AI 안내문 제거.
+- PASS: focused E2E3(PC/모바일), lint, production build/TypeScript, diff-check. PC 캡처 직접 확인.
+- Web centered-photo-20260919/dev 반영 healthy. 이전 image 보존.
+- 인계 [x] 구현/검증/반영 [ ] 사용자 새로고침 확인. 다음: 실제 사진 중앙 배치 피드백.
+  Backend/DB/model 무변경, Python/unit 재검사 NOT_RUN, Migration SKIPPED(불필요).
+
+
+### 2026-09-19 19:26 KST — 중앙정렬 누락 재수정
+- 이전 중앙정렬 검증은 불충분했음. evidence-grid에 display:grid가 없었으며 이미지 링크도
+  축소된 사진 폭과 별개로 왼쪽 정렬될 수 있었음. 명시적 grid/중앙정렬 및 margin-inline:auto 적용.
+- PASS: focused E2E3(1440/375 이미지와 영역 중심차2px 미만 확인 포함), build/TypeScript, diff-check.
+- 사용자 실제 브라우저 탭은 도구 목록이 비어 직접 관측 NOT_RUN. 로컬 fixture 좌표로 검증.
+- Web photo-grid-fix-20260919/dev 반영 healthy, 이전image 보존.
+- 인계 [x] 원인수정/좌표회귀/반영 [ ] 사용자 새로고침 후 확인. Backend 무변경.
+
+
+### 2026-09-19 19:28 KST — 불필요한 요약 카드 제목 제거
+- 사용자 요청: ‘문의 검토 요약’ 제목만 제거. 사진/문의요약/기존 동작 유지.
+- PASS: ReviewDetail unit8, production build/TypeScript. Web no-summary-title-20260919/dev 반영 healthy.
+- 인계 [x] 수정/검증/반영 [ ] 새로고침 피드백. 다음: 실제 화면 확인. Backend 무변경.
+
+
+### 2026-09-20 14:00 KST — 시연용 데이터 자산 화면 간소화
+- 전체 보관/실운영 분석 가능 건수, 처리 경험 활용 흐름, 최근 사례를 기본 표시.
+  기술 분포/버전/비교기준은 상세 접기로 이동. 데이터 집계/출처/적재 계약 무변경.
+- PASS: TypeScript/lint/build, data-assets E2E2(1440/375; 전체12/대상0 구분, 접기/펼치기, 가로넘침).
+  PC fixture 캡처 직접 확인. Web asset-simple-20260920/dev 반영 healthy, 이전 이미지 보존.
+- 인계 [x] 구현/검증/반영/문서 [ ] 실제 데이터로 사용자 시연 확인. 다음: 새로고침 후 촬영 동선 확인.
+  전체 unit/Python 재검사 NOT_RUN, Migration SKIPPED(프론트만 변경). 실제 학습/성능 개선 주장 없음.
+
+
+### 2026-09-20 16:58 KST — 1분 시연 영상 Codex 인계 패키지
+- docs/demo-video/handoff: 실행 인계서, 복붙 프롬프트, 60초 SRT, 원본 구간 미입력 편집 JSON, QA 템플릿. ZIP 제공.
+- 공식 Computer Use/Chrome 플러그인 + 로컬 FFmpeg 구성. 별도 영상 MCP 불필요,
+  OS 권한/로그인/사람 최종 확정 인계, 다른 PC localhost 주의 및 원본 녹화 대체 경로 포함.
+- PASS: 공식 문서 확인, JSON 목표합60초·SRT6구간·ZIP integrity. ffmpeg/ffprobe 로컬 존재 확인.
+- 실제 녹화/편집/받는 사람 환경 검증은 NOT_RUN. 본 작업은 인계 문서 생성이며 영상 제작 완료가 아님.
+- 인계 [x] 문서/프롬프트/파일/패키지 검사 [ ] 전달자의 접속주소·문의 지정 [ ] 촬영자 5초 시험/본녹화/편집.
+  다음: ZIP 전달 후 README 준비표를 채워 START_PROMPT 실행. 서비스 코드/DB/배포 무변경.
+
+
+### 2026-09-20 17:49 KST — 시연 검토 초기화와 운영 화면 정리
+
+사용자 선택: 분석을 유지하고 검토 대기부터 재시작. ADR-0131 및 migration0039 추가.
+GET/POST operations/demo-reset, 관리자 권한·환경 차단·tenant/synthetic 범위·지문 재확인,
+진행 작업 차단·트랜잭션 archive·오래된 창 version 거부 구현. 처리 보고서와 모의 처리,
+학습 자산은 보관 후 현재 집계에서 제외한다. 사진/원문/분석/정책/검토근거/행동이력은 보존.
+원복 버튼은 실제 서버 배포했으나 실제 데이터는 초기화하지 않음(미리보기7건, archive0건).
+실DB 백업 output/private/demo-reset-before-0039.dump(권한600), 이전 이미지 태그 보존.
+운영 상태 준비도/버전은 접힘, 운영 지표 설명 간소화. 실제 오류를 준비 완료로 위장하지 않음.
+검증 PASS: Backend4, disposable PostgreSQL1(0039 upgrade, 분석 불변, 보관, 재결정,
+다른 조직/오래된 지문 차단, 중간 삭제 실패 rollback), Frontend93, fixture browser2,
+변경 Ruff/Pyright0/typecheck/lint/build/diff-check, 실서버 API/Web healthy와 새 OpenAPI.
+GX10 엔진 최초 OFF를 발견하여 기존 controller start로 복구: ready/running PASS,
+외부 GPU 작업 종료0. 실운영 자격은 기존 차단 유지. 실제 UI POST/전체 신규 분석 NOT_RUN.
+다음 담당자는 실제 초기화 실행 여부를 먼저 확인하고 archive를 임의 삭제하지 않는다.
+
+
+### 2026-09-21 19:55 KST — 사용자 요청 GX10 llama.cpp 종료
+
+전용 GX10 controller로 csight-qwen3.8-27b-q5-k-s 종료 PASS.
+실제 반환 running=false, ready=false, foreign_jobs_stopped=0 확인.
+Core/DB/Web 중단 명령 없음. 미해결 없음. 다음: 필요 시 명시 요청으로 재기동.
+
+
+### 2026-09-28 19:28 KST — 공개 도메인 영상 첫 화면
+
+- 목적: `doongdoong.org` 접속 시 CSight 프런트 대신 사용자가 준 MP4를 즉시 볼 수 있게 게시.
+  루트와 `www` 루트, `/video.mp4`만 로컬 전용 영상 서버로 라우팅하고 기존 `/login`,
+  `/api`, `/auth`, `/web-health` 경로는 CSight Web에 유지. Web/Core/DB/GPU 변경 없음.
+- 산출물: `docs/demo-video/public-site/`의 55초·1920×1080 H.264·무음 원본 복사본,
+  HTML5 무음 자동 재생 플레이어, 범위 요청 지원 Python 서버, LaunchAgent 설정·운영 README.
+  원본과 공개 다운로드 SHA-256 일치. 배포본은 macOS LaunchAgent Desktop 접근 제한 때문에
+  `~/Library/Application Support/CSightVideo/`에 설치. Tunnel 설정은 변경 전 백업 보관.
+- 검증 PASS: AVFoundation 길이/코덱/오디오 확인과 1·27·53초 프레임 확인;
+  로컬 HTML 200, MP4 200/206/416; `cloudflared ingress validate`와 루트·영상·로그인
+  규칙 선택; 2026-09-28 19:26~19:28 KST 공개 루트·www 200, 영상 전체 해시 일치와
+  범위 206, `/login`·`/web-health` 200; Playwright 브라우저에서 video paused=false,
+  currentTime>1, duration=55, readyState=4, 1920×1080 및 실제 화면 확인.
+- 검증 FAIL 후 해결: 첫 LaunchAgent는 Desktop 경로 접근 거부로 시작 실패. Library 배포본으로
+  바꾼 뒤 running·로컬 200/206 확인. Tunnel 재시작 직후 일시적 530을 관측했으나 이후
+  공개 200/206과 브라우저 재생을 재확인했다.
+- 미해결: Mac이나 Cloudflare Tunnel이 중단되면 공개 링크도 중단된다. Cloudflare 분석
+  스크립트는 영상 페이지 CSP에 의해 차단되어 브라우저 콘솔 오류 1건이 있으나 재생은 정상.
+  ffprobe는 로컬 Homebrew x265 동적 라이브러리 누락으로 FAIL; AVFoundation으로 대체 확인.
+  백엔드 테스트·Migration·앱 타입 검사는 SKIPPED(서비스 앱 변경 없음).
+- 인계 [x] 게시 [x] 실제 공개 재생 [x] 원본/배포본 확인 [x] 설정 백업 [x] 문서화.
+  다음: Mac 재부팅 또는 Tunnel 재시작 이후 `https://doongdoong.org/` 재생을 확인한다.
+
+
+### 2026-09-28 19:30 KST — 영상 서버 타입 검사·재배포 확인
+
+- 새 `serve.py`를 Pyright로 검사해 미초기화 가능 변수 1건을 수정한 뒤 Pyright 오류0,
+  Ruff check/format, py_compile, plist lint, diff-check PASS. 배포본과 저장소 스크립트 일치.
+- LaunchAgent 재시작 뒤 running, 공개 루트200, suffix Range206, 0바이트 Range416,
+  기존 로그인200을 재확인. 앱 전체 타입 검사·테스트는 SKIPPED(앱 코드 변경 없음).
+
+
+### 2026-09-29 20:16 KST — 공개 `/login` 영상 재생 추가
+
+- 사용자 정정에 따라 루트 영상 게시를 유지하면서 `doongdoong.org/login`과 `www`의
+  `/login`·`/login/`을 같은 플레이어로 라우팅했다. CSight Web/Core/DB/GPU 변경 없음.
+  공개 `/login`에서는 기존 로그인 폼이 보이지 않으며 로컬 Web 로그인 경로는 유지된다.
+- 검증 PASS: Python 서버 로컬 `/login`·`/login/` 200, Pyright 오류0, Ruff check/format,
+  py_compile, Cloudflare ingress validate·규칙 선택, 공개 `/login`·`/login/`·www `/login`
+  200, 공개 루트200·MP4 범위206·`/web-health`200, 로컬 Web `/login`200.
+  Playwright 공개 `/login`: 제목 `CSight 시연 영상`, video 1개, paused=false,
+  currentTime>1, duration=55, readyState=4.
+- Tunnel 재시작 직후 첫 공개 `/login` 요청에서 일시적 530을 관측했다. 연결 안정화 후
+  200과 실제 브라우저 재생을 재확인했다. 변경 전 Tunnel 설정 백업을 보관했다.
+- 미해결: Mac/Tunnel 중단 시 공개 영상 링크도 중단. 공개 CSight 로그인 폼은 이 경로에서
+  접근할 수 없다. 나머지 앱 전체 회귀 테스트·Migration은 SKIPPED(앱 코드/DB 변경 없음).
+- 인계 [x] 라우팅 추가 [x] 공개 재생 확인 [x] 로컬 콘솔 확인 [x] 백업·문서 갱신.
+  다음: 필요 시 Mac 재부팅 후 공개 `/login` 재생과 로컬 콘솔 접속을 다시 확인한다.
+
+
+### 2026-09-29 21:17 KST — 공개 `/login2` CSight 로그인 경로 복원
+
+- 사용자 요청으로 `/login` 영상은 유지하고 `web/src/App.tsx`에 `/login2` 로그인 라우트와
+  비인증 업무 경로의 `/login2` 이동을 추가했다. 기존 `/login` 라우트는 로컬 호환을 위해 유지.
+  운영 Web 이미지(9/20) 이후의 미커밋 프런트 변경은 함께 배포하지 않도록 기존 이미지의
+  JS 자산 24개에 이번 라우트 변경만 입힌 overlay를 생성했다. 기존 이미지는
+  `csight-web:before-login2-20260929`, 신규 이미지는 `csight-web:login2-20260929` 및 `dev`.
+- 검증 PASS: App/LoginPage Vitest 3, TypeScript typecheck, ESLint, Vite production build,
+  overlay 스크립트 Pyright 오류0·Ruff check/format·Node JS syntax; 격리 Web 컨테이너에서
+  `/login2` 기존 파일럿 로그인 폼, 조직 슬러그/이메일/비밀번호 입력, `/cases` 비로그인 이동 확인.
+  2026-09-29 21:15~21:17 KST 공개 `/login2` 폼·제목·경로 Playwright 확인,
+  `/auth/capabilities` 200 및 legacy_password_enabled=true, `www/login2` 200,
+  기존 `/login`·루트 200과 영상 범위206, `/web-health`200, Web healthy 확인.
+- 검증 FAIL 후 해결: 첫 overlay는 지연 로드 JS가 기존 엔트리를 함께 불러 인증 Context가
+  분리됐다. 모든 JS 자산 참조를 동일 버전으로 맞춘 두 번째 overlay를 격리 브라우저에서
+  재검증한 뒤 운영에 반영했다. 실패한 시험 이미지는 제거하고 시험 컨테이너도 종료했다.
+- 미해결: 실제 자격 증명을 이용한 로그인 완료와 인증 후 업무 화면 동작은 NOT_RUN.
+  인증 API/폼/비로그인 라우팅 연결은 확인했다. DB/API 변경이 없어 Migration SKIPPED.
+  기존 미커밋 변경은 보존했고 Commit/Push 없음.
+- 인계 [x] 코드·회귀 검증 [x] 격리 Web 시험 [x] 공개 반영·브라우저 확인
+  [x] 이전 이미지 보존 [x] 문서 갱신 [ ] 실제 계정으로 로그인 후 업무 화면 확인.
+  다음: 사용자가 `/login2`에서 기존 계정으로 로그인해 `/cases` 진입을 확인한다.
+
+
+### 2026-09-30 13:01 KST — GX10 메인 Q5 엔진 복구와 내부 연결 확인
+
+- 요청: 워크스테이션 메인 엔진이 내려가 있으면 다른 작업을 정지하고 엔진을 다시 연결.
+- 사전 관측 FAIL: 전용 controller에서 running=false/ready=false. Mac Core 9개 서비스와
+  API/Web/Embedding/공개 주소는 정상. GX10의 실행 중 Docker 컨테이너와 GPU 계산 프로세스는
+  각각 0개, 시스템 가용 메모리는 약 116GiB였다. 다른 계산 작업 종료0.
+- 복구 PASS: `scripts/csight_internal_feedback.sh prepare`가 전용 Q5 기동과 합성 canary를
+  완료했다. 13:01 KST 재확인 시 Q5 단독 컨테이너 running/ready, 시스템 가용 메모리
+  103,524,970,496 bytes. Mac SSH 터널 `127.0.0.1:18004/health` 200, E3 8093 health 200.
+- 연결 PASS: Core9 healthy, API ready 200. 배포 Worker 설정에서 SHADOW=true,
+  LLM llama_cpp→Mac 터널, Vision remote 확인. 배포 Worker의 쓰기 없는 합성 probe에서
+  Extraction·Vision·Embedding·Grounding 모두 PASS, DB 쓰기0·업무 효과0.
+- 한계: 실제 계정 로그인/새 문의/검토 UI 종단 흐름은 NOT_RUN. 고객 의미 품질·출시 자격은
+  기존 `NO_WINNER`·`NO_RELEASE_ELIGIBLE` 상태를 유지. 앱 코드·DB 변경 없음으로 Migration,
+  전체 Ruff/Pyright/기본 테스트는 SKIPPED. 기존 작업트리·다른 장비 작업은 보존.
+- 인계 [x] 사전 상태·다른 작업 확인 [x] Q5 복구 [x] Mac/Core 연결·합성 probe
+  [x] 상태 문서 갱신 [ ] 인증 UI 종단 확인. 다음: `/login2`의 기존 계정으로 새 합성 문의를
+  등록해 SHADOW 분석과 사람 검토 표시를 확인한다.
+
+
+### 2026-10-01 14:12 KST — CSight Docker/PoC 스택 종료
+
+- 요청: 이번 프로젝트 관련 Docker 작업을 모두 내림.
+- 종료 전 PASS: Mac `csight-core` 실행 컨테이너 9개, GX10 전용 Q5 running/ready.
+- 실행 PASS: `scripts/csight_server_control.sh stop`으로 GX10 전용 Q5, Mac Core Compose,
+  공개 터널, Embedding, E3·SSH 연결을 종료. 컨트롤러는 DB·업로드 Docker 볼륨을 보존했고
+  다른 GPU 작업 종료는 0개로 보고했다.
+- 종료 후 PASS (14:12 KST): Mac `docker ps` 0개, GX10 `docker ps` 0개, 전용 Q5
+  running=false/ready=false. Core 상태는 서비스 0개이며 API/Web/Embedding/공개 주소 응답 없음.
+- 미해결: 종료 작업 없음. 재기동·기능 테스트는 NOT_RUN(사용자 요청 전 종료 상태 유지).
+  앱 코드/DB 변경 없이 운영 상태·문서만 갱신했으므로 Migration·Ruff·Pyright·기본 테스트는
+  SKIPPED. 다음: 재기동 요청 시 전용 controller start 후 Q5·Core·터널·합성 경로를 재확인.
+- 인계 [x] 종료 전 인벤토리 [x] 서비스 종료 [x] 양쪽 Docker 사후 확인
+  [x] 볼륨 보존 [x] 상태 문서 갱신 [ ] 재기동은 별도 요청 때 수행.
+
+
+### 2026-10-01 14:13 KST — 종료 후 잔여 연결 정정
+
+- 앞선 14:12 기록의 E3·SSH 연결 종료 표현을 정정한다. Controller stop은 성공했지만
+  사후 `lsof`에서 CSight 전용 SSH 터널 18004와 E3 서버 8093 리스너가 남아 있었다.
+  SSH 제어 소켓은 접속 거부였고, E3는 현재 screen 세션 밖의 기존 프로세스였다.
+- 두 실행 명령과 소유자를 확인한 뒤 해당 PID 19237(SSH), 55704(E3)에 TERM을 보냈다.
+  14:13:47 KST에 두 PID 및 E3 부모 PID 55702 종료, 포트 18004·8093 리스너 없음,
+  Mac 실행 Docker 컨테이너 0개를 재확인했다. GX10 Q5와 Core 종료 결과는 앞선 기록대로다.
+- 검증 PASS: 이번 요청의 실행 서비스 종료. 미해결: 재시작 시 컨트롤러의 기존 세션 밖
+  E3·끊어진 SSH 제어 소켓 처리 경로는 개선 후보이며 이번에는 코드 변경 NOT_RUN.
+  다음: 재기동 요청 때 연결 상태를 다시 확인하고 필요하면 제어 스크립트를 수정한다.
+
+
+### 2026-10-18 KST — 국내 추계 2쪽 논문 작성 참고서
+
+- 요청: 한국디지털콘텐츠학회 추계 2쪽 논문을 위한 상세 Markdown. 사용자에게 국내
+  2026-11-19~20 수원 대회임을 확인하고 캡스톤 설계·산업적 활용 가치를 중심으로 구성했다.
+- 산출물: `docs/papers/CSight_2026_추계_2쪽논문_작성참고서.md`. 제목·기여, 공식 학생/일반
+  양식, 공학설계 요구-선택-구현-검증 표, 산업 기대효과와 측정식, 원본 증거 원장, 지면 배분,
+  구조도/검증표, 복사용 본문 초안, 문헌3편, 예상질문·제출 체크리스트를 포함한다.
+- 검증 PASS: 공식 국내 안내/제출 폼·HWP 본문과 문헌 서지 확인; JSON/JSONL 파싱으로
+  정책 Test40·검토 Test30 분모와 Manifest/지표 hash 일치, 고유 Case10의4개 단계 PASS,
+  전체 분석22=성공18/부분성공4·사람결정0 대조; 로컬 링크33개(고유23) 대상 존재·fence 균형.
+  독립 문서 검토 후 학생양식의 지도교수/교신저자 구분과 검색·설명/정책 별도 경로 표현 보완.
+- 주장 경계: 합성 문의·선별 이미지, 별도 Text-v2 경로, 과거 실험임을 명시했다. E3의 이진
+  후보 점수와 최종 판단, 선별 시연과 대표 성능, 산업 기대와 실측 ROI를 구분한다. 기존
+  실패와 NO_WINNER/NO_RELEASE_ELIGIBLE 상태를 보존하고 신규 실험·운영 승격을 수행하지 않았다.
+- 미해결/NOT_RUN: 제출용 HWP·실제2쪽 렌더링·학회 접수, 저자/부문 확정, 실제 상담원
+  시간·품질·경제성 평가. 서비스 가동 상태·GPU·기능 시험을 이번에 새로 확인하지 않았다.
+  Migration·앱 테스트·Ruff/Pyright는 SKIPPED(문서만 변경). 기존 미커밋 작업 보존, Commit/Push 없음.
+- 인계 [x] 참고서 작성 [x] 원본/형식 대조 [x] 인계 갱신 [ ] 공식 양식 조판·공동저자 검토·접수.
+  다음: 참고서9절 초안과8절 구조도·표를 선택한 공식 HWP에 배치하고 실제2쪽을 확인한다.
+
+
+### 2026-10-18 KST — 학생 양식 실제 2쪽 논문 초안
+
+- 요청: 참고서를 기반으로 실제 제출할 2쪽 논문 초안, 캡스톤 설계·산업적 활용 강조,
+  그림과 검증표 포함. 사용자 제공 김혜린·차인택, 선문대학교 AI소프트웨어학과, 학생 이메일2개,
+  황세웅 지도교수(교신저자)를 반영했다.
+- 산출물: `output/papers/CSight_2026_추계_2쪽_논문초안.docx`,
+  `output/pdf/CSight_2026_추계_2쪽_논문초안.pdf`, `output/papers/CSight_시스템구조도.png`,
+  `docs/papers/CSight_2026_추계_2쪽_논문초안.md`, `CSight_2026_추계_초안_편집메모.md`.
+- 형식: 공식 학생 HWP를 내려받아 A4/2단/단간8mm/본문10pt/제목16pt/장제목12pt/캡션9pt
+  등 추출. 초록/영문제목 없는 학생양식 순서와 지도교수 칸을 적용. PDF는 지정 글꼴을 함초롬으로
+  대체 렌더링하며 영문 참고문헌 자간/정렬 조정은 별도 메모에 명시했다.
+- 검증 PASS: render_docx 최종2페이지 PNG 시각검수; pypdf A4 2쪽 및 저자/소속/이메일/
+  교수/시험분모/참고문헌 텍스트 확인; DOCX 그림1·표1(4행3열); 한글 뷰어 DOCX 정상 열람 및
+  인쇄 미리보기 1/2·2/2 확인. 독립 근거 검토 필수수정0. 초기 글꼴누락·표폭오류는 수정/재렌더했다.
+- 실패/한계: native HWP 직접생성 후보는 pyhwp 파싱 성공에도 실제 한글에서 손상 오류.
+  후보는 tmp에만 보존하고 납품하지 않았다. 한글 편집기에서 HWP 저장/최종 서식 재검수가 남는다.
+  PDF는 LibreOffice 렌더 검토본이다. 교수 이메일/지원사업 감사문구는 임의 생성하지 않았다.
+- 증거 경계: 정책 합성Test40·검토합성Test30·내부합성문의/선별이미지10의 별도경로,
+  구형Text-v1 부분실패4회·사람결정0·외부동작0 및 현장효과 미측정을 보존했다. 그림은 검색/설명과
+  정책평가를 분리하고 AI 참고정보와 사람의 최종결정 경계를 표시한다.
+- 인계 [x] 본문·저자 [x] 그림·표 [x] 두쪽 렌더·시각검수 [x] DOCX 한글열람
+  [x] 상태문서 갱신 [ ] 공동저자 검토·HWP 저장·접수. 다음은 편집 메모에 따른 HWP 최종화.
+  앱/DB/운영서비스 변경0, GPU/신규실험/학회접수 NOT_RUN, 코드테스트 SKIPPED(문서작업), Commit/Push 없음.
+
+
+## 2026-10-19 저장공간 정리 인계 (2026-10-19T11:51:58.744308+09:00)
+
+- PASS: 사용자 승인으로 Mac Docker의 7일 이상 미사용 build cache만 정리했다. Docker 보고 회수량815.8MB, 실행 컨테이너0을 확인했다. 컨테이너10개·이미지·볼륨16개·현재 서비스용 가상환경·가중치는 보존하며 서비스 시작/중지는 하지 않았다.
+- PASS: 별도 과거 RC bc2d7be의 `.venv`/`web/node_modules`는 열린 파일0·프로세스 참조0 및 원격 commit/lockfile 확인 후 재생성 가능한 설치 파일만 정리했다. 원천 코드·DB·업로드·분석 이력은 보존했다.
+- NOT_RUN: 앱 품질 검사·실서비스 재기동·모델 호출·의존성 실제 재설치. 미해결 기존 출시/논문 항목은 위 원래 기록을 따른다.
+- 다음: 과거 RC 개발 환경이 필요하면 해당 작업본에서 `uv sync --frozen --group dev`, `cd web && npm ci`로 재설치한다. 현재 작업본 소스의 별도 비공개 보관 브랜치를 생성·원격 blob 검증하고 결과 영수증을 DefenseSLM `artifacts/mac-project-docker-cleanup-20261019-s01`에 남긴다. 기존 기능 브랜치 HEAD·미커밋 작업은 유지한다.

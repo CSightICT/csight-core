@@ -1,6 +1,7 @@
 """Admin HTTP and composition contracts for immutable model route plans."""
 
 import base64
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,6 +23,7 @@ from app.platform.model_activation import (
     ActiveLLMRelease,
     LLMReleaseManifest,
     ModelActivationEvent,
+    ModelReleaseModeNotAllowedError,
     ModelReleaseTask,
     RegisteredLLMRelease,
     SignedLLMReleaseManifest,
@@ -67,6 +69,15 @@ class _ActivateRoute:
             route_plan=self.route_plan,
             idempotent_replay=len(self.calls) > 1,
         )
+
+
+class _RejectMode:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def execute(self, **values: object) -> object:
+        self.calls.append(values)
+        raise ModelReleaseModeNotAllowedError()
 
 
 class _GetActiveRoute:
@@ -290,9 +301,13 @@ def test_model_route_openapi_requires_explicit_route_identity_and_documents_repl
         FastAPI, _client(_ActivateRoute(resolved.route_plan), _GetActiveRoute(resolved)).app
     ).openapi()
     post = schema["paths"]["/api/v1/operations/model-route-plans/activate"]["post"]
+    release_post = schema["paths"]["/api/v1/operations/model-releases/{release_id}/activate"][
+        "post"
+    ]
     get = schema["paths"]["/api/v1/operations/model-route-plans/active"]["get"]
 
     assert {"200", "202", "403", "409", "422", "503"} <= set(post["responses"])
+    assert {"200", "201", "403", "409", "422", "503"} <= set(release_post["responses"])
     idempotency = next(item for item in post["parameters"] if item["name"] == "Idempotency-Key")
     assert idempotency["in"] == "header"
     assert idempotency["required"] is True
@@ -308,6 +323,46 @@ def test_model_route_openapi_requires_explicit_route_identity_and_documents_repl
     query_parameters = {item["name"]: item for item in get["parameters"]}
     assert query_parameters["task"]["required"] is True
     assert query_parameters["execution_mode"]["required"] is True
+
+
+def test_shadow_mode_violation_is_public_409_for_release_and_route() -> None:
+    resolved = _resolved()
+    client = _client(_ActivateRoute(resolved.route_plan), _GetActiveRoute(resolved))
+    release_reject = _RejectMode()
+    route_reject = _RejectMode()
+    app = cast(FastAPI, client.app)
+    services = app.state.operations_services
+    unused: Any = object()
+    app.state.operations_services = replace(
+        services,
+        register_model_release=unused,
+        activate_model_release=release_reject,
+        get_active_model_release=unused,
+        activate_model_route=route_reject,
+    )
+    headers = {"Authorization": "Bearer admin-token", "Idempotency-Key": "mode-blocked"}
+
+    release = client.post(
+        "/api/v1/operations/model-releases/release-shadow/activate",
+        json={
+            "execution_mode": "PRIMARY",
+            "expected_current_activation_id": None,
+            "reason": "Must remain Shadow",
+        },
+        headers=headers,
+    )
+    route = client.post(
+        "/api/v1/operations/model-route-plans/activate",
+        json=_activation_body(),
+        headers=headers,
+    )
+
+    for response in (release, route):
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "MODEL_RELEASE_MODE_NOT_ALLOWED"
+        assert response.headers["Cache-Control"] == "no-store"
+    assert len(release_reject.calls) == 1
+    assert len(route_reject.calls) == 1
 
 
 def test_operations_composition_reuses_activation_repository_and_verifier(

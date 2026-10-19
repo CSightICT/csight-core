@@ -10,10 +10,15 @@ from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.errors import ForbiddenError, IdempotencyKeyReusedError, ValidationError
 from app.platform.model_activation import (
     ActiveModelReleaseRequiredError,
+    LLMReleaseManifestContract,
+    LLMReleaseManifestV1_1,
     ModelReleaseIdentityMismatchError,
+    ModelReleaseModeNotAllowedError,
     ModelReleaseSignatureInvalidError,
     ModelReleaseTask,
     RuntimeLLMIdentity,
+    RuntimeLLMIdentityV1_1,
+    release_execution_mode_gate_reason,
 )
 from app.platform.model_routing import (
     ActiveModelRoutePlanRequiredError,
@@ -122,6 +127,7 @@ class ActivateModelRoutePlan:
             )
         if not self._signature_verifier.verify(active_release.release.signed_manifest):
             raise ModelReleaseSignatureInvalidError()
+        _require_release_mode(active_release.release.signed_manifest.manifest, execution_mode)
 
         current = self._route_repository.get_active(
             tenant_id=principal.tenant_id,
@@ -194,6 +200,7 @@ class ResolveActiveModelRoutePlan:
             )
         if not self._signature_verifier.verify(active_release.release.signed_manifest):
             raise ModelReleaseSignatureInvalidError()
+        _require_release_mode(active_release.release.signed_manifest.manifest, execution_mode)
         return ResolvedModelRoutePlan(
             route_plan=route_plan,
             active_release=active_release,
@@ -278,8 +285,14 @@ class ResolvePinnedModelRoutePlan:
             raise PinnedModelRoutePlanMismatchError()
         if not self._signature_verifier.verify(pinned_release.release.signed_manifest):
             raise ModelReleaseSignatureInvalidError()
-        expected_runtime_identity = RuntimeLLMIdentity.model_validate(
-            {field: getattr(manifest, field) for field in RuntimeLLMIdentity.model_fields}
+        _require_release_mode(manifest, execution_mode)
+        identity_type = (
+            RuntimeLLMIdentityV1_1
+            if isinstance(manifest, LLMReleaseManifestV1_1)
+            else RuntimeLLMIdentity
+        )
+        expected_runtime_identity = identity_type.model_validate(
+            {field: getattr(manifest, field) for field in identity_type.model_fields}
         )
         if self._deployment_identity.runtime_identity != expected_runtime_identity:
             raise ModelReleaseIdentityMismatchError()
@@ -292,6 +305,15 @@ class ResolvePinnedModelRoutePlan:
 def _require_admin(principal: Principal) -> None:
     if Role.ADMIN not in principal.roles:
         raise ForbiddenError()
+
+
+def _require_release_mode(
+    manifest: LLMReleaseManifestContract,
+    execution_mode: AnalysisExecutionMode,
+) -> None:
+    gate_reason = release_execution_mode_gate_reason(manifest, execution_mode)
+    if gate_reason is not None:
+        raise ModelReleaseModeNotAllowedError(gate_reason=gate_reason)
 
 
 def _route_request_hash(

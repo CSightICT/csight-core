@@ -10,15 +10,20 @@ from app.platform.errors import ForbiddenError, ValidationError
 from app.platform.model_activation import (
     ActiveLLMRelease,
     ActiveModelReleaseRequiredError,
+    LLMReleaseManifestV1_1,
     ModelActivationEvent,
     ModelActivationResult,
     ModelReleaseIdentityMismatchError,
+    ModelReleaseModeNotAllowedError,
     ModelReleaseNotFoundError,
     ModelReleaseRegistrationResult,
     ModelReleaseSignatureInvalidError,
     ModelReleaseTask,
     RuntimeLLMIdentity,
+    RuntimeLLMIdentityContract,
+    RuntimeLLMIdentityV1_1,
     SignedLLMReleaseManifest,
+    release_execution_mode_gate_reason,
 )
 from app.platform.tenant import Principal, Role
 from app.ports.model_activation import (
@@ -106,6 +111,7 @@ class ActivateSignedModelRelease:
         if not self._signature_verifier.verify(release.signed_manifest):
             raise ModelReleaseSignatureInvalidError()
         task = release.signed_manifest.manifest.task
+        _require_release_mode(release.signed_manifest, execution_mode)
         current = self._repository.get_active(
             tenant_id=principal.tenant_id,
             task=task,
@@ -168,14 +174,14 @@ class RequireActiveModelRelease:
         *,
         repository: ModelActivationRepository,
         signature_verifier: ModelReleaseSignatureVerifier,
-        runtime_identity: RuntimeLLMIdentity,
+        runtime_identity: RuntimeLLMIdentityContract,
     ) -> None:
         self._repository = repository
         self._signature_verifier = signature_verifier
         self._runtime_identity = runtime_identity
 
     @property
-    def runtime_identity(self) -> RuntimeLLMIdentity:
+    def runtime_identity(self) -> RuntimeLLMIdentityContract:
         return self._runtime_identity
 
     def execute(
@@ -196,23 +202,25 @@ class RequireActiveModelRelease:
         if not self._signature_verifier.verify(signed):
             raise ModelReleaseSignatureInvalidError()
         manifest = signed.manifest
-        expected = {
-            "served_model_name": manifest.served_model_name,
-            "model_version": manifest.model_version,
-            "artifact_revision": manifest.artifact_revision,
-            "artifact_content_digest": manifest.artifact_content_digest,
-            "runtime_image_digest": manifest.runtime_image_digest,
-            "dependency_lock_digest": manifest.dependency_lock_digest,
-            "sbom_digest": manifest.sbom_digest,
-            "prompt_name": manifest.prompt_name,
-            "prompt_version": manifest.prompt_version,
-            "prompt_content_hash": manifest.prompt_content_hash,
-            "input_schema_version": manifest.input_schema_version,
-            "output_schema_version": manifest.output_schema_version,
-        }
+        _require_release_mode(signed, execution_mode)
+        identity_fields = (
+            RuntimeLLMIdentityV1_1.model_fields
+            if isinstance(manifest, LLMReleaseManifestV1_1)
+            else RuntimeLLMIdentity.model_fields
+        )
+        expected = {key: getattr(manifest, key) for key in identity_fields}
         if self._runtime_identity.model_dump(mode="python") != expected:
             raise ModelReleaseIdentityMismatchError()
         return active
+
+
+def _require_release_mode(
+    signed: SignedLLMReleaseManifest,
+    execution_mode: AnalysisExecutionMode,
+) -> None:
+    gate_reason = release_execution_mode_gate_reason(signed.manifest, execution_mode)
+    if gate_reason is not None:
+        raise ModelReleaseModeNotAllowedError(gate_reason=gate_reason)
 
 
 def _require_admin(principal: Principal) -> None:

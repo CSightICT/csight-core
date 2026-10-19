@@ -34,6 +34,10 @@ class MLXLLMProvider(VLLMLLMProvider):
     ``LLMProvider`` port remains unchanged.
     """
 
+    # MLX-VLM may return this provider extension despite thinking being disabled.
+    # The field is never propagated; only the separately typed content is parsed.
+    _redact_reasoning_content = True
+
     @property
     def provider_metadata(self) -> ProviderMetadata:
         metadata = super().provider_metadata

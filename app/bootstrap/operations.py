@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from app.adapters.persistence.demo_reset import SQLAlchemyDemoResetRepository
 from app.adapters.persistence.engine import get_engine
 from app.adapters.persistence.failure_recovery import SQLAlchemyOperationalFailureRepository
 from app.adapters.persistence.model_activation import SQLAlchemyModelActivationRepository
@@ -16,6 +17,7 @@ from app.adapters.runtime import UtcClock, Uuid4Generator
 from app.adapters.security.model_release_signatures import (
     Ed25519ModelReleaseSignatureVerifier,
 )
+from app.application.demo_reset import DemoReset
 from app.application.model_activation import (
     ActivateSignedModelRelease,
     GetActiveModelRelease,
@@ -106,6 +108,11 @@ def build_operations_services(settings: Settings) -> OperationsServiceContainer:
         clock=clock,
     )
     return OperationsServiceContainer(
+        demo_reset=DemoReset(
+            SQLAlchemyDemoResetRepository(session_factory),
+            enabled=settings.environment in {"local", "test"}
+            and settings.shadow_human_feedback_enabled,
+        ),
         get_overview=GetOperationsOverview(repository, clock),
         get_failures=GetOperationsFailures(repository, clock),
         list_failure_records=ListOperationalFailures(failure_repository, clock),

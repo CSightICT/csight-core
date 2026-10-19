@@ -113,6 +113,8 @@ class SQLAlchemyOperatorReadRepository:
                        c.order_ref,
                        c.product_ref,
                        c.requested_action,
+                       left(btrim(regexp_replace(sp.customer_message, '[[:space:]]+', ' ', 'g')),
+                            160) AS inquiry_preview,
                        c.created_at,
                        c.updated_at,
                        t.id AS review_task_id,
@@ -133,6 +135,9 @@ class SQLAlchemyOperatorReadRepository:
                            :can_view_all OR hd.decided_by = CAST(:actor_id AS uuid)
                        )) AS is_complete
                   FROM cases AS c
+                  LEFT JOIN case_sensitive_payloads AS sp
+                    ON sp.tenant_id = c.tenant_id AND sp.case_id = c.id
+                   AND sp.purged_at IS NULL AND sp.expires_at > CURRENT_TIMESTAMP
                   LEFT JOIN latest_task AS t ON t.case_id = c.id
                   LEFT JOIN case_resolutions AS cr
                     ON cr.tenant_id = c.tenant_id AND cr.case_id = c.id
@@ -235,6 +240,8 @@ class SQLAlchemyOperatorReadRepository:
                        c.order_ref,
                        c.product_ref,
                        c.requested_action,
+                       left(btrim(regexp_replace(sp.customer_message, '[[:space:]]+', ' ', 'g')),
+                            160) AS inquiry_preview,
                        t.task_type,
                        t.priority,
                        t.status,
@@ -258,6 +265,9 @@ class SQLAlchemyOperatorReadRepository:
                   FROM human_review_tasks AS t
                   JOIN cases AS c
                     ON c.tenant_id = t.tenant_id AND c.id = t.case_id
+                  LEFT JOIN case_sensitive_payloads AS sp
+                    ON sp.tenant_id = c.tenant_id AND sp.case_id = c.id
+                   AND sp.purged_at IS NULL AND sp.expires_at > CURRENT_TIMESTAMP
                   LEFT JOIN case_resolutions AS cr
                     ON cr.tenant_id = t.tenant_id AND cr.case_id = t.case_id
                   LEFT JOIN latest_report AS rr ON rr.case_id = t.case_id
@@ -501,6 +511,7 @@ def _case_item(row: Mapping[Any, Any]) -> OperatorCaseItem:
         order_ref=str(row["order_ref"]),
         product_ref=str(row["product_ref"]),
         requested_action=str(row["requested_action"]),
+        inquiry_preview=row.get("inquiry_preview"),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         review_task_id=_optional_uuid(row["review_task_id"]),
@@ -522,6 +533,7 @@ def _review_item(row: Mapping[Any, Any]) -> OperatorReviewItem:
         order_ref=str(row["order_ref"]),
         product_ref=str(row["product_ref"]),
         requested_action=str(row["requested_action"]),
+        inquiry_preview=row.get("inquiry_preview"),
         task_type=str(row["task_type"]),
         priority=str(row["priority"]),
         status=str(row["status"]),

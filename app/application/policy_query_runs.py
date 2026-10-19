@@ -13,7 +13,7 @@ from app.application.policy_retrieval import SearchPolicyClauses
 from app.domains.product_defect_cs.query_builder import build_deterministic_query_plan
 from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.prompts import PromptManifest
-from app.platform.errors import CaseNotFoundError
+from app.platform.errors import CaseNotFoundError, ValidationError
 from app.platform.model_activation import ModelReleaseTask
 from app.platform.model_routing import (
     MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION,
@@ -97,8 +97,10 @@ class StartPolicyRetrievalRun:
         repository: PolicyRetrievalRunRepository,
         *,
         model_route_resolver: ActiveModelRouteResolver | None = None,
+        shadow_only: bool = False,
     ) -> None:
         self._repository = repository
+        self._shadow_only = shadow_only
         self._model_route_resolver = model_route_resolver
 
     def execute(
@@ -122,6 +124,8 @@ class StartPolicyRetrievalRun:
             case_id=case_id,
             analysis_run_id=command.analysis_run_id,
         )
+        if self._shadow_only and execution_mode is not AnalysisExecutionMode.SHADOW:
+            raise ValidationError("Internal feedback retrieval requires a new SHADOW analysis.")
         route_plan_id: str | None = None
         route_contract: str | None = None
         if command.strategy is QueryStrategy.LLM and self._model_route_resolver is not None:

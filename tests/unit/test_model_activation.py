@@ -16,6 +16,7 @@ from app.platform.model_activation import (
     ActiveLLMRelease,
     ActiveModelReleaseRequiredError,
     LLMReleaseManifest,
+    LLMReleaseManifestContract,
     ModelActivationEvent,
     ModelReleaseIdentityMismatchError,
     ModelReleaseTask,
@@ -81,7 +82,9 @@ def _verifier(private_key: Ed25519PrivateKey) -> Ed25519ModelReleaseSignatureVer
     )
 
 
-def _identity(manifest: LLMReleaseManifest) -> RuntimeLLMIdentity:
+def _identity(manifest: LLMReleaseManifestContract) -> RuntimeLLMIdentity:
+    if not isinstance(manifest, LLMReleaseManifest):
+        raise TypeError("legacy identity fixture requires a v1 manifest")
     return RuntimeLLMIdentity.model_validate(
         {key: getattr(manifest, key) for key in RuntimeLLMIdentity.model_fields}
     )
@@ -129,6 +132,13 @@ def test_ed25519_verifier_accepts_canonical_manifest_and_rejects_tampering() -> 
     )
     assert verifier.verify(tampered) is False
     assert verifier.verify(signed.model_copy(update={"signing_key_id": "other-key"})) is False
+
+
+def test_v1_manifest_canonical_digest_remains_immutable() -> None:
+    assert (
+        _manifest().manifest_digest
+        == "sha256:5908a9802520fe61dbaac62203fdef5dbecd8255fa2910de5b77732302e9568f"
+    )
 
 
 def test_worker_guard_requires_active_signed_exact_runtime_identity() -> None:

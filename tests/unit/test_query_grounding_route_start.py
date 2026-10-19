@@ -6,11 +6,15 @@ from unittest.mock import Mock
 
 import pytest
 
+from app.adapters.llm.mock import MockLLMProvider
+from app.application.grounding import StartGroundedExplanation, StartGroundedExplanationCommand
 from app.application.policy_query_runs import (
     StartPolicyRetrievalRun,
     StartPolicyRetrievalRunCommand,
 )
+from app.domains.product_defect_cs.prompts import GROUNDED_POLICY_EXPLANATION_PROMPT_LOCAL_2
 from app.platform.analysis.enums import AnalysisExecutionMode
+from app.platform.errors import ValidationError
 from app.platform.model_routing import MODEL_ROUTE_ENFORCEMENT_CONTRACT_VERSION
 from app.platform.query_builder import PolicyRetrievalRun, QueryStrategy, RetrievalRunStatus
 from app.platform.tenant import Principal, Role
@@ -127,3 +131,41 @@ def test_replay_returns_before_mode_or_route_lookup() -> None:
     repository.get_execution_mode.assert_not_called()
     repository.create.assert_not_called()
     resolver.execute.assert_not_called()
+
+
+@pytest.mark.parametrize("strategy", tuple(QueryStrategy))
+def test_feedback_does_not_create_retrieval_from_historical_primary(
+    strategy: QueryStrategy,
+) -> None:
+    repository = Mock()
+    repository.get_by_idempotency_key.return_value = None
+    repository.get_execution_mode.return_value = AnalysisExecutionMode.PRIMARY
+    with pytest.raises(ValidationError, match="new SHADOW analysis"):
+        StartPolicyRetrievalRun(repository, shadow_only=True).execute(
+            principal=_principal(),
+            case_id=CASE_ID,
+            command=_command(strategy),
+        )
+    repository.create.assert_not_called()
+
+
+def test_feedback_does_not_create_grounding_from_historical_primary() -> None:
+    repository = Mock()
+    repository.get_by_idempotency_key.return_value = None
+    repository.get_execution_mode.return_value = AnalysisExecutionMode.PRIMARY
+    with pytest.raises(ValidationError, match="new SHADOW analysis"):
+        StartGroundedExplanation(
+            repository,
+            MockLLMProvider(),
+            GROUNDED_POLICY_EXPLANATION_PROMPT_LOCAL_2,
+            shadow_only=True,
+        ).execute(
+            principal=_principal(),
+            case_id=CASE_ID,
+            command=StartGroundedExplanationCommand(
+                retrieval_run_id="retrieval-1",
+                idempotency_key="feedback",
+                correlation_id="feedback",
+            ),
+        )
+    repository.create.assert_not_called()

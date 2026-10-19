@@ -1,0 +1,22 @@
+{
+  "schema": "csight_model_role_status/1.0.0",
+  "observed_at": "2026-09-10T13:22:50+09:00",
+  "all_models_fulfilling_runtime_roles": false,
+  "core_api_model_worker_retrieval_worker": {
+    "inspection": "PASS",
+    "environment": "local",
+    "llm_provider": "mock",
+    "vision_provider": "mock",
+    "task_runtime_override_present": false
+  },
+  "embedding": {"health": "PASS", "model_loaded": true, "device": "mps", "artifact": "Qwen/Qwen3-Embedding-0.6B", "worker_target_matches": true, "worker_to_embedding_health": "PASS", "fresh_retrieval_quality_evaluation": "NOT_RUN"},
+  "gx10_q5": {"health_and_model_identity": "PASS", "running": true, "core_routing": false, "fresh_inference": "NOT_RUN"},
+  "vision_e3": {"local_8093_health": "FAIL", "core_provider_is_mock": true, "other_hosts_inspected": false},
+  "reranker": {"local_8092_health": "FAIL", "default_path_admission": false},
+  "gx10_nvfp4": {"vllm_node_running": false},
+  "service_or_configuration_changes": 0,
+  "password_used": false,
+  "gpu_jobs_stopped": 0,
+  "primary_changed": false,
+  "full_test_suite": "NOT_RUN"
+}

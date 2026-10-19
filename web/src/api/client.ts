@@ -1,3 +1,4 @@
+import { decodeDemoReset } from "./decoders";
 import {
   decodeAnalysisDetail,
   decodeAnalysisRun,
@@ -74,6 +75,7 @@ import type {
 } from "./contracts";
 import { sessionVault } from "../auth/sessionVault";
 import { tokenVault } from "../auth/tokenVault";
+import { internalFeedbackEnabled } from "../internalFeedback";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -280,7 +282,9 @@ export const api = {
   },
   async startAnalysis(caseId: string, pipeline: string, pipelineVersion: string, key: string): Promise<AnalysisRun> {
     return decodeAnalysisRun(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/analysis-runs`, {
-      method: "POST", idempotencyKey: key, body: json({ pipeline, pipeline_version: pipelineVersion }),
+      method: "POST", idempotencyKey: key, body: json({ pipeline, pipeline_version: pipelineVersion,
+        ...(internalFeedbackEnabled ? { execution_mode: "SHADOW" } : {}),
+      }),
     }));
   },
   async getAnalysis(caseId: string, runId: string): Promise<AnalysisDetail> {
@@ -385,6 +389,12 @@ export const api = {
   },
   async listCustomerCommunications(caseId: string): Promise<CustomerCommunicationSimulation[]> {
     return decodeCustomerCommunications(await request(`/api/v1/cases/${encodeURIComponent(caseId)}/communication-simulations`));
+  },
+  async previewDemoReset(): Promise<{ enabled: boolean; count: number; fingerprint: string; reset_id: string | null }> {
+    return decodeDemoReset(await request("/api/v1/operations/demo-reset"));
+  },
+  async resetDemoReviews(fingerprint: string): Promise<{ enabled: boolean; count: number; fingerprint: string; reset_id: string | null }> {
+    return decodeDemoReset(await request("/api/v1/operations/demo-reset", { method: "POST", body: JSON.stringify({ fingerprint }) }));
   },
   async getDataAssetSummary(): Promise<DataAssetSummary> {
     return decodeDataAssetSummary(await request("/api/v1/data-assets/summary"));

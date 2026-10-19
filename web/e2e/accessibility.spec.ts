@@ -80,7 +80,7 @@ for (const width of viewports) {
       await expect(confirmation).toBeHidden();
       await expect(quickDecision).toBeFocused();
 
-      await navigateInSession(page, "/cases/case-validated");
+      await navigateInSession(page, "/cases/case-validated?details=1");
       await expect(page).toHaveTitle(/케이스 업무 공간/);
       await expectReleaseAccessibility(page, `${width}px case workspace`);
     });

@@ -179,6 +179,12 @@ class CircuitBreakingLLMProvider:
             else:
                 self._breaker.record_success()
             raise
+        except Exception:
+            # Query-builder and grounding schema guards deliberately raise their
+            # technology-neutral domain errors. They are terminal outcomes, not
+            # provider outages, and must also release a half-open probe.
+            self._breaker.record_success()
+            raise
         self._breaker.record_success()
         return result
 

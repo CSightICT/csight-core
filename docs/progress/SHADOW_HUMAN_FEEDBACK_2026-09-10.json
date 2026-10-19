@@ -1,0 +1,81 @@
+{
+  "schema": "csight_internal_human_feedback/1.0.0",
+  "observed_at": "2026-09-10T14:05:00+09:00",
+  "status": "PASS",
+  "status_scope": "INTERNAL_FEEDBACK_DEPLOYMENT_AND_BOUNDED_VERIFICATION",
+  "authorization": "Owner requested actual human use of SHADOW results and feedback",
+  "stages": {
+    "inventory": "PASS",
+    "gx10_q5_e3_preparation": "PASS",
+    "offline_implementation": "PASS",
+    "disposable_workflow": "PASS",
+    "live_migration": "PASS",
+    "core_real_model_deployment": "PASS",
+    "deployed_worker_real_providers": "PASS",
+    "read_only_synthetic_hybrid_rag_to_grounding": "PASS",
+    "served_frontend_feedback_banner": "PASS",
+    "controller_backend_warm_start": "PASS",
+    "live_authenticated_workflow": "NOT_RUN",
+    "human_usage_feedback": "NOT_RUN"
+  },
+  "preflight": {
+    "live_database_revision": "20260831_0034_analysis_model_route_snapshot",
+    "active_analyses": 0,
+    "active_policy_runs": 0,
+    "gx10_system_available_bytes": 51704324096,
+    "foreign_jobs_stopped": 0
+  },
+  "boundaries": {
+    "primary_promotion": false,
+    "automatic_business_effects": false,
+    "human_final_confirmation_required": true,
+    "passwords_used": false,
+    "customer_pilot_approved": false
+  },
+  "verification": {
+    "offline_python": {"status": "PASS", "passed": 1465, "deselected": 96, "existing_warnings": 36},
+    "disposable_postgres": {"status": "PASS", "passed": 3, "schema_drift": 0, "includes": ["shadow_human_dry_run_full_flow", "default_shadow_block", "immutable_permission", "missing_lineage_block", "downgrade_refuses_feedback_history", "empty_feedback_upgrade_downgrade_upgrade"]},
+    "frontend": {"status": "PASS", "tests_passed": 92, "typecheck": "PASS", "lint": "PASS", "build": "PASS"},
+    "pyright": "PASS",
+    "changed_python_ruff_and_format": "PASS",
+    "shell_syntax_and_diff_check": "PASS",
+    "live_schema_drift": 0
+  },
+  "live": {
+    "revision": "20260910_0037_shadow_human_feedback",
+    "environment": "local",
+    "shadow_human_feedback_enabled": true,
+    "llm_provider": "llama_cpp",
+    "q5_model_revision": "d709a46e48db256ac0bb3eee7fb2cdcfd087820eb4701b1af5dda84db41a2219",
+    "vision_provider": "remote",
+    "e3_model_revision": "49e8a64c08f293058262f434d48c463152c1b6b26eb005c61b79ffc95731037e",
+    "healthy_core_services": 9,
+    "api_web_embedding_public_health": "PASS",
+    "new_primary_model_work": "BLOCKED",
+    "feedback_policy_runs_created_by_agent": 0,
+    "customer_or_human_passwords_used": false,
+    "service_api_key_transport": "VERIFIED_SSH_TO_CHILD_PROCESS_ENVIRONMENT_NO_LOCAL_SECRET_FILE",
+    "db_backup": "/private/tmp/csight-feedback-backup-j1ZTjz/core-before-feedback.dump",
+    "backup_archive_list": "PASS",
+    "backup_full_restore": "NOT_RUN"
+  },
+  "worker_probe": {
+    "observed_at": "2026-09-10T14:00:11+09:00",
+    "scope": "REAL_PROVIDERS_AND_SYNTHETIC_READ_ONLY_ADAPTER_CHAIN_NOT_AUTHENTICATED_E2E",
+    "extraction": {"status": "PASS", "prompt": "2.0.0-local.8", "claims": 1, "exact_quotes": true, "latency_ms": 14070},
+    "vision": {"status": "PASS", "threshold": 0.8984375, "localized_detections": 0, "latency_ms": 894},
+    "embedding": {"status": "PASS", "dimension": 1024, "normalized": true},
+    "hybrid_rag": {"status": "PASS", "top_k": 3, "lexical_hits": 3, "dense_hits": 3, "same_tenant": true, "index_version": "1.0.0"},
+    "grounding": {"status": "PASS", "prompt": "1.1.0-local.2", "statements": 3, "citation_id_valid_rate": 1.0, "latency_ms": 38525},
+    "query_builder_called": false,
+    "reranker_called": false,
+    "quality_qualification": false
+  },
+  "initial_test_findings": [
+    "Disposable SHADOW full human/DRY_RUN flow succeeded, then immutable-guard error-message assertion failed; fixed trigger ordering before rerun.",
+    "Frontend type check needed Vite env declaration; existing 90 UI tests passed; final 92 passed.",
+    "Grounding test expectation corrected to the actual 1.1.0-local.2 prompt version.",
+    "Host Alembic check had no exported DATABASE_URL; reran in the configured API container and confirmed zero drift.",
+    "Historical image IDs could not be re-tagged after rebuild; no rollback-image availability claim is made. The DB backup and current schema are retained."
+  ]
+}

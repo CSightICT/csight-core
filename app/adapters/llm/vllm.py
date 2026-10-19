@@ -23,11 +23,17 @@ from urllib3.exceptions import (
 from urllib3.response import BaseHTTPResponse
 
 from app.platform.analysis.errors import (
+    LLMExtraFieldError,
+    LLMInvalidEnumValueError,
     LLMInvalidStructuredOutputError,
+    LLMMissingRequiredFieldError,
     LLMProviderAuthenticationError,
     LLMProviderRequestRejectedError,
     LLMProviderTimeoutError,
     LLMProviderUnavailableError,
+    LLMStructuredConstraintError,
+    LLMStructuredJSONInvalidError,
+    LLMStructuredOutputTruncatedError,
 )
 from app.platform.analysis.llm_v2 import (
     LLMTextExtractionRequestV2,
@@ -79,6 +85,8 @@ class _HTTPClient(Protocol):
 
 class VLLMLLMProvider:
     """Call one configured vLLM deployment and normalize its strict JSON result."""
+
+    _redact_reasoning_content = False
 
     def __init__(
         self,
@@ -183,7 +191,11 @@ class VLLMLLMProvider:
         latency_ms = max(0, round((self._clock() - started_at) * 1000))
         self._raise_for_status(status)
         decoded = _decode_json_object(raw_response)
-        content = _choice_content(decoded, max_chars=self._max_output_chars)
+        content = _choice_content(
+            decoded,
+            max_chars=self._max_output_chars,
+            redact_reasoning_content=self._redact_reasoning_content,
+        )
         result = _decode_structured_result(content)
         result.require_exact_source_quotes(
             customer_message=request.customer_message,
@@ -239,14 +251,12 @@ class VLLMLLMProvider:
         latency_ms = max(0, round((self._clock() - started_at) * 1000))
         self._raise_for_status(status)
         decoded = _decode_json_object(raw_response)
-        content = _choice_content(decoded, max_chars=self._max_output_chars)
-        try:
-            result = LLMTextExtractionResultV2.model_validate_json(content)
-        except (ValueError, ValidationError):
-            raise LLMInvalidStructuredOutputError(
-                provider=_PROVIDER_NAME,
-                message="the vLLM response did not match extraction schema v2",
-            ) from None
+        content = _choice_content(
+            decoded,
+            max_chars=self._max_output_chars,
+            redact_reasoning_content=self._redact_reasoning_content,
+        )
+        result = _decode_extraction_v2_result(content)
         result.require_exact_source_quotes(
             customer_message=request.customer_message,
             provider=_PROVIDER_NAME,
@@ -299,7 +309,11 @@ class VLLMLLMProvider:
         latency_ms = max(0, round((self._clock() - started_at) * 1000))
         self._raise_for_status(status)
         decoded = _decode_json_object(raw_response)
-        content = _choice_content(decoded, max_chars=self._max_output_chars)
+        content = _choice_content(
+            decoded,
+            max_chars=self._max_output_chars,
+            redact_reasoning_content=self._redact_reasoning_content,
+        )
         try:
             plan = PolicyQueryPlan.model_validate_json(content)
         except (ValueError, ValidationError):
@@ -351,7 +365,11 @@ class VLLMLLMProvider:
         latency_ms = max(0, round((self._clock() - started_at) * 1000))
         self._raise_for_status(status)
         decoded = _decode_json_object(raw_response)
-        content = _choice_content(decoded, max_chars=self._max_output_chars)
+        content = _choice_content(
+            decoded,
+            max_chars=self._max_output_chars,
+            redact_reasoning_content=self._redact_reasoning_content,
+        )
         try:
             explanation = GroundedPolicyExplanation.model_validate_json(content)
             validate_grounded_explanation(explanation, request.citation_pack)
@@ -620,7 +638,12 @@ def _decode_json_object(raw_response: bytes) -> dict[str, object]:
     return cast(dict[str, object], decoded)
 
 
-def _choice_content(response: Mapping[str, object], *, max_chars: int) -> str:
+def _choice_content(
+    response: Mapping[str, object],
+    *,
+    max_chars: int,
+    redact_reasoning_content: bool = False,
+) -> str:
     choices = response.get("choices")
     if not isinstance(choices, list) or len(choices) != 1:
         _invalid_output("the vLLM response must contain exactly one choice")
@@ -628,11 +651,18 @@ def _choice_content(response: Mapping[str, object], *, max_chars: int) -> str:
     if not isinstance(choice, dict):
         _invalid_output("the vLLM choice was not an object")
     finish_reason = choice.get("finish_reason")
+    if finish_reason == "length":
+        raise LLMStructuredOutputTruncatedError(
+            provider=_PROVIDER_NAME,
+            message="the vLLM structured response reached its output-token limit",
+        )
     if finish_reason not in {None, "stop"}:
         _invalid_output("the vLLM choice did not finish normally")
     message = choice.get("message")
     if not isinstance(message, dict):
         _invalid_output("the vLLM choice message was not an object")
+    if "reasoning_content" in message and not redact_reasoning_content:
+        _invalid_output("the vLLM response contained forbidden reasoning_content")
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
         _invalid_output("the vLLM choice content was not a non-empty string")
@@ -652,6 +682,58 @@ def _decode_structured_result(content: str) -> LLMTextExtractionResult:
             provider=_PROVIDER_NAME,
             message="the vLLM content did not satisfy the extraction JSON schema",
         ) from None
+
+
+def _decode_extraction_v2_result(content: str) -> LLMTextExtractionResultV2:
+    """Decode v2 output strictly and expose only a privacy-safe failure category."""
+
+    try:
+        decoded = _decode_json(content)
+    except (TypeError, ValueError):
+        raise LLMStructuredJSONInvalidError(
+            provider=_PROVIDER_NAME,
+            message="the vLLM extraction v2 content was not strict JSON",
+        ) from None
+    if not isinstance(decoded, dict):
+        raise LLMStructuredJSONInvalidError(
+            provider=_PROVIDER_NAME,
+            message="the vLLM extraction v2 content was not a JSON object",
+        )
+    try:
+        return LLMTextExtractionResultV2.model_validate(decoded)
+    except ValidationError as error:
+        error_type = _structured_validation_failure_type(error)
+        raise error_type(
+            provider=_PROVIDER_NAME,
+            message="the vLLM response did not match extraction schema v2",
+        ) from None
+
+
+def _structured_validation_failure_type(
+    error: ValidationError,
+) -> type[LLMInvalidStructuredOutputError]:
+    """Classify validation failures without retaining input, field paths, or messages."""
+
+    error_types = {
+        str(item.get("type", ""))
+        for item in error.errors(
+            include_url=False,
+            include_context=False,
+            include_input=False,
+        )
+    }
+    priorities: tuple[tuple[frozenset[str], type[LLMInvalidStructuredOutputError]], ...] = (
+        (frozenset({"json_invalid"}), LLMStructuredJSONInvalidError),
+        (frozenset({"missing"}), LLMMissingRequiredFieldError),
+        (frozenset({"extra_forbidden"}), LLMExtraFieldError),
+        (frozenset({"enum", "literal_error"}), LLMInvalidEnumValueError),
+    )
+    for codes, failure_type in priorities:
+        if error_types & codes:
+            return failure_type
+    if error_types:
+        return LLMStructuredConstraintError
+    return LLMInvalidStructuredOutputError
 
 
 def _usage(response: Mapping[str, object]) -> tuple[int | None, int | None]:

@@ -111,6 +111,9 @@ def _renderable_image(image: Image.Image, *, image_format: ImageFormat) -> Image
 
 
 def _save(image: Image.Image, *, output: BytesIO, image_format: ImageFormat) -> None:
+    # Conversion copies source info; encoders otherwise reuse ICC profiles and JPEG comments.
+    # Orientation and transparency have already been materialized in the pixel data.
+    image.info.clear()
     if image_format == "JPEG":
         image.save(
             output,

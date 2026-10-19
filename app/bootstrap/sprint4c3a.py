@@ -30,6 +30,7 @@ def _grounding_prompt(settings: Settings) -> PromptManifest:
     return (
         GROUNDED_POLICY_EXPLANATION_PROMPT_LOCAL_2
         if settings.llm_provider == "mlx"
+        or (settings.shadow_human_feedback_enabled and settings.llm_provider == "llama_cpp")
         else GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1
     )
 
@@ -51,6 +52,7 @@ def build_sprint4c3a_services(settings: Settings) -> Sprint4C3AServiceContainer:
             llm,
             _grounding_prompt(settings),
             model_route_resolver=build_active_model_route_resolver(settings),
+            shadow_only=settings.shadow_human_feedback_enabled,
         ),
         list_grounded_explanations=ListGroundedExplanationRuns(repository),
         get_grounded_explanation=GetGroundedExplanationRun(repository),

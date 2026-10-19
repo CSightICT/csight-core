@@ -116,7 +116,7 @@ describe("CaseWorkspacePage", () => {
           stage_run_id: "text-stage", stage_type: "LLM_EXTRACTION", status: "SUCCEEDED",
           model_name: "mock-llm", model_version: "1.0", prompt_version: "2.0.0", attempt_count: 1,
         }],
-        extraction_result: null, extraction_result_v2: {}, vision_results: [], failed_stages: [],
+        extraction_result: null, extraction_result_v2: { summary: "상품 상태 확인 요청 요약" }, vision_results: [], failed_stages: [],
       })),
       http.get("/api/v1/cases/case-1/analysis-runs/vision-latest", () => HttpResponse.json({
         run: visionLatest,
@@ -221,12 +221,16 @@ describe("CaseWorkspacePage", () => {
     );
     tokenVault.set("test-token", 600);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/cases/case-1"]}><Routes>
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/cases/case-1?details=1"]}><Routes>
       <Route path="/cases/:caseId" element={<CaseWorkspacePage />} />
     </Routes></MemoryRouter></QueryClientProvider>);
 
     expect(await screen.findByTestId("review-workbench")).toBeVisible();
-    expect(screen.getByRole("heading", { name: "문의 내용" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "문의 내용 요약" })).toBeVisible();
+    expect(screen.getByText("상품 상태 확인 요청 요약")).toBeVisible();
+    expect(screen.getByText("상품 상태를 확인해 주세요.")).not.toBeVisible();
+    await userEvent.click(screen.getByText("문의 원문 보기"));
+    expect(screen.getByText("상품 상태를 확인해 주세요.")).toBeVisible();
     expect(screen.getByRole("heading", { name: "이미지 근거" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "정책 기반 권고" })).toBeVisible();
     expect(screen.getByTestId("fictional-inquiry-badge")).toHaveTextContent("온라인 접수");
@@ -246,13 +250,20 @@ describe("CaseWorkspacePage", () => {
     expect(await screen.findByTestId("text-analysis-summary")).toHaveTextContent("text-latest");
     expect(await screen.findByTestId("vision-result")).toHaveTextContent("99.94%");
     expect(screen.getByTestId("vision-result")).toHaveTextContent("이미지 이상 가능성");
+    expect(screen.queryByRole("progressbar", { name: "이상 후보 점수" })).not.toBeInTheDocument();
     expect(screen.getByTestId("vision-result")).toHaveTextContent("E3 Runtime identity 일치");
     expect(screen.getByText("원격 추론 · 제품 적격성 미확인")).not.toBeVisible();
     await userEvent.click(screen.getByText("모델 및 검증 범위"));
     expect(screen.getByText("원격 추론 · 제품 적격성 미확인")).toBeVisible();
     expect(screen.getByText(/고정된 E3 Runtime identity와 일치하지만 제품 적격성은 별도 external gate/)).toBeVisible();
     expect(screen.queryByText("Mock qualification")).not.toBeInTheDocument();
-    expect(await screen.findByText("내부 합성 교환 정책")).toBeVisible();
+    expect(screen.getByText("내부 합성 교환 정책")).not.toBeVisible();
+    expect(screen.getByTestId("commerce-context-card")).not.toBeVisible();
+    expect(screen.getByTestId("fictional-product-card")).not.toBeVisible();
+    await userEvent.click(screen.getByText("고객·상품·주문 정보"));
+    expect(screen.getByTestId("commerce-context-card")).toBeVisible();
+    await userEvent.click(screen.getByText("고정된 정책 근거 보기"));
+    expect(screen.getByText("내부 합성 교환 정책")).toBeVisible();
     expect(screen.getByText("결함 증거와 주문 정보를 상담원이 함께 확인합니다.")).toBeVisible();
     expect(screen.getByText(/문서 버전 2026.08/)).toBeVisible();
     expect(screen.getByText("POLICY_REVIEW")).toBeVisible();
@@ -400,7 +411,7 @@ describe("CaseWorkspacePage", () => {
     );
     tokenVault.set("test-token", 600);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/cases/case-1"]}><Routes>
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/cases/case-1?details=1"]}><Routes>
       <Route path="/cases/:caseId" element={<CaseWorkspacePage />} />
     </Routes></MemoryRouter></QueryClientProvider>);
 
@@ -496,7 +507,7 @@ describe("CaseWorkspacePage", () => {
     );
     tokenVault.set("test-token", 600);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/cases/case-1"]}><Routes>
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/cases/case-1?details=1"]}><Routes>
       <Route path="/cases/:caseId" element={<CaseWorkspacePage />} />
     </Routes></MemoryRouter></QueryClientProvider>);
 

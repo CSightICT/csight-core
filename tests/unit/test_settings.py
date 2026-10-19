@@ -7,6 +7,10 @@ from pydantic import SecretStr, ValidationError
 
 from app.bootstrap.settings import Settings
 from app.platform.tenant import Role
+from tests.unit.test_model_activation_gguf import (
+    gguf_manifest_fixture,
+    gguf_runtime_identity_fixture,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -117,12 +121,13 @@ def test_signed_intake_configuration_is_tenant_bound_and_requires_rls_outside_lo
         )
 
 
-def test_non_local_vllm_requires_signed_release_enforcement() -> None:
-    with pytest.raises(ValidationError, match="Non-local vLLM requires"):
+@pytest.mark.parametrize("provider", ["vllm", "llama_cpp", "mlx"])
+def test_non_local_llm_requires_signed_release_enforcement(provider: str) -> None:
+    with pytest.raises(ValidationError, match="Non-local LLM requires"):
         Settings(
             _env_file=None,  # pyright: ignore[reportCallIssue]
             environment="pilot",
-            llm_provider="vllm",
+            llm_provider=provider,  # pyright: ignore[reportArgumentType]
             llm_base_url="https://llm.example.test/v1",
         )
 
@@ -160,6 +165,28 @@ def test_signed_release_enforcement_requires_exact_runtime_identity(tmp_path: Pa
             llm_dependency_lock_digest="sha256:" + "c" * 64,
             llm_sbom_digest="sha256:" + "d" * 64,
         )
+
+
+def test_non_local_llama_cpp_accepts_complete_signed_runtime_identity(tmp_path: Path) -> None:
+    identity = gguf_runtime_identity_fixture(gguf_manifest_fixture())
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        environment="pilot",
+        database_url=SecretStr("postgresql+psycopg://worker@db/csight"),
+        llm_provider="llama_cpp",
+        llm_base_url="http://100.64.0.20:18000/v1",
+        model_release_enforcement=True,
+        model_release_signing_public_key_file=tmp_path / "release-key.pem",
+        model_release_signing_key_id="release-key-1",
+        llm_model_id=identity.served_model_name,
+        llm_model_version=identity.model_version,
+        llm_model_revision=identity.artifact_revision,
+        llm_gguf_runtime_identity=identity,
+    )
+
+    assert settings.llm_provider == "llama_cpp"
+    assert settings.model_release_enforcement is True
+    assert settings.llm_gguf_runtime_identity == identity
 
 
 def test_model_route_enforcement_is_role_aware_and_requires_signed_release(
@@ -611,6 +638,21 @@ def test_mlx_provider_requires_base_url_and_is_allowlisted() -> None:
     assert settings.llm_base_url_value == "http://host.docker.internal:8080/v1"
 
 
+def test_llama_cpp_provider_requires_base_url_and_is_allowlisted() -> None:
+    with pytest.raises(ValidationError, match="LLM_BASE_URL"):
+        Settings(
+            _env_file=None,  # pyright: ignore[reportCallIssue]
+            llm_provider="llama_cpp",
+        )
+    settings = Settings(
+        _env_file=None,  # pyright: ignore[reportCallIssue]
+        llm_provider=" LLAMA_CPP ",
+        llm_base_url="http://100.64.0.20:18000/v1",
+    )
+    assert settings.llm_provider == "llama_cpp"
+    assert settings.llm_base_url_value == "http://100.64.0.20:18000/v1"
+
+
 def test_vllm_settings_are_normalized_bounded_and_keep_api_key_secret() -> None:
     settings = Settings(
         _env_file=None,  # pyright: ignore[reportCallIssue]
@@ -646,7 +688,7 @@ def test_vllm_settings_are_normalized_bounded_and_keep_api_key_secret() -> None:
 
 
 def test_llm_provider_is_allowlisted() -> None:
-    with pytest.raises(ValidationError, match=r"mock.*vllm.*mlx"):
+    with pytest.raises(ValidationError, match=r"mock.*vllm.*llama_cpp.*mlx"):
         Settings(
             _env_file=None,  # pyright: ignore[reportCallIssue]
             llm_provider="unknown-provider",

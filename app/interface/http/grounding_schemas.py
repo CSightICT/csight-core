@@ -31,7 +31,8 @@ class GroundedExplanationRunResponse(_Schema):
 
     @classmethod
     def from_run(cls, run: GroundedExplanationRun) -> "GroundedExplanationRunResponse":
-        return cls(**run.model_dump(exclude={"tenant_id", "idempotency_key", "request_hash"}))
+        # Project an explicit public allowlist as the internal run model evolves.
+        return cls(**run.model_dump(include=set(cls.model_fields)))
 
 
 class GroundedExplanationRunListResponse(_Schema):

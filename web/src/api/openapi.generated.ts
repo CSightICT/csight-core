@@ -971,6 +971,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operations/demo-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Demo Reset */
+        get: operations["preview_demo_reset_api_v1_operations_demo_reset_get"];
+        put?: never;
+        /** Execute Demo Reset */
+        post: operations["execute_demo_reset_api_v1_operations_demo_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1655,6 +1673,22 @@ export interface components {
          * @enum {string}
          */
         DefectType: "LEAKAGE" | "CONTAINER_DAMAGE" | "DENT" | "CRACK" | "SCRATCH" | "DISCOLORATION" | "MISSING_PART" | "BREAKAGE" | "MISSING_COMPONENT" | "FUNCTIONAL_FAILURE" | "PACKAGING_DAMAGE" | "CONTAMINATION" | "SURFACE_DAMAGE" | "OTHER" | "UNKNOWN";
+        /** DemoResetPreviewResponse */
+        DemoResetPreviewResponse: {
+            /** Enabled */
+            enabled: boolean;
+            /** Count */
+            count: number;
+            /** Fingerprint */
+            fingerprint: string;
+            /** Reset Id */
+            reset_id?: string | null;
+        };
+        /** DemoResetRequest */
+        DemoResetRequest: {
+            /** Fingerprint */
+            fingerprint: string;
+        };
         /**
          * DetectionFinding
          * @description A detection already mapped from provider-specific class IDs.
@@ -2136,9 +2170,8 @@ export interface components {
         /** LLMReleaseManifest */
         LLMReleaseManifest: {
             /**
-             * Schema Version
-             * @default llm_release_manifest/1.0.0
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             schema_version: "llm_release_manifest/1.0.0";
             /** Candidate Id */
@@ -2223,6 +2256,175 @@ export interface components {
              * Format: date-time
              */
             qualified_at: string;
+        };
+        LLMReleaseManifestContract: components["schemas"]["LLMReleaseManifest"] | components["schemas"]["LLMReleaseManifestV1_1"];
+        /**
+         * LLMReleaseManifestV1_1
+         * @description GGUF release identity without inheriting the vLLM-specific v1 contract.
+         */
+        LLMReleaseManifestV1_1: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            schema_version: "llm_release_manifest/1.1.0";
+            /** Candidate Id */
+            candidate_id: string;
+            /** Package Name */
+            package_name: string;
+            /** Package Version */
+            package_version: string;
+            task: components["schemas"]["ModelReleaseTask"];
+            /**
+             * Artifact Source
+             * @default CSIGHT
+             * @constant
+             */
+            artifact_source: "CSIGHT";
+            /**
+             * Artifact Format
+             * @default GGUF
+             * @constant
+             */
+            artifact_format: "GGUF";
+            /** Artifact */
+            artifact: string;
+            /** Artifact Revision */
+            artifact_revision: string;
+            /** Artifact Content Digest */
+            artifact_content_digest: string;
+            /** Artifact Weight Bytes */
+            artifact_weight_bytes: number;
+            /** Upstream Model Artifact */
+            upstream_model_artifact: string;
+            /** Upstream Model Revision */
+            upstream_model_revision: string;
+            /** Base Artifact */
+            base_artifact: string;
+            /** Base Revision */
+            base_revision: string;
+            /** Base Artifact Content Digest */
+            base_artifact_content_digest: string;
+            /** Gguf Filename */
+            gguf_filename: string;
+            /**
+             * Quantization Type
+             * @enum {string}
+             */
+            quantization_type: "Q4_K_M" | "Q5_K_S";
+            /** Quantization Recipe Digest */
+            quantization_recipe_digest: string;
+            /** Calibration Dataset Digest */
+            calibration_dataset_digest: string;
+            /** Calibration Manifest Digest */
+            calibration_manifest_digest: string;
+            /** Importance Matrix Digest */
+            importance_matrix_digest: string;
+            /** Tokenizer Digest */
+            tokenizer_digest: string;
+            /** Chat Template Digest */
+            chat_template_digest: string;
+            /** Quantizer Binary Digest */
+            quantizer_binary_digest: string;
+            /**
+             * Runtime Engine
+             * @default LLAMA_CPP
+             * @constant
+             */
+            runtime_engine: "LLAMA_CPP";
+            /** Runtime Image */
+            runtime_image: string;
+            /** Runtime Image Digest */
+            runtime_image_digest: string;
+            /** Llama Cpp Revision */
+            llama_cpp_revision: string;
+            /** Runtime Binary Digest */
+            runtime_binary_digest: string;
+            /** Runtime Build Manifest Digest */
+            runtime_build_manifest_digest: string;
+            /** Sbom Digest */
+            sbom_digest: string;
+            /** Served Model Name */
+            served_model_name: string;
+            /** Model Version */
+            model_version: string;
+            /**
+             * Device Profile
+             * @default onprem-cuda
+             * @constant
+             */
+            device_profile: "onprem-cuda";
+            /** Max Context Tokens */
+            max_context_tokens: number;
+            /** Max Num Sequences */
+            max_num_sequences: number;
+            /**
+             * Gpu Layers
+             * @default all
+             * @constant
+             */
+            gpu_layers: "all";
+            /** Batch Size */
+            batch_size: number;
+            /** Ubatch Size */
+            ubatch_size: number;
+            /**
+             * Flash Attention
+             * @default true
+             * @constant
+             */
+            flash_attention: true;
+            /**
+             * Kv Cache Type K
+             * @default q8_0
+             * @enum {string}
+             */
+            kv_cache_type_k: "q8_0" | "f16";
+            /**
+             * Kv Cache Type V
+             * @default q8_0
+             * @enum {string}
+             */
+            kv_cache_type_v: "q8_0" | "f16";
+            /**
+             * Api Compatibility
+             * @default OPENAI_V1
+             * @constant
+             */
+            api_compatibility: "OPENAI_V1";
+            /**
+             * Language Model Only
+             * @default true
+             * @constant
+             */
+            language_model_only: true;
+            /**
+             * Automatic Cross Model Fallback
+             * @default false
+             * @constant
+             */
+            automatic_cross_model_fallback: false;
+            /** Prompt Name */
+            prompt_name: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Prompt Content Hash */
+            prompt_content_hash: string;
+            /** Input Schema Version */
+            input_schema_version: string;
+            /** Output Schema Version */
+            output_schema_version: string;
+            /** Qualification Dataset Digest */
+            qualification_dataset_digest: string;
+            /** Qualification Result Digest */
+            qualification_result_digest?: string | null;
+            /** Candidate Matrix Digest */
+            candidate_matrix_digest: string;
+            /** Candidate Assessment Digest */
+            candidate_assessment_digest: string;
+            release_status: components["schemas"]["ModelReleaseStatus"];
+            /** Qualified At */
+            qualified_at?: string | null;
         };
         /** LLMTextClaim */
         LLMTextClaim: {
@@ -2377,6 +2579,11 @@ export interface components {
             /** Idempotent Replay */
             idempotent_replay: boolean;
         };
+        /**
+         * ModelReleaseStatus
+         * @enum {string}
+         */
+        ModelReleaseStatus: "SHADOW_CANDIDATE" | "RELEASE_ELIGIBLE";
         /**
          * ModelReleaseTask
          * @enum {string}
@@ -2599,6 +2806,8 @@ export interface components {
             product_ref: string;
             /** Requested Action */
             requested_action: string;
+            /** Inquiry Preview */
+            inquiry_preview?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -2648,6 +2857,8 @@ export interface components {
             product_ref: string;
             /** Requested Action */
             requested_action: string;
+            /** Inquiry Preview */
+            inquiry_preview?: string | null;
             /** Task Type */
             task_type: string;
             /** Priority */
@@ -3110,7 +3321,7 @@ export interface components {
         };
         /** RegisterModelReleaseRequest */
         RegisterModelReleaseRequest: {
-            manifest: components["schemas"]["LLMReleaseManifest"];
+            manifest: components["schemas"]["LLMReleaseManifestContract"];
             /** Signing Key Id */
             signing_key_id: string;
             /**
@@ -3468,7 +3679,7 @@ export interface components {
         Role: "ADMIN" | "REVIEWER" | "QUALITY_VIEWER";
         /** SignedLLMReleaseManifest */
         SignedLLMReleaseManifest: {
-            manifest: components["schemas"]["LLMReleaseManifest"];
+            manifest: components["schemas"]["LLMReleaseManifestContract"];
             /** Signing Key Id */
             signing_key_id: string;
             /**
@@ -6620,6 +6831,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Idempotent replay of the same model release activation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelActivationResponse"];
+                };
+            };
             /** @description Successful Response */
             201: {
                 headers: {
@@ -6629,13 +6849,49 @@ export interface operations {
                     "application/json": components["schemas"]["ModelActivationResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6826,6 +7082,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    preview_demo_reset_api_v1_operations_demo_reset_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoResetPreviewResponse"];
+                };
+            };
+        };
+    };
+    execute_demo_reset_api_v1_operations_demo_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoResetPreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

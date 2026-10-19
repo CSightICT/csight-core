@@ -103,10 +103,13 @@ TERMINAL_PRIVACY_MARKER = "개인정보삭제표식0029"
 class HumanReviewIntegrationContext:
     engine: Engine
     factory: sessionmaker[Session]
+    shadow_feedback_enabled: bool = False
 
 
 @pytest.fixture(scope="module")
-def human_review_database() -> Generator[HumanReviewIntegrationContext, None, None]:
+def human_review_database(
+    request: pytest.FixtureRequest,
+) -> Generator[HumanReviewIntegrationContext, None, None]:
     """Run this module against a disposable migrated PostgreSQL database."""
 
     if os.getenv("RUN_CORE_INTEGRATION") != "1":
@@ -139,8 +142,15 @@ def human_review_database() -> Generator[HumanReviewIntegrationContext, None, No
 
         temporary_engine = create_engine(temporary_url, pool_pre_ping=True)
         factory = create_session_factory(temporary_engine)
-        _seed_human_review_prerequisites(factory=factory, project_root=project_root)
-        yield HumanReviewIntegrationContext(engine=temporary_engine, factory=factory)
+        feedback = getattr(request, "param", False) is True
+        _seed_human_review_prerequisites(
+            factory=factory,
+            project_root=project_root,
+            execution_mode="SHADOW" if feedback else "PRIMARY",
+        )
+        yield HumanReviewIntegrationContext(
+            engine=temporary_engine, factory=factory, shadow_feedback_enabled=feedback
+        )
     finally:
         try:
             if temporary_engine is not None:
@@ -165,7 +175,9 @@ def human_review_database() -> Generator[HumanReviewIntegrationContext, None, No
                 admin_engine.dispose()
 
 
-def _seed_human_review_prerequisites(*, factory: sessionmaker[Session], project_root: Path) -> None:
+def _seed_human_review_prerequisites(
+    *, factory: sessionmaker[Session], project_root: Path, execution_mode: str = "PRIMARY"
+) -> None:
     with session_scope(factory) as session:
         ingest_validated_policy_corpus(
             session=session,
@@ -274,6 +286,7 @@ def _seed_human_review_prerequisites(*, factory: sessionmaker[Session], project_
                 case_id=case_id,
                 pipeline_name="product_defect_text_extraction",
                 pipeline_version="2.0.0",
+                execution_mode=execution_mode,
                 trigger_type="USER_REQUEST",
                 status="SUCCEEDED",
                 requested_by=admin.id,
@@ -516,7 +529,9 @@ def test_review_event_task_packet_claim_resolve_and_tenant_isolation(
             },
         }
 
-    policy_repository = SQLAlchemyPolicyEngineRepository(factory)
+    policy_repository = SQLAlchemyPolicyEngineRepository(
+        factory, shadow_feedback_enabled=human_review_database.shadow_feedback_enabled
+    )
     policy_run, _ = policy_repository.create(
         tenant_id=tenant_id,
         case_id=case_id,

@@ -25,6 +25,13 @@ from app.adapters.security.signed_intake_signatures import (
     SignedIntakeKeyConfigurationError,
     load_ed25519_public_key_file,
 )
+from app.bootstrap.settings import LLMTaskRuntimeSettings
+from app.domains.product_defect_cs import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+from app.domains.product_defect_cs.prompts import (
+    GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1,
+    POLICY_QUERY_BUILDER_PROMPT_V1_1,
+)
+from app.platform.model_activation import ModelReleaseTask, RuntimeLLMIdentityV1_1
 from app.platform.pilot_qualification import (
     PilotQualificationEvidence,
     assess_limited_pilot,
@@ -56,11 +63,18 @@ _MODEL_ROUTE_DEPLOYMENT_ID: Final = re.compile(r"^[a-z0-9][a-z0-9._-]{2,127}$")
 _SIGNED_INTAKE_IDENTIFIER: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$")
 _SIGNED_INTAKE_PROVENANCE: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,191}$")
 SIGNED_INTAKE_PUBLIC_KEY_CONTAINER_PATH: Final = "/run/config/signed_intake_public_key.pem"
+MODEL_RELEASE_PUBLIC_KEY_CONTAINER_PATH: Final = "/run/config/model_release_public_key.pem"
 SIGNED_INTAKE_MAX_BODY_BYTES: Final = 128 * 1024
 SIGNED_INTAKE_CLOCK_SKEW_SECONDS: Final = 300
 SIGNED_INTAKE_CONFIGURATION_FIELDS: Final = frozenset(
     {"source_id", "tenant_id", "actor_user_id", "provenance", "public_key_file"}
 )
+PILOT_LLM_PROVIDERS: Final = frozenset({"llama_cpp", "vllm"})
+_MODEL_TASK_PROMPTS: Final = {
+    ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2: (PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2),
+    ModelReleaseTask.POLICY_QUERY_BUILDER_V1: POLICY_QUERY_BUILDER_PROMPT_V1_1,
+    ModelReleaseTask.GROUNDED_POLICY_EXPLANATION_V1: (GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1),
+}
 _PLACEHOLDER_PARTS: Final = (
     "change-me",
     "changeme",
@@ -81,6 +95,90 @@ class PilotPreflightError(RuntimeError):
 
 def _fail(check: str, message: str) -> PilotPreflightError:
     return PilotPreflightError(check, message)
+
+
+def _parse_task_runtimes(raw: str) -> dict[ModelReleaseTask, LLMTaskRuntimeSettings]:
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise _fail("pilot_env", "task-specific LLM runtimes must be valid JSON") from error
+    if not isinstance(payload, dict) or set(payload) != {task.value for task in ModelReleaseTask}:
+        raise _fail("pilot_env", "task-specific LLM runtimes must cover the three model tasks")
+    runtimes: dict[ModelReleaseTask, LLMTaskRuntimeSettings] = {}
+    for task in ModelReleaseTask:
+        try:
+            runtimes[task] = LLMTaskRuntimeSettings.model_validate(payload[task.value])
+        except ValidationError as error:
+            raise _fail(
+                "pilot_env", "a task-specific LLM runtime failed its strict schema"
+            ) from error
+    return runtimes
+
+
+def _validate_gguf_runtime_identities(
+    raw: str,
+    *,
+    task_runtimes: Mapping[ModelReleaseTask, LLMTaskRuntimeSettings],
+) -> None:
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise _fail("pilot_env", "GGUF runtime identities must be valid JSON") from error
+    if not isinstance(payload, dict) or set(payload) != {task.value for task in ModelReleaseTask}:
+        raise _fail("pilot_env", "GGUF runtime identities must cover the three model tasks")
+    shared_runtime: dict[str, object] | None = None
+    prompt_fields = {
+        "prompt_name",
+        "prompt_version",
+        "prompt_content_hash",
+        "input_schema_version",
+        "output_schema_version",
+    }
+    for task, prompt in _MODEL_TASK_PROMPTS.items():
+        try:
+            identity = RuntimeLLMIdentityV1_1.model_validate(payload[task.value])
+        except ValidationError as error:
+            raise _fail("pilot_env", "a GGUF runtime identity failed its strict schema") from error
+        expected_prompt = (
+            prompt.name,
+            prompt.version,
+            prompt.content_hash,
+            prompt.input_schema_version,
+            prompt.output_schema_version,
+        )
+        observed_prompt = (
+            identity.prompt_name,
+            identity.prompt_version,
+            identity.prompt_content_hash,
+            identity.input_schema_version,
+            identity.output_schema_version,
+        )
+        if observed_prompt != expected_prompt:
+            raise _fail("pilot_env", "a GGUF runtime identity has the wrong task prompt contract")
+        task_runtime = task_runtimes[task]
+        expected_model = (
+            task_runtime.model_id,
+            task_runtime.model_version,
+            task_runtime.model_revision,
+        )
+        observed_model = (
+            identity.served_model_name,
+            identity.model_version,
+            identity.artifact_revision,
+        )
+        if observed_model != expected_model:
+            raise _fail(
+                "pilot_env",
+                "a GGUF runtime identity conflicts with its task-specific model runtime",
+            )
+        current_shared_runtime = identity.model_dump(mode="json", exclude=prompt_fields)
+        if shared_runtime is None:
+            shared_runtime = current_shared_runtime
+        elif current_shared_runtime != shared_runtime:
+            raise _fail(
+                "pilot_env",
+                "GGUF runtime identities must describe one shared artifact and runtime",
+            )
 
 
 def load_private_env(path: Path) -> dict[str, str]:
@@ -342,8 +440,12 @@ def validate_pilot_environment(values: Mapping[str, str]) -> None:
         expected=SIGNED_INTAKE_CLOCK_SKEW_SECONDS,
     )
 
-    if _required(values, "LLM_PROVIDER") != "vllm":
-        raise _fail("pilot_env", "pilot LLM_PROVIDER must be the signed vLLM release path")
+    llm_provider = _required(values, "LLM_PROVIDER")
+    if llm_provider not in PILOT_LLM_PROVIDERS:
+        raise _fail(
+            "pilot_env",
+            "pilot LLM_PROVIDER must use an admitted signed HTTP runtime",
+        )
     if _required(values, "VISION_PROVIDER") != "remote":
         raise _fail("pilot_env", "pilot VISION_PROVIDER must be a qualified remote provider")
     for name in ("LLM_BASE_URL", "VISION_BASE_URL", "EMBEDDING_BASE_URL"):
@@ -363,14 +465,21 @@ def validate_pilot_environment(values: Mapping[str, str]) -> None:
         raise _fail("pilot_env", "MODEL_ROUTE_DEPLOYMENT_ID has an invalid format")
     if not _COMMIT.fullmatch(_required(values, "LLM_MODEL_REVISION")):
         raise _fail("pilot_env", "LLM_MODEL_REVISION must be an exact commit hash")
-    for name in (
-        "LLM_ARTIFACT_CONTENT_DIGEST",
-        "LLM_RUNTIME_IMAGE_DIGEST",
-        "LLM_DEPENDENCY_LOCK_DIGEST",
-        "LLM_SBOM_DIGEST",
-    ):
-        if not _SHA256.fullmatch(_required(values, name)):
-            raise _fail("pilot_env", f"{name} must be an exact SHA-256 digest")
+    task_runtimes = _parse_task_runtimes(_required(values, "LLM_TASK_RUNTIMES"))
+    if llm_provider == "llama_cpp":
+        _validate_gguf_runtime_identities(
+            _required(values, "LLM_GGUF_RUNTIME_IDENTITIES"),
+            task_runtimes=task_runtimes,
+        )
+    else:
+        for name in (
+            "LLM_ARTIFACT_CONTENT_DIGEST",
+            "LLM_RUNTIME_IMAGE_DIGEST",
+            "LLM_DEPENDENCY_LOCK_DIGEST",
+            "LLM_SBOM_DIGEST",
+        ):
+            if not _SHA256.fullmatch(_required(values, name)):
+                raise _fail("pilot_env", f"{name} must be an exact SHA-256 digest")
 
     presigned_endpoint = _required(values, "MINIO_PRESIGNED_ENDPOINT")
     if "://" in presigned_endpoint or "/" in presigned_endpoint:
@@ -690,15 +799,34 @@ def validate_compose_config(config: Mapping[str, object], *, image_tag: str) -> 
         {"PRIVACY_LIFECYCLE_AUTOMATION_ENABLED": "true"},
     )
 
-    for service_name in ("api", "worker-model", "worker-retrieval"):
+    provider_services = ("api", "worker-model")
+    for service_name in provider_services:
         _expect_environment(
             config,
             service_name,
-            {"LLM_PROVIDER": "vllm", "MODEL_RELEASE_ENFORCEMENT": "true"},
+            {"MODEL_RELEASE_ENFORCEMENT": "true"},
         )
+        release_key_mounts = tuple(
+            item
+            for item in _service_configs(config, service_name)
+            if item.get("source") == "model-release-public-key"
+            or item.get("target") == MODEL_RELEASE_PUBLIC_KEY_CONTAINER_PATH
+        )
+        if len(release_key_mounts) != 1 or release_key_mounts[0].get("target") != (
+            MODEL_RELEASE_PUBLIC_KEY_CONTAINER_PATH
+        ):
+            raise _fail(
+                "compose_config",
+                f"{service_name} must mount exactly one model release public key",
+            )
     _expect_environment(config, "api", {"VISION_PROVIDER": "remote"})
     _expect_environment(config, "worker-model", {"VISION_PROVIDER": "remote"})
-    for service_name in ("worker-decision", "dispatcher", "privacy-lifecycle"):
+    for service_name in (
+        "worker-retrieval",
+        "worker-decision",
+        "dispatcher",
+        "privacy-lifecycle",
+    ):
         _expect_environment(
             config,
             service_name,
@@ -709,6 +837,15 @@ def validate_compose_config(config: Mapping[str, object], *, image_tag: str) -> 
                 "MODEL_ROUTE_ENFORCEMENT": "false",
             },
         )
+        if any(
+            item.get("source") == "model-release-public-key"
+            or item.get("target") == MODEL_RELEASE_PUBLIC_KEY_CONTAINER_PATH
+            for item in _service_configs(config, service_name)
+        ):
+            raise _fail(
+                "compose_config",
+                f"{service_name} must not mount the model release public key",
+            )
     environments = {
         name: _service_environment(config, name)
         for name in (
@@ -720,6 +857,15 @@ def validate_compose_config(config: Mapping[str, object], *, image_tag: str) -> 
             "privacy-lifecycle",
         )
     }
+    qualified_providers = {
+        str(environments[service_name].get("LLM_PROVIDER", ""))
+        for service_name in provider_services
+    }
+    if len(qualified_providers) != 1 or not qualified_providers <= PILOT_LLM_PROVIDERS:
+        raise _fail(
+            "compose_config",
+            "provider processes must share one admitted signed LLM runtime",
+        )
     deployment_id = str(environments["worker-model"].get("MODEL_ROUTE_DEPLOYMENT_ID", ""))
     if _MODEL_ROUTE_DEPLOYMENT_ID.fullmatch(deployment_id) is None:
         raise _fail("compose_config", "model Worker route deployment identity is invalid")
@@ -785,11 +931,12 @@ def validate_compose_config(config: Mapping[str, object], *, image_tag: str) -> 
         "VISION_API_KEY"
     ):
         raise _fail("compose_config", "model Worker requires only its two provider credentials")
-    if not environments["worker-retrieval"].get("LLM_API_KEY") or environments[
-        "worker-retrieval"
-    ].get("VISION_API_KEY"):
-        raise _fail("compose_config", "retrieval Worker credential scope is invalid")
-    for service_name in ("worker-decision", "dispatcher", "privacy-lifecycle"):
+    for service_name in (
+        "worker-retrieval",
+        "worker-decision",
+        "dispatcher",
+        "privacy-lifecycle",
+    ):
         if environments[service_name].get("LLM_API_KEY") or environments[service_name].get(
             "VISION_API_KEY"
         ):

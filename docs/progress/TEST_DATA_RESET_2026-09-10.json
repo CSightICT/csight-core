@@ -1,0 +1,111 @@
+{
+  "schema": "csight_test_data_reset/1.0.0",
+  "observed_at": "2026-09-10T15:04:00+09:00",
+  "status": "PASS",
+  "scope": "Owner-authorized all-115 operational test-data reset, reload and DB integrity verification. Not full model qualification.",
+  "stages": {
+    "inventory_and_explicit_all_115_approval": "PASS",
+    "fresh_backup_and_actual_database_restore": "PASS",
+    "scoped_reset": "PASS",
+    "temporary_10_case_reload": "PASS",
+    "real_text_v2_rag_policy_review_waiting": "PASS",
+    "final_db_integrity": "PASS",
+    "legacy_multimodal_all_text_stages": "FAIL",
+    "human_ui_feedback": "NOT_RUN"
+  },
+  "reset": {
+    "cases_removed": 115,
+    "evidence_rows_removed": 73,
+    "analysis_runs_removed": 122,
+    "review_tasks_removed": 41,
+    "decisions_removed": 32,
+    "explicit_tables_cleared": 56,
+    "preserved_tables_unchanged_at_reset": 25,
+    "sql": "docs/operations/RESET_ALL_TEST_CASES_2026-09-10.sql"
+  },
+  "backup": {
+    "database": "/private/tmp/csight-all-test-reset-Yd7eYU/core-before-reset.dump",
+    "sha256": "ddd7ed0d2b9df9b99811b1b9840af2dfdd9bbdfbb1167941c5405ae543d972bf",
+    "minio_raw_copy": "/private/tmp/csight-all-test-reset-Yd7eYU/minio-data",
+    "old_bucket_preserved": "csight-evidence",
+    "old_bucket_version_entries": 121,
+    "new_versioned_bucket": "csight-evidence-feedback-20260910",
+    "actual_database_restore": "PASS",
+    "temporary_restore_databases_removed": true,
+    "full_minio_restore": "NOT_RUN",
+    "offhost_or_durable_backup": "NOT_RUN"
+  },
+  "reload": {
+    "cases": 10,
+    "photos": 10,
+    "e3_verified_cases": 10,
+    "text_v2_succeeded": 10,
+    "retrieval_succeeded": 10,
+    "grounding_succeeded": 10,
+    "policy_succeeded": 10,
+    "reviews_pending": 10,
+    "analysis_runs_total": 22,
+    "analysis_mode": "SHADOW",
+    "human_decisions": 0,
+    "external_actions": 0,
+    "legacy_multimodal_cases_partial": 2,
+    "legacy_multimodal_runs_partial_including_retries": 4,
+    "legacy_failure_code": "LLM_INVALID_STRUCTURED_OUTPUT",
+    "legacy_failures_preserved": true,
+    "details": "local-data/internal-feedback-reset-20260910/workflow_report.json"
+  },
+  "corrections": {
+    "missing_fixture_evidence": "7 repaired with migration0038 and machine audit receipts before reset; retained in post-repair backup",
+    "missing_fixture_intake_history": "17 removed only by owner-authorized reset; no fabricated historical events",
+    "integration_tests": "Shared-DB fixtures rejected; exact runner-created disposable database required",
+    "http_response_projection": "Retrieval and Grounding internal rollout fields excluded by public schema allowlist; original committed requests replayed without duplicates",
+    "initial_unsupported_pipeline": "multimodal2.0.0 rejected HTTP422; corrected to supported1.0.0 and separate text-v2"
+  },
+  "verification": {
+    "constraints_checked": 542,
+    "constraint_violations": 0,
+    "photo_byte_metadata_hashes_verified": 10,
+    "sensitive_hashes_verified": 10,
+    "missing_intake_history": 0,
+    "review_packet_hashes_verified": 10,
+    "citation_packs_verified": 10,
+    "text_v2_duplicate_cases": 0,
+    "queues_ready_and_unacked": 0,
+    "schema_drift": 0,
+    "offline_tests_passed": 1493,
+    "offline_deselected": 97,
+    "existing_warnings": 36,
+    "isolated_postgresql_tests_passed": 3,
+    "public_response_contract_tests_passed": 8,
+    "pyright": "PASS",
+    "ruff_format_diff": "PASS",
+    "public_api_schema_unchanged": true
+  },
+  "preservation": {
+    "users": 39,
+    "policy_documents": 44,
+    "policy_clauses": 304,
+    "unchanged_tables_after_real_workflow": 24,
+    "grounding_profiles": "Original2 content hashes unchanged; one immutable Q5 runtime profile appended by normal execution",
+    "existing_uncommitted_changes_preserved": true,
+    "model_services_not_restarted_by_this_task": true,
+    "passwords_used": false,
+    "primary_promotion": false
+  },
+  "runtime": {
+    "observed_at": "2026-09-10T14:59:00+09:00",
+    "healthy_core_services": 9,
+    "api_web_e3_embedding_health": "PASS",
+    "gx10_q5_memory_mib": 17497,
+    "gx10_q5_oom_killed": false,
+    "gx10_q5_restarts": 0,
+    "core_image": "sha256:733d27373e30ffbf2ecd5d4aa84400a4236b8a8c91f09abc2652d5f5ff4ee466"
+  },
+  "remaining": [
+    "Human feedback in the authenticated UI has not been performed by this agent.",
+    "Legacy multimodal text-v1 partial failures remain visible; text-v2 policy workflow passed on the same cases.",
+    "Synthetic integration is not semantic accuracy, E3 commercial rights, customer-pilot qualification or PRIMARY eligibility.",
+    "Backups are local /private/tmp; durable/offhost preservation still needed."
+  ],
+  "next_action": "Refresh /reviews and have an authenticated human review the 10 pending synthetic cases. Preserve failures and versions when recording feedback."
+}

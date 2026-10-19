@@ -94,18 +94,35 @@ make down
 
 바탕화면의 `CSight 서버 제어.app`을 더블클릭하면 터미널 명령 없이 다음 작업을 선택할 수 있습니다.
 
-- `서버 켜기 (빠른 시작)`: 정책 검색용 Qwen Embedding을 먼저 시작하고 모델 로딩 완료 후 기존 이미지로 전체 Core 스택 시작
+- `서버 켜기 (빠른 시작)`: Embedding·기존 Core·공개 시연 경로 준비 후 GX10 전용 Qwen3.8-27B Q5 내부 엔진도 시작하고 합성 응답 확인
 - `코드 반영 후 켜기`: Embedding 준비 후 이미지를 다시 빌드하고 Migration을 적용한 뒤 전체 Core 스택 시작
-- `서버 상태 확인`: 실행 서비스 수와 API·상담원 화면·정책 검색 엔진·`doongdoong.org` 상태 표시
+- `서버 상태 확인`: Core·Embedding·공개 경로와 GX10 내부 엔진 상태를 별도로 표시
 - `상담원 화면 열기`: `http://127.0.0.1:8080` 열기
-- `서버 끄기`: 공개 시연 연결, Docker Core와 앱이 시작한 Embedding을 정지하고 PostgreSQL·RabbitMQ·MinIO Named Volume 보존
+- `서버 끄기`: 앱 전용 GX10 Q5의 identity를 확인해 정지한 뒤 공개 시연 연결·Core·Embedding 정지. 다른 GPU 작업과 데이터 볼륨 보존
 
-현재 시연 프로필은 `LLM_PROVIDER=mock`, `VISION_PROVIDER=mock`이며 정책 검색만 host-native
-Embedding `127.0.0.1:8091`을 필수로 사용합니다. 제어 앱은 stale PID를 그대로 신뢰하지 않고 실제
+기본 프로필은 `LLM_PROVIDER=mock`, `VISION_PROVIDER=mock`입니다. 2026-09-10 사용자가 승인한
+현재 Mac은 `.csight-internal-feedback` 표시 파일로 별도 내부 피드백 프로필을 켰습니다.
+제어 앱은 GX10 Q5 + E3 + Embedding을 Core에 연결하고 새 분석을 SHADOW로 기록합니다.
+SHADOW 결과로 정책 검토·사람 확인·모의 처리를 사용할 수 있으나 PRIMARY 승격이나 실제 환불·발송은
+하지 않습니다. 정책 검색은 host-native Embedding `127.0.0.1:8091`을 사용합니다.
+피드백 모드에서는 **제어 앱**을 사용하세요. 기본 `make up`은 이 별도 프로필을 선택하지 않습니다.
+제어 앱은 stale PID를 그대로 신뢰하지 않고 실제
 프로세스와 `/health`, `/v1/models`를 확인합니다. Embedding은 macOS의 분리 실행 세션에서 유지되므로
 제어 대화상자가 닫혀도 종료되지 않으며, 첫 실행에서는 모델 로딩을 최대 3분간 기다립니다.
 Core가 준비되면 기존 macOS Cloudflare Tunnel 실행 항목을 확인해 `https://doongdoong.org`도 함께
 연결하며, 종료할 때는 설정 파일을 삭제하지 않고 실행만 멈춥니다.
+
+표시 파일이 없으면 GX10 Q5는 독립 검증 서버로만 동작하고 Core 기본 설정을 바꾸지 않습니다. 사용자 NVFP4의
+`vllm_node`와 ComfyUI는 제어 대상이 아닙니다. 기존 SSH 키와 host key 검증만 사용하고,
+일반 검증에서는 API key를 원격에서만 읽습니다. 내부 피드백 모드는 검증된 SSH 터널과 함께 기존
+서비스 API key를 SSH로 받아 Core 프로세스 환경에만 전달하며 Mac 파일·보고서에 저장하지 않습니다.
+SSH 로그인 비밀번호는 사용하지 않습니다. 모델 다운로드·설치·4090 조작·PRIMARY
+전환은 없습니다. 메모리가 부족하면 기동을 거부하며 다른 작업을 자동 종료하지 않습니다.
+GX10에 연결할 수 없으면 Core는 유지하지만 전체 기동 성공으로 표시하지 않습니다.
+결과 창은 60초 후 닫히며 서버는 계속 실행됩니다. 상세 고정 프로필과 복구 방법은
+[GX10 앱 제어 운영 기록](docs/operations/GX10_DESKTOP_CONTROL.md)을 참조합니다.
+현재 실모델 피드백의 사용·검증 범위는
+[내부 피드백 운영 안내](docs/operations/INTERNAL_SHADOW_FEEDBACK.md)를 참조합니다.
 
 앱이 호출하는 실제 제어 로직은
 [`scripts/csight_server_control.sh`](scripts/csight_server_control.sh), macOS 대화상자 원본은
@@ -153,6 +170,12 @@ Core가 준비되면 기존 macOS Cloudflare Tunnel 실행 항목을 확인해 `
 `make test-all`은 먼저 `make up`과 `make migrate`를 실행한 상태에서 사용합니다.
 외부 GPU/서비스 테스트는 `external_gpu`, `external_vision`, `external_embedding` Marker로 격리되며 기본 명령에서
 실행되지 않습니다.
+통합 테스트는 공식 runner가 만든 일회용 `csight_integration_<random>` DB에서만 실행합니다.
+공유 시연 DB를 대상으로 `RUN_CORE_INTEGRATION=1 pytest`를 직접 실행하면 fixture 실행 전에 거부합니다.
+`make test-integration`은 복제 DB를 만들고 종료 시 자신의 복제본만 삭제합니다.
+내부 실모델 피드백 중에는 기본 `make up` 대신 기존 서버 제어 앱을 사용합니다.
+2026-09-10 승인된 전체 테스트 데이터 초기화·복구 위치는
+[초기화 기록](docs/operations/TEST_DATA_RESET_2026-09-10.md)을 참고합니다.
 `make smoke-analysis`는 Seed된 Reviewer와 실행 중인 API·Dispatcher·Worker를 사용하며 합성
 Case만 생성합니다.
 
@@ -647,10 +670,15 @@ make evaluate-extraction-v2-qwen
 make build-query-builder-dataset
 make validate-query-builder-dataset
 make start-embedding
-make evaluate-query-builder
+make evaluate-query-builder EVALUATION_OUTPUT_DIR=local-data/query-dev-unique-run
 make smoke-policy-retrieval-run
 make stop-embedding
 ```
+
+2026-09-09부터 위 generic 평가는 새 output directory의 Dev 진단만 허용하며 Test와 자동 profile
+freeze를 차단한다. 부모 directory는 먼저 준비해야 한다. HitRate·조항 Recall·전체 Gold coverage는
+별개 지표이며 새 보고서는 출시 비적격이다. 기존 평가/선택 기록은 재작성하지 않는다.
+아래 Sprint 관측은 당시 기록이며 최신 모델 자격은 `docs/progress/CURRENT_STATUS.md`가 우선한다.
 
 API는 Case 하위 `policy-retrieval-runs` POST/List/Get을 제공한다. tenant/ACTIVE/as-of는 Core
 hard filter이며 LLM hint는 soft metadata다. 현재 실제 Qwen endpoint가 없어 LLM 평가는 Skipped,

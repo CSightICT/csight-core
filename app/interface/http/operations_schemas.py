@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.model_activation import (
     ActiveLLMRelease,
-    LLMReleaseManifest,
+    LLMReleaseManifestContract,
     ModelActivationEvent,
     ModelReleaseTask,
     RegisteredLLMRelease,
@@ -206,7 +206,7 @@ class OperationalFailureResolutionResponse(_Schema):
 
 
 class RegisterModelReleaseRequest(_Schema):
-    manifest: LLMReleaseManifest
+    manifest: LLMReleaseManifestContract
     signing_key_id: str
     signature_algorithm: Literal["ED25519"] = "ED25519"
     signature_base64: str
@@ -288,3 +288,14 @@ __all__ = [
     "RegisterModelReleaseRequest",
     "RegisteredModelReleaseResponse",
 ]
+
+
+class DemoResetPreviewResponse(BaseModel):
+    enabled: bool
+    count: int
+    fingerprint: str
+    reset_id: str | None = None
+
+
+class DemoResetRequest(BaseModel):
+    fingerprint: str = Field(min_length=64, max_length=64, pattern="^[a-f0-9]+$")

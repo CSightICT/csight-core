@@ -55,3 +55,9 @@ local-data/
 *.pth
 *.ckpt
 *.safetensors
+*.gguf
+*.gguf.part
+*.imatrix
+# Local opt-in marker and owned SSH control socket (no secrets).
+.csight-internal-feedback
+.csight-feedback-ssh.sock

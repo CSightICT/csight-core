@@ -5,6 +5,7 @@ from typing import cast
 
 from fastapi import Request
 
+from app.application.demo_reset import DemoReset
 from app.application.model_activation import (
     ActivateSignedModelRelease,
     GetActiveModelRelease,
@@ -36,6 +37,7 @@ class OperationsServiceContainer:
     get_active_model_route: GetActiveModelRoutePlan | None = None
     get_onboarding_readiness: GetOnboardingReadiness | None = None
     get_pilot_readiness: GetPilotReadiness | None = None
+    demo_reset: DemoReset | None = None
 
 
 def provide_operations_services(request: Request) -> OperationsServiceContainer | None:

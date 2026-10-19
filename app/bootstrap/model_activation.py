@@ -16,7 +16,11 @@ from app.application.model_activation import (
 from app.bootstrap.settings import Settings
 from app.domains.product_defect_cs import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
 from app.platform.analysis.prompts import PromptManifest
-from app.platform.model_activation import ModelReleaseTask, RuntimeLLMIdentity
+from app.platform.model_activation import (
+    ModelReleaseTask,
+    RuntimeLLMIdentity,
+    RuntimeLLMIdentityContract,
+)
 
 
 class ModelActivationConfigurationError(RuntimeError):
@@ -69,7 +73,7 @@ def build_runtime_llm_identity(
     settings: Settings,
     prompt: PromptManifest | None = None,
     task: ModelReleaseTask = ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2,
-) -> RuntimeLLMIdentity:
+) -> RuntimeLLMIdentityContract:
     """Build the exact v2 runtime identity shared by release and route guards."""
 
     prompt = prompt or PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
@@ -81,6 +85,33 @@ def build_runtime_llm_identity(
     model_revision = (
         task_runtime.model_revision if task_runtime is not None else settings.llm_model_revision
     )
+    gguf_identity = settings.llm_gguf_runtime_identities.get(task)
+    if gguf_identity is None:
+        gguf_identity = settings.llm_gguf_runtime_identity
+    if settings.llm_gguf_runtime_identities and gguf_identity is None:
+        raise ModelActivationConfigurationError(
+            f"GGUF runtime identity is missing for task {task.value}"
+        )
+    if gguf_identity is not None:
+        expected = {
+            "served_model_name": model_name,
+            "model_version": model_version,
+            "artifact_revision": model_revision,
+            "prompt_name": prompt.name,
+            "prompt_version": prompt.version,
+            "prompt_content_hash": prompt.content_hash,
+            "input_schema_version": prompt.input_schema_version,
+            "output_schema_version": prompt.output_schema_version,
+        }
+        mismatches = tuple(
+            key for key, value in expected.items() if getattr(gguf_identity, key) != value
+        )
+        if mismatches:
+            raise ModelActivationConfigurationError(
+                "GGUF runtime identity conflicts with task model or prompt configuration: "
+                + ", ".join(mismatches)
+            )
+        return gguf_identity
     required = (
         model_revision,
         settings.llm_artifact_content_digest,

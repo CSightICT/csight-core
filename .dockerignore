@@ -1,4 +1,6 @@
 .git
+.csight-internal-feedback
+.csight-feedback-ssh.sock
 .github
 .venv
 .venv-*/

@@ -73,6 +73,7 @@ class _Repository:
             order_ref="ORDER-1",
             product_ref="PRODUCT-1",
             requested_action="REFUND",
+            inquiry_preview="포장 파손으로 교환을 요청합니다.",
             created_at=NOW,
             updated_at=NOW,
             review_task_id=TASK_ID,
@@ -92,6 +93,7 @@ class _Repository:
             order_ref="ORDER-1",
             product_ref="PRODUCT-1",
             requested_action="REFUND",
+            inquiry_preview="포장 파손으로 교환을 요청합니다.",
             task_type="STANDARD_REVIEW",
             priority="HIGH",
             status="CLAIMED",
@@ -268,7 +270,9 @@ def test_operator_routes_are_tenant_scoped_no_store_and_return_counts() -> None:
     assert cases.headers["Cache-Control"] == "no-store"
     assert cases.json()["counts"] == COUNTS.model_dump()
     assert cases.json()["items"][0]["review_status"] == "CLAIMED"
+    assert cases.json()["items"][0]["inquiry_preview"] == "포장 파손으로 교환을 요청합니다."
     assert reviews.status_code == 200
+    assert reviews.json()["items"][0]["inquiry_preview"] == "포장 파손으로 교환을 요청합니다."
     assert reviews.json()["items"][0]["priority"] == "HIGH"
     assert snapshot.status_code == 200
     assert snapshot.headers["Pragma"] == "no-cache"

@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.platform.analysis.enums import AnalysisExecutionMode
 from app.platform.analysis.models import ProviderExecutionMetadata
 from app.platform.analysis.prompts import PromptManifest
-from app.platform.errors import CaseNotFoundError
+from app.platform.errors import CaseNotFoundError, ValidationError
 from app.platform.grounding import (
     GroundedExplanationInput,
     GroundedExplanationRun,
@@ -83,8 +83,10 @@ class StartGroundedExplanation:
         llm: LLMProvider,
         prompt: PromptManifest,
         model_route_resolver: ActiveModelRouteResolver | None = None,
+        shadow_only: bool = False,
     ) -> None:
         self._repository = repository
+        self._shadow_only = shadow_only
         self._llm = llm
         self._prompt = prompt
         self._model_route_resolver = model_route_resolver
@@ -110,6 +112,8 @@ class StartGroundedExplanation:
             case_id=case_id,
             retrieval_run_id=command.retrieval_run_id,
         )
+        if self._shadow_only and execution_mode is not AnalysisExecutionMode.SHADOW:
+            raise ValidationError("Internal feedback grounding requires a new SHADOW analysis.")
         route_plan_id: str | None = None
         route_contract: str | None = None
         if self._model_route_resolver is not None:

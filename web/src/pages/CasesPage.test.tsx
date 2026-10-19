@@ -20,6 +20,7 @@ function item(caseId: string, overrides: Record<string, unknown> = {}) {
     order_ref: `ORD-${caseId}`,
     product_ref: "DEMO-COMPACT-CASE-10",
     requested_action: "REFUND",
+    inquiry_preview: `문의 내용 ${caseId}`,
     created_at: now,
     updated_at: now,
     assignment_version: 0,
@@ -61,13 +62,15 @@ describe("CasesPage operator queue", () => {
 
     renderPage();
 
-    expect(await screen.findByText("플랫케이스 오거나이저 2P")).toBeVisible();
-    expect(screen.getByText("SKU-FUTURE 상품")).toBeVisible();
+    expect(await screen.findByText("문의 내용 case-1")).toBeVisible();
+    expect(screen.getByText("문의 내용 case-2")).toBeVisible();
     expect(screen.getByText("FUTURE_CASE_STATE")).toBeVisible();
-    expect(screen.getAllByText("미배정").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /문의 내용 case-1/ })).toHaveAttribute("href", "/reviews/task-1");
+    expect(screen.queryByText("플랫케이스 오거나이저 2P")).not.toBeInTheDocument();
+
     expect(screen.getByRole("tab", { name: /전체/ })).toHaveTextContent("2");
     expect(screen.getByRole("tab", { name: /긴급/ })).toHaveTextContent("1");
-    expect(screen.getByText("reviewer-1")).toBeVisible();
+
     expect(screen.getAllByText(/대기/).length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /새 문의|첫 문의/ })).not.toBeInTheDocument();
     await waitFor(() => expect(queueRequests).toBe(1));
@@ -95,12 +98,12 @@ describe("CasesPage operator queue", () => {
     renderPage();
     const user = userEvent.setup();
 
-    expect(await screen.findByText("SKU-BETA 상품")).toBeVisible();
+    expect(await screen.findByText("문의 내용 case-beta")).toBeVisible();
     await user.type(screen.getByPlaceholderText("주문·상품·문의 번호 검색"), "ORD-ALPHA");
 
     await waitFor(() => expect(requests.some((request) => request.searchParams.get("q") === "ORD-ALPHA")).toBe(true));
-    expect(screen.getByText("플랫케이스 오거나이저 2P")).toBeVisible();
-    expect(screen.queryByText("SKU-BETA 상품")).not.toBeInTheDocument();
+    expect(screen.getByText("문의 내용 case-alpha")).toBeVisible();
+    expect(screen.queryByText("문의 내용 case-beta")).not.toBeInTheDocument();
     expect(screen.getByText("검색 결과 1건")).toBeVisible();
   });
 
@@ -118,14 +121,14 @@ describe("CasesPage operator queue", () => {
     renderPage();
     const user = userEvent.setup();
 
-    expect(await screen.findByText("주문 번호 ORD-case-1", { exact: false })).toBeVisible();
+    expect(await screen.findByText("문의 내용 case-1", { exact: false })).toBeVisible();
     expect(requests).toHaveLength(1);
     expect(requests[0]).toContain("view=all");
     expect(requests[0]).toContain("sort=newest");
     await user.click(screen.getByRole("button", { name: "문의 더 보기" }));
 
-    expect(await screen.findByText("SKU-SECOND 상품")).toBeVisible();
-    expect(screen.getByText("주문 번호 ORD-case-1", { exact: false })).toBeVisible();
+    expect(await screen.findByText("문의 내용 case-2")).toBeVisible();
+    expect(screen.getByText("문의 내용 case-1", { exact: false })).toBeVisible();
     expect(requests).toHaveLength(2);
     expect(requests[1]).toContain("cursor=opaque-cursor-2");
   });

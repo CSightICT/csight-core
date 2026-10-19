@@ -1,4 +1,4 @@
-"""Evaluate sealed query strategies with the frozen HYBRID retriever."""
+"""Evaluate Dev query strategies; historical sealed Test and profiles stay read-only."""
 
 from __future__ import annotations
 
@@ -21,8 +21,6 @@ from app.application.policy_retrieval import SearchPolicyClauses
 from app.bootstrap.settings import Settings
 from app.bootstrap.sprint4b import build_sprint4b_services
 from app.domains.product_defect_cs.query_builder import (
-    RULE_NAME,
-    RULE_VERSION,
     build_deterministic_query_plan,
 )
 from app.platform.analysis.enums import DefectLocation, ExtractionIssueType
@@ -44,11 +42,16 @@ from app.platform.query_builder import (
     fuse_multi_query_hits,
 )
 from app.platform.tenant import Principal, Role
+from scripts.evaluation_reporting import (
+    private_observation_summary,
+    ranking_metrics_from_rows,
+    reserve_new_output,
+    unmeasured_metrics,
+    write_json_new,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASET = ROOT / "evaluation/policy_query_builder_v1/gold.jsonl"
-MANIFEST = ROOT / "evaluation/policy_query_builder_v1/manifest.json"
-RESULTS = ROOT / "evaluation/results/policy_query_builder_v1"
 
 
 def _percentile(values: list[float], percentile: float) -> float:
@@ -101,42 +104,26 @@ def _input(record: dict[str, Any]) -> PolicyQueryBuilderInput:
 
 
 def _metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    ranking = ranking_metrics_from_rows(rows)
     count = len(rows)
-    recall = {
-        k: sum(any(hit in set(row["relevant"]) for hit in row["hits"][:k]) for row in rows) / count
-        for k in (1, 3, 5, 10, 20)
-    }
-    reciprocal = []
-    ndcg = []
-    exact = []
-    for row in rows:
-        relevant = set(row["relevant"])
-        ranks = [index for index, hit in enumerate(row["hits"][:10], 1) if hit in relevant]
-        reciprocal.append(1 / min(ranks) if ranks else 0)
-        dcg = sum(1 / math.log2(rank + 1) for rank in ranks)
-        ideal = sum(1 / math.log2(rank + 1) for rank in range(1, min(10, len(relevant)) + 1))
-        ndcg.append(dcg / ideal if ideal else 0)
-        exact.append(relevant <= set(row["hits"][:10]))
     latencies = [float(row["latency_ms"]) for row in rows]
     return {
         "count": count,
-        **{f"recall_at_{k}": round(value, 6) for k, value in recall.items()},
-        "mrr_at_10": round(statistics.fmean(reciprocal), 6),
-        "ndcg_at_10": round(statistics.fmean(ndcg), 6),
-        "exact_gold_coverage_at_10": round(sum(exact) / count, 6),
-        "candidate_recall_at_20": round(recall[20], 6),
+        **ranking,
         "hard_negative_hit_rate_at_5": round(
             sum(bool(set(row["hard_negative"]) & set(row["hits"][:5])) for row in rows) / count,
             6,
         ),
         "zero_result_rate": round(sum(not row["hits"] for row in rows) / count, 6),
-        "cross_tenant_retrieval_rate": 0.0,
-        "wrong_version_retrieval_rate": 0.0,
-        "future_policy_retrieval_rate": 0.0,
-        "retired_policy_retrieval_rate": 0.0,
+        **unmeasured_metrics(
+            "cross_tenant_retrieval_rate",
+            "wrong_version_retrieval_rate",
+            "future_policy_retrieval_rate",
+            "retired_policy_retrieval_rate",
+            "determinism_rate",
+        ),
         "latency_p50_ms": round(statistics.median(latencies), 3),
         "latency_p95_ms": round(_percentile(latencies, 0.95), 3),
-        "determinism_rate": 1.0,
     }
 
 
@@ -213,17 +200,19 @@ def evaluate(strategy: str, split: str) -> tuple[dict[str, Any], list[dict[str, 
         )
     metrics = _metrics(rows)
     metrics["direct"] = {
-        "json_schema_valid_rate": 1.0,
-        "pydantic_validation_rate": 1.0,
+        **unmeasured_metrics(
+            "json_schema_valid_rate",
+            "pydantic_validation_rate",
+            "empty_query_rate",
+            "duplicate_query_rate",
+            "forbidden_field_rate",
+            "unknown_enum_rate",
+            "tenant_field_violation_rate",
+            "prompt_injection_violation_rate",
+            "reasoning_leakage_rate",
+        ),
         "query_purpose_f1": round(statistics.fmean(purpose_scores), 6),
         "filter_hint_f1": round(statistics.fmean(hint_scores), 6),
-        "empty_query_rate": 0.0,
-        "duplicate_query_rate": 0.0,
-        "forbidden_field_rate": 0.0,
-        "unknown_enum_rate": 0.0,
-        "tenant_field_violation_rate": 0.0,
-        "prompt_injection_violation_rate": 0.0,
-        "reasoning_leakage_rate": 0.0,
     }
     return metrics, rows
 
@@ -238,97 +227,52 @@ def _set_f1(expected: set[str], actual: set[str]) -> float:
     return 2 * precision * recall / (precision + recall) if precision + recall else 0.0
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strategy", choices=("raw", "deterministic", "llm", "all"), default="all")
+    parser.add_argument("--split", choices=("dev", "test"), default="dev")
+    parser.add_argument(
+        "--output-dir", type=Path, help="New private run directory; parent must exist"
+    )
     args = parser.parse_args()
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    if args.strategy != "all":
-        strategy = args.strategy.upper()
-        if strategy == "LLM":
-            print("SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE")
-            return
-        metrics, rows = evaluate(strategy, "dev")
-        (RESULTS / f"query_builder_{args.strategy}_dev_metrics.json").write_text(
-            json.dumps(metrics, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-        )
-        (RESULTS / f"{args.strategy}_dev_per_query.jsonl").write_text(
-            "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
-        )
-        print(f"QUERY_BUILDER_DEV_EVALUATED strategy={strategy} records=80")
-        return
-    strategies = ("RAW", "DETERMINISTIC")
-    manifest = json.loads(MANIFEST.read_text())
-    all_metrics: dict[str, dict[str, Any]] = {}
-    for split in ("dev", "test"):
+    if args.split != "dev":
+        print(json.dumps({"status": "BLOCKED", "error": "LEGACY_SEALED_TEST_DISABLED"}))
+        return 2
+    if args.strategy == "llm":
+        print(json.dumps({"status": "SKIPPED", "reason": "EXTERNAL_LLM_NOT_AVAILABLE"}))
+        return 0
+    try:
+        output_directory = reserve_new_output(args.output_dir)
+    except (ValueError, OSError):
+        print(json.dumps({"status": "FAIL", "error": "NEW_OUTPUT_DIRECTORY_REQUIRED"}))
+        return 2
+    strategies = ("RAW", "DETERMINISTIC") if args.strategy == "all" else (args.strategy.upper(),)
+    try:
         output: dict[str, Any] = {}
-        per_query: list[dict[str, Any]] = []
+        observations: dict[str, Any] = {}
         for strategy in strategies:
-            if strategy == "LLM":
-                output[strategy] = {"status": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE"}
-                continue
-            metrics, rows = evaluate(strategy, split)
+            metrics, rows = evaluate(strategy, "dev")
             output[strategy] = metrics
-            per_query.extend(rows)
-        all_metrics[split] = output
-        (RESULTS / f"query_builder_{split}_metrics.json").write_text(
-            json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+            observations[strategy] = private_observation_summary(rows)
+        digest = write_json_new(
+            output_directory / "result.json",
+            {
+                "schema_version": "query_builder_dev_evaluation/2.0.0",
+                "split": "dev",
+                "metrics": output,
+                "observations": observations,
+                "release_eligible": False,
+                "profile_frozen": False,
+                "default_strategy_changed": False,
+            },
         )
-        (RESULTS / f"{split}_per_query.jsonl").write_text(
-            "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in per_query)
-        )
-    dev = all_metrics["dev"]
-    selected = (
-        "DETERMINISTIC" if dev["DETERMINISTIC"]["mrr_at_10"] > dev["RAW"]["mrr_at_10"] else "RAW"
-    )
-    profile = {
-        "profile_name": "policy_query_builder",
-        "profile_version": "1.0.0",
-        "selected_strategy": selected,
-        "selection_split": "dev",
-        "dataset_hash": manifest["dataset_hash"],
-        "corpus_hash": manifest["corpus_hash"],
-        "extraction_prompt_hash": (
-            "c3e32c74572ed6c9f4a886779b049a061dd82b8ff74dcd6e5915f844a5c6ba62"
-        ),
-        "llm_prompt_name": "policy_query_builder",
-        "llm_prompt_version": "1.1.0",
-        "llm_prompt_hash": "da8556da9c3ac9cd319162b28753e498696b7c1099f79fda8af224fa1d3916ab",
-        "model_qualification": "SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE",
-        "rule_name": RULE_NAME,
-        "rule_version": RULE_VERSION,
-        "query_count": "1-3",
-        "soft_hint_policy": "VALIDATED_SOFT_ONLY_NOT_APPLIED",
-        "test_reconfiguration_allowed": False,
-    }
-    profile["profile_hash"] = hashlib.sha256(
-        json.dumps(profile, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-    execution = {
-        "profile_name": "retrieval_execution_profile",
-        "profile_version": "3.0.0",
-        "base_mode": "HYBRID",
-        "base_index_version": "1.0.0",
-        "base_retrieval_profile": "frozen-policy-retrieval-v1",
-        "corpus_hash": manifest["corpus_hash"],
-        "reranker_enabled": False,
-        "per_query_top_k": 20,
-        "final_top_k": 10,
-        "multi_query_fusion": "policy_multi_query_rrf:1.0.0",
-        "rrf_k": 20,
-        "query_weight": 1.0,
-        "dataset_hash": manifest["dataset_hash"],
-    }
-    for name, value in (
-        ("query_builder_profile_v1.json", profile),
-        ("retrieval_execution_profile_v3.json", execution),
-    ):
-        (RESULTS / name).write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
-    print(
-        f"QUERY_BUILDER_EVALUATED selected={selected} dev=80 test=40 "
-        "llm=SKIPPED_EXTERNAL_LLM_NOT_AVAILABLE test_locked=true"
-    )
+    except Exception:
+        # Boundary errors can include URLs, credentials or provider/customer content.
+        print(json.dumps({"status": "FAIL", "error": "DEV_EVALUATION_FAILED"}))
+        return 2
+    print(json.dumps({"status": "PASS", "split": "dev", "report_sha256": digest}))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

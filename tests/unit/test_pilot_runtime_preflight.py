@@ -10,6 +10,12 @@ from types import SimpleNamespace
 import pytest
 
 import scripts.preflight_pilot_runtime as pilot_preflight
+from app.domains.product_defect_cs import PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+from app.domains.product_defect_cs.prompts import (
+    GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1,
+    POLICY_QUERY_BUILDER_PROMPT_V1_1,
+)
+from app.platform.model_activation import ModelReleaseTask
 from scripts.preflight_pilot_runtime import (
     MINIMUM_FREE_BYTES,
     PilotPreflightError,
@@ -20,6 +26,10 @@ from scripts.preflight_pilot_runtime import (
     validate_restore_set,
 )
 from scripts.restore_manifest import ARTIFACT_ROLES, build_manifest
+from tests.unit.test_model_activation_gguf import (
+    gguf_manifest_fixture,
+    gguf_runtime_identity_fixture,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -104,6 +114,7 @@ MCowBQYDK2VwAyEAERERERERERERERERERERERERERERERERERERERERERE=
         "LLM_MODEL_ID": "qualified-llm",
         "LLM_MODEL_VERSION": "1.0.0",
         "LLM_MODEL_REVISION": "c" * 40,
+        "LLM_TASK_RUNTIMES": _task_runtimes(),
         "MODEL_RELEASE_SIGNING_KEY_ID": "pilot-release-key-v1",
         "LLM_ARTIFACT_CONTENT_DIGEST": digest,
         "LLM_RUNTIME_IMAGE_DIGEST": digest,
@@ -174,6 +185,56 @@ def _eligible_qualification() -> dict[str, object]:
             "otel_signal_delivery_passed": True,
         },
     }
+
+
+def _llama_cpp_runtime_identities() -> str:
+    base = gguf_runtime_identity_fixture(gguf_manifest_fixture()).model_copy(
+        update={
+            "served_model_name": "qualified-llm",
+            "model_version": "1.0.0",
+            "artifact_revision": "c" * 40,
+        }
+    )
+    prompts = {
+        ModelReleaseTask.PRODUCT_DEFECT_TEXT_EXTRACTION_V2: (
+            PRODUCT_DEFECT_TEXT_EXTRACTION_PROMPT_V2
+        ),
+        ModelReleaseTask.POLICY_QUERY_BUILDER_V1: POLICY_QUERY_BUILDER_PROMPT_V1_1,
+        ModelReleaseTask.GROUNDED_POLICY_EXPLANATION_V1: (GROUNDED_POLICY_EXPLANATION_PROMPT_V1_1),
+    }
+    return json.dumps(
+        {
+            task.value: base.model_copy(
+                update={
+                    "prompt_name": prompt.name,
+                    "prompt_version": prompt.version,
+                    "prompt_content_hash": prompt.content_hash,
+                    "input_schema_version": prompt.input_schema_version,
+                    "output_schema_version": prompt.output_schema_version,
+                }
+            ).model_dump(mode="json")
+            for task, prompt in prompts.items()
+        }
+    )
+
+
+def _task_runtimes() -> str:
+    return json.dumps(
+        {
+            task.value: {
+                "base_url": "http://100.64.0.20:18000/v1",
+                "model_id": "qualified-llm",
+                "model_version": "1.0.0",
+                "model_revision": "c" * 40,
+                "deployment_id": "onprem-4090-primary",
+                "connect_timeout_seconds": 5.0,
+                "read_timeout_seconds": 120.0,
+                "circuit_failure_threshold": 5,
+                "circuit_open_seconds": 30.0,
+            }
+            for task in ModelReleaseTask
+        }
+    )
 
 
 def _restore_fixture(tmp_path: Path) -> tuple[dict[str, str], Path]:
@@ -251,8 +312,44 @@ def test_pilot_environment_requires_real_release_security_and_private_files(
     values = _valid_environment(tmp_path)
     validate_pilot_environment(values)
 
+    values["LLM_PROVIDER"] = "llama_cpp"
+    values["LLM_GGUF_RUNTIME_IDENTITIES"] = _llama_cpp_runtime_identities()
+    validate_pilot_environment(values)
+    values.pop("LLM_GGUF_RUNTIME_IDENTITIES")
+    with pytest.raises(PilotPreflightError, match="LLM_GGUF_RUNTIME_IDENTITIES"):
+        validate_pilot_environment(values)
+    values["LLM_GGUF_RUNTIME_IDENTITIES"] = _llama_cpp_runtime_identities()
+    values["LLM_PROVIDER"] = "mlx"
+    with pytest.raises(PilotPreflightError, match="admitted signed HTTP runtime"):
+        validate_pilot_environment(values)
+    values["LLM_PROVIDER"] = "llama_cpp"
+
     values["CSIGHT_IMAGE_TAG"] = "dev"
     with pytest.raises(PilotPreflightError, match="non-development"):
+        validate_pilot_environment(values)
+
+
+def test_llama_cpp_pilot_identity_must_match_every_task_runtime(tmp_path: Path) -> None:
+    values = _valid_environment(tmp_path)
+    values["LLM_PROVIDER"] = "llama_cpp"
+    values["LLM_GGUF_RUNTIME_IDENTITIES"] = _llama_cpp_runtime_identities()
+    runtimes = json.loads(values["LLM_TASK_RUNTIMES"])
+    runtimes[ModelReleaseTask.POLICY_QUERY_BUILDER_V1.value]["model_revision"] = "d" * 40
+    values["LLM_TASK_RUNTIMES"] = json.dumps(runtimes)
+
+    with pytest.raises(PilotPreflightError, match="conflicts with its task-specific"):
+        validate_pilot_environment(values)
+
+
+def test_llama_cpp_pilot_identities_must_share_one_artifact_runtime(tmp_path: Path) -> None:
+    values = _valid_environment(tmp_path)
+    values["LLM_PROVIDER"] = "llama_cpp"
+    identities = json.loads(_llama_cpp_runtime_identities())
+    task = ModelReleaseTask.GROUNDED_POLICY_EXPLANATION_V1
+    identities[task.value]["artifact_content_digest"] = "sha256:" + "f" * 64
+    values["LLM_GGUF_RUNTIME_IDENTITIES"] = json.dumps(identities)
+
+    with pytest.raises(PilotPreflightError, match="one shared artifact and runtime"):
         validate_pilot_environment(values)
 
 

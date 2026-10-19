@@ -62,3 +62,36 @@ Apple Silicon 개발 Mac의 Docker에서 고정된 amd64 ClamAV 이미지를 사
 이 검증은 이미지 반입 경로 하나의 자격일 뿐이며 실제 고객 파일럿 승인, 개인정보 전체 수명주기,
 백업 복원 또는 모델 품질을 증명하지 않는다. 모델 결과는 계속 참고 권고이고 실제 환불·메일·결제
 동작을 수행하지 않는다.
+
+## 2026-09-09 메타데이터·ClamAV 판정 경계 회귀 보강
+
+메모리에서 만든 합성 이미지와 가짜 socket으로 다음 두 결함을 재현하고 수정했다. 실제 고객
+원문/이미지, 실행 중인 ClamAV·GPU·Core에는 접근하지 않았으며 실제 유출을 발견했다는 의미가 아니다.
+
+- PNG encoder가 원본 ICC profile을, JPEG encoder가 원본 comment를 재사용해 정화 결과에 남기는
+  문제를 수정했다. EXIF orientation과 투명도를 픽셀에 적용한 뒤 encoder 입력의 원본 metadata를
+  제거한다. JPEG/PNG/WebP의 EXIF·ICC·XMP/comment/text 제거, 회전, RGBA 및 palette 투명도와
+  입력/출력 양쪽 악성 파일 검사 호출을 회귀 검사한다.
+- ICC를 새 프로필로 변환하거나 교체하지 않는다. 기존 metadata-free 계약에 따라 원본 profile을
+  제거하는 것이며, 색관리 기반 외관 동일성을 새로 보증하지 않는다. 필요하면 별도 데이터·모델
+  품질 검증에서 색상 영향을 확인한다.
+- ClamAV 응답은 TCP 조각 단위가 아닌 NULL 종료 프레임과 non-session 연결 종료(EOF)까지 읽는다.
+  전체 응답 상한은 4,096 bytes이며 초과 탐지를 위한 1 byte만 추가로 읽는다. 연결에 전달하는
+  timeout과 각 송신/수신/EOF 대기에는 같은 monotonic deadline의 잔여 시간을 사용하고,
+  budget을 넘겨 돌아온 결과도 승인하지 않는다. 플랫폼 DNS resolver 자체에 별도 취소 기능을
+  추가한 것은 아니므로 resolver의 wall-clock 상한까지 검증했다고 해석하지 않는다.
+- 정확한 단일 `stream: OK` NULL 프레임만 clean이다. 올바른 `stream: <signature> FOUND`는 악성
+  판정이며 signature를 외부 오류에 포함하지 않는다. 잘못된 접두사, 부분 응답, NULL 누락, ERROR,
+  복수/충돌 프레임, 빈·과대 응답과 timeout은 실패-폐쇄한다. 분할된 FOUND와 OK, EOF 전 timeout도
+  네트워크 없이 검사한다. 스캐너는 계속 사설망에만 두고 인증되지 않은 공개 TCP 접근을 금지한다.
+
+프로토콜 근거는 [ClamAV 공식 ClamD protocol guide](https://docs.clamav.net/manual/Usage/ClamdProtocol.html)의
+framing/INSTREAM/Reading Replies와
+[ClamAV 1.5.4 scanner source](https://github.com/Cisco-Talos/clamav/blob/clamav-1.5.4/clamd/scanner.c)의
+stream 판정 경로다. 운영에 고정한 버전의
+[clamd manual source](https://github.com/Cisco-Talos/clamav/blob/clamav-1.5.4/docs/man/clamd.8.in)도 대조했다.
+
+이번 회귀는 `tests/unit/test_evidence_security.py`, `tests/unit/test_clamav_scanner.py`의
+network-free 검사다. 실제 ClamAV HTTP·저장/readback과 파일럿 호스트 보안 qualification은 이번에
+재실행하지 않았다. 기존 8월 30일 실측과 이번 오프라인 검사를 서로 대체하지 않는다. 운영 프로필,
+모델 route, 데이터 보존 설정을 활성화하거나 저장된 과거 Evidence를 다시 쓰지 않았다.

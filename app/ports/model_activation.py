@@ -9,7 +9,7 @@ from app.platform.model_activation import (
     ModelActivationEvent,
     ModelReleaseTask,
     RegisteredLLMRelease,
-    RuntimeLLMIdentity,
+    RuntimeLLMIdentityContract,
     SignedLLMReleaseManifest,
 )
 
@@ -61,7 +61,7 @@ class ModelActivationRepository(Protocol):
 
 class ModelReleaseExecutionGuard(Protocol):
     @property
-    def runtime_identity(self) -> RuntimeLLMIdentity: ...
+    def runtime_identity(self) -> RuntimeLLMIdentityContract: ...
 
     def execute(
         self,

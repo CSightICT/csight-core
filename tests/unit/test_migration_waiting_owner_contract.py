@@ -10,7 +10,7 @@ REVISION = "20260830_0025_waiting_owner_and_similarity_contract"
 
 def test_waiting_owner_migration_is_head_and_fail_closed() -> None:
     scripts = ScriptDirectory.from_config(Config("alembic.ini"))
-    assert scripts.get_current_head() == "20260831_0036_policy_query_search_events_v2"
+    assert scripts.get_current_head() == "20260910_0038_fixture_evidence_repair"
     script = scripts.get_revision(REVISION)
     assert script is not None
     assert script.down_revision == "20260830_0024_schema_drift_repair"

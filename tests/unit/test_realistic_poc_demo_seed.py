@@ -16,6 +16,7 @@ from scripts.seed_realistic_poc_demo import (
     DemoManifest,
     RealisticDemoSeedFailure,
     ResolvedDemoSource,
+    allow_partial_vision_seed,
     build_case_attributes,
     ensure_private_evidence,
     load_manifest,
@@ -24,6 +25,54 @@ from scripts.seed_realistic_poc_demo import (
     validate_core_vision_result,
     validate_private_evidence_object,
 )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("mode", "enabled", "status", "expected"),
+    [
+        ("SHADOW", True, "PARTIAL_SUCCESS", True),
+        ("SHADOW", False, "PARTIAL_SUCCESS", False),
+        ("SHADOW", True, "FAILED", False),
+        ("SHADOW", True, "SUCCEEDED", False),
+        ("PRIMARY", False, "PARTIAL_SUCCESS", False),
+    ],
+)
+def test_partial_vision_loading_is_explicit_shadow_only(
+    mode: str, enabled: bool, status: str, expected: bool
+) -> None:
+    assert (
+        allow_partial_vision_seed(
+            execution_mode=mode, allow_partial_multimodal=enabled, status=status
+        )
+        is expected
+    )
+
+
+@pytest.mark.unit
+def test_partial_vision_loading_rejects_primary() -> None:
+    with pytest.raises(RealisticDemoSeedFailure, match="requires SHADOW"):
+        allow_partial_vision_seed(
+            execution_mode="PRIMARY", allow_partial_multimodal=True, status="PARTIAL_SUCCESS"
+        )
+
+
+@pytest.mark.unit
+def test_seed_cli_rejects_unsupported_multimodal_v2_before_io() -> None:
+    from scripts.seed_realistic_poc_demo import main
+
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "--top100-source",
+                "/unused",
+                "--normal-source",
+                "/unused",
+                "--pipeline-version",
+                "2.0.0",
+            ]
+        )
+    assert error.value.code == 2
 
 
 @pytest.mark.unit

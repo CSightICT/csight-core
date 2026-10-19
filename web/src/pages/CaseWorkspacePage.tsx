@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 
 import { findLatestCaseAnalysisRuns, findLatestPolicyRunSet } from "../analysis/runRecovery";
 import { ApiError, api } from "../api/client";
@@ -37,6 +37,7 @@ export function CaseWorkspacePage() {
 }
 
 function CaseWorkspace({ caseId }: { caseId: string }) {
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [checkpoint, setCheckpoint] = useState(() => checkpointStore.load(caseId));
   const [progress, setProgress] = useState<WorkflowProgress[]>([]);
@@ -395,6 +396,8 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
   if (caseQuery.isLoading) return <div className="page"><Loading label="문의 작업 공간을 준비하는 중" /></div>;
   if (caseQuery.error || !caseQuery.data) return <div className="page"><div className="error-panel" role="alert">{friendlyError(caseQuery.error)}</div></div>;
   const item = caseQuery.data;
+  const savedSummary = analysisQuery.data?.extraction_result_v2?.summary;
+  const inquirySummary = typeof savedSummary === "string" && savedSummary.trim() ? savedSummary.trim() : null;
   const review = policyEvaluationRunId
     ? reviewsQuery.data?.find((task) => task.policy_evaluation_run_id === policyEvaluationRunId)
     : undefined;
@@ -475,6 +478,10 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
               ? "사진을 추가하면 이미지 참고 분석과 정책 검토를 함께 진행할 수 있습니다."
               : "문의 내용과 첨부 사진을 확인한 뒤 정책 근거와 담당자 검토 작업을 준비합니다.";
 
+  if (reviewNeedsAction && review && searchParams.get("details") !== "1") {
+    return <Navigate to={`/reviews/${review.id}`} replace />;
+  }
+
   return <div className="page workspace-page">
     <PageHeader eyebrow={`문의 번호 · ${shortId(caseId)}`} title={commerceContext?.order.productDisplayName ?? demoProductDisplayName(item.product_ref) ?? `${operationalReference(item.product_ref)} 상품`} description={`주문 번호 ${item.order_ref} · 상품 번호 ${operationalReference(commerceContext?.order.sku ?? demoProduct?.syntheticSku ?? item.product_ref)} · ${formatDate(item.created_at)} 접수`}
       actions={<><Link className="button button-ghost" to="/cases"><ArrowLeft size={18} />목록</Link><StatusBadge status={item.status} /></>} />
@@ -506,6 +513,75 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
       <button className="button button-ghost button-small" type="button" onClick={() => setSnapshotPaused(true)}>나중에 다시 열기</button>
     </div>}
 
+    <div className="review-workbench" data-testid="review-workbench">
+      <div className="case-context-stack">
+      <section className="review-column evidence-column" aria-labelledby="evidence-column-title">
+        <header className="review-column-header">
+          <span className="review-step-number" aria-hidden="true">1</span>
+          <div><h2 id="evidence-column-title">이미지 근거</h2><p>고객이 첨부한 사진과 AI 참고 결과</p></div>
+          <label className="button button-secondary button-small file-button"><ImagePlus size={16} />추가<input type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} disabled={evidenceMutation.isPending} /></label>
+        </header>
+        {evidenceMutation.error && <div className="inline-alert inline-alert-danger" role="alert">{friendlyError(evidenceMutation.error)}</div>}
+        {evidenceMutation.isPending && <Loading label="이미지를 안전하게 업로드하는 중" />}
+        {item.evidence.length === 0 ? <EmptyState title="이미지가 없습니다"><span>이미지 기반 분석을 하려면 결함이 보이는 사진을 추가하세요.</span></EmptyState> : <>
+          <div className="evidence-tabs" role="tablist" aria-label="첨부 이미지 선택">
+            {item.evidence.map((evidence, index) => <button
+              aria-controls={`evidence-panel-${evidence.evidence_id}`}
+              aria-selected={selectedEvidence?.evidence_id === evidence.evidence_id}
+              className={selectedEvidence?.evidence_id === evidence.evidence_id ? "evidence-tab-active" : ""}
+              key={evidence.evidence_id}
+              onClick={() => setSelectedEvidenceId(evidence.evidence_id)}
+              role="tab"
+              type="button"
+            >{index + 1}</button>)}
+          </div>
+          {selectedEvidence && <div id={`evidence-panel-${selectedEvidence.evidence_id}`} role="tabpanel">
+            <EvidencePreview compact caseId={caseId} evidence={selectedEvidence} />
+          </div>}
+        </>}
+      <section className="review-column inquiry-column" aria-labelledby="inquiry-column-title">
+        <header className="review-column-header">
+          <span className="review-step-number" aria-hidden="true">2</span>
+          <div><h2 id="inquiry-column-title">{inquirySummary ? "문의 내용 요약" : "문의 내용"}</h2><p>{inquirySummary ? "문의 분석 요약" : "저장된 요약이 없어 원문을 표시합니다."}</p></div>
+          <div className="inquiry-header-badges">
+            {isFictionalInquiryV2 && <span className="fictional-inquiry-badge" data-testid="fictional-inquiry-badge">온라인 접수</span>}
+            <span className="request-pill">{businessLabel(item.requested_action)}</span>
+          </div>
+        </header>
+        <p className="customer-message">{inquirySummary ?? item.customer_message}</p>
+        {inquirySummary && <details className="supporting-details"><summary>문의 원문 보기</summary><p className="inquiry-original">{item.customer_message}</p></details>}
+        <details className="supporting-details inquiry-boundaries">
+          <summary>시나리오 출처 및 입력 경계</summary>
+          <DemoProvenance attributes={item.attributes} />
+          <DefinitionList items={[
+            { label: "외부 조치 입력", value: hasExternalActionInput ? "명시 입력 있음" : "명시 입력 없음" },
+            { label: "추론 입력 금지", value: "금액·통화·수량·배송지는 문의에서 추정하지 않음" },
+          ]} />
+        </details>
+      </section>
+        {demoImageObservation && <aside className="image-observation-boundary" data-testid="image-observation-boundary">
+          <ShieldCheck aria-hidden="true" size={16} />
+          <div>
+            <strong>사진에서 확인되는 범위</strong>
+            <p>{demoImageObservation}</p>
+            <small>배송 경위·작동·누수·구성 옵션 등 비가시 정보는 고객 진술이며 Vision 근거가 아닙니다.</small>
+          </div>
+        </aside>}
+        <div className="column-section vision-section">
+          <div className="column-section-heading"><div><Camera size={17} /><strong>이미지 참고 분석</strong></div><span>담당자 판단 보조</span></div>
+          {visionError && <div className="inline-alert inline-alert-danger" role="alert">{visionError}</div>}
+          {visionQuery.isLoading ? <Loading label="기존 Vision 실행을 불러오는 중" />
+            : visionQuery.error ? <div className="inline-alert inline-alert-danger" role="alert">{friendlyError(visionQuery.error)}</div>
+              : visionQuery.data ? <><VisionResult detail={visionQuery.data} />{visionQuery.data.run.status === "FAILED" && <div className="inline-alert inline-alert-danger failed-run-retry" role="alert">
+                <span>Text·정책 결과는 보존하고 실패한 Vision 실행만 새 idempotency로 재시도합니다.</span>
+                <button className="button button-ghost button-small" type="button" disabled={visionRetrying} onClick={() => void retryFailedVision()}><RefreshCw size={14} />{visionRetrying ? "재시도 중…" : "새 Vision 실행"}</button>
+              </div>}</>
+                : <button className="button button-secondary full-button" type="button" disabled={item.evidence.length === 0 || visionRecoveryPending || visionRecoveryBlocked} onClick={startVision}><Sparkles size={17} />{visionRecoveryPending ? "기존 실행 확인 중…" : "별도 Vision 실행"}</button>}
+        </div>
+      </section>
+      </div>
+
+      <section className="review-column policy-column" aria-labelledby="policy-column-title">
     <section className="operator-focus" aria-labelledby="operator-focus-title" data-testid="operator-focus">
       <div className="operator-focus-copy">
         <p className="eyebrow">지금 할 일</p>
@@ -531,19 +607,34 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
         <small>최종 결정은 담당자만 기록할 수 있습니다.</small>
       </div>
     </section>
-
-    <div className="review-workbench" data-testid="review-workbench">
-      <div className="case-context-stack">
-      <section className="review-column inquiry-column" aria-labelledby="inquiry-column-title">
         <header className="review-column-header">
-          <span className="review-step-number" aria-hidden="true">1</span>
-          <div><h2 id="inquiry-column-title">문의 내용</h2><p>고객이 접수한 요청과 주문 정보</p></div>
-          <div className="inquiry-header-badges">
-            {isFictionalInquiryV2 && <span className="fictional-inquiry-badge" data-testid="fictional-inquiry-badge">온라인 접수</span>}
-            <span className="request-pill">{businessLabel(item.requested_action)}</span>
-          </div>
+          <span className="review-step-number" aria-hidden="true">3</span>
+          <div><h2 id="policy-column-title">정책 기반 권고</h2><p>적용 근거와 담당자가 확인할 사항</p></div>
+          <ClipboardCheck size={20} className="muted-icon" />
         </header>
-        <p className="customer-message">{item.customer_message}</p>
+        <div className="policy-guidance-card" data-testid="policy-guidance">
+          <span>현재 권고</span>
+          {(groundingQuery.data?.citation_pack.citations.length ?? 0) === 0
+            && <span className="synthetic-policy-badge">사내 정책 참고 자료</span>}
+          <strong>{guidanceLabel}</strong>
+          <p>정책 결과는 참고 권고입니다. 승인·반품·교환·환불은 담당자가 확인한 뒤 결정합니다.</p>
+          {policyQuery.data?.run.summary_status && <StatusBadge status={policyQuery.data.run.summary_status} subtle />}
+        </div>
+        {workflowError && <div className="inline-alert inline-alert-danger" role="alert">{workflowError}</div>}
+        {activePolicyRunStatus && <Notice tone="warning" title="서버의 진행 중 실행 복구"><span>{activePolicyRunStatus} 상태의 기존 실행을 이어서 확인하며 같은 단계의 새 실행은 만들지 않습니다.</span></Notice>}
+        {textRunFailed && <div className="inline-alert inline-alert-danger" role="alert">문의 분석이 완료되지 않았습니다. 상단의 버튼으로 실패한 단계만 다시 시작해 주세요.</div>}
+        <div className="column-section review-section">
+          <div className="column-section-heading"><div><ShieldCheck size={17} /><strong>사람 검토</strong></div>{review && <StatusBadge status={review.status} subtle />}</div>
+          {review ? <div className="review-compact"><Notice tone="success" title="담당자 확인이 필요합니다"><span>정책과 이미지 분석은 판단을 돕는 참고 자료입니다. 최종 결정은 담당자가 근거를 확인하고 직접 기록합니다.</span></Notice><DefinitionList items={[
+            { label: "검토 유형", value: review.task_type }, { label: "우선순위", value: review.priority },
+          ]} /></div> : <div className="policy-empty-state"><strong>{policyEvaluationRunId ? "담당자 검토를 준비하고 있습니다" : "분석을 시작하면 검토 항목이 표시됩니다"}</strong><span>{policyEvaluationRunId ? "정책 결과와 연결된 검토 작업을 확인하고 있습니다." : "문의와 정책 근거를 확인한 후 담당자가 최종 결정을 기록합니다."}</span></div>}
+        </div>
+      </section>
+    </div>
+
+    <div className="workspace-support-stack">
+        <details className="supporting-details"><summary>고정된 정책 근거 보기</summary><PolicyEvidence retrieval={retrievalQuery.data} grounding={groundingQuery.data} policy={policyQuery.data} /></details>
+      <details className="supporting-details workspace-context-details"><summary>고객·상품·주문 정보</summary>
         {commerceContext && <aside className="commerce-context-card" data-testid="commerce-context-card">
           <div className="commerce-context-heading">
             <div><span className="fictional-product-badge">고객 정보</span><h3>{commerceContext.customer.displayName}</h3><p>{commerceContext.customer.customerId} · {commerceContext.customer.membershipTier}</p></div>
@@ -591,91 +682,8 @@ function CaseWorkspace({ caseId }: { caseId: string }) {
           { label: "접수 시각", value: formatDate(item.created_at) },
           { label: "첨부 이미지", value: `${item.evidence.length}장` },
         ]} />
-        <details className="supporting-details inquiry-boundaries">
-          <summary>시나리오 출처 및 입력 경계</summary>
-          <DemoProvenance attributes={item.attributes} />
-          <DefinitionList items={[
-            { label: "외부 조치 입력", value: hasExternalActionInput ? "명시 입력 있음" : "명시 입력 없음" },
-            { label: "추론 입력 금지", value: "금액·통화·수량·배송지는 문의에서 추정하지 않음" },
-          ]} />
-        </details>
-      </section>
-
-      <section className="review-column evidence-column" aria-labelledby="evidence-column-title">
-        <header className="review-column-header">
-          <span className="review-step-number" aria-hidden="true">2</span>
-          <div><h2 id="evidence-column-title">이미지 근거</h2><p>고객이 첨부한 사진과 AI 참고 결과</p></div>
-          <label className="button button-secondary button-small file-button"><ImagePlus size={16} />추가<input type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} disabled={evidenceMutation.isPending} /></label>
-        </header>
-        {evidenceMutation.error && <div className="inline-alert inline-alert-danger" role="alert">{friendlyError(evidenceMutation.error)}</div>}
-        {evidenceMutation.isPending && <Loading label="이미지를 안전하게 업로드하는 중" />}
-        {item.evidence.length === 0 ? <EmptyState title="이미지가 없습니다"><span>이미지 기반 분석을 하려면 결함이 보이는 사진을 추가하세요.</span></EmptyState> : <>
-          <div className="evidence-tabs" role="tablist" aria-label="첨부 이미지 선택">
-            {item.evidence.map((evidence, index) => <button
-              aria-controls={`evidence-panel-${evidence.evidence_id}`}
-              aria-selected={selectedEvidence?.evidence_id === evidence.evidence_id}
-              className={selectedEvidence?.evidence_id === evidence.evidence_id ? "evidence-tab-active" : ""}
-              key={evidence.evidence_id}
-              onClick={() => setSelectedEvidenceId(evidence.evidence_id)}
-              role="tab"
-              type="button"
-            >{index + 1}</button>)}
-          </div>
-          {selectedEvidence && <div id={`evidence-panel-${selectedEvidence.evidence_id}`} role="tabpanel">
-            <EvidencePreview caseId={caseId} evidence={selectedEvidence} />
-          </div>}
-        </>}
-        {demoImageObservation && <aside className="image-observation-boundary" data-testid="image-observation-boundary">
-          <ShieldCheck aria-hidden="true" size={16} />
-          <div>
-            <strong>사진에서 확인되는 범위</strong>
-            <p>{demoImageObservation}</p>
-            <small>배송 경위·작동·누수·구성 옵션 등 비가시 정보는 고객 진술이며 Vision 근거가 아닙니다.</small>
-          </div>
-        </aside>}
-        <div className="column-section vision-section">
-          <div className="column-section-heading"><div><Camera size={17} /><strong>이미지 참고 분석</strong></div><span>담당자 판단 보조</span></div>
-          {visionError && <div className="inline-alert inline-alert-danger" role="alert">{visionError}</div>}
-          {visionQuery.isLoading ? <Loading label="기존 Vision 실행을 불러오는 중" />
-            : visionQuery.error ? <div className="inline-alert inline-alert-danger" role="alert">{friendlyError(visionQuery.error)}</div>
-              : visionQuery.data ? <><VisionResult detail={visionQuery.data} />{visionQuery.data.run.status === "FAILED" && <div className="inline-alert inline-alert-danger failed-run-retry" role="alert">
-                <span>Text·정책 결과는 보존하고 실패한 Vision 실행만 새 idempotency로 재시도합니다.</span>
-                <button className="button button-ghost button-small" type="button" disabled={visionRetrying} onClick={() => void retryFailedVision()}><RefreshCw size={14} />{visionRetrying ? "재시도 중…" : "새 Vision 실행"}</button>
-              </div>}</>
-                : <button className="button button-secondary full-button" type="button" disabled={item.evidence.length === 0 || visionRecoveryPending || visionRecoveryBlocked} onClick={startVision}><Sparkles size={17} />{visionRecoveryPending ? "기존 실행 확인 중…" : "별도 Vision 실행"}</button>}
-        </div>
-      </section>
-      </div>
-
-      <section className="review-column policy-column" aria-labelledby="policy-column-title">
-        <header className="review-column-header">
-          <span className="review-step-number" aria-hidden="true">3</span>
-          <div><h2 id="policy-column-title">정책 기반 권고</h2><p>적용 근거와 담당자가 확인할 사항</p></div>
-          <ClipboardCheck size={20} className="muted-icon" />
-        </header>
-        <div className="policy-guidance-card" data-testid="policy-guidance">
-          <span>현재 권고</span>
-          {(groundingQuery.data?.citation_pack.citations.length ?? 0) === 0
-            && <span className="synthetic-policy-badge">사내 정책 참고 자료</span>}
-          <strong>{guidanceLabel}</strong>
-          <p>정책 결과는 참고 권고입니다. 승인·반품·교환·환불은 담당자가 확인한 뒤 결정합니다.</p>
-          {policyQuery.data?.run.summary_status && <StatusBadge status={policyQuery.data.run.summary_status} subtle />}
-        </div>
-        {workflowError && <div className="inline-alert inline-alert-danger" role="alert">{workflowError}</div>}
-        {activePolicyRunStatus && <Notice tone="warning" title="서버의 진행 중 실행 복구"><span>{activePolicyRunStatus} 상태의 기존 실행을 이어서 확인하며 같은 단계의 새 실행은 만들지 않습니다.</span></Notice>}
-        {textRunFailed && <div className="inline-alert inline-alert-danger" role="alert">문의 분석이 완료되지 않았습니다. 상단의 버튼으로 실패한 단계만 다시 시작해 주세요.</div>}
-        <PolicyEvidence retrieval={retrievalQuery.data} grounding={groundingQuery.data} policy={policyQuery.data} />
-        <div className="column-section review-section">
-          <div className="column-section-heading"><div><ShieldCheck size={17} /><strong>사람 검토</strong></div>{review && <StatusBadge status={review.status} subtle />}</div>
-          {review ? <div className="review-compact"><Notice tone="success" title="담당자 확인이 필요합니다"><span>정책과 이미지 분석은 판단을 돕는 참고 자료입니다. 최종 결정은 담당자가 근거를 확인하고 직접 기록합니다.</span></Notice><DefinitionList items={[
-            { label: "검토 유형", value: review.task_type }, { label: "우선순위", value: review.priority },
-          ]} /></div> : <div className="policy-empty-state"><strong>{policyEvaluationRunId ? "담당자 검토를 준비하고 있습니다" : "분석을 시작하면 검토 항목이 표시됩니다"}</strong><span>{policyEvaluationRunId ? "정책 결과와 연결된 검토 작업을 확인하고 있습니다." : "문의와 정책 근거를 확인한 후 담당자가 최종 결정을 기록합니다."}</span></div>}
-        </div>
-      </section>
-    </div>
-
-    <div className="workspace-support-stack">
-      <details className="workspace-support-details">
+    </details>
+    <details className="workspace-support-details">
         <summary><span><Activity size={18} />운영 정보 · 분석 진행과 실행 연결</span><small>실행 ID, 복구 상태, 상세 단계</small></summary>
         <div className="workspace-support-content">
           <Notice title="고정된 기본 경로"><span>Text v2 → RAW 질의 → HYBRID 검색 → Top-3 인용 → 근거 연결 → 정책 평가 순서입니다. Reranker와 LLM Query Builder는 사용하지 않습니다.</span></Notice>
@@ -773,7 +781,6 @@ function VisionResult({ detail }: { detail: Awaited<ReturnType<typeof api.getAna
       </Notice>
       <div className="assessment-score-card">
         <div><span>이상 가능성 점수</span><strong>{formatVisionProbability(assessment.score)}</strong></div>
-        <progress aria-label="이상 후보 점수" max={1} value={assessment.score} />
         <small>참고 기준 {formatVisionProbability(assessment.threshold)} 이상</small>
       </div>
       <p className="vision-decision-boundary"><ShieldCheck size={15} />이 점수만으로 환불·교환을 결정하지 않습니다.</p>
